@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+// Define the StatusResponse enum.
+enum StatusResponse {
+  Success = 0;
+  Failed = 1;
+}
+
+// Define the ApplyNewConfigurationRequest message.
+message ApplyNewConfigurationRequest {
+  // Serial number of the configuration.
+  int64 serial_number = 1;
+
+  // Binary file with configuration content.
+  bytes configuration_content = 2;
+}
+
+// Define the ApplyNewConfigurationResponse message.
+message ApplyNewConfigurationResponse {
+  // Status of the response, using the StatusResponse enum.
+  StatusResponse status = 1;
+
+  // Error description in case of failure.
+  string error_description = 2;
+}
+
