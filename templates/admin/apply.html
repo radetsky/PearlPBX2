@@ -1,0 +1,57 @@
+{% extends 'admin/base_site.html' %}
+
+{% load i18n static %}
+{% load common %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <h1>
+    Apply changes
+  </h1>
+  <p>
+    Click the "apply changes" button to generate new configuration files. After that, you can view them in the "system configuration" section
+  </p>
+  <h2>
+    Recent changes
+  </h2>
+  <p>
+    <b>TODO:</b> show recent changes using Django recent changes feature
+  </p>
+  <p>
+    <ul>What we are doing here?
+      <li>Generating pjsip.conf</li>
+      <li>Generaring extensions.ael</li>
+      <li>Generating queues.conf</li>
+    </ul>
+  </p>
+  <form action="" method="post">
+    {% csrf_token %}
+    <div class="submit-row">
+      <input type="submit" value="Apply changes" class="deletelink">
+    </div>
+  </form>
+  {% if cfgfiles %}
+  <h2>Generated configuration files</h2>
+
+  {% for cfgfile in cfgfiles %}
+    <details>
+      <summary>{{ cfgfile }}</summary>
+      <pre>{{ cfgfiles|get_dict_item:cfgfile|linebreaks }}</pre>
+    </details>
+  {% endfor %}
+  {% else %}
+    <p>No configuration content available.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

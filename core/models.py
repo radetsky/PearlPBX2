@@ -1,14 +1,13 @@
-from django.db import models
+import secrets
 import django.db.models.deletion as deletion
+from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
-from django.core.validators import MaxValueValidator
+from django.core.validators import MaxValueValidator, FileExtensionValidator
 
-
-from .validators import validate_bind_ip
 from hashlib import md5
 
-import secrets
+from .validators import validate_bind_ip
 
 
 class SIPTransport(models.Model):
@@ -68,7 +67,7 @@ class SIPTransport(models.Model):
     # cipher - do not use in UI "until it sleeps". Too many values. Users usually do not know it.
 
     class Meta:
-        verbose_name_plural = "1. SIP Transports"
+        verbose_name_plural = "01. SIP Transports"
 
 
 class DialplanContext(models.Model):
@@ -79,7 +78,7 @@ class DialplanContext(models.Model):
 
     class Meta:
         db_table = 'diaplan_contexts'
-        verbose_name_plural = "4. Dialplan contexts"
+        verbose_name_plural = "04. Dialplan contexts"
 
 
 class SIPUser(models.Model):
@@ -152,7 +151,6 @@ class SIPUser(models.Model):
         sip_user = SIPUser.objects.create(
             name=f'WebRTC account for {user.username}',
             username=username,
-            # FIXME: encrypt secret before save,
             secret=secrets.token_urlsafe(32),
             transport=SIPTransport.objects.get(name='webrtc'),
             extension=username,
@@ -162,7 +160,7 @@ class SIPUser(models.Model):
         return sip_user
 
     class Meta:
-        verbose_name_plural = "2. SIP Users"
+        verbose_name_plural = "02. SIP Users"
 
 
 class SIPPeer(models.Model):
@@ -199,7 +197,7 @@ class SIPPeer(models.Model):
         DialplanContext, related_name='sip_peer_context', on_delete=deletion.PROTECT, null=True, blank=False)
 
     class Meta:
-        verbose_name_plural = "3. SIP Uplinks and Peers"
+        verbose_name_plural = "03. SIP Uplinks and Peers"
 
 
 class DialplanExtension(models.Model):
@@ -217,7 +215,7 @@ class DialplanExtension(models.Model):
 
     class Meta:
         db_table = 'dialplan_extensions'
-        verbose_name_plural = "5. Dialplan extensions"
+        verbose_name_plural = "05. Dialplan extensions"
 
         constraints = [
             models.UniqueConstraint(
@@ -234,7 +232,7 @@ class DialplanMacro(models.Model):
 
     class Meta:
         db_table = 'dialplan_macros'
-        verbose_name_plural = "6. Dialplan macros"
+        verbose_name_plural = "06. Dialplan macros"
 
 
 class Settings(models.Model):
@@ -316,8 +314,11 @@ auth_type = md5''',
         self.pk = self.id = 1
         return super().save(*args, **kwargs)
 
+    def __str__ (self):
+        return 'Settings single instance'
+
     class Meta:
-        verbose_name_plural = "99. General Settings"
+        verbose_name_plural = "96. General Settings"
 
 
 class MusicOnHoldModes(models.TextChoices):
@@ -344,15 +345,27 @@ class MusicOnHold(models.Model):
     sort = models.CharField(max_length=32, default=1,
                             choices=MusicOnHoldSortModes.choices, null=True, blank=False)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = 'music_on_hold'
-        verbose_name_plural = "8. Music on hold"
+        verbose_name_plural = "08. Music on hold"
 
 
 class MusicOnHoldPlaylistEntry(models.Model):
+    def validate_file_extension(value):
+        valid_extensions = ['mp3', 'wav']
+        ext = str(value).split('.')[-1]
+        if ext.lower() not in valid_extensions:
+            raise ValidationError('Unsupported file extension. Only mp3 and wav files are allowed.')
+
+
     file = models.FileField(
-        upload_to='moh/', verbose_name='Playlist entry file', blank=True)
-    url = models.URLField(verbose_name='Playlist entry url', blank=True)
+        upload_to='moh/', verbose_name='Playlist entry file', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['mp3', 'wav']), validate_file_extension])
+
+    url = models.URLField(verbose_name='Playlist entry url', blank=True, null=True)
     moh_class = models.ForeignKey(
         MusicOnHold,
         related_name='moh_class',
@@ -369,9 +382,17 @@ class MusicOnHoldPlaylistEntry(models.Model):
 
         return super().save(*args, **kwargs)
 
+    def __str__(self) -> str:
+        if self.file:
+            return f'{self.file}'
+        elif self.url:
+            return f'{self.url}'
+        else:
+            return 'Unknown'
+
     class Meta:
         db_table = 'moh_playlist_entry'
-        verbose_name_plural = "7. Music on hold playlist entries"
+        verbose_name_plural = "07. Music on hold playlist entries"
 
 class Queue(models.Model):
     STRATEGY_CHOICES = [
@@ -386,17 +407,27 @@ class Queue(models.Model):
 
     name = models.CharField(max_length=64, unique=True, null=False, blank=False,
                             verbose_name='Queue Name')
-    music_class = models.CharField(max_length=64, null=True, blank=True,
-                                   verbose_name='Music Class')
+    music_class = models.ForeignKey(MusicOnHold, on_delete=models.PROTECT,
+                                    related_name='queues',
+                                    verbose_name='Music on hold')
     announce = models.CharField(max_length=64, null=True, blank=True,
-                                verbose_name='Announcement')
+                                verbose_name='Announcement',
+                                help_text="""An announcement may be specified which is played for the member as
+soon as they answer a call, typically to indicate to them which queue
+this call should be answered as, so that agents or members who are
+listening to more than one queue can differentiated how they should
+engage the customer""")
     strategy = models.CharField(max_length=32, null=True, blank=True,
                                 choices=STRATEGY_CHOICES,
                                 verbose_name='Strategy')
     service_level = models.IntegerField(default=0,
                                         verbose_name='Service Level')
     context = models.CharField(max_length=64, null=True, blank=True,
-                               verbose_name='Context')
+                               verbose_name='Context',
+                               help_text="""If a 'context' is specified, and a caller enters an extension that
+matches an extension within that context, they will be taken out of
+the queue and sent to that extension.""")
+
     maxlen = models.PositiveIntegerField(default=0,
                                          verbose_name='Maximum Queue Length')
     timeout = models.PositiveIntegerField(default=15,
@@ -491,7 +522,7 @@ class Queue(models.Model):
 
     class Meta:
         db_table = 'queues'
-        verbose_name_plural = '9. Queues'
+        verbose_name_plural = '09. Queues'
 
     def __str__(self):
         return self.name
@@ -522,6 +553,8 @@ class QueueMember(models.Model):
         return f'{self.member_name} ({self.interface})'
 
 class QueueAnnouncements(models.Model):
+    name = models.CharField(max_length=64, unique=True, null=False, blank=False,
+                            verbose_name='Announcement name', default='default')
     queue_youarenext = models.CharField(max_length=255, blank=True, null=True)
     queue_thereare = models.CharField(max_length=255, blank=True, null=True)
     queue_callswaiting = models.CharField(max_length=255, blank=True, null=True)
@@ -535,7 +568,11 @@ class QueueAnnouncements(models.Model):
     queue_reporthold = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
-        return "11. Queue Announcements"
+        return f'{self.name}'
+
+    class Meta:
+        db_table = 'queue_announcements'
+        verbose_name_plural = '11. Queue Announcements'
 
 class ConfigurationFile(models.Model):
     name = models.CharField(max_length=32, unique=True, null=False, blank=False,
@@ -548,9 +585,12 @@ class ConfigurationFile(models.Model):
     version = models.SmallIntegerField(default=1, null=False, blank=False,
                                         verbose_name='File version', help_text='File version')
 
+    def __str__(self) -> str:
+        return self.name
+
     class Meta:
         db_table = 'configuration_files'
-        verbose_name_plural = "12. Configuration files"
+        verbose_name_plural = "97. Configuration files"
         unique_together = ('name', 'version')
 
 class BinaryFile(models.Model):
@@ -566,7 +606,7 @@ class BinaryFile(models.Model):
 
     class Meta:
         db_table = 'binary_files'
-        verbose_name_plural = "13. Binary files"
+        verbose_name_plural = "98. Binary files"
         unique_together = ('name', 'version')
 
 class SystemConfiguration(models.Model):
@@ -586,9 +626,71 @@ class SystemConfiguration(models.Model):
 
     class Meta:
         db_table = 'system_configurations'
-        verbose_name_plural = '14. System Configurations'
+        verbose_name_plural = '99. System Configurations'
 
     def __str__(self):
         return self.name
+
+class CallQueueGlobalSettings(models.Model):
+    # Persistent Members
+    persistent_members = models.BooleanField(
+        default=True,
+        verbose_name='Persistent Members',
+        help_text="Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues."
+    )
+
+    # AutoFill Behavior
+    autofill = models.BooleanField(
+        default=False,
+        verbose_name='AutoFill Behavior',
+        help_text="The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no."
+    )
+
+    # Monitor Type
+    monitor_type = models.CharField(
+        max_length=50,
+        default='MixMonitor',
+        verbose_name='Monitor Type',
+        help_text="By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility."
+    )
+
+    # Shared Lastcall
+    shared_lastcall = models.BooleanField(
+        default=False,
+        verbose_name='Shared Lastcall',
+        help_text="shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no."
+    )
+
+    # Negative Penalty Invalid
+    negative_penalty_invalid = models.BooleanField(
+        default=False,
+        verbose_name='Negative Penalty Invalid',
+        help_text="negative_penalty_invalid = no"
+    )
+
+    # Log Membername as Agent
+    log_membername_as_agent = models.BooleanField(
+        default=False,
+        verbose_name='Log Membername as Agent',
+        help_text="log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility."
+    )
+
+    # Force Longest Waiting Caller
+    force_longest_waiting_caller = models.BooleanField(
+        default=False,
+        verbose_name='Force Longest Waiting Caller',
+        help_text="force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'."
+    )
+
+    def save(self, *args, **kwargs):
+        self.pk = self.id = 1
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return "Call Queue Global Settings"
+
+    class Meta:
+        db_table = 'call_queue_global_settings'
+        verbose_name_plural = '12. Call Queue Global Settings'
 
 
