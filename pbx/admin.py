@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
-from core.conf import make_pjsip_conf, make_queues_conf
+from core.conf import make_pjsip_conf, make_queues_conf, make_extensions_ael
 
 
 class MyAdminSite(admin.AdminSite):
@@ -25,6 +25,7 @@ class ApplyChangesView(TemplateView):
     def post(self, request, *args, **kwargs):
         form = ApplyChangesForm(request.POST)
         cfgfiles = {} # dictionary of config files to be written
+        cfgfiles['/etc/asterisk/extensions.ael'] = make_extensions_ael()
         cfgfiles['/etc/asterisk/pjsip.conf'] = make_pjsip_conf()
         cfgfiles['/etc/asterisk/queues.conf'] = make_queues_conf()
 

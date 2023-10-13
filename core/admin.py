@@ -3,7 +3,8 @@ from typing import Optional
 from django.contrib import admin
 from .models import SIPTransport, SIPUser, SIPPeer,DialplanContext, DialplanExtension, DialplanMacro, \
     Settings, MusicOnHoldPlaylistEntry, MusicOnHold, CallQueueGlobalSettings, \
-    Queue, QueueMember, QueueAnnouncements, ConfigurationFile, BinaryFile, SystemConfiguration
+    Queue, QueueMember, QueueAnnouncements, ConfigurationFile, BinaryFile, SystemConfiguration, \
+    TrunkGroup
 from .forms import SIPUserForm, SIPPeerForm, DialplanExtensionForm
 
 class SIPUserAdmin(admin.ModelAdmin):
@@ -105,6 +106,7 @@ admin.site.register(Queue)
 admin.site.register(QueueMember)
 admin.site.register(QueueAnnouncements)
 admin.site.register(CallQueueGlobalSettings)
+admin.site.register(TrunkGroup)
 admin.site.register(ConfigurationFile)
 admin.site.register(BinaryFile)
 admin.site.register(SystemConfiguration)

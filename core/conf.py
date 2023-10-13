@@ -1,4 +1,7 @@
-from .models import SIPPeer, SIPTransport, SIPUser, Settings
+import textwrap
+
+from .models import SIPPeer, SIPTransport, SIPUser, Settings, \
+    DialplanContext, DialplanExtension, DialplanMacro, MusicOnHold, MusicOnHoldPlaylistEntry
 
 
 def make_pjsip_conf_transports():
@@ -269,5 +272,54 @@ def make_queues_conf():
 
     plaintext += '; ==== Queues section ====\n'
     plaintext += make_queues_conf_queues()
+
+    return plaintext
+
+def make_incoming_to_users_context():
+    plaintext = '; ==== Incoming to users context ====\n'
+    plaintext += 'context incoming-to-users {\n'
+    for sipuser in SIPUser.objects.all():
+        if sipuser.extension:
+            if sipuser.custom_extension is not None and sipuser.custom_extension != '':
+                plaintext += f'    {sipuser.extension} => ' + '{\n'
+                indented_text = textwrap.indent(sipuser.custom_extension, " " * 8)
+                plaintext += indented_text
+                if not indented_text.endswith('\n'):
+                    plaintext += '\n'
+                plaintext += '    }\n'
+            else:
+                plaintext += f'    {sipuser.extension} => Dial(PJSIP/{sipuser.username},120,rtT);\n'
+
+    plaintext += '}\n'
+    return plaintext
+
+def make_dialplan_extension(extension):
+    plaintext = f';{extension.description}\n'
+    plaintext += f'    {extension.ext} => ' + '{\n'
+    indented_text = textwrap.indent(extension.dialplan, " " * 8)
+    plaintext += indented_text
+    if not indented_text.endswith('\n'):
+        plaintext += '\n'
+
+    plaintext += '    }\n'
+    return plaintext
+
+
+def make_dialplan_contexts():
+    plaintext = '; ==== Printing data of dialplan contexts in PBX admin panel ====\n'
+    plaintext += '; ==== Dialplan contexts ====\n'
+    for context in DialplanContext.objects.all():
+        plaintext += f'; {context.description}\n'
+        plaintext += f'context {context.name}' + ' {\n'
+        for extension in DialplanExtension.objects.filter(context=context):
+            plaintext += make_dialplan_extension(extension)
+        plaintext += '}\n'
+
+    return plaintext
+
+def make_extensions_ael():
+    plaintext = '; === This is auto generated file. Do not edit it. Use PBX13 admin panel! ===\n'
+    plaintext += make_incoming_to_users_context()
+    plaintext += make_dialplan_contexts()
 
     return plaintext

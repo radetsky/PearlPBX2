@@ -69,6 +69,10 @@ class SIPUserForm(forms.ModelForm):
                                          queryset=DialplanContext.objects.all(),
                                          empty_label=None,
                                          )
+    custom_extension = forms.CharField(label="Incoming dialplan",
+                                       widget=forms.Textarea,
+                                       required=False,
+                                       help_text='Custom dialplan for incoming calls to the user')
 
     custom_settings = forms.CharField(label='Settings',
                                       widget=forms.Textarea,
@@ -89,7 +93,7 @@ class SIPUserForm(forms.ModelForm):
         model = SIPUser
         fields = ['name', 'username', 'secret',
                   'transport', 'extension', 'context', 'allowed_extension',
-                  'custom_settings', 'custom_auth_settings', 'custom_aor_settings']
+                  'custom_extension', 'custom_settings', 'custom_auth_settings', 'custom_aor_settings']
 
         widgets = {
             # telling Django your password field in the mode is a password input on the template

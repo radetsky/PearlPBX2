@@ -128,6 +128,9 @@ class SIPUser(models.Model):
     custom_aor_settings = models.TextField(null=True, blank=False, default="",
                                            help_text='Custom user [aor] section', verbose_name='AOR Settings')
 
+    custom_extension = models.TextField(null=True, blank=False, default="",
+                                             help_text='Custom user extension section for incoming calls', verbose_name='Extension Settings')
+
     # Here we are linking SIP Users to Django Users. Many SIP Users to Django one.
     master = models.ForeignKey(User, related_name='sip_user_master',
                                on_delete=deletion.PROTECT, null=True, blank=True)
@@ -198,6 +201,9 @@ class SIPPeer(models.Model):
 
     class Meta:
         verbose_name_plural = "03. SIP Uplinks and Peers"
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class DialplanExtension(models.Model):
@@ -694,3 +700,23 @@ class CallQueueGlobalSettings(models.Model):
         verbose_name_plural = '12. Call Queue Global Settings'
 
 
+class TrunkGroup(models.Model):
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Name of the trunk group',
+        verbose_name='Trunk Group Name'
+    )
+    sip_peers = models.ManyToManyField(
+        SIPPeer,
+        related_name='trunk_groups',
+        blank=True,
+        help_text='SIP Peers in the trunk group',
+        verbose_name='SIP Peers'
+    )
+
+    class Meta:
+        verbose_name_plural = "13. Trunk Groups"
+
+    def __str__(self):
+        return self.name
