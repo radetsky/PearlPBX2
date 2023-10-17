@@ -4,7 +4,7 @@ from django.contrib import admin
 from .models import SIPTransport, SIPUser, SIPPeer,DialplanContext, DialplanExtension, DialplanMacro, \
     Settings, MusicOnHoldPlaylistEntry, MusicOnHold, CallQueueGlobalSettings, \
     Queue, QueueMember, QueueAnnouncements, ConfigurationFile, BinaryFile, SystemConfiguration, \
-    TrunkGroup
+    TrunkGroup, RoutingTable, RoutingRecord, Blacklist, Whitelist, Contact
 from .forms import SIPUserForm, SIPPeerForm, DialplanExtensionForm
 
 class SIPUserAdmin(admin.ModelAdmin):
@@ -92,6 +92,31 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
     search_fields = ['name']
     inlines = [MusicOnHoldPlaylistEntryInlineAdmin]
 
+
+class RoutingRecordAdmin(admin.ModelAdmin):
+    fields = ['name', 'table', 'prefix', 'dialplan']
+    list_display = ('name', 'table', 'prefix', 'dialplan')
+    ordering = ['prefix', 'name']
+    search_fields = ['prefix', 'name']
+
+
+class RoutingRecordInlineAdmin(admin.TabularInline):
+    min_num: Optional[int] = 1
+    extra: Optional[int] = 0
+    model = RoutingRecord
+
+    fields = ['name', 'table', 'prefix', 'dialplan']
+    ordering = ['prefix']
+    search_fields = ['prefix']
+
+
+class RoutingTableAdmin(admin.ModelAdmin):
+    fields = ['name']
+    ordering = ['name']
+    search_fields = ['name']
+    inlines = [RoutingRecordInlineAdmin]
+
+
 admin.site.register(SIPUser, SIPUserAdmin)
 admin.site.register(SIPPeer, SIPPeerAdmin)
 admin.site.register(SIPTransport, SIPTransportAdmin)
@@ -101,6 +126,8 @@ admin.site.register(DialplanMacro, DialplanMacroAdmin)
 admin.site.register(Settings)
 admin.site.register(MusicOnHoldPlaylistEntry, MusicOnHoldPlaylistEntryAdmin)
 admin.site.register(MusicOnHold, MusicOnHoldAdmin)
+admin.site.register(RoutingTable, RoutingTableAdmin)
+admin.site.register(RoutingRecord, RoutingRecordAdmin)
 
 admin.site.register(Queue)
 admin.site.register(QueueMember)
@@ -110,4 +137,8 @@ admin.site.register(TrunkGroup)
 admin.site.register(ConfigurationFile)
 admin.site.register(BinaryFile)
 admin.site.register(SystemConfiguration)
+admin.site.register(Blacklist)
+admin.site.register(Whitelist)
+admin.site.register(Contact)
+
 

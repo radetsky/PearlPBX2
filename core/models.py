@@ -107,6 +107,9 @@ class SIPUser(models.Model):
     extension = models.CharField(max_length=32, unique=True, null=True, blank=False,
                                  help_text='Easy way to setup internal extension for the user', verbose_name='Extension')
 
+    routing_table = models.ForeignKey(
+        'RoutingTable', related_name='sip_user_routing_table', on_delete=deletion.PROTECT, null=True, blank=True)
+
     context = models.ForeignKey(
         DialplanContext, related_name='sip_user_context', on_delete=deletion.PROTECT, null=True, blank=False)
 
@@ -134,6 +137,11 @@ class SIPUser(models.Model):
     # Here we are linking SIP Users to Django Users. Many SIP Users to Django one.
     master = models.ForeignKey(User, related_name='sip_user_master',
                                on_delete=deletion.PROTECT, null=True, blank=True)
+
+    allow_monitor = models.BooleanField(
+        default=False, verbose_name='Allow monitor',
+        help_text='Allow to monitor calls of this user')
+
 
     @property
     def realm(self):
@@ -172,10 +180,10 @@ class SIPPeer(models.Model):
     name = models.CharField(max_length=32, unique=True, null=False,
                             default="", help_text='Name of the channel', verbose_name='Channel name')
     username = models.CharField(
-        max_length=32, unique=True, null=False, default="",
+        max_length=32, unique=False, null=True, blank=True,
         help_text='Username for the connection used for remote side', verbose_name='Username')
     secret = models.CharField(
-        max_length=32, unique=True, null=False, default="",
+        max_length=32, unique=False, null=False, blank=True,
         help_text='Clear text password for the connection used for remote side',
         verbose_name='Password')
 
@@ -187,9 +195,10 @@ class SIPPeer(models.Model):
         default=False,
         help_text='Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. ',
         verbose_name='Registration here')
+
     registrationThere = models.BooleanField(
         default=False, help_text='Should we register on remote service? Typically used for providers',
-        verbose_name='Registration there')
+        verbose_name='Outbound registration')
 
     callLimit = models.SmallIntegerField(
         default=0, help_text='Maximum calls on the trunk', verbose_name='Call Limit')
@@ -253,6 +262,9 @@ class Settings(models.Model):
 
     wss_port = models.SmallIntegerField(default=8089, null=False, blank=False,
                                         verbose_name="WSS port of the server", help_text="WSS port of the server")
+    allow_monitor = models.BooleanField(
+        default=False, verbose_name='Allow monitor',
+        help_text='Allow to monitor calls')
 
     @property
     def wss_url(self):
@@ -720,3 +732,130 @@ class TrunkGroup(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class RoutingRecord(models.Model):
+    name = models.CharField(
+        max_length=64,
+        unique=False,
+        help_text='Name of the routing record',
+        verbose_name='Routing Record Name'
+    )
+    prefix = models.CharField(
+        max_length=16,
+        unique=False,
+        help_text='Prefix of the routing record',
+        verbose_name='Routing Record Prefix'
+    )
+    dialplan = models.TextField(verbose_name='Extension scenario')
+    table = models.ForeignKey(
+        'RoutingTable',
+        related_name='routing_records',
+        on_delete=deletion.PROTECT,
+        blank=True,
+        null=True,
+        help_text='Routing table for the routing record',
+        verbose_name='Routing Table'
+    )
+
+    class Meta:
+        verbose_name_plural = "14. Routing Records"
+
+    def __str__(self):
+        return self.name
+
+
+class RoutingTable(models.Model):
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Name of the routing table',
+        verbose_name='Routing Table Name'
+    )
+    directions = models.ManyToManyField(
+        RoutingRecord,
+        related_name='routing_tables',
+        blank=True,
+        help_text='Routing records in the routing table',
+        verbose_name='Routing Records'
+    )
+
+    class Meta:
+        verbose_name_plural = "15. Routing Tables"
+
+    def __str__(self):
+        return self.name
+
+
+class Blacklist(models.Model):
+    callerid = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Caller ID to block',
+        verbose_name='Caller ID'
+    )
+    description = models.CharField(
+        max_length=64,
+        help_text='Description of the caller ID',
+        verbose_name='Description'
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'blacklist'
+        verbose_name_plural = "16. Blacklist"
+
+    def __str__(self):
+        return f"{self.callerid} - {self.description}"
+
+
+class Whitelist(models.Model):
+    callerid = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Caller ID to allow',
+        verbose_name='Caller ID'
+    )
+    description = models.CharField(
+        max_length=64,
+        help_text='Description of the caller ID',
+        verbose_name='Description'
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'whitelist'
+        verbose_name_plural = "17. Whitelist"
+
+    def __str__(self):
+        return f"{self.callerid} - {self.description}"
+
+
+class Contact(models.Model):
+    callerid = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Caller ID to recognize',
+        verbose_name='Caller ID'
+    )
+    name = models.CharField(
+        max_length=64,
+        help_text='Name of the caller ID',
+        verbose_name='Name'
+    )
+    allow_monitor = models.BooleanField(
+        default=False,
+        help_text='Allow to monitor the call',
+        verbose_name='Allow monitor'
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'contacts'
+        verbose_name_plural = "18. Contacts"
+
+    def __str__(self):
+        return f"{self.name} <{self.callerid}>"

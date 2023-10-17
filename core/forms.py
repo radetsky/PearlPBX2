@@ -4,10 +4,13 @@ from django.core.exceptions import ValidationError
 from django.forms import fields
 from django.utils.translation import gettext_lazy as _
 
-from .models import SIPPeer, SIPTransport, SIPUser, DialplanContext, DialplanExtension, Settings
+from .models import SIPPeer, SIPTransport, SIPUser, DialplanContext, DialplanExtension, RoutingTable
 
 
 def validate_alphanumeric(value):
+    if value == "":
+        return True
+
     try:
         value.encode('ascii')
 
@@ -25,6 +28,9 @@ def validate_alphanumeric(value):
 
 
 def min3len(value):
+    if value == "":
+        return True
+
     if len(value) < 3:
         raise ValidationError(
             _('This value: %(value)s must be longer than 2 characters.'),
@@ -38,6 +44,11 @@ class SIPTransportChoiceField(forms.ModelChoiceField):
 
 
 class DialplanContextChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return f"{obj.name}"
+
+
+class RoutingTableChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return f"{obj.name}"
 
@@ -62,6 +73,12 @@ class SIPUserForm(forms.ModelForm):
                                         queryset=SIPTransport.objects.all(),
                                         empty_label=None,
                                         )
+    routing_table = RoutingTableChoiceField(label="Routing Table",
+                                            required=True,
+                                            help_text='Select routing table for the user',
+                                            queryset=RoutingTable.objects.all(),
+                                            empty_label=None,
+                                            )
 
     context = DialplanContextChoiceField(label="Context",
                                          required=True,
@@ -92,7 +109,7 @@ class SIPUserForm(forms.ModelForm):
     class Meta:
         model = SIPUser
         fields = ['name', 'username', 'secret',
-                  'transport', 'extension', 'context', 'allowed_extension',
+                  'transport', 'extension', 'routing_table', 'context', 'allowed_extension',
                   'custom_extension', 'custom_settings', 'custom_auth_settings', 'custom_aor_settings']
 
         widgets = {
@@ -109,9 +126,9 @@ class SIPPeerForm(forms.ModelForm):
                            )
 
     username = forms.CharField(label="Username",
-                               required=True,
+                               required=False,
                                validators=[validate_alphanumeric, min3len],
-                               help_text='Username for the connection used for remote side. Use only English letters and digits.'
+                               help_text='Optional username for the connection used for remote side.'
                                )
 
     transport = SIPTransportChoiceField(label="Transport",
