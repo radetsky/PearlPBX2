@@ -1,11 +1,13 @@
 from typing import Optional
 
 from django.contrib import admin
+from django.utils import timezone
+
 from .models import SIPTransport, SIPUser, SIPPeer,DialplanContext, DialplanExtension, DialplanMacro, \
     Settings, MusicOnHoldPlaylistEntry, MusicOnHold, CallQueueGlobalSettings, \
     Queue, QueueMember, QueueAnnouncements, ConfigurationFile, BinaryFile, SystemConfiguration, \
     TrunkGroup, RoutingTable, RoutingRecord, Blacklist, Whitelist, Contact
-from .forms import SIPUserForm, SIPPeerForm, DialplanExtensionForm
+from .forms import SIPUserForm, SIPPeerForm, DialplanExtensionForm, ConfigurationFileForm
 
 class SIPUserAdmin(admin.ModelAdmin):
     form = SIPUserForm
@@ -116,6 +118,25 @@ class RoutingTableAdmin(admin.ModelAdmin):
     search_fields = ['name']
     inlines = [RoutingRecordInlineAdmin]
 
+class ConfigurationFileAdmin(admin.ModelAdmin):
+    form = ConfigurationFileForm
+    fields = ['name', 'description', 'path', 'content']
+    list_display = ('name', 'version','created', 'description')
+    ordering = ['name', 'path']
+    search_fields = ['name', 'description', 'content']
+
+    def save_model(self, request, obj, form, change):
+        last_instance = ConfigurationFile.objects.filter(name=obj.name).order_by('-version').first()
+        if not last_instance:
+            obj.save()
+            return
+        if last_instance.content != obj.content:
+            # Create new ConfigirationFile instance with incremented version
+            obj.pk = None
+            obj.version = last_instance.version + 1
+            obj.created = timezone.now()
+            obj.save()
+
 
 admin.site.register(SIPUser, SIPUserAdmin)
 admin.site.register(SIPPeer, SIPPeerAdmin)
@@ -128,13 +149,13 @@ admin.site.register(MusicOnHoldPlaylistEntry, MusicOnHoldPlaylistEntryAdmin)
 admin.site.register(MusicOnHold, MusicOnHoldAdmin)
 admin.site.register(RoutingTable, RoutingTableAdmin)
 admin.site.register(RoutingRecord, RoutingRecordAdmin)
+admin.site.register(ConfigurationFile, ConfigurationFileAdmin)
 
 admin.site.register(Queue)
 admin.site.register(QueueMember)
 admin.site.register(QueueAnnouncements)
 admin.site.register(CallQueueGlobalSettings)
 admin.site.register(TrunkGroup)
-admin.site.register(ConfigurationFile)
 admin.site.register(BinaryFile)
 admin.site.register(SystemConfiguration)
 admin.site.register(Blacklist)

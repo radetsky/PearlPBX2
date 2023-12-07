@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.forms import fields
 from django.utils.translation import gettext_lazy as _
 
-from .models import SIPPeer, SIPTransport, SIPUser, DialplanContext, DialplanExtension, RoutingTable
+from .models import SIPPeer, SIPTransport, SIPUser, DialplanContext, \
+                    DialplanExtension, RoutingTable, ConfigurationFile
 
 
 def validate_alphanumeric(value):
@@ -53,6 +54,7 @@ class RoutingTableChoiceField(forms.ModelChoiceField):
         return f"{obj.name}"
 
 
+
 class SIPUserForm(forms.ModelForm):
 
     name = forms.CharField(label="Description",
@@ -86,6 +88,17 @@ class SIPUserForm(forms.ModelForm):
                                          queryset=DialplanContext.objects.all(),
                                          empty_label=None,
                                          )
+    telephone_type = forms.ChoiceField(label="Telephone type",
+                                        required=True,
+                                        help_text='Select type of the telephone',
+                                        choices=SIPUser.USER_TELEPHONE_TYPE_CHOICES,
+                                        )
+    integration = forms.ChoiceField(label="Integration",
+                                    required=True,
+                                    help_text='Select type of integration',
+                                    choices=SIPUser.INTEGRATION_CHOICES,
+                                    )
+
     custom_extension = forms.CharField(label="Incoming dialplan",
                                        widget=forms.Textarea,
                                        required=False,
@@ -109,7 +122,8 @@ class SIPUserForm(forms.ModelForm):
     class Meta:
         model = SIPUser
         fields = ['name', 'username', 'secret',
-                  'transport', 'extension', 'routing_table', 'context', 'allowed_extension',
+                  'transport', 'extension', 'routing_table',
+                  'telephone_type','integration',
                   'custom_extension', 'custom_settings', 'custom_auth_settings', 'custom_aor_settings']
 
         widgets = {
@@ -179,3 +193,12 @@ class DialplanExtensionForm(forms.ModelForm):
     class Meta:
         model = DialplanExtension
         fields = '__all__'
+
+
+class ConfigurationFileForm(forms.ModelForm):
+    class Meta:
+        model = ConfigurationFile
+        fields = ['name', 'description', 'path', 'content']
+        widgets = {
+            'content': forms.Textarea(attrs={'style': 'font-family: monospace;'}),
+        }

@@ -1,6 +1,7 @@
 import secrets
 import django.db.models.deletion as deletion
 from django.db import models
+from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, FileExtensionValidator
@@ -593,7 +594,7 @@ class QueueAnnouncements(models.Model):
         verbose_name_plural = '11. Queue Announcements'
 
 class ConfigurationFile(models.Model):
-    name = models.CharField(max_length=32, unique=True, null=False, blank=False,
+    name = models.CharField(max_length=32, null=False, blank=False,
                             verbose_name='File name', help_text='Use latin symbols, digits and undercore')
     description = models.CharField(max_length=64, unique=False, null=False, blank=True,
                                    verbose_name='File description', help_text='Use latin symbols, digits and undercore to describe')
@@ -602,9 +603,10 @@ class ConfigurationFile(models.Model):
                             verbose_name='File path', help_text='Use latin symbols, digits and undercore')
     version = models.SmallIntegerField(default=1, null=False, blank=False,
                                         verbose_name='File version', help_text='File version')
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
-        return self.name
+        return f'{self.name} v.{self.version}'
 
     class Meta:
         db_table = 'configuration_files'
