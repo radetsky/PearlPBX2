@@ -96,8 +96,8 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
 
 
 class RoutingRecordAdmin(admin.ModelAdmin):
-    fields = ['name', 'table', 'prefix', 'dialplan']
-    list_display = ('name', 'table', 'prefix', 'dialplan')
+    fields = ['prefix', 'name', 'context', 'routing_table']
+    list_display = ('prefix', 'name', 'context', 'routing_table')
     ordering = ['prefix', 'name']
     search_fields = ['prefix', 'name']
 
@@ -107,7 +107,7 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
     extra: Optional[int] = 0
     model = RoutingRecord
 
-    fields = ['name', 'table', 'prefix', 'dialplan']
+    fields = ['name', 'prefix', 'context', 'routing_table']
     ordering = ['prefix']
     search_fields = ['prefix']
 
