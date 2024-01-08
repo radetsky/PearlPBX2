@@ -54,7 +54,7 @@ def create_first_users(apps, schema_editor):
     (udp_transport, tcp_transport) = create_first_transports(apps, schema_editor)
     routing_table = create_first_routing_table(apps, schema_editor)
 
-    for i in range(1, 10):
+    for i in range(1, 11):
         SIPUser = apps.get_model("core", "SIPUser")
         SIPUser.objects.create(
             name=f"PearlPBX User #{i}",
