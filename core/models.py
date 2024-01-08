@@ -81,6 +81,9 @@ class DialplanContext(models.Model):
         db_table = 'diaplan_contexts'
         verbose_name_plural = "04. Dialplan contexts"
 
+    def __str__(self):
+        return self.name
+
 
 class SIPUser(models.Model):
     USER_TELEPHONE_TYPE_CHOICES = [
@@ -136,13 +139,8 @@ class SIPUser(models.Model):
                                              help_text='Custom user extension section for incoming calls', verbose_name='Extension Settings')
 
     # Here we are linking SIP Users to Django Users. Many SIP Users to Django one.
-    master = models.ForeignKey(User, related_name='sip_user_master',
+    django_user = models.ForeignKey(User, related_name='sip_user_master',
                                on_delete=deletion.PROTECT, null=True, blank=True)
-
-    allow_monitor = models.BooleanField(
-        default=False, verbose_name='Allow monitor',
-        help_text='Allow to monitor calls of this user')
-
 
     @property
     def realm(self):
@@ -749,8 +747,16 @@ class RoutingRecord(models.Model):
         help_text='Prefix of the routing record',
         verbose_name='Routing Record Prefix'
     )
-    dialplan = models.TextField(verbose_name='Extension scenario')
-    table = models.ForeignKey(
+    context = models.ForeignKey(
+        DialplanContext,
+        related_name='routing_records',
+        on_delete=deletion.PROTECT,
+        blank=True,
+        null=True,
+        help_text='Context for the routing record',
+        verbose_name='Routing Record Context'
+    )
+    routing_table = models.ForeignKey(
         'RoutingTable',
         related_name='routing_records',
         on_delete=deletion.PROTECT,
