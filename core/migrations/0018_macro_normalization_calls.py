@@ -9,51 +9,51 @@ def create_dialplan_macro(apps, schema_editor):
         name='callerid_normalization',
         description='Normalize CallerID to Ukrainian/Kyiv format',
         macro="""
-    COUNTRY_CODE = "380";
-    COUNTRY_CODE_LEN = 3;
-    LOCAL_CODE = "044";
-    PADDING_LEFT = "0";
-    REQUIRED_LEN = 10;
-    CITYCODE_LEN = 7;
+COUNTRY_CODE = "380";
+COUNTRY_CODE_LEN = 3;
+LOCAL_CODE = "044";
+PADDING_LEFT = "0";
+REQUIRED_LEN = 10;
+CITYCODE_LEN = 7;
 
-    if ("${CALLERID(num)}" == "Anonymous"){
-         return;
-    }
-    caller_id = ${CALLERID(num)};
-    first_character = ${caller_id:0:1};
-    if ("${first_character}" == "+") {
-	    caller_id = ${caller_id:1};
-    }
+if ("${CALLERID(num)}" == "Anonymous"){
+        return;
+}
+caller_id = ${CALLERID(num)};
+first_character = ${caller_id:0:1};
+if ("${first_character}" == "+") {
+    caller_id = ${caller_id:1};
+}
 
-    caller_id_len = ${LEN(${caller_id})};
-    if (${caller_id_len} == ${REQUIRED_LEN}) {
-        Set(CALLERID(num)=${caller_id});
-	    return;
-    }
-
-    if (${caller_id_len} > ${REQUIRED_LEN}) {
-        prefix_num = ${caller_id:0:${COUNTRY_CODE_LEN}};
-    	if (${prefix_num} == ${COUNTRY_CODE}) {
-    	    prefix_len = ${LEN(${caller_id})} - ${REQUIRED_LEN};
-            caller_id  = ${caller_id:${prefix_len}};
-            Set(CALLERID(num)=${caller_id});
-            return;
-        }
-    }
-
-    if (${LEN(${caller_id})} < ${REQUIRED_LEN}) {
-    	if (${caller_id_len} == ${CITYCODE_LEN}) {
-            Set(CALLERID(num)=${LOCAL_CODE}${caller_id});
-	        return;
-        }
-        if (${caller_id_len} == ${REQUIRED_LEN}-1) {
-	        Set(CALLERID(num)="${PADDING_LEFT}${caller_id}");
-            return;
-        }
-    }
-
+caller_id_len = ${LEN(${caller_id})};
+if (${caller_id_len} == ${REQUIRED_LEN}) {
     Set(CALLERID(num)=${caller_id});
     return;
+}
+
+if (${caller_id_len} > ${REQUIRED_LEN}) {
+    prefix_num = ${caller_id:0:${COUNTRY_CODE_LEN}};
+    if (${prefix_num} == ${COUNTRY_CODE}) {
+        prefix_len = ${LEN(${caller_id})} - ${REQUIRED_LEN};
+        caller_id  = ${caller_id:${prefix_len}};
+        Set(CALLERID(num)=${caller_id});
+        return;
+    }
+}
+
+if (${LEN(${caller_id})} < ${REQUIRED_LEN}) {
+    if (${caller_id_len} == ${CITYCODE_LEN}) {
+        Set(CALLERID(num)=${LOCAL_CODE}${caller_id});
+        return;
+    }
+    if (${caller_id_len} == ${REQUIRED_LEN}-1) {
+        Set(CALLERID(num)="${PADDING_LEFT}${caller_id}");
+        return;
+    }
+}
+
+Set(CALLERID(num)=${caller_id});
+return;
 """)
 
 

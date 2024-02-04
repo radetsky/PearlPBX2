@@ -1,7 +1,9 @@
 import textwrap
 
 from .models import SIPPeer, SIPTransport, SIPUser, Settings, \
-    DialplanContext, DialplanExtension, DialplanMacro, MusicOnHold, MusicOnHoldPlaylistEntry
+    DialplanContext, DialplanExtension, DialplanMacro, \
+    RoutingTable, RoutingRecord, \
+    MusicOnHold, MusicOnHoldPlaylistEntry
 
 
 def make_pjsip_conf_transports():
@@ -275,26 +277,8 @@ def make_queues_conf():
 
     return plaintext
 
-def make_incoming_to_users_context():
-    plaintext = '; ==== Incoming to users context ====\n'
-    plaintext += 'context incoming-to-users {\n'
-    for sipuser in SIPUser.objects.all():
-        if sipuser.extension:
-            if sipuser.custom_extension is not None and sipuser.custom_extension != '':
-                plaintext += f'    {sipuser.extension} => ' + '{\n'
-                indented_text = textwrap.indent(sipuser.custom_extension, " " * 8)
-                plaintext += indented_text
-                if not indented_text.endswith('\n'):
-                    plaintext += '\n'
-                plaintext += '    }\n'
-            else:
-                plaintext += f'    {sipuser.extension} => Dial(PJSIP/{sipuser.username},120,rtT);\n'
-
-    plaintext += '}\n'
-    return plaintext
-
 def make_dialplan_extension(extension):
-    plaintext = f';{extension.description}\n'
+    plaintext = f'    // {extension.description}\n'
     plaintext += f'    {extension.ext} => ' + '{\n'
     indented_text = textwrap.indent(extension.dialplan, " " * 8)
     plaintext += indented_text
@@ -306,10 +290,10 @@ def make_dialplan_extension(extension):
 
 
 def make_dialplan_contexts():
-    plaintext = '; ==== Printing data of dialplan contexts in PBX admin panel ====\n'
-    plaintext += '; ==== Dialplan contexts ====\n'
+    plaintext = '// ==== Printing data of dialplan contexts in PBX admin panel ====\n'
+    plaintext += '// ==== Dialplan contexts ====\n'
     for context in DialplanContext.objects.all():
-        plaintext += f'; {context.description}\n'
+        plaintext += f'// {context.description}\n'
         plaintext += f'context {context.name}' + ' {\n'
         for extension in DialplanExtension.objects.filter(context=context):
             plaintext += make_dialplan_extension(extension)
@@ -317,9 +301,37 @@ def make_dialplan_contexts():
 
     return plaintext
 
+
+def make_dialplan_macros():
+    plaintext = '; ==== Macros ====\n'
+    for macro in DialplanMacro.objects.all():
+        plaintext += f'; {macro.description}\n'
+        plaintext += f'macro {macro.name} => ' + '{\n'
+        indented_text = textwrap.indent(macro.macro, " " * 4)
+        plaintext += indented_text
+        if not indented_text.endswith('\n'):
+            plaintext += '\n'
+        plaintext += '}\n'
+
+    return plaintext
+
+
+def make_routing_tables():
+    plaintext = '// ==== Routing tables ==== \n'
+    for rt in RoutingTable.objects.all():
+        plaintext += f'context {rt.name} ' + '{\n'
+        for dir in RoutingRecord.objects.filter(routing_table=rt).order_by('prefix'):
+            plaintext += f'    // {dir.name}\n'
+            plaintext += f'    {dir.prefix} => ' + \
+                '{ goto ' + f'{dir.context},' + '${EXTEN},1; }\n'
+
+        plaintext += '}\n'
+    return plaintext
+
 def make_extensions_ael():
-    plaintext = '; === This is auto generated file. Do not edit it. Use PBX13 admin panel! ===\n'
-    plaintext += make_incoming_to_users_context()
+    plaintext = '; === This is auto generated file. Do not edit it. Use PearlPBX2 admin panel! ===\n'
+    plaintext += make_dialplan_macros()
+    plaintext += make_routing_tables()
     plaintext += make_dialplan_contexts()
 
     return plaintext
