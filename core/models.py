@@ -257,13 +257,12 @@ class Settings(models.Model):
         null=True, blank=True, verbose_name="IP address of gRPC helper", help_text="IP address of gRPC helper")
 
     domain = models.CharField(
-        max_length=64, unique=True, null=False, blank=False, default="webtel.cloud", verbose_name="Hostname of the server", help_text="Hostname of the server")
+        max_length=64, unique=True, null=False, blank=False, default="127.0.0.1", verbose_name="Hostname of the server", help_text="Hostname of the server")
 
     wss_port = models.SmallIntegerField(default=8089, null=False, blank=False,
                                         verbose_name="WSS port of the server", help_text="WSS port of the server")
     allow_monitor = models.BooleanField(
-        default=False, verbose_name='Allow monitor',
-        help_text='Allow to monitor calls')
+        default=False, verbose_name='Allow global monitor', help_text='Allow to monitor calls of whole system')
 
     @property
     def wss_url(self):
@@ -779,13 +778,6 @@ class RoutingTable(models.Model):
         unique=True,
         help_text='Name of the routing table',
         verbose_name='Routing Table Name'
-    )
-    directions = models.ManyToManyField(
-        RoutingRecord,
-        related_name='routing_tables',
-        blank=True,
-        help_text='Routing records in the routing table',
-        verbose_name='Routing Records'
     )
 
     class Meta:

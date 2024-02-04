@@ -61,7 +61,7 @@ def create_first_users(apps, schema_editor):
             username=f"ppbxuser{i+200}",
             secret=generate_password(),
             transport=udp_transport,
-            extension=f"{i+201}",
+            extension=f"{i+200}",
             routing_table=routing_table
         )
 
