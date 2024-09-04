@@ -646,7 +646,7 @@ class SystemConfiguration(models.Model):
         verbose_name_plural = '99. System Configurations'
 
     def __str__(self):
-        return self.name
+        return self.created.strftime('%Y-%m-%d %H:%M:%S')
 
 class CallQueueGlobalSettings(models.Model):
     # Persistent Members

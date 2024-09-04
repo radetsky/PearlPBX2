@@ -21,25 +21,8 @@
   <p>
     Click the "apply changes" button to generate new configuration files. After that, you can view them in the "system configuration" section
   </p>
-  <h2>
-    Recent changes
-  </h2>
-  <p>
-    <b>TODO:</b> show recent changes using Django recent changes feature
-  </p>
-  <p>
-    <ul>What we are doing here?
-      <li>Generating pjsip.conf</li>
-      <li>Generaring extensions.ael</li>
-      <li>Generating queues.conf</li>
-    </ul>
-  </p>
-  <form action="" method="post">
-    {% csrf_token %}
-    <div class="submit-row">
-      <input type="submit" value="Apply changes" class="deletelink">
-    </div>
-  </form>
+  <h2>Preview Configuration Changes</h2>
+
   {% if cfgfiles %}
   <h2>Generated configuration files</h2>
 
@@ -49,9 +32,31 @@
       <pre>{{ cfgfiles|get_dict_item:cfgfile|linebreaks }}</pre>
     </details>
   {% endfor %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="submit" name="commit_changes" value="Apply changes" class="deletelink">
+  </form>
+
   {% else %}
-    <p>No configuration content available.</p>
+
+    <form action="" method="post">
+      {% csrf_token %}
+      <div class="submit-row">
+        <input type="submit" value="Apply changes" class="deletelink">
+      </div>
+    </form>
+
+    <h3>What we are doing here?</h3>
+    <ul>
+      <li>Generating pjsip.conf</li>
+      <li>Generaring extensions.ael</li>
+      <li>Generating queues.conf</li>
+    </ul>
+
   {% endif %}
+
+
 
 </div>
 {% endblock %}

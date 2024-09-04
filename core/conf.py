@@ -242,7 +242,8 @@ def make_pjsip_webrtc_templates():
 
 def make_pjsip_conf():
 
-    plaintext = "; === This is auto generated file. Do not edit it. Use PBX13 admin panel! ===\n"
+    plaintext =  "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext += "; === Use PearlPBX admin panel! ===\n"
     plaintext += make_pjsip_conf_transports()
     plaintext += make_pjsip_webrtc_templates()
     plaintext += make_pjsip_conf_uplinks()
@@ -262,7 +263,8 @@ def make_queues_conf_queues():
 
 def make_queues_conf():
 
-    plaintext = '; === This is auto generated file. Do not edit it. Use PBX13 admin panel! ===\n'
+    plaintext =  "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext += "; === Use PearlPBX admin panel! ===\n"
     plaintext += '; ==== General section ====\n'
     plaintext += '[general]\n'
     plaintext += 'persistent_members = yes\n'
@@ -329,9 +331,9 @@ def make_routing_tables():
     return plaintext
 
 def make_extensions_ael():
-    plaintext = '; === This is auto generated file. Do not edit it. Use PearlPBX2 admin panel! ===\n'
+    plaintext =  "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext += "; === Use PearlPBX admin panel! ===\n"
     plaintext += make_dialplan_macros()
     plaintext += make_routing_tables()
     plaintext += make_dialplan_contexts()
-
     return plaintext
