@@ -4,49 +4,118 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_alter_musiconholdplaylistentry_file_and_more'),
+        ("core", "0004_alter_musiconholdplaylistentry_file_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CallQueueGlobalSettings',
+            name="CallQueueGlobalSettings",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('persistent_members', models.BooleanField(default=True, help_text='Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues.', verbose_name='Persistent Members')),
-                ('autofill', models.BooleanField(default=False, help_text='The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no.', verbose_name='AutoFill Behavior')),
-                ('monitor_type', models.CharField(default='MixMonitor', help_text="By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility.", max_length=50, verbose_name='Monitor Type')),
-                ('shared_lastcall', models.BooleanField(default=False, help_text='shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no.', verbose_name='Shared Lastcall')),
-                ('negative_penalty_invalid', models.BooleanField(default=False, help_text='negative_penalty_invalid = no', verbose_name='Negative Penalty Invalid')),
-                ('log_membername_as_agent', models.BooleanField(default=False, help_text='log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility.', verbose_name='Log Membername as Agent')),
-                ('force_longest_waiting_caller', models.BooleanField(default=False, help_text="force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'.", verbose_name='Force Longest Waiting Caller')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "persistent_members",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues.",
+                        verbose_name="Persistent Members",
+                    ),
+                ),
+                (
+                    "autofill",
+                    models.BooleanField(
+                        default=False,
+                        help_text="The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no.",
+                        verbose_name="AutoFill Behavior",
+                    ),
+                ),
+                (
+                    "monitor_type",
+                    models.CharField(
+                        default="MixMonitor",
+                        help_text="By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility.",
+                        max_length=50,
+                        verbose_name="Monitor Type",
+                    ),
+                ),
+                (
+                    "shared_lastcall",
+                    models.BooleanField(
+                        default=False,
+                        help_text="shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no.",
+                        verbose_name="Shared Lastcall",
+                    ),
+                ),
+                (
+                    "negative_penalty_invalid",
+                    models.BooleanField(
+                        default=False,
+                        help_text="negative_penalty_invalid = no",
+                        verbose_name="Negative Penalty Invalid",
+                    ),
+                ),
+                (
+                    "log_membername_as_agent",
+                    models.BooleanField(
+                        default=False,
+                        help_text="log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility.",
+                        verbose_name="Log Membername as Agent",
+                    ),
+                ),
+                (
+                    "force_longest_waiting_caller",
+                    models.BooleanField(
+                        default=False,
+                        help_text="force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'.",
+                        verbose_name="Force Longest Waiting Caller",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '12. Call Queue Global Settings',
-                'db_table': 'call_queue_global_settings',
+                "verbose_name_plural": "12. Call Queue Global Settings",
+                "db_table": "call_queue_global_settings",
             },
         ),
         migrations.AlterModelOptions(
-            name='binaryfile',
-            options={'verbose_name_plural': '98. Binary files'},
+            name="binaryfile",
+            options={"verbose_name_plural": "98. Binary files"},
         ),
         migrations.AlterModelOptions(
-            name='configurationfile',
-            options={'verbose_name_plural': '97. Configuration files'},
+            name="configurationfile",
+            options={"verbose_name_plural": "97. Configuration files"},
         ),
         migrations.AlterModelOptions(
-            name='systemconfiguration',
-            options={'verbose_name_plural': '99. System Configurations'},
+            name="systemconfiguration",
+            options={"verbose_name_plural": "99. System Configurations"},
         ),
         migrations.AlterField(
-            model_name='queue',
-            name='announce',
-            field=models.CharField(blank=True, help_text='An announcement may be specified which is played for the member as\nsoon as they answer a call, typically to indicate to them which queue\nthis call should be answered as, so that agents or members who are\nlistening to more than one queue can differentiated how they should\nengage the customer', max_length=64, null=True, verbose_name='Announcement'),
+            model_name="queue",
+            name="announce",
+            field=models.CharField(
+                blank=True,
+                help_text="An announcement may be specified which is played for the member as\nsoon as they answer a call, typically to indicate to them which queue\nthis call should be answered as, so that agents or members who are\nlistening to more than one queue can differentiated how they should\nengage the customer",
+                max_length=64,
+                null=True,
+                verbose_name="Announcement",
+            ),
         ),
         migrations.AlterField(
-            model_name='queue',
-            name='context',
-            field=models.CharField(blank=True, help_text="If a 'context' is specified, and a caller enters an extension that\nmatches an extension within that context, they will be taken out of\nthe queue and sent to that extension.", max_length=64, null=True, verbose_name='Context'),
+            model_name="queue",
+            name="context",
+            field=models.CharField(
+                blank=True,
+                help_text="If a 'context' is specified, and a caller enters an extension that\nmatches an extension within that context, they will be taken out of\nthe queue and sent to that extension.",
+                max_length=64,
+                null=True,
+                verbose_name="Context",
+            ),
         ),
     ]

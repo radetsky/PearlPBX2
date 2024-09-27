@@ -9,9 +9,8 @@ def create_settings(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0018_macro_normalization_calls'),
+        ("core", "0018_macro_normalization_calls"),
     ]
 
     operations = [

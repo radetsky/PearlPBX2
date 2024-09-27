@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0020_alter_settings_allow_monitor_alter_settings_domain'),
+        ("core", "0020_alter_settings_allow_monitor_alter_settings_domain"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='routingtable',
-            name='directions',
+            model_name="routingtable",
+            name="directions",
         ),
     ]

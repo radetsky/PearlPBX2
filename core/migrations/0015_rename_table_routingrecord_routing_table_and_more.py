@@ -5,33 +5,40 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0014_basic_cfg'),
+        ("core", "0014_basic_cfg"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='routingrecord',
-            old_name='table',
-            new_name='routing_table',
+            model_name="routingrecord",
+            old_name="table",
+            new_name="routing_table",
         ),
         migrations.RenameField(
-            model_name='sipuser',
-            old_name='master',
-            new_name='django_user',
+            model_name="sipuser",
+            old_name="master",
+            new_name="django_user",
         ),
         migrations.RemoveField(
-            model_name='routingrecord',
-            name='dialplan',
+            model_name="routingrecord",
+            name="dialplan",
         ),
         migrations.RemoveField(
-            model_name='sipuser',
-            name='allow_monitor',
+            model_name="sipuser",
+            name="allow_monitor",
         ),
         migrations.AddField(
-            model_name='routingrecord',
-            name='context',
-            field=models.ForeignKey(blank=True, help_text='Context for the routing record', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='routing_records', to='core.dialplancontext', verbose_name='Routing Record Context'),
+            model_name="routingrecord",
+            name="context",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Context for the routing record",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="routing_records",
+                to="core.dialplancontext",
+                verbose_name="Routing Record Context",
+            ),
         ),
     ]

@@ -8,7 +8,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -17,285 +16,1248 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='BinaryFile',
+            name="BinaryFile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=32, unique=True, verbose_name='File name')),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='File description')),
-                ('content', models.BinaryField(verbose_name='File content')),
-                ('path', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=256, verbose_name='File path')),
-                ('version', models.SmallIntegerField(default=1, help_text='File version', verbose_name='File version')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="File name",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="File description",
+                    ),
+                ),
+                ("content", models.BinaryField(verbose_name="File content")),
+                (
+                    "path",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=256,
+                        verbose_name="File path",
+                    ),
+                ),
+                (
+                    "version",
+                    models.SmallIntegerField(
+                        default=1, help_text="File version", verbose_name="File version"
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '13. Binary files',
-                'db_table': 'binary_files',
-                'unique_together': {('name', 'version')},
+                "verbose_name_plural": "13. Binary files",
+                "db_table": "binary_files",
+                "unique_together": {("name", "version")},
             },
         ),
         migrations.CreateModel(
-            name='ConfigurationFile',
+            name="ConfigurationFile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=32, unique=True, verbose_name='File name')),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='File description')),
-                ('content', models.TextField(verbose_name='File content')),
-                ('path', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=256, verbose_name='File path')),
-                ('version', models.SmallIntegerField(default=1, help_text='File version', verbose_name='File version')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="File name",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="File description",
+                    ),
+                ),
+                ("content", models.TextField(verbose_name="File content")),
+                (
+                    "path",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=256,
+                        verbose_name="File path",
+                    ),
+                ),
+                (
+                    "version",
+                    models.SmallIntegerField(
+                        default=1, help_text="File version", verbose_name="File version"
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '12. Configuration files',
-                'db_table': 'configuration_files',
-                'unique_together': {('name', 'version')},
+                "verbose_name_plural": "12. Configuration files",
+                "db_table": "configuration_files",
+                "unique_together": {("name", "version")},
             },
         ),
         migrations.CreateModel(
-            name='DialplanContext',
+            name="DialplanContext",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=64, unique=True, verbose_name='Context name')),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='Context description')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Context name",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="Context description",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '4. Dialplan contexts',
-                'db_table': 'diaplan_contexts',
+                "verbose_name_plural": "4. Dialplan contexts",
+                "db_table": "diaplan_contexts",
             },
         ),
         migrations.CreateModel(
-            name='DialplanMacro',
+            name="DialplanMacro",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=32, unique=True, verbose_name='Macro name')),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='Macro description')),
-                ('macro', models.TextField(verbose_name='Macro scenario')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Macro name",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="Macro description",
+                    ),
+                ),
+                ("macro", models.TextField(verbose_name="Macro scenario")),
             ],
             options={
-                'verbose_name_plural': '6. Dialplan macros',
-                'db_table': 'dialplan_macros',
+                "verbose_name_plural": "6. Dialplan macros",
+                "db_table": "dialplan_macros",
             },
         ),
         migrations.CreateModel(
-            name='MusicOnHold',
+            name="MusicOnHold",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Use latin symbols, digits and undercore', max_length=32, unique=True, verbose_name='Music on hold name')),
-                ('mode', models.CharField(choices=[('files', 'Files'), ('playlist', 'Playlist'), ('custom', 'Custom')], default=1, max_length=32, null=True)),
-                ('directory', models.CharField(blank=True, help_text='Directory with music files', max_length=64, verbose_name='Directory')),
-                ('sort', models.CharField(choices=[('random', 'Random'), ('alpha', 'Alpha')], default=1, max_length=32, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Use latin symbols, digits and undercore",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Music on hold name",
+                    ),
+                ),
+                (
+                    "mode",
+                    models.CharField(
+                        choices=[
+                            ("files", "Files"),
+                            ("playlist", "Playlist"),
+                            ("custom", "Custom"),
+                        ],
+                        default=1,
+                        max_length=32,
+                        null=True,
+                    ),
+                ),
+                (
+                    "directory",
+                    models.CharField(
+                        blank=True,
+                        help_text="Directory with music files",
+                        max_length=64,
+                        verbose_name="Directory",
+                    ),
+                ),
+                (
+                    "sort",
+                    models.CharField(
+                        choices=[("random", "Random"), ("alpha", "Alpha")],
+                        default=1,
+                        max_length=32,
+                        null=True,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '8. Music on hold',
-                'db_table': 'music_on_hold',
+                "verbose_name_plural": "8. Music on hold",
+                "db_table": "music_on_hold",
             },
         ),
         migrations.CreateModel(
-            name='Queue',
+            name="Queue",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=64, unique=True, verbose_name='Queue Name')),
-                ('music_class', models.CharField(blank=True, max_length=64, null=True, verbose_name='Music Class')),
-                ('announce', models.CharField(blank=True, max_length=64, null=True, verbose_name='Announcement')),
-                ('strategy', models.CharField(blank=True, choices=[('ringall', 'Ring All'), ('leastrecent', 'Least Recent'), ('fewestcalls', 'Fewest Calls'), ('random', 'Random'), ('rrmemory', 'Round Robin Memory'), ('rrordered', 'Round Robin Ordered'), ('linear', 'Linear as configured'), ('wrandom', 'Weighted Random')], max_length=32, null=True, verbose_name='Strategy')),
-                ('service_level', models.IntegerField(default=0, verbose_name='Service Level')),
-                ('context', models.CharField(blank=True, max_length=64, null=True, verbose_name='Context')),
-                ('maxlen', models.PositiveIntegerField(default=0, verbose_name='Maximum Queue Length')),
-                ('timeout', models.PositiveIntegerField(default=15, verbose_name='Timeout')),
-                ('retry', models.PositiveIntegerField(default=5, verbose_name='Retry')),
-                ('timeoutpriority', models.CharField(choices=[('app', 'Application'), ('conf', 'Configuration')], default='app', max_length=4, verbose_name='Timeout Priority')),
-                ('weight', models.PositiveIntegerField(default=0, verbose_name='Queue Weight')),
-                ('wrapuptime', models.PositiveIntegerField(default=0, verbose_name='Wrap-Up Time')),
-                ('autopause', models.CharField(choices=[('yes', 'Yes'), ('no', 'No'), ('all', 'All')], default='yes', max_length=3, verbose_name='Autopause')),
-                ('autopausedelay', models.PositiveIntegerField(default=60, verbose_name='Autopause Delay')),
-                ('autofill', models.BooleanField(default=True, verbose_name='Autofill')),
-                ('setinterfacevar', models.BooleanField(default=False, verbose_name='Set Interface Variable')),
-                ('setqueueentryvar', models.BooleanField(default=False, verbose_name='Set Queue Entry Variable')),
-                ('setqueuevar', models.BooleanField(default=False, verbose_name='Set Queue Variable')),
-                ('announce_frequency', models.PositiveIntegerField(default=0, verbose_name='Announce Frequency')),
-                ('min_announce_frequency', models.PositiveIntegerField(default=0, verbose_name='Minimum Announce Frequency')),
-                ('periodic_announce_frequency', models.PositiveIntegerField(default=0, verbose_name='Periodic Announce Frequency')),
-                ('random_periodic_announce', models.BooleanField(default=False, verbose_name='Random Periodic Announce')),
-                ('relative_periodic_announce', models.BooleanField(default=False, verbose_name='Relative Periodic Announce')),
-                ('announce_holdtime', models.CharField(choices=[('yes', 'Yes'), ('no', 'No'), ('once', 'Once')], default='no', help_text='Should we include estimated hold time in position announcements?', max_length=4, verbose_name='Announce Hold Time')),
-                ('announce_position', models.CharField(choices=[('yes', 'Yes'), ('no', 'No'), ('more', 'More'), ('limit', 'Limit')], default='no', max_length=5, verbose_name='Announce Position')),
-                ('announce_to_first_user', models.BooleanField(default=False, verbose_name='Announce to first user')),
-                ('announce_position_limit', models.PositiveIntegerField(default=0, validators=[django.core.validators.MaxValueValidator(100)], verbose_name='Announce Position Limit')),
-                ('announce_round_seconds', models.PositiveIntegerField(choices=[(0, '0'), (5, '5'), (10, '10'), (15, '15'), (20, '20'), (25, '25'), (30, '30')], default=0, verbose_name='Announce Round Seconds')),
-                ('announce_position_only_up', models.BooleanField(default=False, help_text="Only announce the caller's position if it has improved since the last announcement.", verbose_name='Announce position only up')),
-                ('periodic_announce', models.CharField(blank=True, help_text='The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait', max_length=255, null=True, verbose_name='Periodic Announce')),
-                ('monitor_format', models.CharField(blank=True, choices=[('wav', 'WAV'), ('gsm', 'GSM'), ('wav49', 'WAV49')], max_length=5, null=True, verbose_name='Monitor Format')),
-                ('joinempty', models.CharField(default='paused,inuse,invalid', help_text='What to do when a caller joins a queue with no members in it?', max_length=100, verbose_name='Join Empty')),
-                ('leavewhenempty', models.CharField(default='inuse,ringing', help_text='When to leave empty queue?', max_length=100, verbose_name='Leave When Empty')),
-                ('reportholdtime', models.BooleanField(default=False, verbose_name='Report Hold Time')),
-                ('ring_in_use', models.BooleanField(default=False, verbose_name='Ring In Use')),
-                ('timeoutrestart', models.BooleanField(default=False, verbose_name='Timeout Restart')),
-                ('defaultrule', models.CharField(blank=True, help_text='If you wish to implement a rule defined in queuerules.conf', max_length=100, null=True, verbose_name='Default Rule')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=64, unique=True, verbose_name="Queue Name"
+                    ),
+                ),
+                (
+                    "music_class",
+                    models.CharField(
+                        blank=True, max_length=64, null=True, verbose_name="Music Class"
+                    ),
+                ),
+                (
+                    "announce",
+                    models.CharField(
+                        blank=True,
+                        max_length=64,
+                        null=True,
+                        verbose_name="Announcement",
+                    ),
+                ),
+                (
+                    "strategy",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("ringall", "Ring All"),
+                            ("leastrecent", "Least Recent"),
+                            ("fewestcalls", "Fewest Calls"),
+                            ("random", "Random"),
+                            ("rrmemory", "Round Robin Memory"),
+                            ("rrordered", "Round Robin Ordered"),
+                            ("linear", "Linear as configured"),
+                            ("wrandom", "Weighted Random"),
+                        ],
+                        max_length=32,
+                        null=True,
+                        verbose_name="Strategy",
+                    ),
+                ),
+                (
+                    "service_level",
+                    models.IntegerField(default=0, verbose_name="Service Level"),
+                ),
+                (
+                    "context",
+                    models.CharField(
+                        blank=True, max_length=64, null=True, verbose_name="Context"
+                    ),
+                ),
+                (
+                    "maxlen",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Maximum Queue Length"
+                    ),
+                ),
+                (
+                    "timeout",
+                    models.PositiveIntegerField(default=15, verbose_name="Timeout"),
+                ),
+                ("retry", models.PositiveIntegerField(default=5, verbose_name="Retry")),
+                (
+                    "timeoutpriority",
+                    models.CharField(
+                        choices=[("app", "Application"), ("conf", "Configuration")],
+                        default="app",
+                        max_length=4,
+                        verbose_name="Timeout Priority",
+                    ),
+                ),
+                (
+                    "weight",
+                    models.PositiveIntegerField(default=0, verbose_name="Queue Weight"),
+                ),
+                (
+                    "wrapuptime",
+                    models.PositiveIntegerField(default=0, verbose_name="Wrap-Up Time"),
+                ),
+                (
+                    "autopause",
+                    models.CharField(
+                        choices=[("yes", "Yes"), ("no", "No"), ("all", "All")],
+                        default="yes",
+                        max_length=3,
+                        verbose_name="Autopause",
+                    ),
+                ),
+                (
+                    "autopausedelay",
+                    models.PositiveIntegerField(
+                        default=60, verbose_name="Autopause Delay"
+                    ),
+                ),
+                (
+                    "autofill",
+                    models.BooleanField(default=True, verbose_name="Autofill"),
+                ),
+                (
+                    "setinterfacevar",
+                    models.BooleanField(
+                        default=False, verbose_name="Set Interface Variable"
+                    ),
+                ),
+                (
+                    "setqueueentryvar",
+                    models.BooleanField(
+                        default=False, verbose_name="Set Queue Entry Variable"
+                    ),
+                ),
+                (
+                    "setqueuevar",
+                    models.BooleanField(
+                        default=False, verbose_name="Set Queue Variable"
+                    ),
+                ),
+                (
+                    "announce_frequency",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Announce Frequency"
+                    ),
+                ),
+                (
+                    "min_announce_frequency",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Minimum Announce Frequency"
+                    ),
+                ),
+                (
+                    "periodic_announce_frequency",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Periodic Announce Frequency"
+                    ),
+                ),
+                (
+                    "random_periodic_announce",
+                    models.BooleanField(
+                        default=False, verbose_name="Random Periodic Announce"
+                    ),
+                ),
+                (
+                    "relative_periodic_announce",
+                    models.BooleanField(
+                        default=False, verbose_name="Relative Periodic Announce"
+                    ),
+                ),
+                (
+                    "announce_holdtime",
+                    models.CharField(
+                        choices=[("yes", "Yes"), ("no", "No"), ("once", "Once")],
+                        default="no",
+                        help_text="Should we include estimated hold time in position announcements?",
+                        max_length=4,
+                        verbose_name="Announce Hold Time",
+                    ),
+                ),
+                (
+                    "announce_position",
+                    models.CharField(
+                        choices=[
+                            ("yes", "Yes"),
+                            ("no", "No"),
+                            ("more", "More"),
+                            ("limit", "Limit"),
+                        ],
+                        default="no",
+                        max_length=5,
+                        verbose_name="Announce Position",
+                    ),
+                ),
+                (
+                    "announce_to_first_user",
+                    models.BooleanField(
+                        default=False, verbose_name="Announce to first user"
+                    ),
+                ),
+                (
+                    "announce_position_limit",
+                    models.PositiveIntegerField(
+                        default=0,
+                        validators=[django.core.validators.MaxValueValidator(100)],
+                        verbose_name="Announce Position Limit",
+                    ),
+                ),
+                (
+                    "announce_round_seconds",
+                    models.PositiveIntegerField(
+                        choices=[
+                            (0, "0"),
+                            (5, "5"),
+                            (10, "10"),
+                            (15, "15"),
+                            (20, "20"),
+                            (25, "25"),
+                            (30, "30"),
+                        ],
+                        default=0,
+                        verbose_name="Announce Round Seconds",
+                    ),
+                ),
+                (
+                    "announce_position_only_up",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Only announce the caller's position if it has improved since the last announcement.",
+                        verbose_name="Announce position only up",
+                    ),
+                ),
+                (
+                    "periodic_announce",
+                    models.CharField(
+                        blank=True,
+                        help_text="The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait",
+                        max_length=255,
+                        null=True,
+                        verbose_name="Periodic Announce",
+                    ),
+                ),
+                (
+                    "monitor_format",
+                    models.CharField(
+                        blank=True,
+                        choices=[("wav", "WAV"), ("gsm", "GSM"), ("wav49", "WAV49")],
+                        max_length=5,
+                        null=True,
+                        verbose_name="Monitor Format",
+                    ),
+                ),
+                (
+                    "joinempty",
+                    models.CharField(
+                        default="paused,inuse,invalid",
+                        help_text="What to do when a caller joins a queue with no members in it?",
+                        max_length=100,
+                        verbose_name="Join Empty",
+                    ),
+                ),
+                (
+                    "leavewhenempty",
+                    models.CharField(
+                        default="inuse,ringing",
+                        help_text="When to leave empty queue?",
+                        max_length=100,
+                        verbose_name="Leave When Empty",
+                    ),
+                ),
+                (
+                    "reportholdtime",
+                    models.BooleanField(default=False, verbose_name="Report Hold Time"),
+                ),
+                (
+                    "ring_in_use",
+                    models.BooleanField(default=False, verbose_name="Ring In Use"),
+                ),
+                (
+                    "timeoutrestart",
+                    models.BooleanField(default=False, verbose_name="Timeout Restart"),
+                ),
+                (
+                    "defaultrule",
+                    models.CharField(
+                        blank=True,
+                        help_text="If you wish to implement a rule defined in queuerules.conf",
+                        max_length=100,
+                        null=True,
+                        verbose_name="Default Rule",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '9. Queues',
-                'db_table': 'queues',
+                "verbose_name_plural": "9. Queues",
+                "db_table": "queues",
             },
         ),
         migrations.CreateModel(
-            name='QueueAnnouncements',
+            name="QueueAnnouncements",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('queue_youarenext', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_thereare', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_callswaiting', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_quantity1', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_quantity2', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_holdtime', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_minute', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_minutes', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_seconds', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_thankyou', models.CharField(blank=True, max_length=255, null=True)),
-                ('queue_reporthold', models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "queue_youarenext",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_thereare",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_callswaiting",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_quantity1",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_quantity2",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_holdtime",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_minute",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_minutes",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_seconds",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_thankyou",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "queue_reporthold",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Settings',
+            name="Settings",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ip_addr_for_provisioning', models.GenericIPAddressField(blank=True, help_text='IP address for provisioning', null=True, verbose_name='IP address for provisioning')),
-                ('ip_addr_of_grpc_helper', models.GenericIPAddressField(blank=True, help_text='IP address of gRPC helper', null=True, verbose_name='IP address of gRPC helper')),
-                ('domain', models.CharField(default='webtel.cloud', help_text='Hostname of the server', max_length=64, unique=True, verbose_name='Hostname of the server')),
-                ('wss_port', models.SmallIntegerField(default=8089, help_text='WSS port of the server', verbose_name='WSS port of the server')),
-                ('user_template', models.TextField(default='type = endpoint\ncontext = default\nallow = !all, g722, ulaw, alaw\ndirect_media = no\ntrust_id_outbound = yes\ndevice_state_busy_at = 1\ndtmf_mode = rfc4733\ntransport = transport-udp-nat\nrtp_symmetric = yes\nforce_rport = yes\nrewrite_contact = yes', help_text='You may override it by custom settings in user form', verbose_name='User basic template')),
-                ('user_aor_template', models.TextField(default='type = aor\nmax_contacts = 1\nremove_existing = yes', help_text='You may override it by custom settings in user form', verbose_name='User AOR template')),
-                ('user_auth_template', models.TextField(default='type = auth\nauth_type = md5', help_text='You may override it by custom settings in user form', verbose_name='User auth template')),
-                ('webrtc_template', models.TextField(default='\ndtls_auto_generate_cert=yes\nwebrtc=yes\ncontext=default\nmax_audio_streams = 1\nmax_video_streams = 15\ndisallow=all\nallow=opus,g722,ulaw,vp9,vp8,h264', help_text='You may override it by custom settings in user form', verbose_name='WebRTC template for endpoint')),
-                ('webrtc_aor_template', models.TextField(default='type = aor\nmax_contacts = 15\nremove_existing = yes', help_text='You may override it by custom settings in user form', verbose_name='WebRTC AOR template')),
-                ('webrtc_auth_template', models.TextField(default='type = auth\nauth_type = md5', help_text='You may override it by custom settings in user form', verbose_name='WebRTC auth template')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "ip_addr_for_provisioning",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        help_text="IP address for provisioning",
+                        null=True,
+                        verbose_name="IP address for provisioning",
+                    ),
+                ),
+                (
+                    "ip_addr_of_grpc_helper",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        help_text="IP address of gRPC helper",
+                        null=True,
+                        verbose_name="IP address of gRPC helper",
+                    ),
+                ),
+                (
+                    "domain",
+                    models.CharField(
+                        default="webtel.cloud",
+                        help_text="Hostname of the server",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Hostname of the server",
+                    ),
+                ),
+                (
+                    "wss_port",
+                    models.SmallIntegerField(
+                        default=8089,
+                        help_text="WSS port of the server",
+                        verbose_name="WSS port of the server",
+                    ),
+                ),
+                (
+                    "user_template",
+                    models.TextField(
+                        default="type = endpoint\ncontext = default\nallow = !all, g722, ulaw, alaw\ndirect_media = no\ntrust_id_outbound = yes\ndevice_state_busy_at = 1\ndtmf_mode = rfc4733\ntransport = transport-udp-nat\nrtp_symmetric = yes\nforce_rport = yes\nrewrite_contact = yes",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="User basic template",
+                    ),
+                ),
+                (
+                    "user_aor_template",
+                    models.TextField(
+                        default="type = aor\nmax_contacts = 1\nremove_existing = yes",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="User AOR template",
+                    ),
+                ),
+                (
+                    "user_auth_template",
+                    models.TextField(
+                        default="type = auth\nauth_type = md5",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="User auth template",
+                    ),
+                ),
+                (
+                    "webrtc_template",
+                    models.TextField(
+                        default="\ndtls_auto_generate_cert=yes\nwebrtc=yes\ncontext=default\nmax_audio_streams = 1\nmax_video_streams = 15\ndisallow=all\nallow=opus,g722,ulaw,vp9,vp8,h264",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="WebRTC template for endpoint",
+                    ),
+                ),
+                (
+                    "webrtc_aor_template",
+                    models.TextField(
+                        default="type = aor\nmax_contacts = 15\nremove_existing = yes",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="WebRTC AOR template",
+                    ),
+                ),
+                (
+                    "webrtc_auth_template",
+                    models.TextField(
+                        default="type = auth\nauth_type = md5",
+                        help_text="You may override it by custom settings in user form",
+                        verbose_name="WebRTC auth template",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '99. General Settings',
+                "verbose_name_plural": "99. General Settings",
             },
         ),
         migrations.CreateModel(
-            name='SIPTransport',
+            name="SIPTransport",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('description', models.CharField(blank=True, default='', help_text='Example: UDP + NAT for remote users', max_length=64, verbose_name='Description')),
-                ('name', models.CharField(default='', help_text='Example: transport-udp-nat', max_length=32, unique=True, verbose_name='Name')),
-                ('protocol', models.CharField(choices=[('udp', 'UDP'), ('tcp', 'TCP'), ('tls', 'TLS'), ('wss', 'WSS')], default='udp', max_length=3)),
-                ('bind', models.CharField(default='0.0.0.0', max_length=256, validators=[core.validators.validate_bind_ip])),
-                ('local_nets', models.CharField(blank=True, help_text='List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24', max_length=256, null=True, verbose_name='local_net')),
-                ('external_media_address', models.GenericIPAddressField(blank=True, help_text='This is the external IP address to use in RTP handling', null=True, verbose_name='External RTP IP address')),
-                ('external_signaling_address', models.GenericIPAddressField(blank=True, help_text='This is much like the external_media_address setting, but for SIP signaling instead of RTP media.', null=True, verbose_name='External SIP IP address')),
-                ('method', models.CharField(choices=[('default', 'The default as defined by PJSIP. This is currently TLSv1'), ('tlsv1', 'TLSv1'), ('tlsv1_1', 'TLSv1.1'), ('tlsv1_2', 'TLSv1.2'), ('sslv2', 'SSLv2'), ('sslv3', 'SSLv3'), ('sslv23', 'SSLv2.3')], default='default', max_length=10)),
-                ('cert_file', models.TextField(blank=True)),
-                ('priv_key_file', models.TextField(blank=True)),
-                ('ca_list_file', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="Example: UDP + NAT for remote users",
+                        max_length=64,
+                        verbose_name="Description",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        default="",
+                        help_text="Example: transport-udp-nat",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Name",
+                    ),
+                ),
+                (
+                    "protocol",
+                    models.CharField(
+                        choices=[
+                            ("udp", "UDP"),
+                            ("tcp", "TCP"),
+                            ("tls", "TLS"),
+                            ("wss", "WSS"),
+                        ],
+                        default="udp",
+                        max_length=3,
+                    ),
+                ),
+                (
+                    "bind",
+                    models.CharField(
+                        default="0.0.0.0",
+                        max_length=256,
+                        validators=[core.validators.validate_bind_ip],
+                    ),
+                ),
+                (
+                    "local_nets",
+                    models.CharField(
+                        blank=True,
+                        help_text="List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24",
+                        max_length=256,
+                        null=True,
+                        verbose_name="local_net",
+                    ),
+                ),
+                (
+                    "external_media_address",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        help_text="This is the external IP address to use in RTP handling",
+                        null=True,
+                        verbose_name="External RTP IP address",
+                    ),
+                ),
+                (
+                    "external_signaling_address",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        help_text="This is much like the external_media_address setting, but for SIP signaling instead of RTP media.",
+                        null=True,
+                        verbose_name="External SIP IP address",
+                    ),
+                ),
+                (
+                    "method",
+                    models.CharField(
+                        choices=[
+                            (
+                                "default",
+                                "The default as defined by PJSIP. This is currently TLSv1",
+                            ),
+                            ("tlsv1", "TLSv1"),
+                            ("tlsv1_1", "TLSv1.1"),
+                            ("tlsv1_2", "TLSv1.2"),
+                            ("sslv2", "SSLv2"),
+                            ("sslv3", "SSLv3"),
+                            ("sslv23", "SSLv2.3"),
+                        ],
+                        default="default",
+                        max_length=10,
+                    ),
+                ),
+                ("cert_file", models.TextField(blank=True)),
+                ("priv_key_file", models.TextField(blank=True)),
+                ("ca_list_file", models.TextField(blank=True)),
             ],
             options={
-                'verbose_name_plural': '1. SIP Transports',
+                "verbose_name_plural": "1. SIP Transports",
             },
         ),
         migrations.CreateModel(
-            name='SystemConfiguration',
+            name="SystemConfiguration",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='Configuration description')),
-                ('binary_files', models.ManyToManyField(blank=True, related_name='system_configurations', to='core.binaryfile', verbose_name='Binary Files')),
-                ('configuration_files', models.ManyToManyField(blank=True, related_name='system_configurations', to='core.configurationfile', verbose_name='Configuration Files')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="Configuration description",
+                    ),
+                ),
+                (
+                    "binary_files",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="system_configurations",
+                        to="core.binaryfile",
+                        verbose_name="Binary Files",
+                    ),
+                ),
+                (
+                    "configuration_files",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="system_configurations",
+                        to="core.configurationfile",
+                        verbose_name="Configuration Files",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '14. System Configurations',
-                'db_table': 'system_configurations',
+                "verbose_name_plural": "14. System Configurations",
+                "db_table": "system_configurations",
             },
         ),
         migrations.CreateModel(
-            name='SIPUser',
+            name="SIPUser",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(default='', help_text='Full name of user, description of connection', max_length=64, verbose_name='Name')),
-                ('username', models.CharField(help_text='Username: 3-32 characters', max_length=32, unique=True, verbose_name='Username')),
-                ('secret', models.CharField(help_text='Password for the connection', max_length=32, unique=True, verbose_name='Password')),
-                ('extension', models.CharField(help_text='Easy way to setup internal extension for the user', max_length=32, null=True, unique=True, verbose_name='Extension')),
-                ('telephone_type', models.CharField(blank=True, choices=[('spa502g', 'Cisco SPA502G'), ('spa504g', 'Cisco SPA504G'), ('gsp1200', 'Grandstream GXP1200'), ('softphone', 'Softphone'), ('webrtc', 'WebRTC'), ('other', 'Other')], default='other', help_text='Type of telephone for the user', max_length=32, null=True, verbose_name='Telephone type')),
-                ('integration', models.CharField(blank=True, choices=[('none', 'None'), ('your_taxi', 'Your Taxi')], default='none', help_text='Integration with external services', max_length=32, null=True, verbose_name='Integration')),
-                ('allowed_extension', models.CharField(blank=True, default='', help_text='Only one allowed extension for the user', max_length=32, null=True, verbose_name='Allowed extension')),
-                ('custom_settings', models.TextField(default='', help_text='Custom user settings', null=True, verbose_name='Settings')),
-                ('custom_auth_settings', models.TextField(default='', help_text='Custom user [auth] section', null=True, verbose_name='Auth Settings')),
-                ('custom_aor_settings', models.TextField(default='', help_text='Custom user [aor] section', null=True, verbose_name='AOR Settings')),
-                ('context', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_user_context', to='core.dialplancontext')),
-                ('master', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_user_master', to=settings.AUTH_USER_MODEL)),
-                ('transport', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_user_transport', to='core.siptransport')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        default="",
+                        help_text="Full name of user, description of connection",
+                        max_length=64,
+                        verbose_name="Name",
+                    ),
+                ),
+                (
+                    "username",
+                    models.CharField(
+                        help_text="Username: 3-32 characters",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Username",
+                    ),
+                ),
+                (
+                    "secret",
+                    models.CharField(
+                        help_text="Password for the connection",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Password",
+                    ),
+                ),
+                (
+                    "extension",
+                    models.CharField(
+                        help_text="Easy way to setup internal extension for the user",
+                        max_length=32,
+                        null=True,
+                        unique=True,
+                        verbose_name="Extension",
+                    ),
+                ),
+                (
+                    "telephone_type",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("spa502g", "Cisco SPA502G"),
+                            ("spa504g", "Cisco SPA504G"),
+                            ("gsp1200", "Grandstream GXP1200"),
+                            ("softphone", "Softphone"),
+                            ("webrtc", "WebRTC"),
+                            ("other", "Other"),
+                        ],
+                        default="other",
+                        help_text="Type of telephone for the user",
+                        max_length=32,
+                        null=True,
+                        verbose_name="Telephone type",
+                    ),
+                ),
+                (
+                    "integration",
+                    models.CharField(
+                        blank=True,
+                        choices=[("none", "None"), ("your_taxi", "Your Taxi")],
+                        default="none",
+                        help_text="Integration with external services",
+                        max_length=32,
+                        null=True,
+                        verbose_name="Integration",
+                    ),
+                ),
+                (
+                    "allowed_extension",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="Only one allowed extension for the user",
+                        max_length=32,
+                        null=True,
+                        verbose_name="Allowed extension",
+                    ),
+                ),
+                (
+                    "custom_settings",
+                    models.TextField(
+                        default="",
+                        help_text="Custom user settings",
+                        null=True,
+                        verbose_name="Settings",
+                    ),
+                ),
+                (
+                    "custom_auth_settings",
+                    models.TextField(
+                        default="",
+                        help_text="Custom user [auth] section",
+                        null=True,
+                        verbose_name="Auth Settings",
+                    ),
+                ),
+                (
+                    "custom_aor_settings",
+                    models.TextField(
+                        default="",
+                        help_text="Custom user [aor] section",
+                        null=True,
+                        verbose_name="AOR Settings",
+                    ),
+                ),
+                (
+                    "context",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sip_user_context",
+                        to="core.dialplancontext",
+                    ),
+                ),
+                (
+                    "master",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sip_user_master",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "transport",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sip_user_transport",
+                        to="core.siptransport",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '2. SIP Users',
+                "verbose_name_plural": "2. SIP Users",
             },
         ),
         migrations.CreateModel(
-            name='SIPPeer',
+            name="SIPPeer",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('description', models.CharField(default='', help_text='Describe a peer', max_length=64, verbose_name='Description')),
-                ('name', models.CharField(default='', help_text='Name of the channel', max_length=32, unique=True, verbose_name='Channel name')),
-                ('username', models.CharField(default='', help_text='Username for the connection used for remote side', max_length=32, unique=True, verbose_name='Username')),
-                ('secret', models.CharField(default='', help_text='Clear text password for the connection used for remote side', max_length=32, unique=True, verbose_name='Password')),
-                ('host_port', models.CharField(default='', help_text='Host:Port of the peer. Port is optional.', max_length=256, verbose_name='Host:Port')),
-                ('registrationHere', models.BooleanField(default=False, help_text='Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. ', verbose_name='Registration here')),
-                ('registrationThere', models.BooleanField(default=False, help_text='Should we register on remote service? Typically used for providers', verbose_name='Registration there')),
-                ('callLimit', models.SmallIntegerField(default=0, help_text='Maximum calls on the trunk', verbose_name='Call Limit')),
-                ('context', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_peer_context', to='core.dialplancontext')),
-                ('transport', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_peer_transport', to='core.siptransport')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        default="",
+                        help_text="Describe a peer",
+                        max_length=64,
+                        verbose_name="Description",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        default="",
+                        help_text="Name of the channel",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Channel name",
+                    ),
+                ),
+                (
+                    "username",
+                    models.CharField(
+                        default="",
+                        help_text="Username for the connection used for remote side",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Username",
+                    ),
+                ),
+                (
+                    "secret",
+                    models.CharField(
+                        default="",
+                        help_text="Clear text password for the connection used for remote side",
+                        max_length=32,
+                        unique=True,
+                        verbose_name="Password",
+                    ),
+                ),
+                (
+                    "host_port",
+                    models.CharField(
+                        default="",
+                        help_text="Host:Port of the peer. Port is optional.",
+                        max_length=256,
+                        verbose_name="Host:Port",
+                    ),
+                ),
+                (
+                    "registrationHere",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. ",
+                        verbose_name="Registration here",
+                    ),
+                ),
+                (
+                    "registrationThere",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Should we register on remote service? Typically used for providers",
+                        verbose_name="Registration there",
+                    ),
+                ),
+                (
+                    "callLimit",
+                    models.SmallIntegerField(
+                        default=0,
+                        help_text="Maximum calls on the trunk",
+                        verbose_name="Call Limit",
+                    ),
+                ),
+                (
+                    "context",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sip_peer_context",
+                        to="core.dialplancontext",
+                    ),
+                ),
+                (
+                    "transport",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sip_peer_transport",
+                        to="core.siptransport",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '3. SIP Uplinks and Peers',
+                "verbose_name_plural": "3. SIP Uplinks and Peers",
             },
         ),
         migrations.CreateModel(
-            name='QueueMember',
+            name="QueueMember",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('interface', models.CharField(max_length=64, verbose_name='Interface')),
-                ('penalty', models.PositiveIntegerField(default=0, verbose_name='Penalty')),
-                ('member_name', models.CharField(blank=True, max_length=64, null=True, verbose_name='Member Name')),
-                ('state_interface', models.CharField(blank=True, max_length=64, null=True, verbose_name='State Interface')),
-                ('ringinuse', models.BooleanField(default=False, verbose_name='Ring In Use')),
-                ('wrapuptime', models.PositiveIntegerField(default=0, verbose_name='Wrap-Up Time')),
-                ('queue', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='members', to='core.queue', verbose_name='Queue')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "interface",
+                    models.CharField(max_length=64, verbose_name="Interface"),
+                ),
+                (
+                    "penalty",
+                    models.PositiveIntegerField(default=0, verbose_name="Penalty"),
+                ),
+                (
+                    "member_name",
+                    models.CharField(
+                        blank=True, max_length=64, null=True, verbose_name="Member Name"
+                    ),
+                ),
+                (
+                    "state_interface",
+                    models.CharField(
+                        blank=True,
+                        max_length=64,
+                        null=True,
+                        verbose_name="State Interface",
+                    ),
+                ),
+                (
+                    "ringinuse",
+                    models.BooleanField(default=False, verbose_name="Ring In Use"),
+                ),
+                (
+                    "wrapuptime",
+                    models.PositiveIntegerField(default=0, verbose_name="Wrap-Up Time"),
+                ),
+                (
+                    "queue",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="members",
+                        to="core.queue",
+                        verbose_name="Queue",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '10. Queue Members',
-                'db_table': 'queue_members',
+                "verbose_name_plural": "10. Queue Members",
+                "db_table": "queue_members",
             },
         ),
         migrations.AddField(
-            model_name='queue',
-            name='queue_announcement',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='queues', to='core.queueannouncements', verbose_name='Queue Announcement'),
+            model_name="queue",
+            name="queue_announcement",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="queues",
+                to="core.queueannouncements",
+                verbose_name="Queue Announcement",
+            ),
         ),
         migrations.CreateModel(
-            name='MusicOnHoldPlaylistEntry',
+            name="MusicOnHoldPlaylistEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file', models.FileField(blank=True, upload_to='moh/', verbose_name='Playlist entry file')),
-                ('url', models.URLField(blank=True, verbose_name='Playlist entry url')),
-                ('moh_class', models.ForeignKey(blank=True, on_delete=django.db.models.deletion.PROTECT, related_name='moh_class', to='core.musiconhold')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        blank=True, upload_to="moh/", verbose_name="Playlist entry file"
+                    ),
+                ),
+                ("url", models.URLField(blank=True, verbose_name="Playlist entry url")),
+                (
+                    "moh_class",
+                    models.ForeignKey(
+                        blank=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="moh_class",
+                        to="core.musiconhold",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '7. Music on hold playlist entries',
-                'db_table': 'moh_playlist_entry',
+                "verbose_name_plural": "7. Music on hold playlist entries",
+                "db_table": "moh_playlist_entry",
             },
         ),
         migrations.CreateModel(
-            name='DialplanExtension',
+            name="DialplanExtension",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ext', models.CharField(default='_X!', help_text='Asterisk extension', max_length=32, verbose_name='Extension')),
-                ('dialplan', models.TextField(verbose_name='Extension scenario')),
-                ('description', models.CharField(blank=True, help_text='Use latin symbols, digits and undercore to describe', max_length=64, verbose_name='Extension description')),
-                ('context', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='extensions', to='core.dialplancontext')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "ext",
+                    models.CharField(
+                        default="_X!",
+                        help_text="Asterisk extension",
+                        max_length=32,
+                        verbose_name="Extension",
+                    ),
+                ),
+                ("dialplan", models.TextField(verbose_name="Extension scenario")),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True,
+                        help_text="Use latin symbols, digits and undercore to describe",
+                        max_length=64,
+                        verbose_name="Extension description",
+                    ),
+                ),
+                (
+                    "context",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="extensions",
+                        to="core.dialplancontext",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '5. Dialplan extensions',
-                'db_table': 'dialplan_extensions',
+                "verbose_name_plural": "5. Dialplan extensions",
+                "db_table": "dialplan_extensions",
             },
         ),
         migrations.AddConstraint(
-            model_name='dialplanextension',
-            constraint=models.UniqueConstraint(fields=('context', 'ext'), name='unique extension inside context'),
+            model_name="dialplanextension",
+            constraint=models.UniqueConstraint(
+                fields=("context", "ext"), name="unique extension inside context"
+            ),
         ),
     ]

@@ -4,36 +4,34 @@ from django.db import migrations
 
 
 def disable_international_calls(apps, schema_editor):
-
     DialplanContext = apps.get_model("core", "DialplanContext")
     international_calls_ctx = DialplanContext.objects.create(
-        name='international-calls',
-        description='International calls context',
+        name="international-calls",
+        description="International calls context",
     )
     DialplanExtension = apps.get_model("core", "DialplanExtension")
     DialplanExtension.objects.create(
         context=international_calls_ctx,
-        ext='_X!',
-        dialplan='Hangup();',
+        ext="_X!",
+        dialplan="Hangup();",
         description="Disable international calls",
     )
     RoutingTable = apps.get_model("core", "RoutingTable")
     routing_table = RoutingTable.objects.get(
-        name='pearlpbx-default-routing-table',
+        name="pearlpbx-default-routing-table",
     )
     RoutingRecord = apps.get_model("core", "RoutingRecord")
     RoutingRecord.objects.create(
-        name='International Calls',
-        prefix='_00X!',
+        name="International Calls",
+        prefix="_00X!",
         context=international_calls_ctx,
         routing_table=routing_table,
     )
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0016_first_users'),
+        ("core", "0016_first_users"),
     ]
 
     operations = [

@@ -4,59 +4,63 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0001_initial'),
+        ("core", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='dialplancontext',
-            options={'verbose_name_plural': '04. Dialplan contexts'},
+            name="dialplancontext",
+            options={"verbose_name_plural": "04. Dialplan contexts"},
         ),
         migrations.AlterModelOptions(
-            name='dialplanextension',
-            options={'verbose_name_plural': '05. Dialplan extensions'},
+            name="dialplanextension",
+            options={"verbose_name_plural": "05. Dialplan extensions"},
         ),
         migrations.AlterModelOptions(
-            name='dialplanmacro',
-            options={'verbose_name_plural': '06. Dialplan macros'},
+            name="dialplanmacro",
+            options={"verbose_name_plural": "06. Dialplan macros"},
         ),
         migrations.AlterModelOptions(
-            name='musiconhold',
-            options={'verbose_name_plural': '08. Music on hold'},
+            name="musiconhold",
+            options={"verbose_name_plural": "08. Music on hold"},
         ),
         migrations.AlterModelOptions(
-            name='musiconholdplaylistentry',
-            options={'verbose_name_plural': '07. Music on hold playlist entries'},
+            name="musiconholdplaylistentry",
+            options={"verbose_name_plural": "07. Music on hold playlist entries"},
         ),
         migrations.AlterModelOptions(
-            name='queue',
-            options={'verbose_name_plural': '09. Queues'},
+            name="queue",
+            options={"verbose_name_plural": "09. Queues"},
         ),
         migrations.AlterModelOptions(
-            name='queueannouncements',
-            options={'verbose_name_plural': '11. Queue Announcements'},
+            name="queueannouncements",
+            options={"verbose_name_plural": "11. Queue Announcements"},
         ),
         migrations.AlterModelOptions(
-            name='sippeer',
-            options={'verbose_name_plural': '03. SIP Uplinks and Peers'},
+            name="sippeer",
+            options={"verbose_name_plural": "03. SIP Uplinks and Peers"},
         ),
         migrations.AlterModelOptions(
-            name='siptransport',
-            options={'verbose_name_plural': '01. SIP Transports'},
+            name="siptransport",
+            options={"verbose_name_plural": "01. SIP Transports"},
         ),
         migrations.AlterModelOptions(
-            name='sipuser',
-            options={'verbose_name_plural': '02. SIP Users'},
+            name="sipuser",
+            options={"verbose_name_plural": "02. SIP Users"},
         ),
         migrations.AddField(
-            model_name='queueannouncements',
-            name='name',
-            field=models.CharField(default='default', max_length=64, unique=True, verbose_name='Announcement name'),
+            model_name="queueannouncements",
+            name="name",
+            field=models.CharField(
+                default="default",
+                max_length=64,
+                unique=True,
+                verbose_name="Announcement name",
+            ),
         ),
         migrations.AlterModelTable(
-            name='queueannouncements',
-            table='queue_announcements',
+            name="queueannouncements",
+            table="queue_announcements",
         ),
     ]

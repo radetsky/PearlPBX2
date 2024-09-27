@@ -6,20 +6,32 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0003_alter_musiconholdplaylistentry_file_and_more'),
+        ("core", "0003_alter_musiconholdplaylistentry_file_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='musiconholdplaylistentry',
-            name='file',
-            field=models.FileField(blank=True, null=True, upload_to='moh/', validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['mp3', 'wav']), core.models.MusicOnHoldPlaylistEntry.validate_file_extension], verbose_name='Playlist entry file'),
+            model_name="musiconholdplaylistentry",
+            name="file",
+            field=models.FileField(
+                blank=True,
+                null=True,
+                upload_to="moh/",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        allowed_extensions=["mp3", "wav"]
+                    ),
+                    core.models.MusicOnHoldPlaylistEntry.validate_file_extension,
+                ],
+                verbose_name="Playlist entry file",
+            ),
         ),
         migrations.AlterField(
-            model_name='musiconholdplaylistentry',
-            name='url',
-            field=models.URLField(blank=True, null=True, verbose_name='Playlist entry url'),
+            model_name="musiconholdplaylistentry",
+            name="url",
+            field=models.URLField(
+                blank=True, null=True, verbose_name="Playlist entry url"
+            ),
         ),
     ]

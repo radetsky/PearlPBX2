@@ -5,16 +5,17 @@ import django.utils.timezone
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0012_alter_configurationfile_name'),
+        ("core", "0012_alter_configurationfile_name"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='configurationfile',
-            name='created',
-            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
+            model_name="configurationfile",
+            name="created",
+            field=models.DateTimeField(
+                auto_now_add=True, default=django.utils.timezone.now
+            ),
             preserve_default=False,
         ),
     ]

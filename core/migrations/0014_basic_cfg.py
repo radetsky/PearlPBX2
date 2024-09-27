@@ -4,32 +4,35 @@ import os
 from django.db import migrations
 
 description_for_configuration_files = {
-    'asterisk.conf': 'Asterisk configuration file',
-    'extensions.conf': 'Dialplan configuration file',
-    'extensions.ael': 'Dialplan configuration file',
-    'features.conf': 'Features configuration file',
-    'logger.conf': 'Logger configuration file',
-    'manager.conf': 'Manager configuration file',
-    'modules.conf': 'Modules configuration file',
-    'musiconhold.conf': 'Music on hold configuration file',
-    'queues.conf': 'Queues configuration file',
-    'res_parking.conf': 'Parking configuration file',
-    'pjsip.conf': 'SIP configuration file',
-    'indications.conf': 'Indications configuration file',
-    'rtp.conf': 'RTP configuration file',
+    "asterisk.conf": "Asterisk configuration file",
+    "extensions.conf": "Dialplan configuration file",
+    "extensions.ael": "Dialplan configuration file",
+    "features.conf": "Features configuration file",
+    "logger.conf": "Logger configuration file",
+    "manager.conf": "Manager configuration file",
+    "modules.conf": "Modules configuration file",
+    "musiconhold.conf": "Music on hold configuration file",
+    "queues.conf": "Queues configuration file",
+    "res_parking.conf": "Parking configuration file",
+    "pjsip.conf": "SIP configuration file",
+    "indications.conf": "Indications configuration file",
+    "rtp.conf": "RTP configuration file",
 }
+
 
 def create_basic_cfg(apps, schema_editor):
     ConfigurationFile = apps.get_model("core", "ConfigurationFile")
-    configs_dir = 'contrib/configs'
-    etc_asterisk_dir = '/etc/asterisk'
+    configs_dir = "contrib/configs"
+    etc_asterisk_dir = "/etc/asterisk"
 
     for filename in os.listdir(configs_dir):
-        with open(os.path.join(configs_dir, filename), 'r') as file:
+        with open(os.path.join(configs_dir, filename), "r") as file:
             content = file.read()
 
         path = os.path.join(etc_asterisk_dir, filename)
-        description = description_for_configuration_files.get(filename, f"{filename} configuration file")
+        description = description_for_configuration_files.get(
+            filename, f"{filename} configuration file"
+        )
 
         # Create a ConfigurationFile instance
         ConfigurationFile.objects.create(
@@ -37,8 +40,9 @@ def create_basic_cfg(apps, schema_editor):
             description=description,
             content=content,
             path=path,
-            version=1  # Set the version as needed
+            version=1,  # Set the version as needed
         )
+
 
 def remove_basic_cfg(apps, schema_editor):
     ConfigurationFile = apps.get_model("core", "ConfigurationFile")
@@ -46,9 +50,8 @@ def remove_basic_cfg(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0013_configurationfile_created'),
+        ("core", "0013_configurationfile_created"),
     ]
 
     operations = [

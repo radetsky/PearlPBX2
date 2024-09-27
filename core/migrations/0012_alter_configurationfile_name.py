@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0011_blacklist_contact_whitelist_settings_allow_monitor_and_more'),
+        ("core", "0011_blacklist_contact_whitelist_settings_allow_monitor_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='configurationfile',
-            name='name',
-            field=models.CharField(help_text='Use latin symbols, digits and undercore', max_length=32, verbose_name='File name'),
+            model_name="configurationfile",
+            name="name",
+            field=models.CharField(
+                help_text="Use latin symbols, digits and undercore",
+                max_length=32,
+                verbose_name="File name",
+            ),
         ),
     ]
