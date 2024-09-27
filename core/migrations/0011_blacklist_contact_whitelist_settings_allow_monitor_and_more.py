@@ -5,78 +5,175 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0010_alter_sippeer_registrationthere_alter_sippeer_secret_and_more'),
+        ("core", "0010_alter_sippeer_registrationthere_alter_sippeer_secret_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Blacklist',
+            name="Blacklist",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('callerid', models.CharField(help_text='Caller ID to block', max_length=64, unique=True, verbose_name='Caller ID')),
-                ('description', models.CharField(help_text='Description of the caller ID', max_length=64, verbose_name='Description')),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "callerid",
+                    models.CharField(
+                        help_text="Caller ID to block",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Caller ID",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        help_text="Description of the caller ID",
+                        max_length=64,
+                        verbose_name="Description",
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name_plural': '16. Blacklist',
-                'db_table': 'blacklist',
+                "verbose_name_plural": "16. Blacklist",
+                "db_table": "blacklist",
             },
         ),
         migrations.CreateModel(
-            name='Contact',
+            name="Contact",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('callerid', models.CharField(help_text='Caller ID to recognize', max_length=64, unique=True, verbose_name='Caller ID')),
-                ('name', models.CharField(help_text='Name of the caller ID', max_length=64, verbose_name='Name')),
-                ('allow_monitor', models.BooleanField(default=False, help_text='Allow to monitor the call', verbose_name='Allow monitor')),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "callerid",
+                    models.CharField(
+                        help_text="Caller ID to recognize",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Caller ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Name of the caller ID",
+                        max_length=64,
+                        verbose_name="Name",
+                    ),
+                ),
+                (
+                    "allow_monitor",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Allow to monitor the call",
+                        verbose_name="Allow monitor",
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name_plural': '18. Contacts',
-                'db_table': 'contacts',
+                "verbose_name_plural": "18. Contacts",
+                "db_table": "contacts",
             },
         ),
         migrations.CreateModel(
-            name='Whitelist',
+            name="Whitelist",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('callerid', models.CharField(help_text='Caller ID to allow', max_length=64, unique=True, verbose_name='Caller ID')),
-                ('description', models.CharField(help_text='Description of the caller ID', max_length=64, verbose_name='Description')),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "callerid",
+                    models.CharField(
+                        help_text="Caller ID to allow",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Caller ID",
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        help_text="Description of the caller ID",
+                        max_length=64,
+                        verbose_name="Description",
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name_plural': '17. Whitelist',
-                'db_table': 'whitelist',
+                "verbose_name_plural": "17. Whitelist",
+                "db_table": "whitelist",
             },
         ),
         migrations.AddField(
-            model_name='settings',
-            name='allow_monitor',
-            field=models.BooleanField(default=False, help_text='Allow to monitor calls', verbose_name='Allow monitor'),
+            model_name="settings",
+            name="allow_monitor",
+            field=models.BooleanField(
+                default=False,
+                help_text="Allow to monitor calls",
+                verbose_name="Allow monitor",
+            ),
         ),
         migrations.AddField(
-            model_name='sipuser',
-            name='allow_monitor',
-            field=models.BooleanField(default=False, help_text='Allow to monitor calls of this user', verbose_name='Allow monitor'),
+            model_name="sipuser",
+            name="allow_monitor",
+            field=models.BooleanField(
+                default=False,
+                help_text="Allow to monitor calls of this user",
+                verbose_name="Allow monitor",
+            ),
         ),
         migrations.AddField(
-            model_name='sipuser',
-            name='routing_table',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_user_routing_table', to='core.routingtable'),
+            model_name="sipuser",
+            name="routing_table",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="sip_user_routing_table",
+                to="core.routingtable",
+            ),
         ),
         migrations.AlterField(
-            model_name='routingrecord',
-            name='name',
-            field=models.CharField(help_text='Name of the routing record', max_length=64, verbose_name='Routing Record Name'),
+            model_name="routingrecord",
+            name="name",
+            field=models.CharField(
+                help_text="Name of the routing record",
+                max_length=64,
+                verbose_name="Routing Record Name",
+            ),
         ),
         migrations.AlterField(
-            model_name='routingrecord',
-            name='prefix',
-            field=models.CharField(help_text='Prefix of the routing record', max_length=16, verbose_name='Routing Record Prefix'),
+            model_name="routingrecord",
+            name="prefix",
+            field=models.CharField(
+                help_text="Prefix of the routing record",
+                max_length=16,
+                verbose_name="Routing Record Prefix",
+            ),
         ),
     ]

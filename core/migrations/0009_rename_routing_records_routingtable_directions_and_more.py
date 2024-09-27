@@ -5,20 +5,27 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0008_routingrecord_routingtable'),
+        ("core", "0008_routingrecord_routingtable"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='routingtable',
-            old_name='routing_records',
-            new_name='directions',
+            model_name="routingtable",
+            old_name="routing_records",
+            new_name="directions",
         ),
         migrations.AddField(
-            model_name='routingrecord',
-            name='table',
-            field=models.ForeignKey(blank=True, help_text='Routing table for the routing record', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='routing_records', to='core.routingtable', verbose_name='Routing Table'),
+            model_name="routingrecord",
+            name="table",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Routing table for the routing record",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="routing_records",
+                to="core.routingtable",
+                verbose_name="Routing Table",
+            ),
         ),
     ]

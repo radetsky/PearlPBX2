@@ -6,8 +6,8 @@ from django.db import migrations
 def create_dialplan_macro(apps, schema_editor):
     DialplanMacro = apps.get_model("core", "DialplanMacro")
     DialplanMacro.objects.create(
-        name='callerid_normalization',
-        description='Normalize CallerID to Ukrainian/Kyiv format',
+        name="callerid_normalization",
+        description="Normalize CallerID to Ukrainian/Kyiv format",
         macro="""
 COUNTRY_CODE = "380";
 COUNTRY_CODE_LEN = 3;
@@ -54,13 +54,13 @@ if (${LEN(${caller_id})} < ${REQUIRED_LEN}) {
 
 Set(CALLERID(num)=${caller_id});
 return;
-""")
+""",
+    )
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0017_disable_international_calls'),
+        ("core", "0017_disable_international_calls"),
     ]
 
     operations = [

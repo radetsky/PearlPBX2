@@ -4,25 +4,39 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0009_rename_routing_records_routingtable_directions_and_more'),
+        ("core", "0009_rename_routing_records_routingtable_directions_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='sippeer',
-            name='registrationThere',
-            field=models.BooleanField(default=False, help_text='Should we register on remote service? Typically used for providers', verbose_name='Outbound registration'),
+            model_name="sippeer",
+            name="registrationThere",
+            field=models.BooleanField(
+                default=False,
+                help_text="Should we register on remote service? Typically used for providers",
+                verbose_name="Outbound registration",
+            ),
         ),
         migrations.AlterField(
-            model_name='sippeer',
-            name='secret',
-            field=models.CharField(blank=True, help_text='Clear text password for the connection used for remote side', max_length=32, verbose_name='Password'),
+            model_name="sippeer",
+            name="secret",
+            field=models.CharField(
+                blank=True,
+                help_text="Clear text password for the connection used for remote side",
+                max_length=32,
+                verbose_name="Password",
+            ),
         ),
         migrations.AlterField(
-            model_name='sippeer',
-            name='username',
-            field=models.CharField(blank=True, help_text='Username for the connection used for remote side', max_length=32, null=True, verbose_name='Username'),
+            model_name="sippeer",
+            name="username",
+            field=models.CharField(
+                blank=True,
+                help_text="Username for the connection used for remote side",
+                max_length=32,
+                null=True,
+                verbose_name="Username",
+            ),
         ),
     ]

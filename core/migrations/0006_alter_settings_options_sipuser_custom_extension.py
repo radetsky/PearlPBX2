@@ -4,19 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0005_callqueueglobalsettings_alter_binaryfile_options_and_more'),
+        ("core", "0005_callqueueglobalsettings_alter_binaryfile_options_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='settings',
-            options={'verbose_name_plural': '96. General Settings'},
+            name="settings",
+            options={"verbose_name_plural": "96. General Settings"},
         ),
         migrations.AddField(
-            model_name='sipuser',
-            name='custom_extension',
-            field=models.TextField(default='', help_text='Custom user extension section for incoming calls', null=True, verbose_name='Extension Settings'),
+            model_name="sipuser",
+            name="custom_extension",
+            field=models.TextField(
+                default="",
+                help_text="Custom user extension section for incoming calls",
+                null=True,
+                verbose_name="Extension Settings",
+            ),
         ),
     ]

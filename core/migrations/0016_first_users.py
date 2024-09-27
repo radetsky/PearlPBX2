@@ -7,42 +7,43 @@ from core.utils import generate_password
 def create_first_transports(apps, schema_editor):
     SIPTransport = apps.get_model("core", "SIPTransport")
     udp_transport = SIPTransport.objects.create(
-        description='Classic UDP transport',
-        name='transport-udp',
-        protocol='udp',
-        bind='0.0.0.0:5060')
+        description="Classic UDP transport",
+        name="transport-udp",
+        protocol="udp",
+        bind="0.0.0.0:5060",
+    )
     tcp_transport = SIPTransport.objects.create(
-        description='Classic TCP transport',
-        name='transport-tcp',
-        protocol='tcp',
-        bind='0.0.0.0:5060')
+        description="Classic TCP transport",
+        name="transport-tcp",
+        protocol="tcp",
+        bind="0.0.0.0:5060",
+    )
     return (udp_transport, tcp_transport)
 
 
 def create_first_routing_table(apps, schema_editor):
-
     DialplanContext = apps.get_model("core", "DialplanContext")
     local_users_context = DialplanContext.objects.create(
-        name='pearlpbx-local-users',
-        description='Local users context',
+        name="pearlpbx-local-users",
+        description="Local users context",
     )
     DialplanExtension = apps.get_model("core", "DialplanExtension")
     DialplanExtension.objects.create(
         context=local_users_context,
-        ext='_X!',
-        dialplan='Dial(PJSIP/ppbxuser${EXTEN},120,rtT); Hangup();',
+        ext="_X!",
+        dialplan="Dial(PJSIP/ppbxuser${EXTEN},120,rtT); Hangup();",
         description="Possibility to call any extension in the range 200-299",
     )
 
     RoutingTable = apps.get_model("core", "RoutingTable")
     routing_table = RoutingTable.objects.create(
-        name='pearlpbx-default-routing-table',
+        name="pearlpbx-default-routing-table",
     )
 
     RoutingRecord = apps.get_model("core", "RoutingRecord")
     RoutingRecord.objects.create(
-        name='PearlPBX Local Users',
-        prefix='2XX',
+        name="PearlPBX Local Users",
+        prefix="2XX",
         context=local_users_context,
         routing_table=routing_table,
     )
@@ -50,7 +51,6 @@ def create_first_routing_table(apps, schema_editor):
 
 
 def create_first_users(apps, schema_editor):
-
     (udp_transport, tcp_transport) = create_first_transports(apps, schema_editor)
     routing_table = create_first_routing_table(apps, schema_editor)
 
@@ -62,14 +62,13 @@ def create_first_users(apps, schema_editor):
             secret=generate_password(),
             transport=udp_transport,
             extension=f"{i+200}",
-            routing_table=routing_table
+            routing_table=routing_table,
         )
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0015_rename_table_routingrecord_routing_table_and_more'),
+        ("core", "0015_rename_table_routingrecord_routing_table_and_more"),
     ]
 
     operations = [

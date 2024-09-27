@@ -1,10 +1,22 @@
+from os import makedirs
+import tarfile
+import datetime
+
 from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
-from core.conf import make_pjsip_conf, make_queues_conf, make_extensions_ael
+from core.conf import (
+    make_pjsip_conf,
+    make_queues_conf,
+    make_extensions_ael,
+    make_manager_conf,
+)
 from core.models import ConfigurationFile, SystemConfiguration
 from django.db import transaction
+from django.conf import settings
+from django.db.models import Max, OuterRef, Subquery
+from core.ami import AsteriskManagementInterface
 
 
 class MyAdminSite(admin.AdminSite):
@@ -14,7 +26,8 @@ class MyAdminSite(admin.AdminSite):
 
 class ApplyChangesForm(forms.Form):
     commit_changes = forms.BooleanField(
-        required=False, label="Apply Changes", initial=False)
+        required=True, label="Apply Changes", initial=False
+    )
 
 
 class ApplyChangesView(TemplateView):
@@ -23,45 +36,114 @@ class ApplyChangesView(TemplateView):
     # display the form on the page
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = ApplyChangesForm()
+        context["form"] = ApplyChangesForm()
         return context
 
     def post(self, request, *args, **kwargs):
         form = ApplyChangesForm(request.POST)
-        cfgfiles = {} # dictionary of config files to be written
-        cfgfiles['/etc/asterisk/extensions.ael'] = make_extensions_ael()
-        cfgfiles['/etc/asterisk/pjsip.conf'] = make_pjsip_conf()
-        cfgfiles['/etc/asterisk/queues.conf'] = make_queues_conf()
+        cfgfiles = {}  # dictionary of config files to be written
+        cfgfiles["/etc/asterisk/extensions.ael"] = make_extensions_ael()
+        cfgfiles["/etc/asterisk/pjsip.conf"] = make_pjsip_conf()
+        cfgfiles["/etc/asterisk/queues.conf"] = make_queues_conf()
+        cfgfiles["/etc/asterisk/manager.conf"] = make_manager_conf()
+        for cfg in self.get_latest_configuration_files():
+            if cfg.path not in cfgfiles:
+                cfgfiles[cfg.path] = cfg.content
+
+        # sort cfgfiles by path
+        cfgfiles = dict(sorted(cfgfiles.items()))
+
         if form.is_valid():
-            if form.cleaned_data['commit_changes']:
-                try:
-                    self.apply_changes(cfgfiles)
-                    messages.success(
-                        request, "Configurations files saved successfully.")
-                    return redirect('apply_changes')
-                except Exception as e:
-                    messages.error(request, f"An error occurred: {str(e)}")
-            else:
-                # Just preview, don't save
-                messages.info(
-                    request, "This is a preview. The changes have not been applied yet.")
+            try:
+                self.apply_changes(cfgfiles)
+                ami = AsteriskManagementInterface()
+                ami.restart()
+                messages.success(request, "Configurations files saved successfully.")
+
+                return redirect("admin:index")
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
 
         context = self.get_context_data(**kwargs)
-        context['cfgfiles'] = cfgfiles
-        context['form'] = form
+        context["cfgfiles"] = cfgfiles
+        context["form"] = form
         return render(request, self.template_name, context)
+
+    def get_latest_configuration_files(self):
+        # First, annotate each ConfigurationFile with the latest version for that name
+        latest_versions = ConfigurationFile.objects.values("name").annotate(
+            latest_version=Max("version")
+        )
+        # Then, get the corresponding records with the latest version
+        latest_configuration_files = ConfigurationFile.objects.filter(
+            version=Subquery(
+                latest_versions.filter(name=OuterRef("name")).values("latest_version")[
+                    :1
+                ]
+            )
+        )
+        return latest_configuration_files
 
     @transaction.atomic
     def apply_changes(self, cfgfiles):
         created_configuration_files = []
         for path, content in cfgfiles.items():
-            cfg_object = self.create_configuration_file(path.split('/')[-1], path, content)
+            cfg_object = self.create_configuration_file(
+                path.split("/")[-1], path, content
+            )
             created_configuration_files.append(cfg_object)
 
         system_configuration = SystemConfiguration.objects.create()
         system_configuration.configuration_files.set(created_configuration_files)
+        self.backup_dir()
+        self.apply_to_fs(system_configuration)
 
+    def apply_to_fs(self, system_configuration):
+        # try to mkdir ASTERISK_ROOT_DIR
+        try:
+            makedirs(settings.ASTERISK_ROOT_DIR, exist_ok=True)
+        except FileExistsError:
+            pass
+
+        for cfg in system_configuration.configuration_files.all():
+            directory = settings.ASTERISK_ROOT_DIR + "/".join(cfg.path.split("/")[:-1])
+            try:
+                makedirs(directory, exist_ok=True)
+            except FileExistsError:
+                pass
+
+            path = settings.ASTERISK_ROOT_DIR + cfg.path
+            with open(path, "w") as f:
+                f.write(cfg.content)
+
+    def backup_dir(self):
+        # check if exists ASTERISK_BACKUP_DIR
+        try:
+            makedirs(settings.ASTERISK_BACKUP_DIR)
+        except FileExistsError:
+            pass
+
+        # archive all files from ASTERISK_ROOT_DIR to ASTERISK_BACKUP_DIR/asterisk-<timestamp>.tar.gz
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        backup_file = f"{settings.ASTERISK_BACKUP_DIR}/asterisk-{timestamp}.tar.gz"
+        with tarfile.open(backup_file, "w:gz") as tar:
+            tar.add(settings.ASTERISK_ROOT_DIR + settings.ASTERISK_CONFIG_DIR)
 
     def create_configuration_file(self, name, path, content):
-        version = ConfigurationFile.objects.filter(name=name).count() + 1
-        return ConfigurationFile.objects.create(name=name, content=content, path=path, version=version)
+        # fetch previous versions of the file
+        prev_cfg = (
+            ConfigurationFile.objects.filter(path=path).order_by("-version").first()
+        )
+        if prev_cfg:
+            # Compare the content of the previous version with the new content
+            if prev_cfg.content == content:
+                # If the content is the same, return the previous version
+                return prev_cfg
+
+            version = prev_cfg.version + 1
+        else:
+            version = 1
+
+        return ConfigurationFile.objects.create(
+            name=name, content=content, path=path, version=version
+        )

@@ -3,6 +3,6 @@ from django.urls import path
 from .admin import ApplyChangesView
 
 urlpatterns = [
-    path('admin/apply', ApplyChangesView.as_view(), name='apply_changes'),
-    path('admin/', admin.site.urls),
+    path("admin/apply", ApplyChangesView.as_view(), name="apply_changes"),
+    path("admin/", admin.site.urls),
 ]

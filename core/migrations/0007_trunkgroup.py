@@ -4,21 +4,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0006_alter_settings_options_sipuser_custom_extension'),
+        ("core", "0006_alter_settings_options_sipuser_custom_extension"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TrunkGroup',
+            name="TrunkGroup",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Name of the trunk group', max_length=64, unique=True, verbose_name='Trunk Group Name')),
-                ('sip_peers', models.ManyToManyField(blank=True, help_text='SIP Peers in the trunk group', related_name='trunk_groups', to='core.sippeer', verbose_name='SIP Peers')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Name of the trunk group",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Trunk Group Name",
+                    ),
+                ),
+                (
+                    "sip_peers",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="SIP Peers in the trunk group",
+                        related_name="trunk_groups",
+                        to="core.sippeer",
+                        verbose_name="SIP Peers",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '13. Trunk Groups',
+                "verbose_name_plural": "13. Trunk Groups",
             },
         ),
     ]

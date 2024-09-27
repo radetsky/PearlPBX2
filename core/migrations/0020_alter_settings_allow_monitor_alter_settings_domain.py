@@ -4,20 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0019_general_settings'),
+        ("core", "0019_general_settings"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='settings',
-            name='allow_monitor',
-            field=models.BooleanField(default=False, help_text='Allow to monitor calls of whole system', verbose_name='Allow global monitor'),
+            model_name="settings",
+            name="allow_monitor",
+            field=models.BooleanField(
+                default=False,
+                help_text="Allow to monitor calls of whole system",
+                verbose_name="Allow global monitor",
+            ),
         ),
         migrations.AlterField(
-            model_name='settings',
-            name='domain',
-            field=models.CharField(default='127.0.0.1', help_text='Hostname of the server', max_length=64, unique=True, verbose_name='Hostname of the server'),
+            model_name="settings",
+            name="domain",
+            field=models.CharField(
+                default="127.0.0.1",
+                help_text="Hostname of the server",
+                max_length=64,
+                unique=True,
+                verbose_name="Hostname of the server",
+            ),
         ),
     ]
