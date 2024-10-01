@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def make_pjsip_conf_transports():
-    result = "// ==== Transports section ====\n"
+    result = "; ==== Transports section ====\n"
     transports = SIPTransport.objects.all()
     for transport in transports:
-        description = "// " + transport.description + "\n"
+        description = "; " + transport.description + "\n"
         section_name = f"[{transport.name}]\n"  # FIXME validate it
         type = "type = transport\n"
         protocol = "protocol = " + transport.protocol + "\n"
@@ -135,7 +135,7 @@ def __section_trunk_identify(trunk: SIPPeer):
 
 
 def make_pjsip_conf_uplinks():
-    result = "// ==== Uplinks section ====\n"
+    result = "; ==== Uplinks section ====\n"
 
     trunks = SIPPeer.objects.all()
     for trunk in trunks:
@@ -164,7 +164,7 @@ def make_pjsip_conf_uplinks():
 
 
 def make_pjsip_conf_users_template():
-    result = "// ==== Users template ====\n"
+    result = "; ==== Users template ====\n"
     result += "[user-template](!)\n"
     settings = Settings.objects.first()
     result += settings.user_template
@@ -173,7 +173,7 @@ def make_pjsip_conf_users_template():
 
 
 def make_pjsip_conf_users_aor_template():
-    result = "// ==== Users AOR template ====\n"
+    result = "; ==== Users AOR template ====\n"
     result += "[user-aor-template](!)\n"
     settings = Settings.objects.first()
     result += settings.user_aor_template
@@ -182,7 +182,7 @@ def make_pjsip_conf_users_aor_template():
 
 
 def make_pjsip_conf_users_auth_template():
-    result = "// ==== Users AUTH template ====\n"
+    result = "; ==== Users AUTH template ====\n"
     result += "[user-auth-template](!)\n"
     settings = Settings.objects.first()
     result += settings.user_auth_template
@@ -191,7 +191,7 @@ def make_pjsip_conf_users_auth_template():
 
 
 def __make_pjsip_conf_webrtc_user(user: SIPUser):
-    result = "// ==== WebRTC user ====\n"
+    result = "; ==== WebRTC user ====\n"
     result += f"[{user.username}](webrtc-template-endpoint)\n"
     result += "type=endpoint\n"
     result += f"context={user.username}\n"
@@ -213,7 +213,7 @@ def __make_pjsip_conf_webrtc_user(user: SIPUser):
 
 
 def make_pjsip_conf_users():
-    result = "// ==== Users section ====\n"
+    result = "; ==== Users section ====\n"
     users = SIPUser.objects.all()
     for user in users:
         if user.transport.protocol == "wss":
@@ -246,7 +246,7 @@ def make_pjsip_webrtc_templates():
     if len(qs) == 0:
         return ""
 
-    result = "// ==== WebRTC templates ====\n"
+    result = "; ==== WebRTC templates ====\n"
     result += """; WebRTC Template for Endpoint
 ; -----------
 [webrtc-template-endpoint](!)\n"""
@@ -270,8 +270,8 @@ def make_pjsip_webrtc_templates():
 
 
 def make_pjsip_conf():
-    plaintext = "// === This is auto generated file. Do not edit it! ===\n"
-    plaintext += "// === Use PearlPBX admin panel! ===\n"
+    plaintext =  "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext += ";=== Use PearlPBX admin panel! ===\n"
     plaintext += make_pjsip_conf_transports()
     plaintext += make_pjsip_webrtc_templates()
     plaintext += make_pjsip_conf_uplinks()
@@ -301,7 +301,7 @@ def make_queues_conf():
     plaintext += "negative_penalty_invalid = no\n"
     plaintext += "log_membername_as_agent = no\n"
 
-    plaintext += "// ==== Queues section ====\n"
+    plaintext += "; ==== Queues section ====\n"
     plaintext += make_queues_conf_queues()
 
     return plaintext

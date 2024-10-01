@@ -137,6 +137,11 @@ class SIPUser(models.Model):
         ("your_taxi", "Your Taxi"),
     ]
 
+    AUTHTYPE_CHOICES = [
+        ("md5", "MD5"),
+        ("userpass", "Plaintext"),
+    ]
+
     name = models.CharField(
         default="",
         max_length=64,
@@ -201,6 +206,16 @@ class SIPUser(models.Model):
         default="other",
         help_text="Type of telephone for the user",
         verbose_name="Telephone type",
+    )
+    auth_type = models.CharField(
+        max_length=32,
+        unique=False,
+        null=True,
+        blank=True,
+        choices=AUTHTYPE_CHOICES,
+        default="userpass",
+        help_text="Type of authentication",
+        verbose_name="Auth type",
     )
     integration = models.CharField(
         max_length=32,
