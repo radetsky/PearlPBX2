@@ -4,15 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0026_rename_name_managerusers_username'),
+        ("core", "0026_rename_name_managerusers_username"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='sipuser',
-            name='auth_type',
-            field=models.CharField(blank=True, choices=[('md5', 'MD5'), ('userpass', 'Plaintext')], default='userpass', help_text='Type of authentication', max_length=32, null=True, verbose_name='Auth type'),
+            model_name="sipuser",
+            name="auth_type",
+            field=models.CharField(
+                blank=True,
+                choices=[("md5", "MD5"), ("userpass", "Plaintext")],
+                default="userpass",
+                help_text="Type of authentication",
+                max_length=32,
+                null=True,
+                verbose_name="Auth type",
+            ),
         ),
     ]

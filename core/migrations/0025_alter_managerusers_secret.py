@@ -5,15 +5,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0024_alter_managerusers_read_alter_managerusers_secret_and_more'),
+        ("core", "0024_alter_managerusers_read_alter_managerusers_secret_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='managerusers',
-            name='secret',
-            field=models.CharField(default=core.utils.generate_64_char_password, help_text='Password for manager user', max_length=128, unique=True, verbose_name='Manager user secret'),
+            model_name="managerusers",
+            name="secret",
+            field=models.CharField(
+                default=core.utils.generate_64_char_password,
+                help_text="Password for manager user",
+                max_length=128,
+                unique=True,
+                verbose_name="Manager user secret",
+            ),
         ),
     ]

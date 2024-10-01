@@ -5,30 +5,47 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0023_managerusers_alter_settings_django_manager_secret'),
+        ("core", "0023_managerusers_alter_settings_django_manager_secret"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='managerusers',
-            name='read',
-            field=models.CharField(default='system,call,log,verbose,command,agent,user,config', max_length=64),
+            model_name="managerusers",
+            name="read",
+            field=models.CharField(
+                default="system,call,log,verbose,command,agent,user,config",
+                max_length=64,
+            ),
         ),
         migrations.AlterField(
-            model_name='managerusers',
-            name='secret',
-            field=models.CharField(default=core.utils.generate_64_char_password, help_text='Password for manager user', max_length=64, unique=True, verbose_name='Manager user secret'),
+            model_name="managerusers",
+            name="secret",
+            field=models.CharField(
+                default=core.utils.generate_64_char_password,
+                help_text="Password for manager user",
+                max_length=64,
+                unique=True,
+                verbose_name="Manager user secret",
+            ),
         ),
         migrations.AlterField(
-            model_name='managerusers',
-            name='write',
-            field=models.CharField(default='system,call,log,verbose,command,agent,user,config', max_length=64),
+            model_name="managerusers",
+            name="write",
+            field=models.CharField(
+                default="system,call,log,verbose,command,agent,user,config",
+                max_length=64,
+            ),
         ),
         migrations.AlterField(
-            model_name='settings',
-            name='django_manager_secret',
-            field=models.CharField(default=core.utils.generate_64_char_password, help_text='Secret for Django manager user', max_length=64, unique=True, verbose_name='Django manager secret'),
+            model_name="settings",
+            name="django_manager_secret",
+            field=models.CharField(
+                default=core.utils.generate_64_char_password,
+                help_text="Secret for Django manager user",
+                max_length=64,
+                unique=True,
+                verbose_name="Django manager secret",
+            ),
         ),
     ]

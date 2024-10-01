@@ -270,7 +270,7 @@ def make_pjsip_webrtc_templates():
 
 
 def make_pjsip_conf():
-    plaintext =  "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext = "; === This is auto generated file. Do not edit it! ===\n"
     plaintext += ";=== Use PearlPBX admin panel! ===\n"
     plaintext += make_pjsip_conf_transports()
     plaintext += make_pjsip_webrtc_templates()
