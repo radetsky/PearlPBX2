@@ -2,6 +2,7 @@
 
 from django.db import migrations
 from core.utils import generate_password
+from django.conf import settings
 
 
 def create_first_transports(apps, schema_editor):
@@ -37,7 +38,7 @@ def create_first_routing_table(apps, schema_editor):
 
     RoutingTable = apps.get_model("core", "RoutingTable")
     routing_table = RoutingTable.objects.create(
-        name="pearlpbx-default-routing-table",
+        name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE,
     )
 
     RoutingRecord = apps.get_model("core", "RoutingRecord")

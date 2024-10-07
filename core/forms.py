@@ -89,18 +89,17 @@ class SIPUserForm(forms.ModelForm):
         empty_label=None,
     )
 
-    context = DialplanContextChoiceField(
-        label="Context",
-        required=True,
-        help_text="Select context for the user",
-        queryset=DialplanContext.objects.all(),
-        empty_label=None,
-    )
     telephone_type = forms.ChoiceField(
         label="Telephone type",
         required=True,
         help_text="Select type of the telephone",
         choices=SIPUser.USER_TELEPHONE_TYPE_CHOICES,
+    )
+    auth_type = forms.ChoiceField(
+        label="Auth type",
+        required=True,
+        help_text="Select type of authentication",
+        choices=SIPUser.AUTHTYPE_CHOICES,
     )
     integration = forms.ChoiceField(
         label="Integration",
@@ -147,6 +146,7 @@ class SIPUserForm(forms.ModelForm):
             "extension",
             "routing_table",
             "telephone_type",
+            "auth_type",
             "integration",
             "custom_extension",
             "custom_settings",

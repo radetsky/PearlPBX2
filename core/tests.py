@@ -1,5 +1,6 @@
 from django.test import TestCase
-from core.models import SIPTransport
+from core.models import SIPTransport, RoutingTable
+from django.conf import settings
 
 
 class TestSIPTransport(TestCase):
@@ -37,3 +38,10 @@ class TestSIPTransport(TestCase):
         self.assertEqual(tls_transport.protocol, "tls")
         wss_transport = SIPTransport.objects.get(name="wss-transport")
         self.assertEqual(wss_transport.protocol, "wss")
+
+
+class TestDefaultRoutingTable(TestCase):
+    def test_default_routing_table_exists(self):
+        name = settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        default_routing_table = RoutingTable.objects.get(name=name)
+        self.assertEqual(default_routing_table.name, name)

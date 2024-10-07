@@ -1,14 +1,21 @@
 import django.db.models.deletion as deletion
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, FileExtensionValidator
+from django.conf import settings
+
+from collections.abc import Iterable
+from typing import Optional
 
 from hashlib import md5
 
 from .validators import validate_bind_ip
-
 from core.utils import generate_32_char_password, generate_64_char_password
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SIPTransport(models.Model):
@@ -121,6 +128,50 @@ class DialplanContext(models.Model):
     def __str__(self):
         return self.name
 
+    @staticmethod
+    def getUsersOrCreateUsers():
+        # Find default PEARLPBX-Users context
+        try:
+            default_context = DialplanContext.objects.get(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+            )
+        except DialplanContext.DoesNotExist:
+            default_context = DialplanContext.objects.create(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD,
+                description="Default local users context",
+            )
+
+        return default_context
+
+
+class RoutingTable(models.Model):
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="Name of the routing table",
+        verbose_name="Routing Table Name",
+    )
+
+    class Meta:
+        verbose_name_plural = "15. Routing Tables"
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def getDefaultOrCreateDefault():
+        # Find default PEARLPBX routing table
+        try:
+            default_routing_table = RoutingTable.objects.get(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+            )
+        except RoutingTable.DoesNotExist:
+            default_routing_table = RoutingTable.objects.create(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+            )
+
+        return default_routing_table
+
 
 class SIPUser(models.Model):
     USER_TELEPHONE_TYPE_CHOICES = [
@@ -135,6 +186,11 @@ class SIPUser(models.Model):
     INTEGRATION_CHOICES = [
         ("none", "None"),
         ("your_taxi", "Your Taxi"),
+    ]
+
+    AUTHTYPE_CHOICES = [
+        ("userpass", "Plaintext"),
+        ("md5", "MD5"),
     ]
 
     name = models.CharField(
@@ -177,19 +233,11 @@ class SIPUser(models.Model):
     )
 
     routing_table = models.ForeignKey(
-        "RoutingTable",
+        RoutingTable,
         related_name="sip_user_routing_table",
         on_delete=deletion.PROTECT,
         null=True,
         blank=True,
-    )
-
-    context = models.ForeignKey(
-        DialplanContext,
-        related_name="sip_user_context",
-        on_delete=deletion.PROTECT,
-        null=True,
-        blank=False,
     )
 
     telephone_type = models.CharField(
@@ -201,6 +249,16 @@ class SIPUser(models.Model):
         default="other",
         help_text="Type of telephone for the user",
         verbose_name="Telephone type",
+    )
+    auth_type = models.CharField(
+        max_length=32,
+        unique=False,
+        null=True,
+        blank=True,
+        choices=AUTHTYPE_CHOICES,
+        default="userpass",
+        help_text="Type of authentication",
+        verbose_name="Auth type",
     )
     integration = models.CharField(
         max_length=32,
@@ -273,6 +331,14 @@ class SIPUser(models.Model):
             f"{self.username}:{self.secret}:{self.realm}".encode("utf-8")
         ).hexdigest()
 
+    @property
+    def standard_pjsip_user(self):
+        return f"PJSIP/{self.username}"
+
+    @property
+    def standard_extension(self):
+        return f"Dial({self.standard_pjsip_user}, 120, rtT);"
+
     @staticmethod
     def create_webrtc_account(username: str, user: User, context: DialplanContext):
         """
@@ -291,6 +357,48 @@ class SIPUser(models.Model):
             master=user,  # Link to the Django user
         )
         return sip_user
+
+    @transaction.atomic
+    def save(
+        self,
+        force_insert: bool = False,
+        force_update: bool = False,
+        using: Optional[str] = None,
+        update_fields: Optional[Iterable[str]] = None,
+    ) -> None:
+        if not self.pk:
+            default_users_context = DialplanContext.getUsersOrCreateUsers()
+            DialplanExtension.objects.create(
+                context=default_users_context,
+                ext=self.extension,
+                dialplan=self.custom_extension or self.standard_extension,
+                description=f"Extension for {self.username}",
+            )
+        else:
+            previous_extension = self.__class__.objects.get(pk=self.pk).extension
+            default_users_context = DialplanContext.getUsersOrCreateUsers()
+            try:
+                exten = DialplanExtension.objects.get(
+                    context=default_users_context, ext=previous_extension
+                )
+                exten.ext = self.extension
+                exten.dialplan = self.custom_extension or self.standard_extension
+                exten.description = f"Extension for {self.username}"
+                exten.save()
+            except DialplanExtension.DoesNotExist:
+                DialplanExtension.objects.create(
+                    context=default_users_context,
+                    ext=self.extension,
+                    dialplan=self.custom_extension or self.standard_extension,
+                    description=f"Extension for {self.username}",
+                )
+
+        return super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
 
     class Meta:
         verbose_name_plural = "02. SIP Users"
@@ -1174,7 +1282,7 @@ class RoutingRecord(models.Model):
         verbose_name="Routing Record Context",
     )
     routing_table = models.ForeignKey(
-        "RoutingTable",
+        RoutingTable,
         related_name="routing_records",
         on_delete=deletion.PROTECT,
         blank=True,
@@ -1183,26 +1291,32 @@ class RoutingRecord(models.Model):
         verbose_name="Routing Table",
     )
 
+    @staticmethod
+    def getUsersOrCreateUsers():
+        """
+        Get or create users routing record
+        :return: RoutingRecord object
+        """
+        try:
+            users_routing_record = RoutingRecord.objects.get(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+            )
+        except RoutingRecord.DoesNotExist:
+            # Assuming that there's a method to get or create a proper default context
+            users_context = DialplanContext.getUsersOrCreateUsers()
+            users_routing_record = RoutingRecord.objects.create(
+                name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD,
+                prefix=settings.PEARLPBX_DEFAULT_ROURING_PREFIX,
+                context=users_context,
+                routing_table=RoutingTable.getDefaultOrCreateDefault(),
+            )
+        return users_routing_record
+
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name_plural = "14. Routing Records"
-
-    def __str__(self):
-        return self.name
-
-
-class RoutingTable(models.Model):
-    name = models.CharField(
-        max_length=64,
-        unique=True,
-        help_text="Name of the routing table",
-        verbose_name="Routing Table Name",
-    )
-
-    class Meta:
-        verbose_name_plural = "15. Routing Tables"
-
-    def __str__(self):
-        return self.name
 
 
 class Blacklist(models.Model):
