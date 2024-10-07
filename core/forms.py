@@ -89,13 +89,6 @@ class SIPUserForm(forms.ModelForm):
         empty_label=None,
     )
 
-    context = DialplanContextChoiceField(
-        label="Context",
-        required=True,
-        help_text="Select context for the user",
-        queryset=DialplanContext.objects.all(),
-        empty_label=None,
-    )
     telephone_type = forms.ChoiceField(
         label="Telephone type",
         required=True,

@@ -226,11 +226,22 @@ def make_pjsip_conf_users():
         result += f"auth = {user.username}\n"
         result += f"aors = {user.username}\n"
         result += f"callerid = {user.name} <{user.extension}>\n"
+        result += f"context = {user.routing_table.name}\n"
         result += user.custom_settings + "\n\n"
 
         result += f"[{user.username}](user-auth-template)\n"
-        result += f"md5_cred = {user.md5_cred}\nusername = {user.username}\n"
-        result += f"realm = {user.realm}\n"
+        if user.auth_type == SIPUser.AUTHTYPE_CHOICES[0][0]:  # userpass
+            result += "type = auth\n"
+            result += "auth_type = userpass\n"
+            result += f"username = {user.username}\n"
+            result += f"password = {user.secret}\n"
+        else:
+            result += "type = auth\n"
+            result += "auth_type = md5\n"
+            result += f"md5_cred = {user.md5_cred}\n"
+            result += f"username = {user.username}\n"
+            result += f"realm = {user.realm}\n"
+
         result += user.custom_auth_settings + "\n\n"
 
         result += f"[{user.username}](user-aor-template)\n"
@@ -328,6 +339,12 @@ def make_dialplan_contexts():
         plaintext += f"context {context.name}" + " {\n"
         for extension in DialplanExtension.objects.filter(context=context):
             plaintext += make_dialplan_extension(extension)
+        plaintext += "    h => {\n"
+        plaintext += "        NoOp(Hangup);\n"
+        plaintext += "        NoOp(HANGUPCAUSE_STRING=${HANGUPCAUSE_KEYS()});\n"
+        plaintext += "        NoOp(DIALSTATUS=${DIALSTATUS});\n"
+        plaintext += "        Hangup();\n"
+        plaintext += "    }\n"
         plaintext += "}\n"
 
     return plaintext
