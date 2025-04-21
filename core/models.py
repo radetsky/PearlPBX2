@@ -606,16 +606,6 @@ class Settings(models.Model):
         help_text="IP address for provisioning",
     )
 
-    django_manager_secret = models.CharField(
-        max_length=64,
-        unique=True,
-        null=False,
-        blank=False,
-        default=generate_64_char_password,
-        verbose_name="Django manager secret",
-        help_text="Secret for Django manager user",
-    )
-
     domain = models.CharField(
         max_length=64,
         unique=True,

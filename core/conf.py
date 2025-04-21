@@ -14,6 +14,7 @@ from core.models import (
     ManagerUsers,
 )
 
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -395,8 +396,7 @@ def make_manager_conf():
     plaintext = "; === This is auto generated file. Do not edit it! ===\n"
     plaintext += "; === Use PearlPBX admin panel! ===\n"
 
-    settings = Settings.objects.first()
-    django_secret = settings.django_manager_secret
+    django_secret = settings.ASTERISK_MANAGER_SECRET
 
     plaintext += "[general]\n"
     plaintext += "enabled = yes\n"

@@ -3,16 +3,17 @@ import logging
 from asterisk.ami import AMIClient, SimpleAction
 from core.models import Settings
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
 
 class AsteriskManagementInterface:
     def __init__(self):
-        self.host = "127.0.0.1"
-        self.port = 5038
-        self.username = "django"
-        self.password = Settings.objects.first().django_manager_secret
-        logger.debug(f"django secret: {self.password}")
+        self.host = settings.ASTERISK_MANAGER_HOST
+        self.port = settings.ASTERISK_MANAGER_PORT
+        self.username = settings.ASTERISK_MANAGER_USERNAME
+        self.password = settings.ASTERISK_MANAGER_SECRET
         self.client = AMIClient(address=self.host, port=self.port, timeout=3600)
         logger.debug("AMI client created. Login...")
         future_response = self.client.login(
