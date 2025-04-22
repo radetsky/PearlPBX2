@@ -1,7 +1,6 @@
 import logging
 
 from asterisk.ami import AMIClient, SimpleAction
-from core.models import Settings
 
 from django.conf import settings
 
