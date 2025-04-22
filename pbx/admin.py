@@ -3,9 +3,14 @@ import tarfile
 import datetime
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
+from django.db import transaction
+from django.db.models import Max, OuterRef, Subquery
+
+from core.ami import AsteriskManagementInterface
 from core.conf import (
     make_pjsip_conf,
     make_queues_conf,
@@ -13,10 +18,6 @@ from core.conf import (
     make_manager_conf,
 )
 from core.models import ConfigurationFile, SystemConfiguration
-from django.db import transaction
-from django.conf import settings
-from django.db.models import Max, OuterRef, Subquery
-from core.ami import AsteriskManagementInterface
 
 
 class MyAdminSite(admin.AdminSite):
@@ -56,8 +57,9 @@ class ApplyChangesView(TemplateView):
         if form.is_valid():
             try:
                 self.apply_changes(cfgfiles)
-                ami = AsteriskManagementInterface()
-                ami.restart()
+                if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
+                    ami = AsteriskManagementInterface()
+                    ami.restart()
                 messages.success(request, "Configurations files saved successfully.")
 
                 return redirect("admin:index")

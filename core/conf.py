@@ -396,21 +396,24 @@ def make_manager_conf():
     plaintext = "; === This is auto generated file. Do not edit it! ===\n"
     plaintext += "; === Use PearlPBX admin panel! ===\n"
 
-    django_secret = settings.ASTERISK_MANAGER_SECRET
+    manager_host = settings.ASTERISK_MANAGER_HOST
+    manager_port = settings.ASTERISK_MANAGER_PORT
+    manager_username = settings.ASTERISK_MANAGER_USERNAME
+    manager_secret = settings.ASTERISK_MANAGER_SECRET
 
     plaintext += "[general]\n"
     plaintext += "enabled = yes\n"
     plaintext += "webenabled = yes\n"
-    plaintext += "port = 5038\n"
-    plaintext += "bindaddr = 0.0.0.0\n"
+    plaintext += f"port = {manager_port}\n"
+    plaintext += f"bindaddr = {manager_host}\n"
     plaintext += "displayconnects = yes\n"
     plaintext += "timestampevents = yes\n"
     plaintext += "authtimeout = 10\n"
     plaintext += "authlimit = 10\n"
     plaintext += "httptimeout = 60\n"
-    plaintext += "[django]\n"
+    plaintext += f"[{manager_username}]\n"
     plaintext += "displayconnects = yes\n"
-    plaintext += f"secret = {django_secret}\n"
+    plaintext += f"secret = {manager_secret}\n"
     plaintext += "read = system,call,log,verbose,command,agent,user\n"
     plaintext += "write = system,call,log,verbose,command,agent,user\n"
     plaintext += "writetimeout = 100\n"
