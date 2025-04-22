@@ -1296,7 +1296,7 @@ class RoutingRecord(models.Model):
             users_context = DialplanContext.getUsersOrCreateUsers()
             users_routing_record = RoutingRecord.objects.create(
                 name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD,
-                prefix=settings.PEARLPBX_DEFAULT_ROURING_PREFIX,
+                prefix=settings.PEARLPBX_DEFAULT_ROUTING_PREFIX,
                 context=users_context,
                 routing_table=RoutingTable.getDefaultOrCreateDefault(),
             )
