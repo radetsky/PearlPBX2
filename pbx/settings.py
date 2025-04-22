@@ -17,8 +17,8 @@ SECRET_KEY = "django-insecure-dom_8=vl0m@(cfoacp393+*&3s#jrtl#rt45o6=k3#7%llprq^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+EXTERNAL_ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+ALLOWED_HOSTS = [] + EXTERNAL_ALLOWED_HOSTS
 
 # Application definition
 
