@@ -606,16 +606,6 @@ class Settings(models.Model):
         help_text="IP address for provisioning",
     )
 
-    django_manager_secret = models.CharField(
-        max_length=64,
-        unique=True,
-        null=False,
-        blank=False,
-        default=generate_64_char_password,
-        verbose_name="Django manager secret",
-        help_text="Secret for Django manager user",
-    )
-
     domain = models.CharField(
         max_length=64,
         unique=True,
@@ -1306,7 +1296,7 @@ class RoutingRecord(models.Model):
             users_context = DialplanContext.getUsersOrCreateUsers()
             users_routing_record = RoutingRecord.objects.create(
                 name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD,
-                prefix=settings.PEARLPBX_DEFAULT_ROURING_PREFIX,
+                prefix=settings.PEARLPBX_DEFAULT_ROUTING_PREFIX,
                 context=users_context,
                 routing_table=RoutingTable.getDefaultOrCreateDefault(),
             )
