@@ -7,17 +7,21 @@ env = environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+DEVMODE_WITHOUT_ASTERISK = "without_asterisk_on_localhost"
+DEVMODE_DEVELOPMENT = "Development"
+DEVMODE_PRODUCTION = "PRODUCTION"
+DEVMODE = env.str("DEVMODE", "Development")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+DEBUG=False
+SECRET_KEY=env.str("DJANGO_SECRET_KEY", "") # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-dom_8=vl0m@(cfoacp393+*&3s#jrtl#rt45o6=k3#7%llprq^"
+if DEVMODE != DEVMODE_PRODUCTION:
+    # SECURITY WARNING: don't run with debug turned on in production!
+    DEBUG = True
+    # SECURITY WARNING: keep the secret key used in production secret!
+    SECRET_KEY = "django-insecure-dom_8=vl0m@(cfoacp393+*&3s#jrtl#rt45o6=k3#7%llprq^"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-EXTERNAL_ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+EXTERNAL_ALLOWED_HOSTS = ["10.35.35.1"]
 ALLOWED_HOSTS = [] + EXTERNAL_ALLOWED_HOSTS
 
 # Application definition
@@ -113,9 +117,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # secure cookies
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[]) 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
+
+if DEVMODE != DEVMODE_PRODUCTION:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # settings.py
 
@@ -164,6 +173,3 @@ ASTERISK_MANAGER_SECRET = env.str("ASTERISK_MANAGER_SECRET", "lFDccdsjqPWPe7ah7O
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"
 PEARLPBX_DEFAULT_ROUTING_PREFIX = "_2XX"
-
-DEVMODE_WITHOUT_ASTERISK = "without_asterisk_on_localhost"
-DEVMODE = env.str("DEVMODE", "False")
