@@ -21,7 +21,7 @@ if DEVMODE != DEVMODE_PRODUCTION:
     # SECURITY WARNING: keep the secret key used in production secret!
     SECRET_KEY = "django-insecure-dom_8=vl0m@(cfoacp393+*&3s#jrtl#rt45o6=k3#7%llprq^"
 
-EXTERNAL_ALLOWED_HOSTS = ["10.35.35.1"]
+EXTERNAL_ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 ALLOWED_HOSTS = [] + EXTERNAL_ALLOWED_HOSTS
 
 # Application definition
@@ -117,7 +117,7 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # secure cookies
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[]) 
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
