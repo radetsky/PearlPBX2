@@ -1,6 +1,7 @@
+from django.conf import settings
 from django.test import TestCase
 from core.models import SIPTransport, RoutingTable
-from django.conf import settings
+from core.utils import create_directory, remove_directory
 
 
 class TestSIPTransport(TestCase):
@@ -45,3 +46,14 @@ class TestDefaultRoutingTable(TestCase):
         name = settings.PEARLPBX_DEFAULT_ROUTING_TABLE
         default_routing_table = RoutingTable.objects.get(name=name)
         self.assertEqual(default_routing_table.name, name)
+
+class TestApplyToFileSystem(TestCase):
+    def test_create_directory(self):
+        # Test creating a directory
+        create_directory("/tmp")
+        create_directory("/tmp/etc/asterisk")
+        self.assertRaises(OSError, create_directory, "/etc/asterisk")
+
+    def test_remove_directory(self):
+        remove_directory("/tmp/etc/asterisk")
+        self.assertRaises(OSError, remove_directory, "/etc/asterisk")
