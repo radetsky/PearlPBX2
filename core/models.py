@@ -10,8 +10,9 @@ from typing import Optional
 
 from hashlib import md5
 
-from .validators import validate_bind_ip
+from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
+from core.validators import validate_bind_ip
 
 import logging
 
@@ -758,22 +759,30 @@ class MusicOnHold(models.Model):
 
 
 class MusicOnHoldPlaylistEntry(models.Model):
+    VALID_EXTENSIONS = ["mp3", "wav", "gsm", "ogg", "alaw", "al", "ulaw", "ul"]
     def validate_file_extension(value):
-        valid_extensions = ["mp3", "wav"]
         ext = str(value).split(".")[-1]
-        if ext.lower() not in valid_extensions:
+        if ext.lower() not in MusicOnHoldPlaylistEntry.VALID_EXTENSIONS:
             raise ValidationError(
-                "Unsupported file extension. Only mp3 and wav files are allowed."
+                "Unsupported file extension. Only mp3, wav, gsm, ogg, alaw, al, ulaw, and ul files are allowed."
             )
 
+    def validate_file_size(value):
+        max_size = 10 * 1024 * 1024  # 10 MB
+        if value.size > max_size:
+            raise ValidationError("File size exceeds 10 MB")
+
     file = models.FileField(
-        upload_to="moh/",
+        storage=MOHFileSystemStorage(),
+        upload_to="",
         verbose_name="Playlist entry file",
         blank=True,
         null=True,
         validators=[
-            FileExtensionValidator(allowed_extensions=["mp3", "wav"]),
+            FileExtensionValidator(
+                allowed_extensions=VALID_EXTENSIONS),
             validate_file_extension,
+            validate_file_size,
         ],
     )
 
@@ -1379,3 +1388,49 @@ class Contact(models.Model):
 
     def __str__(self):
         return f"{self.name} <{self.callerid}>"
+
+
+class SoundFile(models.Model):
+    VALID_EXTENSIONS = ["mp3", "wav", "gsm", "ogg", "alaw", "al", "ulaw", "ul"]
+
+    def validate_file_extension(value):
+        ext = str(value).split(".")[-1]
+        if ext.lower() not in SoundFile.VALID_EXTENSIONS:
+            raise ValidationError(
+                "Unsupported file extension. Only mp3, wav, gsm, ogg, alaw, al, ulaw, and ul files are allowed."
+            )
+
+    def validate_file_size(value):
+        max_size = 10 * 1024 * 1024  # 10 MB
+        if value.size > max_size:
+            raise ValidationError("File size exceeds 10 MB")
+
+    file = models.FileField(
+        storage=SoundsFileSystemStorage(),
+        upload_to="",
+        verbose_name="Sound file",
+        blank=True,
+        null=True,
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=VALID_EXTENSIONS),
+            validate_file_extension,
+            validate_file_size,
+        ],
+    )
+
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        null=False,
+        blank=False,
+        verbose_name="File name used in dialplans",
+        help_text="The file name without extension. You may enter completely different name here.",
+    )
+
+    def __str__(self) -> str:
+        return f"{self.name} - {self.file}"
+
+    class Meta:
+        db_table = "sound_files"
+        verbose_name_plural = "19. Sound files"
