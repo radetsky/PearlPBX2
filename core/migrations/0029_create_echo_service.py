@@ -20,6 +20,8 @@ def create_echo_service(apps, schema_editor):
         ext="130",
         dialplan="""Answer();
 Wait(1);
+Playback(demo-echotest);
+Wait(1);
 Echo();
 Hangup();
 """)
