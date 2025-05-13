@@ -27,6 +27,7 @@ from .models import (
     Whitelist,
     Contact,
     ManagerUsers,
+    SoundFile,
 )
 from .forms import (
     SIPUserForm,
@@ -202,3 +203,4 @@ admin.site.register(Blacklist)
 admin.site.register(Whitelist)
 admin.site.register(Contact)
 admin.site.register(ManagerUsers)
+admin.site.register(SoundFile)

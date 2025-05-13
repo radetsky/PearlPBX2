@@ -3,9 +3,13 @@
 
 ### /etc/asterisk
 /etc/asterisk should have the permission to the user which will be used to run django.
-For development mode is 'rad':
+For development mode is 'asterisk':
 ```
-chown -R rad:rad /etc/asterisk
+chown -R asterisk:asterisk /etc/asterisk
 ```
+
+Yes, we run Django under user asterisk. Why not?
+It allowed us to move the configuration and sound files.
+
 
 
