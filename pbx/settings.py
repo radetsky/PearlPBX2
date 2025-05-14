@@ -8,14 +8,15 @@ env = environ.Env()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEVMODE_WITHOUT_ASTERISK = "without_asterisk_on_localhost"
-DEVMODE_DEVELOPMENT = "Development"
-DEVMODE_PRODUCTION = "PRODUCTION"
+DEVMODE_DEVELOPMENT = "Development" # Ubuntu on VPS
+DEVMODE_PRODUCTION = "Production"   # Production server
+DEVMODE_STAGING = "Staging"         # Staging server
 DEVMODE = env.str("DEVMODE", "Development")
 
 DEBUG=False
 SECRET_KEY=env.str("DJANGO_SECRET_KEY", "") # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
-if DEVMODE != DEVMODE_PRODUCTION:
+if DEVMODE not in (DEVMODE_PRODUCTION, DEVMODE_STAGING):
     # SECURITY WARNING: don't run with debug turned on in production!
     DEBUG = True
     # SECURITY WARNING: keep the secret key used in production secret!
@@ -77,6 +78,17 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+if DEVMODE != DEVMODE_WITHOUT_ASTERISK:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env.str("DB_NAME", "rad"),
+            "USER": env.str("DB_USER", "rad"),
+            "PASSWORD": env.str("DB_PASSWORD", "rad"),
+            "HOST": env.str("DB_HOST", "localhost"),
+            "PORT": env.int("DB_PORT", 5432),
+        }
+    }
 
 
 # Password validation
