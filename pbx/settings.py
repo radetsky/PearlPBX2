@@ -74,21 +74,14 @@ WSGI_APPLICATION = "pbx.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env.str("DB_NAME", "rad"),
+        "USER": env.str("DB_USER", "rad"),
+        "PASSWORD": env.str("DB_PASS", "rad"),
+        "HOST": env.str("DB_HOST", "localhost"),
+        "PORT": env.int("DB_PORT", 5432),
     }
 }
-if DEVMODE != DEVMODE_WITHOUT_ASTERISK:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": env.str("DB_NAME", "rad"),
-            "USER": env.str("DB_USER", "rad"),
-            "PASSWORD": env.str("DB_PASSWORD", "rad"),
-            "HOST": env.str("DB_HOST", "localhost"),
-            "PORT": env.int("DB_PORT", 5432),
-        }
-    }
 
 
 # Password validation

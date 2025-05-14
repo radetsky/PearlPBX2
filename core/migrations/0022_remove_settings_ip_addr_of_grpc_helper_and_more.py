@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 default="HLNvg2VQ2Ffu-QqQcQpFz8sFHvZpunPMRd4-6u3hFswX2EMT5CkFEtMwFAFt8LwROGgJBXlZWg6fu-qx969QwA",
                 help_text="Secret for Django manager user",
-                max_length=64,
+                max_length=128,
                 unique=True,
                 verbose_name="Django manager secret",
             ),

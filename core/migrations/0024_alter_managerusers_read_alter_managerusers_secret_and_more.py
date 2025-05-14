@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 default=core.utils.generate_64_char_password,
                 help_text="Password for manager user",
-                max_length=64,
+                max_length=128,
                 unique=True,
                 verbose_name="Manager user secret",
             ),
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 default=core.utils.generate_64_char_password,
                 help_text="Secret for Django manager user",
-                max_length=64,
+                max_length=128,
                 unique=True,
                 verbose_name="Django manager secret",
             ),
