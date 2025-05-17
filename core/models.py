@@ -1389,6 +1389,14 @@ class Contact(models.Model):
     def __str__(self):
         return f"{self.name} <{self.callerid}>"
 
+def sound_file_upload_path(instance, filename):
+    """
+    Побудова шляху для збереження файлу на основі мови.
+    """
+    ext = filename.split('.')[-1]
+    base_name = instance.name or filename.rsplit('.', 1)[0]
+    return f"{instance.language}/{base_name}.{ext}"
+
 
 class SoundFile(models.Model):
     VALID_EXTENSIONS = ["mp3", "wav", "gsm", "ogg", "alaw", "al", "ulaw", "ul"]
@@ -1407,7 +1415,7 @@ class SoundFile(models.Model):
 
     file = models.FileField(
         storage=SoundsFileSystemStorage(),
-        upload_to="",
+        upload_to=sound_file_upload_path,
         verbose_name="Sound file",
         blank=True,
         null=True,
@@ -1428,8 +1436,17 @@ class SoundFile(models.Model):
         help_text="The file name without extension. You may enter completely different name here.",
     )
 
+    language = models.CharField(
+        max_length=3,
+        unique=False,
+        null=False,
+        blank=True,
+        verbose_name="Language",
+        help_text="Language of the sound file",
+    )
+
     def __str__(self) -> str:
-        return f"{self.name} - {self.file}"
+        return f"{self.language} - {self.name} - {self.file}"
 
     class Meta:
         db_table = "sound_files"
