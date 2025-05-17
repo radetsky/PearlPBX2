@@ -179,6 +179,11 @@ class ConfigurationFileAdmin(admin.ModelAdmin):
             obj.save()
 
 
+class SoundFileAdmin(admin.ModelAdmin):
+    fields = ('language', 'name', 'file')  # Language — перед file
+    list_display = ('language', 'name')
+    search_fields = ('language', 'name')
+
 admin.site.register(SIPUser, SIPUserAdmin)
 admin.site.register(SIPPeer, SIPPeerAdmin)
 admin.site.register(SIPTransport, SIPTransportAdmin)
@@ -191,6 +196,7 @@ admin.site.register(MusicOnHold, MusicOnHoldAdmin)
 admin.site.register(RoutingTable, RoutingTableAdmin)
 admin.site.register(RoutingRecord, RoutingRecordAdmin)
 admin.site.register(ConfigurationFile, ConfigurationFileAdmin)
+admin.site.register(SoundFile, SoundFileAdmin)
 
 admin.site.register(Queue)
 admin.site.register(QueueMember)
@@ -203,4 +209,3 @@ admin.site.register(Blacklist)
 admin.site.register(Whitelist)
 admin.site.register(Contact)
 admin.site.register(ManagerUsers)
-admin.site.register(SoundFile)
