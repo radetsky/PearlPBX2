@@ -1,3 +1,4 @@
+
 import textwrap
 import logging
 
@@ -12,6 +13,11 @@ from core.models import (
     RoutingTable,
     RoutingRecord,
     ManagerUsers,
+    CallQueueGlobalSettings,
+    Queue,
+    QueueMember,
+    QueueAnnouncements,
+    QueueRule
 )
 
 from django.conf import settings
@@ -19,7 +25,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def make_pjsip_conf_transports():
+def make_pjsip_conf_transports() -> str:
     result = "; ==== Transports section ====\n"
     transports = SIPTransport.objects.all()
     for transport in transports:
@@ -295,10 +301,111 @@ def make_pjsip_conf():
     return plaintext
 
 
-def make_queues_conf_queues():
-    plaintext = ""
+def make_queuerules_conf() -> str:
+    """Generates the contents of the queuerules.conf configuration file from the QueueRule and PenaltyChange models.
+       Returns a string ready to be written to a file.
+    """
 
-    return plaintext
+    output = []
+    output.append("[general]\n")
+    output.append("; === This is auto generated file. Do not edit it! ===\n")
+
+    for rule in QueueRule.objects.prefetch_related("penalty_changes").all():
+        output.append(f"[{rule.name}]")
+        if rule.description:
+            output.append(f"; {rule.description}")
+        penalty_changes = rule.penalty_changes.all().order_by("seconds", "order")
+
+        for change in penalty_changes:
+            parts = [str(change.seconds)]
+            parts.append(change.max_penalty or "")
+            parts.append(change.min_penalty or "")
+            parts.append(change.raise_penalty or "")
+
+            while parts and parts[-1] == "":
+                parts.pop()
+
+            output.append(f"penaltychange => {','.join(parts)}")
+        output.append("")
+
+    return "\n".join(output)
+
+def make_queues_configurations():
+    queues = Queue.objects.all()
+    output = []
+    for queue in queues:
+        output.append(f"[{queue.name}]")
+        output.append(f"musicclass={queue.music_class.name}" if queue.music_class else ";musicclass")
+        output.append(f"announce={queue.announce}" if queue.announce else ";announce=")
+        output.append(f"queue_announce={queue.queue_announce}" if queue.queue_announce else ";queue_announce=")
+        output.append(f"strategy={queue.strategy}") # 'ringall', 'leastrecent', etc.
+        output.append(f"servicelevel={queue.service_level}" if queue.service_level else ";servicelevel = 0")
+        output.append(f"context={queue.context}" if queue.context else ";context=")
+        output.append(f"timeout={queue.timeout}" if queue.timeout else ";timeout=15")
+        output.append(f"retry={queue.retry}" if queue.retry else ";retry=5")
+        output.append(f"timeoutpriority={queue.timeoutpriority}" if queue.timeoutpriority else ";timeoutpriority=app")
+        output.append(f"wrapuptime={queue.wrapuptime}" if queue.wrapuptime else ";wrapuptime=0")
+        output.append( "autofill=yes" if queue.autofill else "autofill=no")
+        output.append(f"autopause={queue.autopause}")
+        output.append(f"autopausedelay={queue.autopausedelay}")
+        output.append( "reportholdtime=yes" if queue.reportholdtime else "reportholdtime=no")
+        output.append( "setinterfacevar=yes" if queue.setinterfacevar else "setinterfacevar=no")
+        output.append( "setqueueentryvar=yes" if queue.setqueueentryvar else "setqueueentryvar=no")
+        output.append(f"announce_frequency={queue.announce_frequency}")
+        output.append( "announce_holdtime=yes" if queue.announce_holdtime else "announce_holdtime=no")
+        output.append(f"min_announce_frequency={queue.min_announce_frequency}")
+        output.append(f"periodic_announce_frequency={queue.periodic_announce_frequency}")
+        output.append(
+            "periodic_announce_frequency=yes" if queue.periodic_announce_frequency else "periodic_announce_frequency=no")
+        output.append(
+            "relative_periodic_announce=yes" if queue.relative_periodic_announce else "relative_periodic_announce=no")
+        output.append(f"announce_holdtime={queue.announce_holdtime}")
+        output.append(f"announce_position={queue.announce_position}")
+        output.append(
+            "announce_to_first_user=yes" if queue.announce_to_first_user else "announce_to_first_user=no")
+        output.append(
+            f"announce_position_limit={queue.announce_position_limit}")
+        output.append(
+            f"announce_round_seconds={queue.announce_round_seconds}")
+        output.append(
+            "announce_position_only_up=yes" if queue.announce_position_only_up else "announce_position_only_up=no")
+        output.append(
+            f"queue_youarenext={queue.queue_announcement.queue_youarenext}" if queue.queue_announcement.queue_youarenext else ";queue-youarenext=")
+        output.append(
+            f"queue_thereare={queue.queue_announcement.queue_thereare}" if queue.queue_announcement.queue_thereare else ";queue_thereare=")
+        output.append(
+            f"queue_callswaiting={queue.queue_announcement.queue_callswaiting}" if queue.queue_announcement.queue_callswaiting else ";queue_callswaiting=")
+        output.append(
+            f"queue_quantity1={queue.queue_announcement.queue_quantity1}" if queue.queue_announcement.queue_quantity1 else ";queue_quantity1=")
+        output.append(
+            f"queue_quantity2={queue.queue_announcement.queue_quantity2}" if queue.queue_announcement.queue_quantity2 else ";queue_quantity2=")
+        output.append(
+            f"queue_holdtime={queue.queue_announcement.queue_holdtime}" if queue.queue_announcement.queue_holdtime else ";queue_holdtime=")
+        output.append(
+            f"queue_minute={queue.queue_announcement.queue_minute}" if queue.queue_announcement.queue_minute else ";queue_minute=")
+        output.append(
+            f"queue_minutes={queue.queue_announcement.queue_minutes}" if queue.queue_announcement.queue_minutes else ";queue_minutes=")
+        output.append(
+            f"queue_seconds={queue.queue_announcement.queue_seconds}" if queue.queue_announcement.queue_seconds else ";queue_seconds=")
+        output.append(
+            f"queue_thankyou={queue.queue_announcement.queue_thankyou}" if queue.queue_announcement.queue_thankyou else ";queue_thankyou=")
+        output.append(
+            f"queue_reporthold={queue.queue_announcement.queue_reporthold}" if queue.queue_announcement.queue_reporthold else ";queue_reporthold=")
+        output.append(
+            f"periodic_announce={queue.periodic_announce}" if queue.periodic_announce else ";periodic_announce=")
+        output.append(
+            f"monitor_format={queue.monitor_format}" if queue.monitor_format else ";monitor_format=")
+        output.append(f"joinempty={queue.joinempty}")
+        output.append(f"leavewhenempty={queue.leavewhenempty}")
+        output.append(f"ringinuse={queue.ringinuse}")
+        output.append(f"timeoutrestart={queue.timeoutrestart}")
+        output.append(
+            f"defaultrule={queue.defaultrule}" if queue.defaultrule else ";defaultrule=")
+        members = QueueMember.objects.filter(queue=queue)
+        for member in members:
+            output.append(f"member => {member.interface},{member.penalty},{member.member_name},{member.__state_interface__()},{member.__ringinuse__()},{member.wrapuptime}")
+
+        return "\n".join(output)
 
 
 def make_queues_conf():
@@ -306,15 +413,25 @@ def make_queues_conf():
     plaintext += "; === Use PearlPBX admin panel! ===\n"
     plaintext += "; ==== General section ====\n"
     plaintext += "[general]\n"
-    plaintext += "persistent_members = yes\n"
-    plaintext += "autofill = no\n"
-    plaintext += "monitor-type = MixMonitor\n"
-    plaintext += "shared_lastcall = no\n"
-    plaintext += "negative_penalty_invalid = no\n"
-    plaintext += "log_membername_as_agent = no\n"
+
+    global_settings = CallQueueGlobalSettings.objects.first()
+    if global_settings:
+        plaintext += f"persistent_members = {'yes' if global_settings.persistent_members else 'no'}\n"
+        plaintext += f"autofill = {'yes' if global_settings.autofill else 'no'}\n"
+        plaintext += f"monitor-type = {global_settings.monitor_type}\n"
+        plaintext += f"shared_lastcall = {'yes' if global_settings.shared_lastcall else 'no'}\n"
+        plaintext += f"negative_penalty_invalid = {'yes' if global_settings.negative_penalty_invalid else 'no'}\n"
+        plaintext += f"log_membername_as_agent = {'yes' if global_settings.log_membername_as_agent else 'no'}\n"
+    else:
+        plaintext += "persistent_members = yes\n"
+        plaintext += "autofill = yes\n"
+        plaintext += "monitor-type = MixMonitor\n"
+        plaintext += "shared_lastcall = no\n"
+        plaintext += "negative_penalty_invalid = yes\n"
+        plaintext += "log_membername_as_agent = yes\n"
 
     plaintext += "; ==== Queues section ====\n"
-    plaintext += make_queues_conf_queues()
+    plaintext += make_queues_configurations()
 
     return plaintext
 
