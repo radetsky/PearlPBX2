@@ -330,7 +330,7 @@ def make_queuerules_conf() -> str:
 
     return "\n".join(output)
 
-def make_queues_configurations():
+def make_queues_configurations() -> str:
     queues = Queue.objects.all()
     output = []
     for queue in queues:
@@ -405,7 +405,7 @@ def make_queues_configurations():
         for member in members:
             output.append(f"member => {member.interface},{member.penalty},{member.member_name},{member.__state_interface__()},{member.__ringinuse__()},{member.wrapuptime}")
 
-        return "\n".join(output)
+    return "\n".join(output)
 
 
 def make_queues_conf():
