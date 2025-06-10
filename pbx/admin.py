@@ -14,9 +14,11 @@ from core.ami import AsteriskManagementInterface
 from core.conf import (
     make_pjsip_conf,
     make_queues_conf,
+    make_queuerules_conf,
     make_extensions_ael,
     make_manager_conf,
 )
+
 from core.models import ConfigurationFile, SystemConfiguration
 
 
@@ -46,6 +48,7 @@ class ApplyChangesView(TemplateView):
         cfgfiles["/etc/asterisk/extensions.ael"] = make_extensions_ael()
         cfgfiles["/etc/asterisk/pjsip.conf"] = make_pjsip_conf()
         cfgfiles["/etc/asterisk/queues.conf"] = make_queues_conf()
+        cfgfiles["/etc/asterisk/queuerules.conf"] = make_queuerules_conf()
         cfgfiles["/etc/asterisk/manager.conf"] = make_manager_conf()
         for cfg in self.get_latest_configuration_files():
             if cfg.path not in cfgfiles:

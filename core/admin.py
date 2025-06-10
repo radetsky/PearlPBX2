@@ -109,7 +109,7 @@ class DialplanMacroAdmin(admin.ModelAdmin):
 
 
 class MusicOnHoldPlaylistEntryAdmin(admin.ModelAdmin):
-    fields = ["file", "url", "moh_class"]
+    fields = ["moh_class", "file", "url"]
     list_display = ("moh_class", "file", "url")
     ordering = ["moh_class", "file", "url"]
     search_fields = ["moh_class", "file", "url"]
@@ -183,6 +183,7 @@ class SoundFileAdmin(admin.ModelAdmin):
     fields = ('language', 'name', 'file')  # Language — перед file
     list_display = ('language', 'name')
     search_fields = ('language', 'name')
+
 
 admin.site.register(SIPUser, SIPUserAdmin)
 admin.site.register(SIPPeer, SIPPeerAdmin)

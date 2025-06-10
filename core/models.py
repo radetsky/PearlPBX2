@@ -1,9 +1,9 @@
 import django.db.models.deletion as deletion
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
-from django.core.validators import MaxValueValidator, FileExtensionValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from django.conf import settings
+from django.contrib.auth.models import User
 
 from collections.abc import Iterable
 from typing import Optional
@@ -755,7 +755,17 @@ class MusicOnHold(models.Model):
 
     class Meta:
         db_table = "music_on_hold"
-        verbose_name_plural = "08. Music on hold"
+        verbose_name_plural = "08. Music on hold classes"
+
+
+def moh_file_upload_path(instance, filename):
+    """
+    Побудова шляху для збереження файлу на основі каталогу классу MusicOnHold.
+    """
+    ext = filename.split('.')[-1]
+    base_name = filename.rsplit('.', 1)[0]
+    directory = instance.moh_class.directory if instance.moh_class else "default"
+    return f"{directory}/{base_name}.{ext}"
 
 
 class MusicOnHoldPlaylistEntry(models.Model):
@@ -774,7 +784,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
 
     file = models.FileField(
         storage=MOHFileSystemStorage(),
-        upload_to="",
+        upload_to=moh_file_upload_path,
         verbose_name="Playlist entry file",
         blank=True,
         null=True,
@@ -839,12 +849,20 @@ class Queue(models.Model):
         max_length=64,
         null=True,
         blank=True,
-        verbose_name="Announcement",
+        verbose_name="Announcement to the member",
         help_text="""An announcement may be specified which is played for the member as
 soon as they answer a call, typically to indicate to them which queue
 this call should be answered as, so that agents or members who are
 listening to more than one queue can differentiated how they should
 engage the customer""",
+    )
+    queue_announce = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        verbose_name="Queue announcement to the caller",
+        help_text="""An announcement may be specified which is played to the caller just
+before they are bridged with an agent."""
     )
     strategy = models.CharField(
         max_length=32,
@@ -885,7 +903,6 @@ the queue and sent to that extension.""",
     autopausedelay = models.PositiveIntegerField(
         default=60, verbose_name="Autopause Delay"
     )
-    autofill = models.BooleanField(default=True, verbose_name="Autofill")
     reportholdtime = models.BooleanField(default=False, verbose_name="Report Hold Time")
     setinterfacevar = models.BooleanField(
         default=False, verbose_name="Set Interface Variable"
@@ -986,8 +1003,7 @@ the queue and sent to that extension.""",
         verbose_name="Leave When Empty",
         help_text="When to leave empty queue?",
     )
-    reportholdtime = models.BooleanField(default=False, verbose_name="Report Hold Time")
-    ring_in_use = models.BooleanField(default=False, verbose_name="Ring In Use")
+    ringinuse = models.BooleanField(default=False, verbose_name="Ring In Use")
     timeoutrestart = models.BooleanField(default=False, verbose_name="Timeout Restart")
     defaultrule = models.CharField(
         max_length=100,
@@ -1027,6 +1043,13 @@ class QueueMember(models.Model):
     def __str__(self):
         return f"{self.member_name} ({self.interface})"
 
+    def __ringinuse__(self):
+        return "yes" if self.ringinuse else "no"
+
+    def __state_interface__(self):
+        return self.state_interface if self.state_interface else ""
+
+
 
 class QueueAnnouncements(models.Model):
     name = models.CharField(
@@ -1055,6 +1078,83 @@ class QueueAnnouncements(models.Model):
     class Meta:
         db_table = "queue_announcements"
         verbose_name_plural = "11. Queue Announcements"
+
+
+class QueueRule(models.Model):
+    """
+    Represents a logical name for an escalation rule.
+    For example: 'support_daytime', 'critical_escalation'
+    """
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="Unique rule name (used in Queue(...,,,rule_name))"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Description or notes for the rule"
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = 'queue_rules'
+        verbose_name = "Queue Rule"
+        verbose_name_plural = "Queue Rules"
+
+
+class PenaltyChange(models.Model):
+    """
+    Change of escalation parameters linked to a QueueRule.
+    """
+    rule = models.ForeignKey(
+        QueueRule,
+        on_delete=models.CASCADE,
+        related_name='penalty_changes',
+        help_text="Related queue rule"
+    )
+
+    seconds = models.PositiveIntegerField(
+        help_text="After how many seconds in the queue this change is applied"
+    )
+
+    max_penalty = models.CharField(
+        max_length=4,
+        blank=True,
+        validators=[MaxValueValidator(100), MinValueValidator(-100)],
+        help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY"
+    )
+
+    min_penalty = models.CharField(
+        max_length=4,
+        blank=True,
+        validators=[MaxValueValidator(100), MinValueValidator(-100)],
+        help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY"
+    )
+
+    raise_penalty = models.CharField(
+        max_length=4,
+        blank=True,
+        validators=[MaxValueValidator(100), MinValueValidator(-100)],
+        help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY"
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(100), MinValueValidator(0)],
+        help_text="Execution order if there are rules with the same time"
+    )
+
+    def __str__(self):
+        return f"{self.rule.name} @ {self.seconds}s"
+
+    class Meta:
+        db_table = 'penalty_changes'
+        verbose_name = "Penalty Change"
+        verbose_name_plural = "Penalty Changes"
+        ordering = ['rule', 'seconds', 'order']
 
 
 class ConfigurationFile(models.Model):
@@ -1174,6 +1274,7 @@ class SystemConfiguration(models.Model):
 
 
 class CallQueueGlobalSettings(models.Model):
+
     # Persistent Members
     persistent_members = models.BooleanField(
         default=True,
