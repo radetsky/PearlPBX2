@@ -1102,7 +1102,7 @@ class QueueRule(models.Model):
     class Meta:
         db_table = 'queue_rules'
         verbose_name = "Queue Rule"
-        verbose_name_plural = "Queue Rules"
+        verbose_name_plural = "13. Queue Rules"
 
 
 class PenaltyChange(models.Model):
@@ -1120,22 +1120,19 @@ class PenaltyChange(models.Model):
         help_text="After how many seconds in the queue this change is applied"
     )
 
-    max_penalty = models.CharField(
-        max_length=4,
+    max_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
         help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY"
     )
 
-    min_penalty = models.CharField(
-        max_length=4,
+    min_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
         help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY"
     )
 
-    raise_penalty = models.CharField(
-        max_length=4,
+    raise_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
         help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY"
@@ -1334,7 +1331,7 @@ class CallQueueGlobalSettings(models.Model):
 
     class Meta:
         db_table = "call_queue_global_settings"
-        verbose_name_plural = "12. Call Queue Global Settings"
+        verbose_name_plural = "12. Queue Global Settings"
 
 
 class TrunkGroup(models.Model):
@@ -1353,7 +1350,7 @@ class TrunkGroup(models.Model):
     )
 
     class Meta:
-        verbose_name_plural = "13. Trunk Groups"
+        verbose_name_plural = "14. Trunk Groups"
 
     def __str__(self):
         return self.name
@@ -1416,7 +1413,7 @@ class RoutingRecord(models.Model):
         return self.name
 
     class Meta:
-        verbose_name_plural = "14. Routing Records"
+        verbose_name_plural = "16. Routing Records"
 
 
 class Blacklist(models.Model):
@@ -1436,7 +1433,7 @@ class Blacklist(models.Model):
 
     class Meta:
         db_table = "blacklist"
-        verbose_name_plural = "16. Blacklist"
+        verbose_name_plural = "17. Blacklist"
 
     def __str__(self):
         return f"{self.callerid} - {self.description}"
@@ -1459,7 +1456,7 @@ class Whitelist(models.Model):
 
     class Meta:
         db_table = "whitelist"
-        verbose_name_plural = "17. Whitelist"
+        verbose_name_plural = "18. Whitelist"
 
     def __str__(self):
         return f"{self.callerid} - {self.description}"
@@ -1485,7 +1482,7 @@ class Contact(models.Model):
 
     class Meta:
         db_table = "contacts"
-        verbose_name_plural = "18. Contacts"
+        verbose_name_plural = "19. Contacts"
 
     def __str__(self):
         return f"{self.name} <{self.callerid}>"
@@ -1551,4 +1548,4 @@ class SoundFile(models.Model):
 
     class Meta:
         db_table = "sound_files"
-        verbose_name_plural = "19. Sound files"
+        verbose_name_plural = "20. Sound files"

@@ -17,6 +17,8 @@ from .models import (
     Queue,
     QueueMember,
     QueueAnnouncements,
+    QueueRule,
+    PenaltyChange,
     ConfigurationFile,
     BinaryFile,
     SystemConfiguration,
@@ -157,6 +159,24 @@ class RoutingTableAdmin(admin.ModelAdmin):
     inlines = [RoutingRecordInlineAdmin]
 
 
+class PenaltyChangeInlineAdmin(admin.TabularInline):
+    min_num: Optional[int] = 1
+    extra: Optional[int] = 0
+    model = PenaltyChange
+
+    fields = ["rule", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
+    ordering = ["rule", "seconds"]
+    search_fields = ["rule__name", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
+
+
+class QueueRuleAdmin(admin.ModelAdmin):
+    fields = ["name", "description"]
+    ordering = ["name", "description"]
+    search_fields = ["name", "description"]
+    inlines = [PenaltyChangeInlineAdmin]
+
+
+
 class ConfigurationFileAdmin(admin.ModelAdmin):
     form = ConfigurationFileForm
     fields = ["name", "description", "path", "content"]
@@ -198,6 +218,7 @@ admin.site.register(RoutingTable, RoutingTableAdmin)
 admin.site.register(RoutingRecord, RoutingRecordAdmin)
 admin.site.register(ConfigurationFile, ConfigurationFileAdmin)
 admin.site.register(SoundFile, SoundFileAdmin)
+admin.site.register(QueueRule, QueueRuleAdmin)
 
 admin.site.register(Queue)
 admin.site.register(QueueMember)

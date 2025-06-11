@@ -318,9 +318,10 @@ def make_queuerules_conf() -> str:
 
         for change in penalty_changes:
             parts = [str(change.seconds)]
-            parts.append(change.max_penalty or "")
-            parts.append(change.min_penalty or "")
-            parts.append(change.raise_penalty or "")
+            parts.append(str(change.max_penalty) or "")
+            parts.append(str(change.min_penalty) or "")
+            parts.append(str(change.raise_penalty) or "")
+            parts.append(str(change.order) or "")
 
             while parts and parts[-1] == "":
                 parts.pop()
