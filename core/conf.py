@@ -352,50 +352,50 @@ def make_queues_configurations() -> str:
         output.append( "reportholdtime=yes" if queue.reportholdtime else "reportholdtime=no")
         output.append( "setinterfacevar=yes" if queue.setinterfacevar else "setinterfacevar=no")
         output.append( "setqueueentryvar=yes" if queue.setqueueentryvar else "setqueueentryvar=no")
-        output.append(f"announce_frequency={queue.announce_frequency}")
-        output.append( "announce_holdtime=yes" if queue.announce_holdtime else "announce_holdtime=no")
-        output.append(f"min_announce_frequency={queue.min_announce_frequency}")
-        output.append(f"periodic_announce_frequency={queue.periodic_announce_frequency}")
+        output.append(f"announce-frequency={queue.announce_frequency}")
+        output.append( "announce-holdtime=yes" if queue.announce_holdtime else "announce-holdtime=no")
+        output.append(f"min-announce-frequency={queue.min_announce_frequency}")
+        output.append(f"periodic-announce-frequency={queue.periodic_announce_frequency}")
         output.append(
-            "periodic_announce_frequency=yes" if queue.periodic_announce_frequency else "periodic_announce_frequency=no")
+            "periodic-announce-frequency=yes" if queue.periodic_announce_frequency else "periodic-announce-frequency=no")
         output.append(
-            "relative_periodic_announce=yes" if queue.relative_periodic_announce else "relative_periodic_announce=no")
-        output.append(f"announce_holdtime={queue.announce_holdtime}")
-        output.append(f"announce_position={queue.announce_position}")
+            "relative-periodic-announce=yes" if queue.relative_periodic_announce else "relative-periodic-announce=no")
+        output.append(f"announce-holdtime={queue.announce_holdtime}")
+        output.append(f"announce-position={queue.announce_position}")
         output.append(
-            "announce_to_first_user=yes" if queue.announce_to_first_user else "announce_to_first_user=no")
+            "announce-to-first-user=yes" if queue.announce_to_first_user else "announce-to-first-user=no")
         output.append(
-            f"announce_position_limit={queue.announce_position_limit}")
+            f"announce-position-limit={queue.announce_position_limit}")
         output.append(
-            f"announce_round_seconds={queue.announce_round_seconds}")
+            f"announce-round-seconds={queue.announce_round_seconds}")
         output.append(
-            "announce_position_only_up=yes" if queue.announce_position_only_up else "announce_position_only_up=no")
+            "announce-position-only-up=yes" if queue.announce_position_only_up else "announce-position-only-up=no")
         output.append(
-            f"queue_youarenext={queue.queue_announcement.queue_youarenext}" if queue.queue_announcement.queue_youarenext else ";queue-youarenext=")
+            f"queue-youarenext={queue.queue_announcement.queue_youarenext}" if queue.queue_announcement.queue_youarenext else ";queue-youarenext=")
         output.append(
-            f"queue_thereare={queue.queue_announcement.queue_thereare}" if queue.queue_announcement.queue_thereare else ";queue_thereare=")
+            f"queue-thereare={queue.queue_announcement.queue_thereare}" if queue.queue_announcement.queue_thereare else ";queue-thereare=")
         output.append(
-            f"queue_callswaiting={queue.queue_announcement.queue_callswaiting}" if queue.queue_announcement.queue_callswaiting else ";queue_callswaiting=")
+            f"queue-callswaiting={queue.queue_announcement.queue_callswaiting}" if queue.queue_announcement.queue_callswaiting else ";queue-callswaiting=")
         output.append(
-            f"queue_quantity1={queue.queue_announcement.queue_quantity1}" if queue.queue_announcement.queue_quantity1 else ";queue_quantity1=")
+            f"queue-quantity1={queue.queue_announcement.queue_quantity1}" if queue.queue_announcement.queue_quantity1 else ";queue-quantity1=")
         output.append(
-            f"queue_quantity2={queue.queue_announcement.queue_quantity2}" if queue.queue_announcement.queue_quantity2 else ";queue_quantity2=")
+            f"queue-quantity2={queue.queue_announcement.queue_quantity2}" if queue.queue_announcement.queue_quantity2 else ";queue-quantity2=")
         output.append(
-            f"queue_holdtime={queue.queue_announcement.queue_holdtime}" if queue.queue_announcement.queue_holdtime else ";queue_holdtime=")
+            f"queue-holdtime={queue.queue_announcement.queue_holdtime}" if queue.queue_announcement.queue_holdtime else ";queue-holdtime=")
         output.append(
-            f"queue_minute={queue.queue_announcement.queue_minute}" if queue.queue_announcement.queue_minute else ";queue_minute=")
+            f"queue-minute={queue.queue_announcement.queue_minute}" if queue.queue_announcement.queue_minute else ";queue-minute=")
         output.append(
-            f"queue_minutes={queue.queue_announcement.queue_minutes}" if queue.queue_announcement.queue_minutes else ";queue_minutes=")
+            f"queue-minutes={queue.queue_announcement.queue_minutes}" if queue.queue_announcement.queue_minutes else ";queue-minutes=")
         output.append(
-            f"queue_seconds={queue.queue_announcement.queue_seconds}" if queue.queue_announcement.queue_seconds else ";queue_seconds=")
+            f"queue-seconds={queue.queue_announcement.queue_seconds}" if queue.queue_announcement.queue_seconds else ";queue-seconds=")
         output.append(
-            f"queue_thankyou={queue.queue_announcement.queue_thankyou}" if queue.queue_announcement.queue_thankyou else ";queue_thankyou=")
+            f"queue-thankyou={queue.queue_announcement.queue_thankyou}" if queue.queue_announcement.queue_thankyou else ";queue-thankyou=")
         output.append(
-            f"queue_reporthold={queue.queue_announcement.queue_reporthold}" if queue.queue_announcement.queue_reporthold else ";queue_reporthold=")
+            f"queue-reporthold={queue.queue_announcement.queue_reporthold}" if queue.queue_announcement.queue_reporthold else ";queue-reporthold=")
         output.append(
-            f"periodic_announce={queue.periodic_announce}" if queue.periodic_announce else ";periodic_announce=")
+            f"periodic-announce={queue.periodic_announce}" if queue.periodic_announce else ";periodic-announce=")
         output.append(
-            f"monitor_format={queue.monitor_format}" if queue.monitor_format else ";monitor_format=")
+            f"monitor-format={queue.monitor_format}" if queue.monitor_format else ";monitor-format=")
         output.append(f"joinempty={queue.joinempty}")
         output.append(f"leavewhenempty={queue.leavewhenempty}")
         output.append(f"ringinuse={queue.ringinuse}")
