@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .models import (
+from core.models import (
     SIPPeer,
     SIPTransport,
     SIPUser,
@@ -12,6 +12,7 @@ from .models import (
     ConfigurationFile,
 )
 
+from core.widgets import PasswordWithToggleInput
 
 def validate_alphanumeric(value):
     if value == "":
@@ -156,7 +157,7 @@ class SIPUserForm(forms.ModelForm):
 
         widgets = {
             # telling Django your password field in the mode is a password input on the template
-            "secret": forms.PasswordInput(render_value=True),
+            "secret": PasswordWithToggleInput(),
         }
 
 
