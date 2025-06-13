@@ -44,7 +44,7 @@ def create_first_routing_table(apps, schema_editor):
     RoutingRecord = apps.get_model("core", "RoutingRecord")
     RoutingRecord.objects.create(
         name="PearlPBX Local Users",
-        prefix="2XX",
+        prefix="_2XX",
         context=local_users_context,
         routing_table=routing_table,
     )
