@@ -51,6 +51,7 @@ class Database:
             logger.error(f"Database connection failed: {e}")
             raise
 
+
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
     def __init__(self, agi: fastagi.FastAGIProtocol):
