@@ -52,15 +52,35 @@ class Database:
             raise
 
     def is_blacklisted(self, caller_id: str, destination: str) -> bool:
+        """Check if a caller ID is blacklisted for a specific destination."""
+
         with self.get_session() as session:
             result = session.execute(
                 text(
-                    "SELECT 1 FROM blacklist WHERE callerid = :caller_id AND destination = :destination and expiration_date > NOW()"
+                    """SELECT 1
+                        FROM blacklist
+                        WHERE callerid = :caller_id
+                        AND (destination = :destination OR destination = '')
+                        AND (expiration_date > NOW() OR expiration_date IS NULL)"""
                 ),
                 {"caller_id": caller_id, "destination": destination},
             )
             return result.scalar() is not None
 
+    def is_whilelisted(self, caller_id: str, destination: str) -> bool:
+        """Check if a caller ID is whitelisted for a specific destination."""
+        with self.get_session() as session:
+            result = session.execute(
+                text(
+                    """SELECT 1
+                        FROM whitelist
+                        WHERE callerid = :caller_id
+                        AND (destination = :destination OR destination = '')
+                        AND (expiration_date > NOW() OR expiration_date IS NULL)"""
+                ),
+                {"caller_id": caller_id, "destination": destination},
+            )
+            return result.scalar() is not None
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -76,6 +96,8 @@ class FastAGIHandler:
         logger.debug(f"Network script: {network_script}")
         if network_script == "blacklist":
             return self.blacklist()
+        elif network_script == "whitelist":
+            return self.whitelist()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -103,6 +125,22 @@ class FastAGIHandler:
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
+    def whitelist(self) -> Deferred:
+        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        logger.debug(
+            f"Handling WHITELIST Caller ID: {caller_id}, Destination: {destination}"
+        )
+        if not caller_id:
+            logger.error("No caller ID provided for whitelist")
+            self.sequence.append(self.agi.setVariable, "WHITELISTED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        whitelisted = db.is_whilelisted(caller_id, destination)
+        self.sequence.append(self.agi.setVariable, "WHITELISTED", "1" if whitelisted else "0")
+        self.sequence.append(self.agi.finish)
+        return self.sequence()
 
 # ---------------- Main Entry Function ----------------
 def agi_entry_function(agi: fastagi.FastAGIProtocol) -> Deferred:
