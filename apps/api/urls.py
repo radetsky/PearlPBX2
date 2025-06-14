@@ -15,5 +15,10 @@ urlpatterns = [
          lists.ListEntryAddView.as_view(), name='lists_entry_add'),  # Add an entry to a specific list
     path('lists/<uuid:pk>/revoke/<uuid:entry_pk>/',
          lists.ListEntryRevokeView.as_view(), name='lists_entry_revoke'),  # Revoke an entry from a specific list
-
+    path('blacklist/', lists.BlackListView.as_view(), name='blacklist'),  # View the blacklist
+    path('blacklist/<uuid:pk>/', lists.BlackListView.as_view(), name='blacklist_delete'),  # Delete an entry from the blacklist
+    path('whitelist/', lists.WhiteListView.as_view(), name='whitelist'),  # View the whitelist
+    path('whitelist/<uuid:pk>/', lists.WhiteListView.as_view(), name='whitelist_delete'),  # Delete an entry from the whitelist
+    path('contacts/', lists.ContactsView.as_view(), name='contacts'),  # View contacts
+    path('contacts/<uuid:pk>/', lists.ContactsView.as_view(), name='contacts_delete'),  # Delete a contact
 ]

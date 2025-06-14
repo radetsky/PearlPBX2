@@ -5,6 +5,7 @@ from django.utils.timezone import now, timedelta
 
 from apps.api.models import CustomListNames, CustomListEntries
 
+from core.models import Blacklist, Whitelist, Contact
 
 class CustomListViewsTestCase(TestCase):
     def setUp(self):
@@ -202,3 +203,233 @@ class ListEntryRevokeViewTests(TestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {'error': 'Entry not found'})
+
+
+class BlackListViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url_list = '/api/v1/blacklist/'
+        self.sample_data = {
+            "callerid": "123456789",
+            "destination": "987654321",
+            "reason": "Spam",
+            "expiration_date": (now() + timedelta(days=7)).isoformat()
+        }
+        self.blacklist_entry = Blacklist.objects.create(**self.sample_data)
+        self.url_detail = f'/api/v1/blacklist/{self.blacklist_entry.id}/'
+
+    def test_get_blacklist(self):
+        response = self.client.get(self.url_list)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        self.assertTrue(any(item['id'] == str(
+            self.blacklist_entry.id) for item in response.json()))
+
+    def test_create_blacklist_entry_success(self):
+        new_data = {
+            "callerid": "555",
+            "destination": "666",
+            "reason": "Test block",
+            "expiration_date": None
+        }
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(new_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['callerid'], new_data['callerid'])
+        self.assertTrue(Blacklist.objects.filter(callerid="555").exists())
+
+    def test_create_blacklist_entry_missing_callerid(self):
+        invalid_data = {
+            "destination": "555",
+            "reason": "Test"
+        }
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(invalid_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'error': 'Missing required fields'})
+
+    def test_create_blacklist_invalid_json(self):
+        response = self.client.post(
+            self.url_list,
+            data='not a json',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'error': 'Invalid JSON'})
+
+    def test_delete_blacklist_entry_success(self):
+        response = self.client.delete(self.url_detail)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'deleted')
+        self.assertFalse(Blacklist.objects.filter(
+            pk=self.blacklist_entry.id).exists())
+
+    def test_delete_blacklist_entry_not_found(self):
+        non_existing_id = uuid.uuid4()
+        response = self.client.delete(f'/api/v1/blacklist/{non_existing_id}/')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'error': 'Blacklist entry not found'})
+
+
+class WhiteListViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url_list = '/api/v1/whitelist/'
+        self.sample_data = {
+            "callerid": "111222333",
+            "destination": "444555666",
+            "reason": "Trusted contact",
+            "expiration_date": (now() + timedelta(days=5)).isoformat()
+        }
+        self.whitelist_entry = Whitelist.objects.create(**self.sample_data)
+        self.url_detail = f'/api/v1/whitelist/{self.whitelist_entry.id}/'
+
+    def test_get_whitelist(self):
+        response = self.client.get(self.url_list)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        self.assertTrue(any(item['id'] == str(
+            self.whitelist_entry.id) for item in response.json()))
+
+    def test_create_whitelist_entry_success(self):
+        new_data = {
+            "callerid": "777888999",
+            "destination": "000111222",
+            "reason": "Allowlist test",
+            "expiration_date": None
+        }
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(new_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['callerid'], new_data['callerid'])
+        self.assertTrue(Whitelist.objects.filter(
+            callerid="777888999").exists())
+
+    def test_create_whitelist_entry_missing_callerid(self):
+        invalid_data = {
+            "destination": "123",
+            "reason": "Missing callerid"
+        }
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(invalid_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'error': 'Missing required fields'})
+
+    def test_create_whitelist_invalid_json(self):
+        response = self.client.post(
+            self.url_list,
+            data='not a json',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'error': 'Invalid JSON'})
+
+    def test_delete_whitelist_entry_success(self):
+        response = self.client.delete(self.url_detail)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'deleted')
+        self.assertFalse(Whitelist.objects.filter(
+            pk=self.whitelist_entry.id).exists())
+
+    def test_delete_whitelist_entry_not_found(self):
+        non_existing_id = uuid.uuid4()
+        response = self.client.delete(f'/api/v1/whitelist/{non_existing_id}/')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {
+                         'error': 'Whitelist entry not found'})
+
+
+class ContactsViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url_list = '/api/v1/contacts/'
+        self.contact = Contact.objects.create(
+            callerid="123456789",
+            name="John Doe",
+            allow_monitor=True
+        )
+        self.url_detail = f'/api/v1/contacts/{self.contact.id}/'
+        self.new_contact_data = {
+            "callerid": "987654321",
+            "name": "Jane Smith",
+            "allow_monitor": False
+        }
+
+    def test_get_contacts_list(self):
+        response = self.client.get(self.url_list)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        self.assertTrue(
+            any(item["callerid"] == self.contact.callerid for item in response.json()))
+
+    def test_create_new_contact_success(self):
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(self.new_contact_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["callerid"], self.new_contact_data["callerid"])
+        self.assertTrue(Contact.objects.filter(
+            callerid=self.new_contact_data["callerid"]).exists())
+
+    def test_update_existing_contact_success(self):
+        update_data = {
+            "callerid": self.contact.callerid,
+            "name": "Updated Name",
+            "allow_monitor": False
+        }
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["name"], "Updated Name")
+        self.assertFalse(data["allow_monitor"])
+        self.assertEqual(data["callerid"], self.contact.callerid)
+
+    def test_create_contact_missing_fields(self):
+        bad_data = {"name": "No Caller ID"}
+        response = self.client.post(
+            self.url_list,
+            data=json.dumps(bad_data),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Missing required fields"})
+
+    def test_create_contact_invalid_json(self):
+        response = self.client.post(
+            self.url_list,
+            data="not a valid json",
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Invalid JSON"})
+
+    def test_delete_contact_success(self):
+        response = self.client.delete(self.url_detail)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "deleted")
+        self.assertFalse(Contact.objects.filter(pk=self.contact.id).exists())
+
+    def test_delete_contact_not_found(self):
+        non_existing_id = uuid.uuid4()
+        response = self.client.delete(f'/api/v1/contacts/{non_existing_id}/')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"error": "Contact not found"})
