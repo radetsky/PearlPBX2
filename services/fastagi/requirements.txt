@@ -1,0 +1,5 @@
+twisted
+git+https://github.com/radetsky/starpy.git
+sqlalchemy 
+psycopg2-binary
+
