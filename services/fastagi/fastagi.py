@@ -82,6 +82,23 @@ class Database:
             )
             return result.scalar() is not None
 
+    def is_custom_listed(self, list_name: str, caller_id: str, destination: str) -> bool:
+        """Check if a caller ID is listed in a custom list for a specific destination."""
+        with self.get_session() as session:
+            result = session.execute(
+                text(
+                    """SELECT 1
+                        FROM custom_list_entries cle, custom_lists_names cln
+                        WHERE cle.callerid = :caller_id
+                        AND (cle.destination = :destination OR cle.destination = '')
+                        AND (cle.expiration_date > NOW() OR cle.expiration_date IS NULL)
+                        AND cln.id = cle.list_name_id
+                        AND cln.name = :list_name"""
+                ),
+                {"caller_id": caller_id, "destination": destination, "list_name": list_name},
+            )
+            return result.scalar() is not None
+
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
     def __init__(self, agi: fastagi.FastAGIProtocol):
@@ -98,6 +115,8 @@ class FastAGIHandler:
             return self.blacklist()
         elif network_script == "whitelist":
             return self.whitelist()
+        elif network_script == "customlist":
+            return self.customlist()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -139,6 +158,24 @@ class FastAGIHandler:
 
         whitelisted = db.is_whilelisted(caller_id, destination)
         self.sequence.append(self.agi.setVariable, "WHITELISTED", "1" if whitelisted else "0")
+        self.sequence.append(self.agi.finish)
+        return self.sequence()
+
+    def customlist(self) -> Deferred:
+        list_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        caller_id = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        destination = self.agi.variables.get(b"agi_arg_3", b"").decode("utf-8")
+        logger.debug(
+            f"Handling CUSTOM LIST Caller ID: {caller_id}, Destination: {destination}, List Name: {list_name}"
+        )
+        if not caller_id or not list_name:
+            logger.error("No caller ID or list name provided for custom list")
+            self.sequence.append(self.agi.setVariable, "CUSTOM_LISTED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        listed = db.is_custom_listed(list_name, caller_id, destination)
+        self.sequence.append(self.agi.setVariable, "CUSTOM_LISTED", "1" if listed else "0")
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
