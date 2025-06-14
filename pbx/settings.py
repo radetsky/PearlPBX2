@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "core",
+    "apps.api",
     "pbx.apps.MyAdminConfig",  # replaces 'django.contrib.admin'
 ]
 

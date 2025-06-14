@@ -1451,7 +1451,9 @@ class Blacklist(AuditFields):
         max_length=64,
         help_text="Destination number where calls must be blocked. Default="" for whole system blocking.",
         verbose_name="Destination",
-        default="blackhole",
+        default="",
+        blank=True,
+        null=False
     )
     reason = models.CharField(
         max_length=64,
@@ -1475,29 +1477,45 @@ class Blacklist(AuditFields):
 
 
 class Whitelist(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
         unique=True,
         help_text="Caller ID to allow",
         verbose_name="Caller ID",
     )
-    description = models.CharField(
+    destination = models.CharField(
         max_length=64,
-        help_text="Description of the caller ID",
-        verbose_name="Description",
+        help_text="Destination number where calls must be allowed. Default="" for whole system allowing.",
+        verbose_name="Destination",
+        default="",
+        blank=True,
+        null=False
+
     )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+    reason = models.CharField(
+        max_length=64,
+        help_text="Reason for allowing the caller ID",
+        verbose_name="Reason",
+        default=""
+    )
+    expiration_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Expiration date for the whitelist entry. If not set, the entry is permanent.",
+        verbose_name="Expiration Date",
+    )
 
     class Meta:
         db_table = "whitelist"
         verbose_name_plural = "18. Whitelist"
 
     def __str__(self):
-        return f"{self.callerid} - {self.description}"
+        return f"{self.callerid} - {self.reason}"
 
 
-class Contact(models.Model):
+class Contact(AuditFields):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
         unique=True,
@@ -1512,8 +1530,6 @@ class Contact(models.Model):
         help_text="Allow to monitor the call",
         verbose_name="Allow monitor",
     )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "contacts"
