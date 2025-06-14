@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import django.db.models.deletion as deletion
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
@@ -18,6 +20,27 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class AuditFields(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_created'
+    )
+    modified_at = models.DateTimeField(auto_now=True)
+    modified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_modified'
+    )
+
+    class Meta:
+        abstract = True
 
 class SIPTransport(models.Model):
     PROTOCOL_CHOICES = [
@@ -1416,27 +1439,39 @@ class RoutingRecord(models.Model):
         verbose_name_plural = "16. Routing Records"
 
 
-class Blacklist(models.Model):
+class Blacklist(AuditFields):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
         unique=True,
         help_text="Caller ID to block",
         verbose_name="Caller ID",
     )
-    description = models.CharField(
+    destination = models.CharField(
         max_length=64,
-        help_text="Description of the caller ID",
-        verbose_name="Description",
+        help_text="Destination number where calls must be blocked. Default="" for whole system blocking.",
+        verbose_name="Destination",
+        default="blackhole",
     )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+    reason = models.CharField(
+        max_length=64,
+        help_text="Reason for blocking the caller ID",
+        verbose_name="Reason",
+        default=""
+    )
+    expiration_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Expiration date for the blacklist entry. If not set, the entry is permanent.",
+        verbose_name="Expiration Date",
+    )
 
     class Meta:
         db_table = "blacklist"
         verbose_name_plural = "17. Blacklist"
 
     def __str__(self):
-        return f"{self.callerid} - {self.description}"
+        return f"{self.callerid} - {self.reason}"
 
 
 class Whitelist(models.Model):

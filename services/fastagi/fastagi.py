@@ -51,6 +51,16 @@ class Database:
             logger.error(f"Database connection failed: {e}")
             raise
 
+    def is_blacklisted(self, caller_id: str, destination: str) -> bool:
+        with self.get_session() as session:
+            result = session.execute(
+                text(
+                    "SELECT 1 FROM blacklist WHERE callerid = :caller_id AND destination = :destination and expiration_date > NOW()"
+                ),
+                {"caller_id": caller_id, "destination": destination},
+            )
+            return result.scalar() is not None
+
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -60,6 +70,13 @@ class FastAGIHandler:
 
     def build_sequence(self) -> Deferred:
         logger.debug("Building AGI command sequence")
+        network_script = self.agi.variables.get(b"agi_network_script", b"").decode(
+            "utf-8"
+        )
+        logger.debug(f"Network script: {network_script}")
+        if network_script == "blacklist":
+            return self.blacklist()
+
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
         self.sequence.append(self.agi.finish)
@@ -68,6 +85,23 @@ class FastAGIHandler:
     def handle_failure(self, reason) -> None:
         logger.error("AGI error: %s", reason.getTraceback())
         self.agi.finish()
+
+    def blacklist(self) -> Deferred:
+        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        logger.debug(
+            f"Handling BLACKLIST Caller ID: {caller_id}, Destination: {destination}"
+        )
+        if not caller_id:
+            logger.error("No caller ID provided for blacklist")
+            self.sequence.append(self.agi.setVariable, "BLACKLISTED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        blacklisted = db.is_blacklisted(caller_id, destination)
+        self.sequence.append(self.agi.setVariable, "BLACKLISTED", "1" if blacklisted else "0")
+        self.sequence.append(self.agi.finish)
+        return self.sequence()
 
 
 # ---------------- Main Entry Function ----------------
