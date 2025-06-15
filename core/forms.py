@@ -184,11 +184,11 @@ class SIPPeerForm(forms.ModelForm):
         empty_label=None,
     )
 
-    context = DialplanContextChoiceField(
-        label="Context",
+    routing_table = RoutingTableChoiceField(
+        label="Routing Table",
         required=True,
-        help_text="Select context for the peer",
-        queryset=DialplanContext.objects.all(),
+        help_text="Select routing table for the peer",
+        queryset=RoutingTable.objects.all(),
         empty_label=None,
     )
 
@@ -196,7 +196,7 @@ class SIPPeerForm(forms.ModelForm):
         model = SIPPeer
         fields = "__all__"
 
-        widgets = {"secret": forms.PasswordInput(render_value=True)}
+        widgets = {"secret": PasswordWithToggleInput()}
 
 
 class DialplanExtensionForm(forms.ModelForm):

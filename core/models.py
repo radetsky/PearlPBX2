@@ -462,10 +462,10 @@ class SIPPeer(models.Model):
 
     host_port = models.CharField(
         max_length=256,
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
         default="",
-        help_text="Host:Port of the peer. Port is optional.",
+        help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
         verbose_name="Host:Port",
     )
 
@@ -492,12 +492,12 @@ class SIPPeer(models.Model):
         blank=False,
     )
 
-    context = models.ForeignKey(
-        DialplanContext,
-        related_name="sip_peer_context",
+    routing_table = models.ForeignKey(
+        RoutingTable,
+        related_name="sip_peer_routing_table",
         on_delete=deletion.PROTECT,
         null=True,
-        blank=False,
+        blank=True,
     )
 
     class Meta:
