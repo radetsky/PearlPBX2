@@ -30,11 +30,11 @@ class Database:
         self.Session = scoped_session(sessionmaker(bind=self.engine))
 
     def get_db_url(self):
-        user = os.environ.get("PGUSER", "user")
-        password = os.environ.get("PGPASS", "pass")
-        host = os.environ.get("PGHOST", "localhost")
-        port = os.environ.get("PGPORT", "5432")
-        database = os.environ.get("PGBASE", "postgres")
+        user = os.environ.get("DB_USER", "user")
+        password = os.environ.get("DB_PASS", "pass")
+        host = os.environ.get("DB_HOST", "localhost")
+        port = os.environ.get("DB_PORT", "5432")
+        database = os.environ.get("DB_NAME", "postgres")
         return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
     def get_session(self):
