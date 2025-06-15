@@ -1,0 +1,24 @@
+from django.urls import path
+from apps.api.views import lists
+
+urlpatterns = [
+    path('lists/', lists.ListsView.as_view(), name='lists_list'), # List all lists
+    path('lists/add/', lists.ListAddView.as_view(), name='lists_add'), # Add a new list
+    path('lists/update/<uuid:pk>/',
+         lists.ListUpdateView.as_view(), name='lists_update'), # Update the name of an existing list
+    path('lists/revoke/<uuid:pk>/', lists.ListRevokeView.as_view(), # Revoke a list
+         name='lists_revoke'),
+    # List entries in a specific list
+    path('lists/<uuid:pk>/',
+         lists.ListEntriesView.as_view(), name='lists_page'),  # View a specific list
+    path('lists/<uuid:pk>/add/',
+         lists.ListEntryAddView.as_view(), name='lists_entry_add'),  # Add an entry to a specific list
+    path('lists/<uuid:pk>/revoke/<uuid:entry_pk>/',
+         lists.ListEntryRevokeView.as_view(), name='lists_entry_revoke'),  # Revoke an entry from a specific list
+    path('blacklist/', lists.BlackListView.as_view(), name='blacklist'),  # View the blacklist
+    path('blacklist/<uuid:pk>/', lists.BlackListView.as_view(), name='blacklist_delete'),  # Delete an entry from the blacklist
+    path('whitelist/', lists.WhiteListView.as_view(), name='whitelist'),  # View the whitelist
+    path('whitelist/<uuid:pk>/', lists.WhiteListView.as_view(), name='whitelist_delete'),  # Delete an entry from the whitelist
+    path('contacts/', lists.ContactsView.as_view(), name='contacts'),  # View contacts
+    path('contacts/<uuid:pk>/', lists.ContactsView.as_view(), name='contacts_delete'),  # Delete a contact
+]
