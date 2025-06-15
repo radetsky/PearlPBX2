@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Callable, Generator
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi
 
 from sqlalchemy.orm import declarative_base
@@ -213,7 +213,7 @@ class FastAGIHandler:
         for attempt in range(1, max_attempts + 1):
             peer = random.choice(peers)
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute(f"PJSIP/{peer}/{extension}", "120", "rTt")
+            yield self.agi.execute("DIAL",f"PJSIP/{peer}/{extension}", "120", "rTt")
             status = yield self.agi.getVariable("DIALSTATUS")
             status = status.decode() if isinstance(status, bytes) else status
             logger.info(f"DIALSTATUS = {status}")
@@ -221,7 +221,7 @@ class FastAGIHandler:
                 logger.info(f"Successfully dialed {peer}/{extension} on attempt {attempt}")
                 self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "1")
                 self.sequence.append(self.agi.finish)
-                returnValue(status)
+                return(status)
             if status == "BUSY":
                 logger.warning(f"Peer {peer} is busy, retrying...")
                 yield self.async_sleep(10)  # Wait before retrying
@@ -234,7 +234,7 @@ class FastAGIHandler:
         logger.error(f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts")
         self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
         self.sequence.append(self.agi.finish)
-        returnValue(None)
+        return(None)
 
     def dial_trunk_group(self) -> Deferred:
         trunk_group_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
