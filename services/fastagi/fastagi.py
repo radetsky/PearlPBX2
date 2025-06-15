@@ -1,22 +1,23 @@
 """
-Modern FastAGI server using Twisted and StarPy.
+FastAGI server using Twisted and StarPy.
 """
 
 import os
 import logging
 import time
-from typing import Callable
+from typing import Callable, Generator
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from starpy import fastagi
 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
+import random
 
 # ---------------- Logging Setup ----------------
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("fastagi.modern")
+logger = logging.getLogger("PBX.FastAGI")
 fastagi.log.setLevel(logging.DEBUG)
 
 # ---------- Database Setup ----------
@@ -99,6 +100,21 @@ class Database:
             )
             return result.scalar() is not None
 
+    def get_trunk_group_entries(self, trunk_group_name: str) -> list:
+        """Get entries for a specific trunk group."""
+        with self.get_session() as session:
+            result = session.execute(
+                text(
+                    """SELECT s.name
+                        FROM core_sippeer s
+                        JOIN core_trunkgroup_sip_peers tsp ON s.id = tsp.sippeer_id
+                        JOIN core_trunkgroup tg ON tg.id = tsp.trunkgroup_id
+                        WHERE tg.name = :trunk_group_name;"""
+                ),
+                {"trunk_group_name": trunk_group_name},
+            )
+            return [row[0] for row in result.fetchall()]
+
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
     def __init__(self, agi: fastagi.FastAGIProtocol):
@@ -117,6 +133,8 @@ class FastAGIHandler:
             return self.whitelist()
         elif network_script == "customlist":
             return self.customlist()
+        elif network_script == "dial-trunk-group":
+            return self.dial_trunk_group()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -178,6 +196,68 @@ class FastAGIHandler:
         self.sequence.append(self.agi.setVariable, "CUSTOM_LISTED", "1" if listed else "0")
         self.sequence.append(self.agi.finish)
         return self.sequence()
+
+    def async_sleep(self, seconds: float) -> Deferred:
+        """
+        Asynchronous sleep function to yield control back to the reactor.
+        """
+        d = Deferred()
+        reactor.callLater(seconds, d.callback, None)
+        return d
+
+    @inlineCallbacks
+    def dial_with_retry(self, peers: list[str], extension: str, max_attempts: int) -> Generator[Deferred, None, None]:
+        """
+        Dial each peer with the specified extension, retrying up to max_attempts.
+        """
+        for attempt in range(1, max_attempts + 1):
+            peer = random.choice(peers)
+            logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
+            yield self.agi.execute(f"PJSIP/{peer}/{extension}", "120", "rTt")
+            status = yield self.agi.getVariable("DIALSTATUS")
+            status = status.decode() if isinstance(status, bytes) else status
+            logger.info(f"DIALSTATUS = {status}")
+            if status == "ANSWER":
+                logger.info(f"Successfully dialed {peer}/{extension} on attempt {attempt}")
+                self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "1")
+                self.sequence.append(self.agi.finish)
+                returnValue(status)
+            if status == "BUSY":
+                logger.warning(f"Peer {peer} is busy, retrying...")
+                yield self.async_sleep(10)  # Wait before retrying
+            elif status in ["NOANSWER", "CHANUNAVAIL", "CONGESTION"]:
+                logger.warning(f"Peer {peer} returned status {status}, retrying...")
+                yield self.async_sleep(5)  # Wait before retrying
+            else:
+                yield self.async_sleep(2)  # Short wait for unexpected statuses
+                logger.error(f"Unexpected DIALSTATUS {status} for peer {peer}, retrying...")
+        logger.error(f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts")
+        self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
+        self.sequence.append(self.agi.finish)
+        returnValue(None)
+
+    def dial_trunk_group(self) -> Deferred:
+        trunk_group_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        extension = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        max_attempts = self.agi.variables.get(b"agi_arg_3", b"5").decode("utf-8")
+        logger.debug(
+            f"Handling DIAL TRUNK GROUP Trunk Group: {trunk_group_name}, Extension: {extension}, Max Attempts: {max_attempts}"
+        )
+        if not trunk_group_name or not extension:
+            logger.error("No trunk group name or extension provided for dial trunk group")
+            self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+        trunk_group_entries = db.get_trunk_group_entries(trunk_group_name)
+        if not trunk_group_entries:
+            logger.error(f"No entries found for trunk group: {trunk_group_name}")
+            self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        return self.dial_with_retry(trunk_group_entries, extension, int(max_attempts))
+
+
 
 # ---------------- Main Entry Function ----------------
 def agi_entry_function(agi: fastagi.FastAGIProtocol) -> Deferred:
