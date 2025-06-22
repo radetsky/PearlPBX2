@@ -105,6 +105,9 @@ def __section_trunk_aor(trunk: SIPPeer):
     result += f"[{trunk.name}]\n"
     result += "type=aor\n"
     result += f"contact=sip:{trunk.host_port}\n"
+    if trunk.registrationHere:
+        result += "max_contacts=1\n"
+        result += "remove_existing=yes\n"
     result += "\n"
 
     return result
