@@ -104,7 +104,9 @@ def __section_trunk_aor(trunk: SIPPeer):
     result = "; AOR\n"
     result += f"[{trunk.name}]\n"
     result += "type=aor\n"
-    result += f"contact=sip:{trunk.host_port}\n"
+    result += "qualify_frequency=30\n"
+    if trunk.host_port:
+        result += f"contact=sip:{trunk.username}@{trunk.host_port}\n"
     if trunk.registrationHere:
         result += "max_contacts=1\n"
         result += "remove_existing=yes\n"
@@ -187,6 +189,7 @@ def make_pjsip_conf_users_aor_template():
     result += "[user-aor-template](!)\n"
     settings = Settings.objects.first()
     result += settings.user_aor_template
+    result += "qualify_frequency=30\n"
     result += "\n\n"
     return result
 
