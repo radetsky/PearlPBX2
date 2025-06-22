@@ -213,7 +213,7 @@ class FastAGIHandler:
         for attempt in range(1, max_attempts + 1):
             peer = random.choice(peers)
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL",f"PJSIP/{peer}/{extension}", "120", "rTt")
+            yield self.agi.execute("DIAL",f"PJSIP/{extension}@{peer}", "120", "rTt")
             status = yield self.agi.getVariable("DIALSTATUS")
             status = status.decode() if isinstance(status, bytes) else status
             logger.info(f"DIALSTATUS = {status}")
