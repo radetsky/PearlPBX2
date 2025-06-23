@@ -213,27 +213,27 @@ class FastAGIHandler:
         for attempt in range(1, max_attempts + 1):
             peer = random.choice(peers)
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL",f"PJSIP/{extension}@{peer}", "120", "rTt")
+            yield self.agi.execute("DIAL",f"PJSIP/{extension}@{peer}", "120", "Tt")
             status = yield self.agi.getVariable("DIALSTATUS")
             status = status.decode() if isinstance(status, bytes) else status
             logger.info(f"DIALSTATUS = {status}")
             if status == "ANSWER":
                 logger.info(f"Successfully dialed {peer}/{extension} on attempt {attempt}")
-                self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "1")
-                self.sequence.append(self.agi.finish)
+                yield self.agi.setVariable ("TRUNK_GROUP_DIALLED", "1")
+                yield self.agi.finish()
                 return(status)
             if status == "BUSY":
                 logger.warning(f"Peer {peer} is busy, retrying...")
                 yield self.async_sleep(10)  # Wait before retrying
             elif status in ["NOANSWER", "CHANUNAVAIL", "CONGESTION"]:
                 logger.warning(f"Peer {peer} returned status {status}, retrying...")
-                yield self.async_sleep(5)  # Wait before retrying
+                yield self.async_sleep(1)  # Wait before retrying
             else:
                 yield self.async_sleep(2)  # Short wait for unexpected statuses
                 logger.error(f"Unexpected DIALSTATUS {status} for peer {peer}, retrying...")
         logger.error(f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts")
-        self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
-        self.sequence.append(self.agi.finish)
+        yield self.agi.setVariable ("TRUNK_GROUP_DIALLED", "0")
+        yield self.agi.finish()
         return(None)
 
     def dial_trunk_group(self) -> Deferred:
