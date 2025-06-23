@@ -7,15 +7,34 @@ class PasswordWithToggleInput(forms.PasswordInput):
         <div style="position: relative;">
             <input type="password" name="{name}" value="{value}" id="id_{name}" {attrs}/>
             <button type="button" onclick="togglePassword_{name}()" style="position: absolute; right: 0; top: 0;">👁</button>
+            <button type="button" onclick="generatePassword_{name}()" style="position: absolute; right: 50; top: 0;">🔄</button>
         </div>
         <script>
         function togglePassword_{name}() {{
             const input = document.getElementById("id_{name}");
             if (input.type === "password") {{
                 input.type = "text";
+                setTimeout(() => {{
+                    input.type = "password";
+                }}, 3000);  // Auto-hide after 3 seconds
             }} else {{
                 input.type = "password";
             }}
+        }}
+        function generatePassword_{name}() {{
+            const input = document.getElementById("id_{name}");
+            const length = 12;  // Length of the generated password
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+            let password = "";
+            for (let i = 0; i < length; i++) {{
+                const randomIndex = Math.floor(Math.random() * charset.length);
+                password += charset[randomIndex];
+            }}
+            input.value = password;
+            input.type = "text";
+            setTimeout(() => {{
+                input.type = "password";
+            }}, 3000);  // Auto-hide after 3 seconds
         }}
         </script>
     '''
