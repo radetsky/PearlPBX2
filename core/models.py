@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import django.db.models.deletion as deletion
 from django.db import models, transaction
+from django.db.models import Q, F, CheckConstraint
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from django.conf import settings
@@ -1525,12 +1526,6 @@ class Contact(AuditFields):
     name = models.CharField(
         max_length=64, help_text="Name of the caller ID", verbose_name="Name"
     )
-    allow_monitor = models.BooleanField(
-        default=False,
-        help_text="Allow to monitor the call",
-        verbose_name="Allow monitor",
-    )
-
     class Meta:
         db_table = "contacts"
         verbose_name_plural = "19. Contacts"
@@ -1600,3 +1595,120 @@ class SoundFile(models.Model):
     class Meta:
         db_table = "sound_files"
         verbose_name_plural = "20. Sound files"
+
+class Monitor(models.Model):
+    callerid = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=True,
+        help_text="Caller ID to monitor. Blank for all calls.",
+        verbose_name="Caller ID",
+    )
+    destination = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=True,
+        help_text="Destination to monitor. Blank for all destinations.",
+        verbose_name="Destination",
+    )
+    force_enable_monitor = models.BooleanField(
+        default=False,
+        help_text="Force enable monitor for this caller ID and destination",
+        verbose_name="Force Enable Monitor",
+    )
+    force_disable_monitor = models.BooleanField(
+        default=False,
+        help_text="Force disable monitor for this caller ID and destination",
+        verbose_name="Force Disable Monitor",
+    )
+    created = models.DateTimeField(auto_now_add=True, verbose_name="Created")
+    modified = models.DateTimeField(auto_now=True, verbose_name="Modified")
+
+    class Meta:
+        constraints = [
+            # Один з callerid або destination має бути заповнений
+            CheckConstraint(
+                check=~Q(callerid="") | ~Q(destination=""),
+                name="callerid_or_destination_required"
+            ),
+            # force_enable_monitor і force_disable_monitor не можуть бути однаковими
+            CheckConstraint(
+                check=~Q(force_enable_monitor=F('force_disable_monitor')),
+                name="force_enable_not_equal_disable"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Monitor(\"{self.callerid}\" -> \"{self.destination}\" = <{self.force_enable_monitor}, {self.force_disable_monitor}>)"
+
+class MonitorFilenames(models.Model):
+    """Represent a mapping monitor filenames to CDR UniqueID."""
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    src = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=False,
+        help_text="The caller ID associated with the monitor recording",
+    )
+    dst = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=False,
+        help_text="The destination number associated with the monitor recording",
+    )
+    filename = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="The filename of the monitor recording",
+        verbose_name="Monitor Filename",
+    )
+    cdr_uniqueid = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="The unique ID of the CDR associated with this monitor recording",
+        verbose_name="CDR UniqueID",
+    )
+    created = models.DateTimeField(auto_now_add=True, verbose_name="Created")
+    requested_by_api = models.BooleanField(
+        default=False,
+        help_text="Indicates if the filename is requested by API usage",
+        verbose_name="Requested by API",
+    )
+    used_by_system = models.BooleanField(
+        default=False,
+        help_text="Indicates if the filename is used by the system",
+        verbose_name="Used by System",
+    )
+    # Automatically update the modified timestamp on save
+    modified = models.DateTimeField(auto_now=True, verbose_name="Modified")
+
+    class Meta:
+        db_table = "core_monitor_filenames"
+        indexes = [
+            models.Index(fields=["src", "dst"], name="idx_src_dst"),
+            models.Index(fields=["cdr_uniqueid"], name="idx_cdr_uniqueid"),
+            models.Index(fields=["created"], name="idx_created"),
+            models.Index(fields=["filename"], name="idx_filename"),
+        ]
+
+    def monitor_filename(self) -> str:
+        """
+        Returns the monitor filename in the format:
+        <YYYY>/<MM>/<DD>/<src>_<dst>_<id>
+        YYYYMMDD is the date from created field.
+        src is the caller ID, dst is the destination number, and id is the UUID.
+        This is used to generate a unique filename for the monitor recording.
+        The format is designed to be unique and easily identifiable.
+        Example: "2023/10/01/1234567890_0987654321_123e4567-e89b-12d3-a456-426614174000"
+        """
+        date_str = self.created.strftime("%Y/%m/%d")
+        return f"{date_str}/{self.src}_{self.dst}_{self.id}"
+
+    def __str__(self) -> str:
+        return str(self.monitor_filename())
