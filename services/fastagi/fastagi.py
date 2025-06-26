@@ -27,6 +27,13 @@ fastagi.log.setLevel(logging.DEBUG)
 # ---------- Database Setup ----------
 Base = declarative_base()
 
+def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"): 
+    """ Create the directory for the file if not exists
+    """
+    dir_path = os.path.dirname(filename)
+    full_path = os.path.join(base_dir, dir_path)    
+    os.makedirs(full_path, exist_ok=True)
+
 
 class Database:
     def __init__(self):
@@ -145,8 +152,8 @@ class Database:
             else:
                 session.execute(
                     text(
-                        """INSERT INTO core_monitor_filenames (id, src, dst, filename, cdr_uniqueid, used_by_system)
-                        VALUES (:id, :src, :dst, :filename, :cdr_uniqueid, :used_by_system)
+                        """INSERT INTO core_monitor_filenames (id, src, dst, filename, cdr_uniqueid, used_by_system, created, modified, requested_by_api)
+                        VALUES (:id, :src, :dst, :filename, :cdr_uniqueid, :used_by_system, now(), now(), 'f')
                         ON CONFLICT (cdr_uniqueid) DO NOTHING"""
                     ),
                     {"id": uuid_str, "src": src, "dst": dst, "filename": filename, "cdr_uniqueid": cdr_uniqueid, "used_by_system": False},
@@ -170,7 +177,7 @@ class Database:
                 global_monitor = True
 
             is_monitor_enabled = session.execute(
-                text("""SELECT force_enabled_monitor, force_disabled_monitor
+                text("""SELECT force_enable_monitor, force_disable_monitor
                         FROM core_monitor
                         WHERE callerid = :caller_id AND destination = :destination LIMIT 1"""),
                 {"caller_id": caller_id, "destination": destination},
@@ -242,10 +249,13 @@ class FastAGIHandler:
         monitor_status = db.get_monitor_status(caller_id, destination)
         if monitor_status:
             monitor_filename = db.get_monitor_filename(caller_id, destination, unique_id) # already inserted to the database
+            mkdir_p(f'{monitor_filename}.wav') # Check and create the directory YYYY/MM/DD
             self.sequence.append(self.agi.setVariable, "MIXMONITOR", "1")
-            self.sequence.append(self.agi.execute, "MIXMONITOR", monitor_filename, "a")
+            self.sequence.append(self.agi.execute, "MIXMONITOR", f'{monitor_filename}.wav', "a")
+            self.sequence.append(self.agi.finish)
         else:
             self.sequence.append(self.agi.setVariable, "MIXMONITOR", "0")
+            self.sequence.append(self.agi.finish)
 
         return self.sequence()
 
