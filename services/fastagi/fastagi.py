@@ -5,7 +5,11 @@ FastAGI server using Twisted and StarPy.
 import os
 import logging
 import time
-from typing import Callable, Generator
+import uuid
+
+from datetime import datetime
+
+from typing import Callable, Generator, Union
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi
@@ -115,6 +119,76 @@ class Database:
             )
             return [row[0] for row in result.fetchall()]
 
+    def get_monitor_filename(self, src: str, dst: str, cdr_uniqueid: str) -> str:
+        """Generate a unique monitor filename based on current date + UUIDv4."""
+        now = datetime.now()
+        date_path = now.strftime("%Y/%m/%d")
+        uuid_str = str(uuid.uuid4())
+        filename = f"{date_path}/{src}_{dst}_{uuid_str}"
+        with self.get_session() as session:
+            # Check if the filename already exists in the database
+            existing_filename = session.execute(
+                text("""SELECT filename FROM core_monitor_filenames
+                        WHERE src = :src AND dst = :dst
+                        AND requested_by_api
+                        AND not used_by_system order by id limit 1"""),
+                {"src": src, "dst": dst},
+            ).scalar()
+            if existing_filename:
+                logger.info(f"Monitor filename already exists for src: {src}, dst: {dst}. Using existing filename: {existing_filename}")
+                session.execute(text("""UPDATE core_monitor_filenames
+                                SET used_by_system = TRUE, cdr_uniqueid = :cdr_uniqueid
+                                WHERE filename = :filename"""),
+                                {"filename": existing_filename, "cdr_uniqueid": cdr_uniqueid})
+                session.commit()
+                return existing_filename
+            else:
+                session.execute(
+                    text(
+                        """INSERT INTO core_monitor_filenames (id, src, dst, filename, cdr_uniqueid, used_by_system)
+                        VALUES (:id, :src, :dst, :filename, :cdr_uniqueid, :used_by_system)
+                        ON CONFLICT (cdr_uniqueid) DO NOTHING"""
+                    ),
+                    {"id": uuid_str, "src": src, "dst": dst, "filename": filename, "cdr_uniqueid": cdr_uniqueid, "used_by_system": False},
+                )
+                session.commit()
+        logger.info(f"Generated monitor filename: {filename} for Asterisk Unique ID: {cdr_uniqueid}")
+        return filename
+
+    def get_monitor_status(self, caller_id: str, destination: str) -> bool:
+        """Get the monitor filename:
+        - check the global settings for monitor status,
+        - check the Monitor table for a record matching the caller ID and destination
+        """
+
+        with self.get_session() as session:
+            result = session.execute(text("select allow_monitor from core_settings limit 1"))
+            global_monitor = result.scalar()
+            if global_monitor is not True:
+                global_monitor = False
+            else:
+                global_monitor = True
+
+            is_monitor_enabled = session.execute(
+                text("""SELECT force_enabled_monitor, force_disabled_monitor
+                        FROM core_monitor
+                        WHERE callerid = :caller_id AND destination = :destination LIMIT 1"""),
+                {"caller_id": caller_id, "destination": destination},
+            )
+            row = is_monitor_enabled.fetchone()
+            if not row:
+                logger.warning(f"No monitor settings found for caller ID: {caller_id}, destination: {destination}")
+                return global_monitor
+
+            if row[0] is True:
+                logger.info(f"Monitor is force enabled for caller ID: {caller_id}, destination: {destination}")
+                return True
+            elif row[1] is True:
+                logger.info(f"Monitor is force disabled for caller ID: {caller_id}, destination: {destination}")
+                return False
+
+            return global_monitor
+
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
     def __init__(self, agi: fastagi.FastAGIProtocol):
@@ -135,6 +209,8 @@ class FastAGIHandler:
             return self.customlist()
         elif network_script == "dial-trunk-group":
             return self.dial_trunk_group()
+        elif network_script == "mixmonitor":
+            return self.mixmonitor()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -144,6 +220,34 @@ class FastAGIHandler:
     def handle_failure(self, reason) -> None:
         logger.error("AGI error: %s", reason.getTraceback())
         self.agi.finish()
+
+    def mixmonitor(self) -> Deferred:
+        """
+        Decide whether to start a MixMonitor based on the:
+        - AGI variables,
+        - parameters,
+        - status "Monitor" in the model
+        - existence of record in Monitor table
+        - allow monitor on the global settings.
+        """
+        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        unique_id = self.agi.variables.get(b"agi_uniqueid", b"").decode("utf-8")
+        if not caller_id or not destination or not unique_id:
+            logger.error("Missing parameters for MixMonitor")
+            self.sequence.append(self.agi.setVariable, "MIXMONITOR", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        monitor_status = db.get_monitor_status(caller_id, destination)
+        if monitor_status:
+            monitor_filename = db.get_monitor_filename(caller_id, destination, unique_id) # already inserted to the database
+            self.sequence.append(self.agi.setVariable, "MIXMONITOR", "1")
+            self.sequence.append(self.agi.execute, "MIXMONITOR", monitor_filename, "a")
+        else:
+            self.sequence.append(self.agi.setVariable, "MIXMONITOR", "0")
+
+        return self.sequence()
 
     def blacklist(self) -> Deferred:
         caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
