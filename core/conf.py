@@ -129,6 +129,12 @@ def __section_trunk_endpoint(trunk: SIPPeer):
     if trunk.registrationHere or not trunk.registrationThere:
         result += f"auth={trunk.name}\n"
 
+    if trunk.nat:
+        result += "media_use_received_transport=yes\n"
+        result += "rtp_symmetric=yes\n"
+        result += "rewrite_contact=yes\n"
+        result += "force_rport=yes\n"
+
     result += f"aors={trunk.name}\n"
     result += "\n"
 
@@ -236,10 +242,15 @@ def make_pjsip_conf_users():
         result += "; " + user.name + "\n"
         result += f"[{user.username}](user-template)\n"
         result += f"transport={user.transport.name}\n"
-        result += f"auth = {user.username}\n"
-        result += f"aors = {user.username}\n"
-        result += f"callerid = {user.name} <{user.extension}>\n"
-        result += f"context = {user.routing_table.name}\n"
+        result += f"auth={user.username}\n"
+        result += f"aors={user.username}\n"
+        result += f"callerid={user.name} <{user.extension}>\n"
+        result += f"context={user.routing_table.name}\n"
+        if user.nat:
+            result += "media_use_received_transport=yes\n"
+            result += "rtp_symmetric=yes\n"
+            result += "rewrite_contact=yes\n"
+            result += "force_rport=yes\n"
         result += user.custom_settings + "\n\n"
 
         result += f"[{user.username}](user-auth-template)\n"
