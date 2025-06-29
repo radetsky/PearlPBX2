@@ -25,6 +25,26 @@ Wait(1);
 Echo();
 Hangup();
 """)
+    Extension.objects.create(
+        context=context,
+        ext="131",
+        dialplan="""Answer();
+Set(CHANNEL_NAME=${CHANNEL(name)});
+Set(ENDPOINT_NAME=${CUT(CHANNEL_NAME,-,1)});
+UnPauseQueueMember(,${ENDPOINT_NAME});
+Playback(agent-loginok);
+Hangup();
+""")
+    Extension.objects.create(
+        context=context,
+        ext="132",
+        dialplan="""Answer();
+Set(CHANNEL_NAME=${CHANNEL(name)});
+Set(ENDPOINT_NAME=${CUT(CHANNEL_NAME,-,1)});
+PauseQueueMember(,${ENDPOINT_NAME});
+Playback(agent-loggedoff);
+Hangup();
+""")
     create_routing_record(apps, schema_editor)
 
 def create_routing_record(apps, schema_editor):
