@@ -82,6 +82,11 @@ class SIPUserForm(forms.ModelForm):
         queryset=SIPTransport.objects.all(),
         empty_label=None,
     )
+    nat = forms.BooleanField(
+        label="NAT",
+        required=False,
+        help_text="Enable NAT for the user. Use only if you are sure that your user is behind NAT.",
+    )
     routing_table = RoutingTableChoiceField(
         label="Routing Table",
         required=True,
@@ -144,6 +149,7 @@ class SIPUserForm(forms.ModelForm):
             "username",
             "secret",
             "transport",
+            "nat",
             "extension",
             "routing_table",
             "telephone_type",
