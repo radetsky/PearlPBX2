@@ -248,6 +248,11 @@ class SIPUser(models.Model):
         null=True,
         blank=False,
     )
+    nat = models.BooleanField(
+        default=False,
+        help_text="Enable NAT traversal for this peer",
+        verbose_name="NAT",
+    )
     extension = models.CharField(
         max_length=32,
         unique=True,
@@ -256,7 +261,6 @@ class SIPUser(models.Model):
         help_text="Easy way to setup internal extension for the user",
         verbose_name="Extension",
     )
-
     routing_table = models.ForeignKey(
         RoutingTable,
         related_name="sip_user_routing_table",
@@ -264,7 +268,6 @@ class SIPUser(models.Model):
         null=True,
         blank=True,
     )
-
     telephone_type = models.CharField(
         max_length=32,
         unique=False,
@@ -295,7 +298,6 @@ class SIPUser(models.Model):
         help_text="Integration with external services",
         verbose_name="Integration",
     )
-
     allowed_extension = models.CharField(
         max_length=32,
         unique=False,
@@ -305,7 +307,6 @@ class SIPUser(models.Model):
         help_text="Only one allowed extension for the user",
         verbose_name="Allowed extension",
     )
-
     custom_settings = models.TextField(
         null=True,
         blank=False,
@@ -320,7 +321,6 @@ class SIPUser(models.Model):
         help_text="Custom user [auth] section",
         verbose_name="Auth Settings",
     )
-
     custom_aor_settings = models.TextField(
         null=True,
         blank=False,
@@ -328,7 +328,6 @@ class SIPUser(models.Model):
         help_text="Custom user [aor] section",
         verbose_name="AOR Settings",
     )
-
     custom_extension = models.TextField(
         null=True,
         blank=False,
@@ -336,7 +335,6 @@ class SIPUser(models.Model):
         help_text="Custom user extension section for incoming calls",
         verbose_name="Extension Settings",
     )
-
     # Here we are linking SIP Users to Django Users. Many SIP Users to Django one.
     django_user = models.ForeignKey(
         User,
@@ -460,7 +458,6 @@ class SIPPeer(models.Model):
         help_text="Clear text password for the connection used for remote side",
         verbose_name="Password",
     )
-
     host_port = models.CharField(
         max_length=256,
         null=True,
@@ -469,19 +466,21 @@ class SIPPeer(models.Model):
         help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
         verbose_name="Host:Port",
     )
-
     registrationHere = models.BooleanField(
         default=False,
         help_text="Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. ",
         verbose_name="Registration here",
     )
-
     registrationThere = models.BooleanField(
         default=False,
         help_text="Should we register on remote service? Typically used for providers",
         verbose_name="Outbound registration",
     )
-
+    nat = models.BooleanField(
+        default=False,
+        help_text="Enable NAT traversal for this peer",
+        verbose_name="NAT",
+    )
     callLimit = models.SmallIntegerField(
         default=0, help_text="Maximum calls on the trunk", verbose_name="Call Limit"
     )
