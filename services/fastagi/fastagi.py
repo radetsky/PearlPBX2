@@ -13,6 +13,7 @@ from typing import Callable, Generator, Union
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi
+from starpy.error import AGICommandFailure
 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import create_engine, text
@@ -328,7 +329,13 @@ class FastAGIHandler:
             peer = random.choice(peers)
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
             yield self.agi.execute("DIAL",f"PJSIP/{extension}@{peer}", "120", "Tt")
-            status = yield self.agi.getVariable("DIALSTATUS")
+            try:
+                status = yield self.agi.getVariable("DIALSTATUS")
+            except AGICommandFailure as err:
+                logger.error(f"AGI Command error: {err}")
+                yield self.agi.finish()
+                return None
+
             status = status.decode() if isinstance(status, bytes) else status
             logger.info(f"DIALSTATUS = {status}")
             if status == "ANSWER":
