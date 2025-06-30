@@ -120,7 +120,7 @@ def __section_trunk_endpoint(trunk: SIPPeer):
     result += f"[{trunk.name}]\n"
     result += "type=endpoint\n"
     result += f"transport={trunk.transport.name}\n"
-    result += f"context=from-{trunk.name}\n"
+    result += f"context={trunk.routing_table}\n"
     result += "disallow=all\n"
     result += "allow=ulaw,alaw\n"  # TODO list ALLOWED codecs
     if trunk.registrationThere:

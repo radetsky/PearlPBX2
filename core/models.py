@@ -658,32 +658,35 @@ class Settings(models.Model):
         return f"wss://{self.domain}:{self.wss_port}/ws"
 
     user_template = models.TextField(
-        default="""type = endpoint
-context = default
-allow = !all, g722, ulaw, alaw
-direct_media = no
-trust_id_outbound = yes
-device_state_busy_at = 1
-dtmf_mode = rfc4733
-transport = transport-udp-nat
-rtp_symmetric = yes
-force_rport = yes
-rewrite_contact = yes""",
+        default="""type=endpoint
+context=default
+allow=!all, g722, ulaw, alaw
+direct_media=no
+trust_id_outbound=yes
+device_state_busy_at=1
+dtmf_mode=rfc4733
+transport=transport-udp-nat
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+""",
         verbose_name="User basic template",
         help_text="You may override it by custom settings in user form",
     )
 
     user_aor_template = models.TextField(
-        default="""type = aor
-max_contacts = 1
-remove_existing = yes""",
+        default="""type=aor
+max_contacts=1
+remove_existing=yes
+""",
         verbose_name="User AOR template",
         help_text="You may override it by custom settings in user form",
     )
 
     user_auth_template = models.TextField(
-        default="""type = auth
-auth_type = md5""",
+        default="""type=auth
+auth_type=md5
+""",
         verbose_name="User auth template",
         help_text="You may override it by custom settings in user form",
     )
@@ -693,25 +696,28 @@ auth_type = md5""",
 dtls_auto_generate_cert=yes
 webrtc=yes
 context=default
-max_audio_streams = 1
-max_video_streams = 15
+max_audio_streams=1
+max_video_streams=15
 disallow=all
-allow=opus,g722,ulaw,vp9,vp8,h264""",
+allow=opus,g722,ulaw,vp9,vp8,h264
+""",
         verbose_name="WebRTC template for endpoint",
         help_text="You may override it by custom settings in user form",
     )
 
     webrtc_aor_template = models.TextField(
-        default="""type = aor
-max_contacts = 15
-remove_existing = yes""",
+        default="""type=aor
+max_contacts=15
+remove_existing=yes
+""",
         verbose_name="WebRTC AOR template",
         help_text="You may override it by custom settings in user form",
     )
 
     webrtc_auth_template = models.TextField(
-        default="""type = auth
-auth_type = md5""",
+        default="""type=auth
+auth_type=md5
+""",
         verbose_name="WebRTC auth template",
         help_text="You may override it by custom settings in user form",
     )

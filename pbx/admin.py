@@ -42,6 +42,13 @@ class ApplyChangesView(TemplateView):
         context["form"] = ApplyChangesForm()
         return context
 
+    def _crlf_to_lf(self, content: str) -> str:
+        """
+        Convert CRLF line endings to LF.
+        This is necessary because Asterisk expects LF line endings in its configuration files.
+        """
+        return content.replace("\r\n", "\n").replace("\r", "")
+
     def post(self, request, *args, **kwargs):
         form = ApplyChangesForm(request.POST)
         cfgfiles = {}  # dictionary of config files to be written
@@ -53,6 +60,10 @@ class ApplyChangesView(TemplateView):
         for cfg in self.get_latest_configuration_files():
             if cfg.path not in cfgfiles:
                 cfgfiles[cfg.path] = cfg.content
+
+        # convert all cfgfiles content to LF line endings
+        for path, content in cfgfiles.items():
+            cfgfiles[path] = self._crlf_to_lf(content)
 
         # sort cfgfiles by path
         cfgfiles = dict(sorted(cfgfiles.items()))
