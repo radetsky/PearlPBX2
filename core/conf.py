@@ -185,8 +185,11 @@ def make_pjsip_conf_users_template():
     result = "; ==== Users template ====\n"
     result += "[user-template](!)\n"
     settings = Settings.objects.first()
-    result += settings.user_template
-    result += "\n\n"
+    user_template = settings.user_template
+    if user_template and not user_template.endswith('\n'):
+        user_template += '\n'
+        result += user_template
+    result += "\n"
     return result
 
 
@@ -194,17 +197,22 @@ def make_pjsip_conf_users_aor_template():
     result = "; ==== Users AOR template ====\n"
     result += "[user-aor-template](!)\n"
     settings = Settings.objects.first()
-    result += settings.user_aor_template
+    user_aor_template = settings.user_aor_template
+    if user_aor_template and not user_aor_template.endswith('\n'):
+        user_aor_template += '\n'
+        result += user_aor_template
     result += "qualify_frequency=30\n"
     result += "\n\n"
     return result
-
 
 def make_pjsip_conf_users_auth_template():
     result = "; ==== Users AUTH template ====\n"
     result += "[user-auth-template](!)\n"
     settings = Settings.objects.first()
-    result += settings.user_auth_template
+    user_auth_template = settings.user_auth_template
+    if not user_auth_template.endswith('\n'):
+        user_auth_template += '\n'
+    result += user_auth_template
     result += "\n\n"
     return result
 
@@ -218,16 +226,26 @@ def __make_pjsip_conf_webrtc_user(user: SIPUser):
     result += f"auth={user.username}\n"
     result += f"aors={user.username}\n"
     result += f"callerid= {user.name} <{user.extension}>\n"
-    result += user.custom_settings + "\n"
+    custom_settings = user.custom_settings
+    if custom_settings and not custom_settings.endswith("\n"):
+        custom_settings += "\n"
+        result += custom_settings
     result += "\n"
 
     result += f"[{user.username}](webrtc-template-auth)\n"
     result += f"md5_cred = {user.md5_cred}\nusername = {user.username}\n"
     result += f"realm = {user.realm}\n"
-    result += user.custom_auth_settings + "\n\n"
+    custom_auth_settings = user.custom_auth_settings
+    if custom_auth_settings and not custom_auth_settings.endswith("\n"):
+        custom_auth_settings += "\n"
+        result += custom_auth_settings + "\n"
 
     result += f"[{user.username}](webrtc-template-aor)\n"
-    result += user.custom_aor_settings + "\n\n"
+    custom_aor_settings = user.custom_aor_settings
+    if custom_aor_settings and not custom_aor_settings.endswith("\n"):
+        custom_aor_settings += "\n"
+        result += custom_aor_settings + "\n"
+
     return result
 
 
