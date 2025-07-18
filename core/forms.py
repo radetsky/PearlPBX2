@@ -197,6 +197,19 @@ class SIPPeerForm(forms.ModelForm):
         queryset=RoutingTable.objects.all(),
         empty_label=None,
     )
+    custom_auth_settings = forms.CharField(
+        label="Auth Settings",
+        widget=forms.Textarea,
+        required=False,
+        help_text="Custom user AUTH settings in asterisk pjsip.conf format",
+    )
+    custom_aor_settings = forms.CharField(
+        label="Aor Settings",
+        widget=forms.Textarea,
+        required=False,
+        help_text="Custom user AOR settings in asterisk pjsip.conf format",
+    )
+
 
     class Meta:
         model = SIPPeer
