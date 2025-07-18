@@ -464,7 +464,7 @@ class SIPPeer(models.Model):
         blank=True,
         default="",
         help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
-        verbose_name="Host:Port",
+        verbose_name="The list of host[:port] separated by commas",
     )
     registrationHere = models.BooleanField(
         default=False,
@@ -491,13 +491,26 @@ class SIPPeer(models.Model):
         null=True,
         blank=False,
     )
-
     routing_table = models.ForeignKey(
         RoutingTable,
         related_name="sip_peer_routing_table",
         on_delete=deletion.PROTECT,
         null=True,
         blank=True,
+    )
+    custom_auth_settings = models.TextField(
+        null=True,
+        blank=False,
+        default="",
+        help_text="Custom peer [auth] section",
+        verbose_name="Auth Settings",
+    )
+    custom_aor_settings = models.TextField(
+        null=True,
+        blank=False,
+        default="",
+        help_text="Custom peer [aor] section",
+        verbose_name="AOR Settings",
     )
 
     class Meta:

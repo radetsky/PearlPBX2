@@ -74,82 +74,176 @@ def make_pjsip_conf_transports() -> str:
 
 
 def __section_trunk_remote_registration(trunk: SIPPeer):
+    host_port: str | None  = trunk.host_port
+    if not host_port:
+        logger.warning(
+            f"Trunk {trunk.name} has no host_port defined. Skipping remote registration section."
+        )
+        return "; No host_port defined for trunk. Skipping remote registration section.\n"
+    hosts_and_ports = host_port.split(",")
+    if len(hosts_and_ports) == 0:
+        logger.warning(
+            f"Trunk {trunk.name} has no valid host_port defined. Skipping remote registration section."
+        )
+        return "; No valid host_port defined for trunk. Skipping remote registration section.\n"
+    transport: SIPTransport | None = trunk.transport
+    if not transport:
+        logger.warning(
+            f"Trunk {trunk.name} has no transport defined. Skipping remote registration section."
+        )
+        return "; No transport defined for trunk. Skipping remote registration section.\n"
+    if transport.protocol not in ["udp", "tcp", "tls"]:
+        logger.warning(
+            f"Trunk {trunk.name} has unsupported transport protocol {transport.protocol}. Skipping remote registration section."
+        )
+        return "; Unsupported transport protocol for trunk. Skipping remote registration section.\n"
+
     result = "; Registration\n"
     result += f"[{trunk.name}]\n"
     result += "type=registration\n"
     result += f"outbound_auth={trunk.name}\n"
     result += (
-        f"server_uri=sip:{trunk.host_port}\\;transport={trunk.transport.protocol}\n"
+        f"server_uri=sip:{hosts_and_ports[0]};transport={transport.protocol}\n"
     )
-    result += f"client_uri=sip:{trunk.username}@{trunk.host_port}\\;transport={trunk.transport.protocol}\n"
+    result += f"client_uri=sip:{trunk.username}@{hosts_and_ports[0]};transport={transport.protocol}\n"
+    result += f"contact_user={trunk.username}\n"
     result += "retry_interval=60\n"
+    result += "forbidden_retry_interval=600\n"
+    result += "expiration=3600\n"
+    result += "line=yes\n"
+    result += f"endpoint={trunk.name}\n"
     result += "\n"
 
     return result
 
 
 def __section_trunk_auth_userpass(trunk: SIPPeer):
-    result = "; Authentication\n"
-    result += f"[{trunk.name}]\n"
-    result += "type=auth\n"
-    result += "auth_type=userpass\n"
-    result += f"username={trunk.username}\n"
-    result += f"password={trunk.secret}\n"
-    result += "\n"
-
-    return result
-
+    custom_auth_settings = getattr(trunk, "custom_auth_settings", None)
+    if isinstance(custom_auth_settings, str):
+        custom_auth_settings = custom_auth_settings.strip()
+    if custom_auth_settings:
+        return (
+            f"; Custom auth settings for {trunk.name}\n"
+            f"[{trunk.name}]\n"
+            "type=auth\n"
+            f"{custom_auth_settings}\n"
+        )
+    if getattr(trunk, "username", None) and getattr(trunk, "secret", None):
+        return (
+            f"; Authentication\n"
+            f"[{trunk.name}]\n"
+            "type=auth\n"
+            "auth_type=userpass\n"
+            f"username={trunk.username}\n"
+            f"password={trunk.secret}\n"
+            "\n"
+        )
+    return ""
 
 def __section_trunk_aor(trunk: SIPPeer):
+    custom_aor_settings = trunk.custom_aor_settings
+    if custom_aor_settings:
+        #  trim and check for empty string
+        custom_aor_settings = custom_aor_settings.strip()
+        if custom_aor_settings:
+            result = f"; Custom AOR settings for {trunk.name}\n"
+            result += f"[{trunk.name}]\n"
+            result += "type=aor\n"
+            result += custom_aor_settings + "\n"
+            return result
+
+    transport: SIPTransport | None = trunk.transport
+    if not transport:
+        logger.warning(f"Trunk {trunk.name} has no transport defined. Skipping AOR section.")
+        return "; No transport defined for trunk. Skipping AOR section.\n"
+    host_port: str | None = trunk.host_port
     result = "; AOR\n"
     result += f"[{trunk.name}]\n"
     result += "type=aor\n"
     result += "qualify_frequency=30\n"
-    if trunk.host_port:
-        result += f"contact=sip:{trunk.username}@{trunk.host_port}\n"
-    if trunk.registrationHere:
+    result += "qualify_timeout=5.0\n"
+    if trunk.registrationHere or trunk.registrationThere:
         result += "max_contacts=1\n"
         result += "remove_existing=yes\n"
+    elif host_port:
+        hosts_and_ports = host_port.split(",")
+        if len(hosts_and_ports) > 0:
+            username = f"{trunk.username}@" if trunk.username else ""
+            if transport.protocol in ["wss", "tls"]:
+                sip = "sips"
+            else:
+                sip = "sip"
+            result += f"contact={sip}:{username}{hosts_and_ports[0]};transport={transport.protocol}\n"
     result += "\n"
-
     return result
 
+def __section_trunk_endpoint(trunk: SIPPeer) -> str:
+    """
+    Generates the endpoint section for a SIP trunk.
+    """
+    if not trunk.transport:
+        logger.warning(f"Trunk {trunk.name} has no transport defined. Skipping endpoint section.")
+        return "; No transport defined for trunk. Skipping endpoint section.\n"
+    if not trunk.routing_table:
+        logger.warning(f"Trunk {trunk.name} has no routing table defined. Skipping endpoint section.")
+        return "; No routing table defined for trunk. Skipping endpoint section.\n"
+    lines = [
+        "; Endpoint",
+        f"[{trunk.name}]",
+        "type=endpoint",
+        f"transport={trunk.transport.name}",
+        f"context={trunk.routing_table.name}",
+        "direct_media=no",
+        "dtmf_mode=rfc4733",
+        "disallow=all",
+        "allow=ulaw,alaw",  # TODO: list ALLOWED codecs
+    ]
 
-def __section_trunk_endpoint(trunk: SIPPeer):
-    result = "; Endpoint\n"
-    result += f"[{trunk.name}]\n"
-    result += "type=endpoint\n"
-    result += f"transport={trunk.transport.name}\n"
-    result += f"context={trunk.routing_table.name}\n"
-    result += "disallow=all\n"
-    result += "allow=ulaw,alaw\n"  # TODO list ALLOWED codecs
-    if trunk.registrationThere:
-        result += f"outbound_auth={trunk.name}\n"
+    if trunk.registrationThere or (trunk.username and trunk.secret):
+        lines.append(f"outbound_auth={trunk.name}")
 
-    if trunk.registrationHere or not trunk.registrationThere:
-        result += f"auth={trunk.name}\n"
+    if trunk.registrationHere:
+        lines.append(f"auth={trunk.name}")
+
+    lines.append(f"aors={trunk.name}")
+
+    if not trunk.registrationHere:
+        lines.append("identify_by=ip")
+
+    if trunk.username is not None and trunk.username != "" and not trunk.registrationHere:
+        lines.append(f"from_user={trunk.username}")
 
     if trunk.nat:
-        result += "media_use_received_transport=yes\n"
-        result += "rtp_symmetric=yes\n"
-        result += "rewrite_contact=yes\n"
-        result += "force_rport=yes\n"
+        lines.extend([
+            "media_use_received_transport=yes",
+            "rtp_symmetric=yes",
+            "rewrite_contact=yes",
+            "force_rport=yes",
+        ])
 
-    result += f"aors={trunk.name}\n"
-    result += "\n"
+    lines.append("\n")  # Blank line for separation
+    return "\n".join(lines)
 
-    return result
+def __section_trunk_identify(trunk: SIPPeer) -> str:
+    """
+    Generates the identify section for a SIP trunk.
+    """
+    result = [
+        "; Identify",
+        f"[{trunk.name}]",
+        "type=identify",
+        f"endpoint={trunk.name}"
+    ]
 
+    host_port = trunk.host_port
+    if host_port:
+        hosts_and_ports = [hp.strip() for hp in host_port.split(",") if hp.strip()]
+        for hp in hosts_and_ports:
+            host, _port = hp.split(":") if ":" in hp else (hp, None)
+            result.append(f"match={host}")
 
-def __section_trunk_identify(trunk: SIPPeer):
-    result = "; Identify\n"
-    result += f"[{trunk.name}]\n"
-    result += "type=identify\n"
-    result += f"endpoint={trunk.name}\n"
-    result += f"match={trunk.host_port}\n"
-    result += "\n"
-
-    return result
+    result.append("")  # Add a blank line at the end
+    return "\n".join(result)
 
 
 def make_pjsip_conf_uplinks():
@@ -202,6 +296,7 @@ def make_pjsip_conf_users_aor_template():
         user_aor_template += '\n'
         result += user_aor_template
     result += "qualify_frequency=30\n"
+    result += "qualify_timeout=5.0\n"
     result += "\n\n"
     return result
 
@@ -264,6 +359,8 @@ def make_pjsip_conf_users():
         result += f"aors={user.username}\n"
         result += f"callerid={user.name} <{user.extension}>\n"
         result += f"context={user.routing_table.name}\n"
+        result += "dtmf_mode=rfc4733\n"
+        result += "direct_media=no\n"
         if user.nat:
             result += "media_use_received_transport=yes\n"
             result += "rtp_symmetric=yes\n"
