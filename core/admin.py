@@ -158,7 +158,7 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
     extra = 0
 
     fields = ["name", "prefix", "context"]
-    ordering = ["prefix", "name"]
+    ordering = ["name", "prefix"]
 
     autocomplete_fields = ["context"]
 
