@@ -19,7 +19,7 @@ from hashlib import md5
 
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
-from core.validators import validate_bind_ip, validate_asterisk_context
+from core.validators import validate_bind_ip, validate_asterisk_context, validate_asterisk_extension_prefix
 
 import logging
 
@@ -565,6 +565,7 @@ class DialplanExtension(models.Model):
         default="_X!",
         verbose_name="Extension",
         help_text="Asterisk extension",
+        validators=[validate_asterisk_extension_prefix],
     )
     dialplan = models.TextField(verbose_name="Extension scenario")
     description = models.CharField(
@@ -1438,6 +1439,7 @@ class RoutingRecord(models.Model):
         unique=False,
         help_text="Prefix of the routing record",
         verbose_name="Routing Record Prefix",
+        validators=[validate_asterisk_extension_prefix],
     )
     context = models.ForeignKey(
         DialplanContext,
