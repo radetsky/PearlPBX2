@@ -6,71 +6,86 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('core', '0036_rename_created_blacklist_created_at_and_more'),
+        ("core", "0036_rename_created_blacklist_created_at_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='whitelist',
-            name='created',
+            model_name="whitelist",
+            name="created",
         ),
         migrations.RemoveField(
-            model_name='whitelist',
-            name='description',
+            model_name="whitelist",
+            name="description",
         ),
         migrations.RemoveField(
-            model_name='whitelist',
-            name='updated',
+            model_name="whitelist",
+            name="updated",
         ),
         migrations.AddField(
-            model_name='whitelist',
-            name='destination',
-            field=models.CharField(blank=True, default='', help_text='Destination number where calls must be allowed. Default= for whole system allowing.', max_length=64, verbose_name='Destination'),
+            model_name="whitelist",
+            name="destination",
+            field=models.CharField(
+                blank=True,
+                default="",
+                help_text="Destination number where calls must be allowed. Default= for whole system allowing.",
+                max_length=64,
+                verbose_name="Destination",
+            ),
         ),
         migrations.AddField(
-            model_name='whitelist',
-            name='expiration_date',
-            field=models.DateTimeField(blank=True, help_text='Expiration date for the whitelist entry. If not set, the entry is permanent.', null=True, verbose_name='Expiration Date'),
+            model_name="whitelist",
+            name="expiration_date",
+            field=models.DateTimeField(
+                blank=True,
+                help_text="Expiration date for the whitelist entry. If not set, the entry is permanent.",
+                null=True,
+                verbose_name="Expiration Date",
+            ),
         ),
         migrations.AddField(
-            model_name='whitelist',
-            name='reason',
-            field=models.CharField(default='', help_text='Reason for allowing the caller ID', max_length=64, verbose_name='Reason'),
+            model_name="whitelist",
+            name="reason",
+            field=models.CharField(
+                default="",
+                help_text="Reason for allowing the caller ID",
+                max_length=64,
+                verbose_name="Reason",
+            ),
         ),
         migrations.AlterField(
-            model_name='blacklist',
-            name='destination',
-            field=models.CharField(blank=True, default='', help_text='Destination number where calls must be blocked. Default= for whole system blocking.', max_length=64, verbose_name='Destination'),
-        ),
-        migrations.RemoveField(
-            model_name='contact',
-            name='id',
-        ),
-        migrations.AddField(
-            model_name='contact',
-            name='id',
-            field=models.UUIDField(
-                default=uuid.uuid4,
-                editable=False,
-                primary_key=True,
-                serialize=False
+            model_name="blacklist",
+            name="destination",
+            field=models.CharField(
+                blank=True,
+                default="",
+                help_text="Destination number where calls must be blocked. Default= for whole system blocking.",
+                max_length=64,
+                verbose_name="Destination",
             ),
         ),
         migrations.RemoveField(
-            model_name='whitelist',
-            name='id',
+            model_name="contact",
+            name="id",
         ),
         migrations.AddField(
-            model_name='whitelist',
-            name='id',
+            model_name="contact",
+            name="id",
             field=models.UUIDField(
-                default=uuid.uuid4,
-                editable=False,
-                primary_key=True,
-                serialize=False
+                default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+            ),
+        ),
+        migrations.RemoveField(
+            model_name="whitelist",
+            name="id",
+        ),
+        migrations.AddField(
+            model_name="whitelist",
+            name="id",
+            field=models.UUIDField(
+                default=uuid.uuid4, editable=False, primary_key=True, serialize=False
             ),
         ),
     ]

@@ -9,7 +9,7 @@ import uuid
 
 from datetime import datetime
 
-from typing import Callable, Generator, Union
+from typing import Callable, Generator
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi
@@ -28,11 +28,11 @@ fastagi.log.setLevel(logging.DEBUG)
 # ---------- Database Setup ----------
 Base = declarative_base()
 
-def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"): 
-    """ Create the directory for the file if not exists
-    """
+
+def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"):
+    """Create the directory for the file if not exists"""
     dir_path = os.path.dirname(filename)
-    full_path = os.path.join(base_dir, dir_path)    
+    full_path = os.path.join(base_dir, dir_path)
     os.makedirs(full_path, exist_ok=True)
 
 
@@ -95,7 +95,9 @@ class Database:
             )
             return result.scalar() is not None
 
-    def is_custom_listed(self, list_name: str, caller_id: str, destination: str) -> bool:
+    def is_custom_listed(
+        self, list_name: str, caller_id: str, destination: str
+    ) -> bool:
         """Check if a caller ID is listed in a custom list for a specific destination."""
         with self.get_session() as session:
             result = session.execute(
@@ -108,7 +110,11 @@ class Database:
                         AND cln.id = cle.list_name_id
                         AND cln.name = :list_name"""
                 ),
-                {"caller_id": caller_id, "destination": destination, "list_name": list_name},
+                {
+                    "caller_id": caller_id,
+                    "destination": destination,
+                    "list_name": list_name,
+                },
             )
             return result.scalar() is not None
 
@@ -143,11 +149,15 @@ class Database:
                 {"src": src, "dst": dst},
             ).scalar()
             if existing_filename:
-                logger.info(f"Monitor filename already exists for src: {src}, dst: {dst}. Using existing filename: {existing_filename}")
-                session.execute(text("""UPDATE core_monitor_filenames
+                logger.info(
+                    f"Monitor filename already exists for src: {src}, dst: {dst}. Using existing filename: {existing_filename}"
+                )
+                session.execute(
+                    text("""UPDATE core_monitor_filenames
                                 SET used_by_system = TRUE, cdr_uniqueid = :cdr_uniqueid
                                 WHERE filename = :filename"""),
-                                {"filename": existing_filename, "cdr_uniqueid": cdr_uniqueid})
+                    {"filename": existing_filename, "cdr_uniqueid": cdr_uniqueid},
+                )
                 session.commit()
                 return existing_filename
             else:
@@ -157,10 +167,19 @@ class Database:
                         VALUES (:id, :src, :dst, :filename, :cdr_uniqueid, :used_by_system, now(), now(), 'f')
                         ON CONFLICT (cdr_uniqueid) DO NOTHING"""
                     ),
-                    {"id": uuid_str, "src": src, "dst": dst, "filename": filename, "cdr_uniqueid": cdr_uniqueid, "used_by_system": False},
+                    {
+                        "id": uuid_str,
+                        "src": src,
+                        "dst": dst,
+                        "filename": filename,
+                        "cdr_uniqueid": cdr_uniqueid,
+                        "used_by_system": False,
+                    },
                 )
                 session.commit()
-        logger.info(f"Generated monitor filename: {filename} for Asterisk Unique ID: {cdr_uniqueid}")
+        logger.info(
+            f"Generated monitor filename: {filename} for Asterisk Unique ID: {cdr_uniqueid}"
+        )
         return filename
 
     def get_monitor_status(self, caller_id: str, destination: str) -> bool:
@@ -170,7 +189,9 @@ class Database:
         """
 
         with self.get_session() as session:
-            result = session.execute(text("select allow_monitor from core_settings limit 1"))
+            result = session.execute(
+                text("select allow_monitor from core_settings limit 1")
+            )
             global_monitor = result.scalar()
             if global_monitor is not True:
                 global_monitor = False
@@ -185,17 +206,24 @@ class Database:
             )
             row = is_monitor_enabled.fetchone()
             if not row:
-                logger.warning(f"No monitor settings found for caller ID: {caller_id}, destination: {destination}")
+                logger.warning(
+                    f"No monitor settings found for caller ID: {caller_id}, destination: {destination}"
+                )
                 return global_monitor
 
             if row[0] is True:
-                logger.info(f"Monitor is force enabled for caller ID: {caller_id}, destination: {destination}")
+                logger.info(
+                    f"Monitor is force enabled for caller ID: {caller_id}, destination: {destination}"
+                )
                 return True
             elif row[1] is True:
-                logger.info(f"Monitor is force disabled for caller ID: {caller_id}, destination: {destination}")
+                logger.info(
+                    f"Monitor is force disabled for caller ID: {caller_id}, destination: {destination}"
+                )
                 return False
 
             return global_monitor
+
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -249,10 +277,16 @@ class FastAGIHandler:
 
         monitor_status = db.get_monitor_status(caller_id, destination)
         if monitor_status:
-            monitor_filename = db.get_monitor_filename(caller_id, destination, unique_id) # already inserted to the database
-            mkdir_p(f'{monitor_filename}.wav') # Check and create the directory YYYY/MM/DD
+            monitor_filename = db.get_monitor_filename(
+                caller_id, destination, unique_id
+            )  # already inserted to the database
+            mkdir_p(
+                f"{monitor_filename}.wav"
+            )  # Check and create the directory YYYY/MM/DD
             self.sequence.append(self.agi.setVariable, "MIXMONITOR", "1")
-            self.sequence.append(self.agi.execute, "MIXMONITOR", f'{monitor_filename}.wav', "a")
+            self.sequence.append(
+                self.agi.execute, "MIXMONITOR", f"{monitor_filename}.wav", "a"
+            )
             self.sequence.append(self.agi.finish)
         else:
             self.sequence.append(self.agi.setVariable, "MIXMONITOR", "0")
@@ -273,7 +307,9 @@ class FastAGIHandler:
             return self.sequence()
 
         blacklisted = db.is_blacklisted(caller_id, destination)
-        self.sequence.append(self.agi.setVariable, "BLACKLISTED", "1" if blacklisted else "0")
+        self.sequence.append(
+            self.agi.setVariable, "BLACKLISTED", "1" if blacklisted else "0"
+        )
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
@@ -290,7 +326,9 @@ class FastAGIHandler:
             return self.sequence()
 
         whitelisted = db.is_whilelisted(caller_id, destination)
-        self.sequence.append(self.agi.setVariable, "WHITELISTED", "1" if whitelisted else "0")
+        self.sequence.append(
+            self.agi.setVariable, "WHITELISTED", "1" if whitelisted else "0"
+        )
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
@@ -308,7 +346,9 @@ class FastAGIHandler:
             return self.sequence()
 
         listed = db.is_custom_listed(list_name, caller_id, destination)
-        self.sequence.append(self.agi.setVariable, "CUSTOM_LISTED", "1" if listed else "0")
+        self.sequence.append(
+            self.agi.setVariable, "CUSTOM_LISTED", "1" if listed else "0"
+        )
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
@@ -321,14 +361,16 @@ class FastAGIHandler:
         return d
 
     @inlineCallbacks
-    def dial_with_retry(self, peers: list[str], extension: str, max_attempts: int) -> Generator[Deferred, None, None]:
+    def dial_with_retry(
+        self, peers: list[str], extension: str, max_attempts: int
+    ) -> Generator[Deferred, None, None]:
         """
         Dial each peer with the specified extension, retrying up to max_attempts.
         """
         for attempt in range(1, max_attempts + 1):
             peer = random.choice(peers)
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL",f"PJSIP/{extension}@{peer}", "120", "Tt")
+            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "Tt")
             try:
                 status = yield self.agi.getVariable("DIALSTATUS")
             except AGICommandFailure as err:
@@ -339,10 +381,12 @@ class FastAGIHandler:
             status = status.decode() if isinstance(status, bytes) else status
             logger.info(f"DIALSTATUS = {status}")
             if status == "ANSWER":
-                logger.info(f"Successfully dialed {peer}/{extension} on attempt {attempt}")
-                yield self.agi.setVariable ("TRUNK_GROUP_DIALLED", "1")
+                logger.info(
+                    f"Successfully dialed {peer}/{extension} on attempt {attempt}"
+                )
+                yield self.agi.setVariable("TRUNK_GROUP_DIALLED", "1")
                 yield self.agi.finish()
-                return(status)
+                return status
             if status == "BUSY":
                 logger.warning(f"Peer {peer} is busy, retrying...")
                 yield self.async_sleep(10)  # Wait before retrying
@@ -351,11 +395,15 @@ class FastAGIHandler:
                 yield self.async_sleep(1)  # Wait before retrying
             else:
                 yield self.async_sleep(2)  # Short wait for unexpected statuses
-                logger.error(f"Unexpected DIALSTATUS {status} for peer {peer}, retrying...")
-        logger.error(f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts")
-        yield self.agi.setVariable ("TRUNK_GROUP_DIALLED", "0")
+                logger.error(
+                    f"Unexpected DIALSTATUS {status} for peer {peer}, retrying..."
+                )
+        logger.error(
+            f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts"
+        )
+        yield self.agi.setVariable("TRUNK_GROUP_DIALLED", "0")
         yield self.agi.finish()
-        return(None)
+        return None
 
     def dial_trunk_group(self) -> Deferred:
         trunk_group_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
@@ -365,7 +413,9 @@ class FastAGIHandler:
             f"Handling DIAL TRUNK GROUP Trunk Group: {trunk_group_name}, Extension: {extension}, Max Attempts: {max_attempts}"
         )
         if not trunk_group_name or not extension:
-            logger.error("No trunk group name or extension provided for dial trunk group")
+            logger.error(
+                "No trunk group name or extension provided for dial trunk group"
+            )
             self.sequence.append(self.agi.setVariable, "TRUNK_GROUP_DIALLED", "0")
             self.sequence.append(self.agi.finish)
             return self.sequence()
@@ -377,7 +427,6 @@ class FastAGIHandler:
             return self.sequence()
 
         return self.dial_with_retry(trunk_group_entries, extension, int(max_attempts))
-
 
 
 # ---------------- Main Entry Function ----------------

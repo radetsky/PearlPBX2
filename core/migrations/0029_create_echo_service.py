@@ -3,11 +3,10 @@
 from django.db import migrations
 from django.conf import settings
 
+
 def create_service_context(apps, schema_editor):
     Context = apps.get_model("core", "DialplanContext")
-    Context.objects.create(
-        name="local-services",
-        description="Local services context")
+    Context.objects.create(name="local-services", description="Local services context")
 
 
 def create_echo_service(apps, schema_editor):
@@ -24,7 +23,8 @@ Playback(demo-echotest);
 Wait(1);
 Echo();
 Hangup();
-""")
+""",
+    )
     Extension.objects.create(
         context=context,
         ext="131",
@@ -34,7 +34,8 @@ Set(ENDPOINT_NAME=${CUT(CHANNEL_NAME,-,1)});
 UnPauseQueueMember(,${ENDPOINT_NAME});
 Playback(agent-loginok);
 Hangup();
-""")
+""",
+    )
     Extension.objects.create(
         context=context,
         ext="132",
@@ -44,8 +45,10 @@ Set(ENDPOINT_NAME=${CUT(CHANNEL_NAME,-,1)});
 PauseQueueMember(,${ENDPOINT_NAME});
 Playback(agent-loggedoff);
 Hangup();
-""")
+""",
+    )
     create_routing_record(apps, schema_editor)
+
 
 def create_routing_record(apps, schema_editor):
     Context = apps.get_model("core", "DialplanContext")
@@ -62,6 +65,7 @@ def create_routing_record(apps, schema_editor):
         routing_table=routing_table,
     )
 
+
 def remove_echo_service(apps, schema_editor):
     RoutingRecord = apps.get_model("core", "RoutingRecord")
     RoutingRecord.objects.get(prefix="_13X").delete()
@@ -71,11 +75,9 @@ def remove_echo_service(apps, schema_editor):
     Context.objects.get(name="local-services").delete()
 
 
-
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0028_remove_sipuser_context_alter_sipuser_auth_type'),
+        ("core", "0028_remove_sipuser_context_alter_sipuser_auth_type"),
     ]
 
     operations = [

@@ -4,20 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0041_monitor_remove_contact_allow_monitor_and_more'),
+        ("core", "0041_monitor_remove_contact_allow_monitor_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='sippeer',
-            name='nat',
-            field=models.BooleanField(default=False, help_text='Enable NAT traversal for this peer', verbose_name='NAT'),
+            model_name="sippeer",
+            name="nat",
+            field=models.BooleanField(
+                default=False,
+                help_text="Enable NAT traversal for this peer",
+                verbose_name="NAT",
+            ),
         ),
         migrations.AddField(
-            model_name='sipuser',
-            name='nat',
-            field=models.BooleanField(default=False, help_text='Enable NAT traversal for this peer', verbose_name='NAT'),
+            model_name="sipuser",
+            name="nat",
+            field=models.BooleanField(
+                default=False,
+                help_text="Enable NAT traversal for this peer",
+                verbose_name="NAT",
+            ),
         ),
     ]

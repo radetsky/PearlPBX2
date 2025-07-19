@@ -5,19 +5,24 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0038_remove_customlistnames_created_by_and_more'),
+        ("core", "0038_remove_customlistnames_created_by_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='sippeer',
-            name='context',
+            model_name="sippeer",
+            name="context",
         ),
         migrations.AddField(
-            model_name='sippeer',
-            name='routing_table',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='sip_peer_routing_table', to='core.routingtable'),
+            model_name="sippeer",
+            name="routing_table",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="sip_peer_routing_table",
+                to="core.routingtable",
+            ),
         ),
     ]

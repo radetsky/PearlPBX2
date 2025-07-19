@@ -8,13 +8,15 @@ env = environ.Env()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEVMODE_WITHOUT_ASTERISK = "without_asterisk_on_localhost"
-DEVMODE_DEVELOPMENT = "Development" # Ubuntu on VPS
-DEVMODE_PRODUCTION = "Production"   # Production server
-DEVMODE_STAGING = "Staging"         # Staging server
+DEVMODE_DEVELOPMENT = "Development"  # Ubuntu on VPS
+DEVMODE_PRODUCTION = "Production"  # Production server
+DEVMODE_STAGING = "Staging"  # Staging server
 DEVMODE = env.str("DEVMODE", "Development")
 
-DEBUG=False
-SECRET_KEY=env.str("DJANGO_SECRET_KEY", "") # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+DEBUG = False
+SECRET_KEY = env.str(
+    "DJANGO_SECRET_KEY", ""
+)  # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
 if DEVMODE not in (DEVMODE_PRODUCTION, DEVMODE_STAGING):
     # SECURITY WARNING: don't run with debug turned on in production!
@@ -170,11 +172,14 @@ ASTERISK_ROOT_DIR = env.str("ASTERISK_ROOT_DIR", "/tmp")
 # where the configuration files are stored in the ASTERISK_ROOT_DIR
 ASTERISK_CONFIG_DIR = env.str("ASTERISK_CONFIG_DIR", "/etc/asterisk")
 # where the backup files are stored
-ASTERISK_BACKUP_DIR = env.str("ASTERISK_BACKUP_DIR","/tmp/backup/asterisk")
+ASTERISK_BACKUP_DIR = env.str("ASTERISK_BACKUP_DIR", "/tmp/backup/asterisk")
 ASTERISK_MANAGER_PORT = env.int("ASTERISK_MANAGER_PORT", 5038)
 ASTERISK_MANAGER_HOST = env.str("ASTERISK_MANAGER_HOST", "127.0.0.1")
 ASTERISK_MANAGER_USERNAME = env.str("ASTERISK_MANAGER_USERNAME", "django")
-ASTERISK_MANAGER_SECRET = env.str("ASTERISK_MANAGER_SECRET", "lFDccdsjqPWPe7ah7OJqLDxdtY6KM1VeTsS8V027msBpulwZHLmeaWnA-hWbpgkz3PZfdQ5GeCE63-lWTgqx3Q")
+ASTERISK_MANAGER_SECRET = env.str(
+    "ASTERISK_MANAGER_SECRET",
+    "lFDccdsjqPWPe7ah7OJqLDxdtY6KM1VeTsS8V027msBpulwZHLmeaWnA-hWbpgkz3PZfdQ5GeCE63-lWTgqx3Q",
+)
 
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"

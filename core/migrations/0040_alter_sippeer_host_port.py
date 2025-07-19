@@ -4,15 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0039_remove_sippeer_context_sippeer_routing_table'),
+        ("core", "0039_remove_sippeer_context_sippeer_routing_table"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='sippeer',
-            name='host_port',
-            field=models.CharField(blank=True, default='', help_text='Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.', max_length=256, null=True, verbose_name='Host:Port'),
+            model_name="sippeer",
+            name="host_port",
+            field=models.CharField(
+                blank=True,
+                default="",
+                help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
+                max_length=256,
+                null=True,
+                verbose_name="Host:Port",
+            ),
         ),
     ]

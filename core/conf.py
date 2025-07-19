@@ -1,4 +1,3 @@
-
 import textwrap
 import logging
 
@@ -16,8 +15,7 @@ from core.models import (
     CallQueueGlobalSettings,
     Queue,
     QueueMember,
-    QueueAnnouncements,
-    QueueRule
+    QueueRule,
 )
 
 from django.conf import settings
@@ -74,12 +72,14 @@ def make_pjsip_conf_transports() -> str:
 
 
 def __section_trunk_remote_registration(trunk: SIPPeer):
-    host_port: str | None  = trunk.host_port
+    host_port: str | None = trunk.host_port
     if not host_port:
         logger.warning(
             f"Trunk {trunk.name} has no host_port defined. Skipping remote registration section."
         )
-        return "; No host_port defined for trunk. Skipping remote registration section.\n"
+        return (
+            "; No host_port defined for trunk. Skipping remote registration section.\n"
+        )
     hosts_and_ports = host_port.split(",")
     if len(hosts_and_ports) == 0:
         logger.warning(
@@ -91,7 +91,9 @@ def __section_trunk_remote_registration(trunk: SIPPeer):
         logger.warning(
             f"Trunk {trunk.name} has no transport defined. Skipping remote registration section."
         )
-        return "; No transport defined for trunk. Skipping remote registration section.\n"
+        return (
+            "; No transport defined for trunk. Skipping remote registration section.\n"
+        )
     if transport.protocol not in ["udp", "tcp", "tls"]:
         logger.warning(
             f"Trunk {trunk.name} has unsupported transport protocol {transport.protocol}. Skipping remote registration section."
@@ -102,9 +104,7 @@ def __section_trunk_remote_registration(trunk: SIPPeer):
     result += f"[{trunk.name}]\n"
     result += "type=registration\n"
     result += f"outbound_auth={trunk.name}\n"
-    result += (
-        f"server_uri=sip:{hosts_and_ports[0]};transport={transport.protocol}\n"
-    )
+    result += f"server_uri=sip:{hosts_and_ports[0]};transport={transport.protocol}\n"
     result += f"client_uri=sip:{trunk.username}@{hosts_and_ports[0]};transport={transport.protocol}\n"
     result += f"contact_user={trunk.username}\n"
     result += "retry_interval=60\n"
@@ -140,6 +140,7 @@ def __section_trunk_auth_userpass(trunk: SIPPeer):
         )
     return ""
 
+
 def __section_trunk_aor(trunk: SIPPeer):
     custom_aor_settings = trunk.custom_aor_settings
     if custom_aor_settings:
@@ -154,7 +155,9 @@ def __section_trunk_aor(trunk: SIPPeer):
 
     transport: SIPTransport | None = trunk.transport
     if not transport:
-        logger.warning(f"Trunk {trunk.name} has no transport defined. Skipping AOR section.")
+        logger.warning(
+            f"Trunk {trunk.name} has no transport defined. Skipping AOR section."
+        )
         return "; No transport defined for trunk. Skipping AOR section.\n"
     host_port: str | None = trunk.host_port
     result = "; AOR\n"
@@ -177,15 +180,20 @@ def __section_trunk_aor(trunk: SIPPeer):
     result += "\n"
     return result
 
+
 def __section_trunk_endpoint(trunk: SIPPeer) -> str:
     """
     Generates the endpoint section for a SIP trunk.
     """
     if not trunk.transport:
-        logger.warning(f"Trunk {trunk.name} has no transport defined. Skipping endpoint section.")
+        logger.warning(
+            f"Trunk {trunk.name} has no transport defined. Skipping endpoint section."
+        )
         return "; No transport defined for trunk. Skipping endpoint section.\n"
     if not trunk.routing_table:
-        logger.warning(f"Trunk {trunk.name} has no routing table defined. Skipping endpoint section.")
+        logger.warning(
+            f"Trunk {trunk.name} has no routing table defined. Skipping endpoint section."
+        )
         return "; No routing table defined for trunk. Skipping endpoint section.\n"
     lines = [
         "; Endpoint",
@@ -210,19 +218,26 @@ def __section_trunk_endpoint(trunk: SIPPeer) -> str:
     if not trunk.registrationHere:
         lines.append("identify_by=ip")
 
-    if trunk.username is not None and trunk.username != "" and not trunk.registrationHere:
+    if (
+        trunk.username is not None
+        and trunk.username != ""
+        and not trunk.registrationHere
+    ):
         lines.append(f"from_user={trunk.username}")
 
     if trunk.nat:
-        lines.extend([
-            "media_use_received_transport=yes",
-            "rtp_symmetric=yes",
-            "rewrite_contact=yes",
-            "force_rport=yes",
-        ])
+        lines.extend(
+            [
+                "media_use_received_transport=yes",
+                "rtp_symmetric=yes",
+                "rewrite_contact=yes",
+                "force_rport=yes",
+            ]
+        )
 
     lines.append("\n")  # Blank line for separation
     return "\n".join(lines)
+
 
 def __section_trunk_identify(trunk: SIPPeer) -> str:
     """
@@ -232,7 +247,7 @@ def __section_trunk_identify(trunk: SIPPeer) -> str:
         "; Identify",
         f"[{trunk.name}]",
         "type=identify",
-        f"endpoint={trunk.name}"
+        f"endpoint={trunk.name}",
     ]
 
     host_port = trunk.host_port
@@ -280,8 +295,8 @@ def make_pjsip_conf_users_template():
     result += "[user-template](!)\n"
     settings = Settings.objects.first()
     user_template = settings.user_template
-    if user_template and not user_template.endswith('\n'):
-        user_template += '\n'
+    if user_template and not user_template.endswith("\n"):
+        user_template += "\n"
         result += user_template
     result += "\n"
     return result
@@ -292,21 +307,22 @@ def make_pjsip_conf_users_aor_template():
     result += "[user-aor-template](!)\n"
     settings = Settings.objects.first()
     user_aor_template = settings.user_aor_template
-    if user_aor_template and not user_aor_template.endswith('\n'):
-        user_aor_template += '\n'
+    if user_aor_template and not user_aor_template.endswith("\n"):
+        user_aor_template += "\n"
         result += user_aor_template
     result += "qualify_frequency=30\n"
     result += "qualify_timeout=5.0\n"
     result += "\n\n"
     return result
 
+
 def make_pjsip_conf_users_auth_template():
     result = "; ==== Users AUTH template ====\n"
     result += "[user-auth-template](!)\n"
     settings = Settings.objects.first()
     user_auth_template = settings.user_auth_template
-    if not user_auth_template.endswith('\n'):
-        user_auth_template += '\n'
+    if not user_auth_template.endswith("\n"):
+        user_auth_template += "\n"
     result += user_auth_template
     result += "\n\n"
     return result
@@ -435,7 +451,7 @@ def make_pjsip_conf():
 
 def make_queuerules_conf() -> str:
     """Generates the contents of the queuerules.conf configuration file from the QueueRule and PenaltyChange models.
-       Returns a string ready to be written to a file.
+    Returns a string ready to be written to a file.
     """
 
     output = []
@@ -463,80 +479,163 @@ def make_queuerules_conf() -> str:
 
     return "\n".join(output)
 
+
 def make_queues_configurations() -> str:
     queues = Queue.objects.all()
     output = []
     for queue in queues:
         output.append(f"[{queue.name}]")
-        output.append(f"musicclass={queue.music_class.name}" if queue.music_class else ";musicclass")
+        output.append(
+            f"musicclass={queue.music_class.name}"
+            if queue.music_class
+            else ";musicclass"
+        )
         output.append(f"announce={queue.announce}" if queue.announce else ";announce=")
-        output.append(f"queue_announce={queue.queue_announce}" if queue.queue_announce else ";queue_announce=")
-        output.append(f"strategy={queue.strategy}") # 'ringall', 'leastrecent', etc.
-        output.append(f"servicelevel={queue.service_level}" if queue.service_level else ";servicelevel = 0")
+        output.append(
+            f"queue_announce={queue.queue_announce}"
+            if queue.queue_announce
+            else ";queue_announce="
+        )
+        output.append(f"strategy={queue.strategy}")  # 'ringall', 'leastrecent', etc.
+        output.append(
+            f"servicelevel={queue.service_level}"
+            if queue.service_level
+            else ";servicelevel = 0"
+        )
         output.append(f"context={queue.context}" if queue.context else ";context=")
         output.append(f"timeout={queue.timeout}" if queue.timeout else ";timeout=15")
         output.append(f"retry={queue.retry}" if queue.retry else ";retry=5")
-        output.append(f"timeoutpriority={queue.timeoutpriority}" if queue.timeoutpriority else ";timeoutpriority=app")
-        output.append(f"wrapuptime={queue.wrapuptime}" if queue.wrapuptime else ";wrapuptime=0")
-        output.append( "autofill=yes" if queue.autofill else "autofill=no")
+        output.append(
+            f"timeoutpriority={queue.timeoutpriority}"
+            if queue.timeoutpriority
+            else ";timeoutpriority=app"
+        )
+        output.append(
+            f"wrapuptime={queue.wrapuptime}" if queue.wrapuptime else ";wrapuptime=0"
+        )
+        output.append("autofill=yes" if queue.autofill else "autofill=no")
         output.append(f"autopause={queue.autopause}")
         output.append(f"autopausedelay={queue.autopausedelay}")
-        output.append( "reportholdtime=yes" if queue.reportholdtime else "reportholdtime=no")
-        output.append( "setinterfacevar=yes" if queue.setinterfacevar else "setinterfacevar=no")
-        output.append( "setqueueentryvar=yes" if queue.setqueueentryvar else "setqueueentryvar=no")
+        output.append(
+            "reportholdtime=yes" if queue.reportholdtime else "reportholdtime=no"
+        )
+        output.append(
+            "setinterfacevar=yes" if queue.setinterfacevar else "setinterfacevar=no"
+        )
+        output.append(
+            "setqueueentryvar=yes" if queue.setqueueentryvar else "setqueueentryvar=no"
+        )
         output.append(f"announce-frequency={queue.announce_frequency}")
-        output.append( "announce-holdtime=yes" if queue.announce_holdtime else "announce-holdtime=no")
+        output.append(
+            "announce-holdtime=yes"
+            if queue.announce_holdtime
+            else "announce-holdtime=no"
+        )
         output.append(f"min-announce-frequency={queue.min_announce_frequency}")
-        output.append(f"periodic-announce-frequency={queue.periodic_announce_frequency}")
         output.append(
-            "periodic-announce-frequency=yes" if queue.periodic_announce_frequency else "periodic-announce-frequency=no")
+            f"periodic-announce-frequency={queue.periodic_announce_frequency}"
+        )
         output.append(
-            "relative-periodic-announce=yes" if queue.relative_periodic_announce else "relative-periodic-announce=no")
+            "periodic-announce-frequency=yes"
+            if queue.periodic_announce_frequency
+            else "periodic-announce-frequency=no"
+        )
+        output.append(
+            "relative-periodic-announce=yes"
+            if queue.relative_periodic_announce
+            else "relative-periodic-announce=no"
+        )
         output.append(f"announce-holdtime={queue.announce_holdtime}")
         output.append(f"announce-position={queue.announce_position}")
         output.append(
-            "announce-to-first-user=yes" if queue.announce_to_first_user else "announce-to-first-user=no")
+            "announce-to-first-user=yes"
+            if queue.announce_to_first_user
+            else "announce-to-first-user=no"
+        )
+        output.append(f"announce-position-limit={queue.announce_position_limit}")
+        output.append(f"announce-round-seconds={queue.announce_round_seconds}")
         output.append(
-            f"announce-position-limit={queue.announce_position_limit}")
+            "announce-position-only-up=yes"
+            if queue.announce_position_only_up
+            else "announce-position-only-up=no"
+        )
         output.append(
-            f"announce-round-seconds={queue.announce_round_seconds}")
+            f"queue-youarenext={queue.queue_announcement.queue_youarenext}"
+            if queue.queue_announcement.queue_youarenext
+            else ";queue-youarenext="
+        )
         output.append(
-            "announce-position-only-up=yes" if queue.announce_position_only_up else "announce-position-only-up=no")
+            f"queue-thereare={queue.queue_announcement.queue_thereare}"
+            if queue.queue_announcement.queue_thereare
+            else ";queue-thereare="
+        )
         output.append(
-            f"queue-youarenext={queue.queue_announcement.queue_youarenext}" if queue.queue_announcement.queue_youarenext else ";queue-youarenext=")
+            f"queue-callswaiting={queue.queue_announcement.queue_callswaiting}"
+            if queue.queue_announcement.queue_callswaiting
+            else ";queue-callswaiting="
+        )
         output.append(
-            f"queue-thereare={queue.queue_announcement.queue_thereare}" if queue.queue_announcement.queue_thereare else ";queue-thereare=")
+            f"queue-quantity1={queue.queue_announcement.queue_quantity1}"
+            if queue.queue_announcement.queue_quantity1
+            else ";queue-quantity1="
+        )
         output.append(
-            f"queue-callswaiting={queue.queue_announcement.queue_callswaiting}" if queue.queue_announcement.queue_callswaiting else ";queue-callswaiting=")
+            f"queue-quantity2={queue.queue_announcement.queue_quantity2}"
+            if queue.queue_announcement.queue_quantity2
+            else ";queue-quantity2="
+        )
         output.append(
-            f"queue-quantity1={queue.queue_announcement.queue_quantity1}" if queue.queue_announcement.queue_quantity1 else ";queue-quantity1=")
+            f"queue-holdtime={queue.queue_announcement.queue_holdtime}"
+            if queue.queue_announcement.queue_holdtime
+            else ";queue-holdtime="
+        )
         output.append(
-            f"queue-quantity2={queue.queue_announcement.queue_quantity2}" if queue.queue_announcement.queue_quantity2 else ";queue-quantity2=")
+            f"queue-minute={queue.queue_announcement.queue_minute}"
+            if queue.queue_announcement.queue_minute
+            else ";queue-minute="
+        )
         output.append(
-            f"queue-holdtime={queue.queue_announcement.queue_holdtime}" if queue.queue_announcement.queue_holdtime else ";queue-holdtime=")
+            f"queue-minutes={queue.queue_announcement.queue_minutes}"
+            if queue.queue_announcement.queue_minutes
+            else ";queue-minutes="
+        )
         output.append(
-            f"queue-minute={queue.queue_announcement.queue_minute}" if queue.queue_announcement.queue_minute else ";queue-minute=")
+            f"queue-seconds={queue.queue_announcement.queue_seconds}"
+            if queue.queue_announcement.queue_seconds
+            else ";queue-seconds="
+        )
         output.append(
-            f"queue-minutes={queue.queue_announcement.queue_minutes}" if queue.queue_announcement.queue_minutes else ";queue-minutes=")
+            f"queue-thankyou={queue.queue_announcement.queue_thankyou}"
+            if queue.queue_announcement.queue_thankyou
+            else ";queue-thankyou="
+        )
         output.append(
-            f"queue-seconds={queue.queue_announcement.queue_seconds}" if queue.queue_announcement.queue_seconds else ";queue-seconds=")
+            f"queue-reporthold={queue.queue_announcement.queue_reporthold}"
+            if queue.queue_announcement.queue_reporthold
+            else ";queue-reporthold="
+        )
         output.append(
-            f"queue-thankyou={queue.queue_announcement.queue_thankyou}" if queue.queue_announcement.queue_thankyou else ";queue-thankyou=")
+            f"periodic-announce={queue.periodic_announce}"
+            if queue.periodic_announce
+            else ";periodic-announce="
+        )
         output.append(
-            f"queue-reporthold={queue.queue_announcement.queue_reporthold}" if queue.queue_announcement.queue_reporthold else ";queue-reporthold=")
-        output.append(
-            f"periodic-announce={queue.periodic_announce}" if queue.periodic_announce else ";periodic-announce=")
-        output.append(
-            f"monitor-format={queue.monitor_format}" if queue.monitor_format else ";monitor-format=")
+            f"monitor-format={queue.monitor_format}"
+            if queue.monitor_format
+            else ";monitor-format="
+        )
         output.append(f"joinempty={queue.joinempty}")
         output.append(f"leavewhenempty={queue.leavewhenempty}")
         output.append(f"ringinuse={queue.ringinuse}")
         output.append(f"timeoutrestart={queue.timeoutrestart}")
         output.append(
-            f"defaultrule={queue.defaultrule}" if queue.defaultrule else ";defaultrule=")
+            f"defaultrule={queue.defaultrule}" if queue.defaultrule else ";defaultrule="
+        )
         members = QueueMember.objects.filter(queue=queue)
         for member in members:
-            output.append(f"member => {member.interface},{member.penalty},{member.member_name},{member.__state_interface__()},{member.__ringinuse__()},{member.wrapuptime}")
+            output.append(
+                f"member => {member.interface},{member.penalty},{member.member_name},{member.__state_interface__()},{member.__ringinuse__()},{member.wrapuptime}"
+            )
 
     return "\n".join(output)
 
@@ -552,7 +651,9 @@ def make_queues_conf():
         plaintext += f"persistent_members = {'yes' if global_settings.persistent_members else 'no'}\n"
         plaintext += f"autofill = {'yes' if global_settings.autofill else 'no'}\n"
         plaintext += f"monitor-type = {global_settings.monitor_type}\n"
-        plaintext += f"shared_lastcall = {'yes' if global_settings.shared_lastcall else 'no'}\n"
+        plaintext += (
+            f"shared_lastcall = {'yes' if global_settings.shared_lastcall else 'no'}\n"
+        )
         plaintext += f"negative_penalty_invalid = {'yes' if global_settings.negative_penalty_invalid else 'no'}\n"
         plaintext += f"log_membername_as_agent = {'yes' if global_settings.log_membername_as_agent else 'no'}\n"
     else:
@@ -581,23 +682,53 @@ def make_dialplan_extension(extension):
     plaintext += "    }\n"
     return plaintext
 
+def _make_dialplan_h_section():
+    return (
+        "    h => {\n"
+        "        NoOp(Hangup);\n"
+        "        NoOp(HANGUPCAUSE_STRING=${HANGUPCAUSE_KEYS()});\n"
+        "        NoOp(DIALSTATUS=${DIALSTATUS});\n"
+        "        Hangup();\n"
+        "    }\n"
+    )
+
+def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
+    """
+    Returns a tuple for sorting: higher specificity comes first.
+    1. More literal digits/letters (not X, !, [], etc)
+    2. Fewer wildcards (X, !, [], etc)
+    3. Longer pattern
+    4. '_X!' always last
+    """
+    if ext_pattern == '_X!':
+        return (0, 0, 0, 1)
+    # Remove leading underscore
+    pattern = ext_pattern[1:] if ext_pattern.startswith('_') else ext_pattern
+    # Count literal chars (digits/letters)
+    literal_count = sum(1 for c in pattern if c.isdigit() or c.isalpha())
+    # Count wildcards
+    wildcard_count = pattern.count('X') + pattern.count('!') + pattern.count('[') + pattern.count(']')
+    # Length
+    length = len(pattern)
+    # _X! always last
+    is_xbang = 1 if ext_pattern == '_X!' else 0
+    # Sort by: more literal, fewer wildcards, longer, not _X!
+    return (literal_count, -wildcard_count, length, -is_xbang)
+
 
 def make_dialplan_contexts():
     plaintext = "// ==== Printing data of dialplan contexts in PBX admin panel ====\n"
     plaintext += "// ==== Dialplan contexts ====\n"
     for context in DialplanContext.objects.all():
         plaintext += f"// {context.description}\n"
-        plaintext += f"context {context.name}" + " {\n"
-        for extension in DialplanExtension.objects.filter(context=context):
+        plaintext += f"context {context.name} {{\n"
+        # Get all extensions for this context and sort them
+        extensions = list(DialplanExtension.objects.filter(context=context))
+        extensions.sort(key=lambda ext: _asterisk_pattern_specificity(ext.ext), reverse=True)
+        for extension in extensions:
             plaintext += make_dialplan_extension(extension)
-        plaintext += "    h => {\n"
-        plaintext += "        NoOp(Hangup);\n"
-        plaintext += "        NoOp(HANGUPCAUSE_STRING=${HANGUPCAUSE_KEYS()});\n"
-        plaintext += "        NoOp(DIALSTATUS=${DIALSTATUS});\n"
-        plaintext += "        Hangup();\n"
-        plaintext += "    }\n"
+        plaintext += _make_dialplan_h_section()
         plaintext += "}\n"
-
     return plaintext
 
 
@@ -620,7 +751,10 @@ def make_routing_tables():
     plaintext = "// ==== Routing tables ==== \n"
     for rt in RoutingTable.objects.all():
         plaintext += f"context {rt.name} " + "{\n"
-        for dir in RoutingRecord.objects.filter(routing_table=rt).order_by("prefix"):
+        # Get all RoutingRecords for this table and sort them by Asterisk specificity
+        records = list(RoutingRecord.objects.filter(routing_table=rt))
+        records.sort(key=lambda rec: _asterisk_pattern_specificity(rec.prefix), reverse=True)
+        for dir in records:
             plaintext += f"    // {dir.name}\n"
             plaintext += (
                 f"    {dir.prefix} => "
@@ -628,7 +762,6 @@ def make_routing_tables():
                 + f"{dir.context},"
                 + "${EXTEN},1; }\n"
             )
-
         plaintext += "}\n"
     return plaintext
 

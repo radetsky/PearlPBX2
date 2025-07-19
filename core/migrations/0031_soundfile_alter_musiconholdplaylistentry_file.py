@@ -7,27 +7,89 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0030_remove_settings_django_manager_secret'),
+        ("core", "0030_remove_settings_django_manager_secret"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SoundFile',
+            name="SoundFile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file', models.FileField(blank=True, null=True, storage=core.storages.SoundsFileSystemStorage(), upload_to='', validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['mp3', 'wav', 'gsm', 'ogg', 'alaw', 'al', 'ulaw', 'ul']), core.models.SoundFile.validate_file_extension, core.models.SoundFile.validate_file_size], verbose_name='Sound file')),
-                ('name', models.CharField(help_text='The file name without extension. You may enter completely different name here.', max_length=64, unique=True, verbose_name='File name used in dialplans')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        blank=True,
+                        null=True,
+                        storage=core.storages.SoundsFileSystemStorage(),
+                        upload_to="",
+                        validators=[
+                            django.core.validators.FileExtensionValidator(
+                                allowed_extensions=[
+                                    "mp3",
+                                    "wav",
+                                    "gsm",
+                                    "ogg",
+                                    "alaw",
+                                    "al",
+                                    "ulaw",
+                                    "ul",
+                                ]
+                            ),
+                            core.models.SoundFile.validate_file_extension,
+                            core.models.SoundFile.validate_file_size,
+                        ],
+                        verbose_name="Sound file",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="The file name without extension. You may enter completely different name here.",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="File name used in dialplans",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': '19. Sound files',
-                'db_table': 'sound_files',
+                "verbose_name_plural": "19. Sound files",
+                "db_table": "sound_files",
             },
         ),
         migrations.AlterField(
-            model_name='musiconholdplaylistentry',
-            name='file',
-            field=models.FileField(blank=True, null=True, storage=core.storages.MOHFileSystemStorage(), upload_to='', validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['mp3', 'wav', 'gsm', 'ogg', 'alaw', 'al', 'ulaw', 'ul']), core.models.MusicOnHoldPlaylistEntry.validate_file_extension, core.models.MusicOnHoldPlaylistEntry.validate_file_size], verbose_name='Playlist entry file'),
+            model_name="musiconholdplaylistentry",
+            name="file",
+            field=models.FileField(
+                blank=True,
+                null=True,
+                storage=core.storages.MOHFileSystemStorage(),
+                upload_to="",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        allowed_extensions=[
+                            "mp3",
+                            "wav",
+                            "gsm",
+                            "ogg",
+                            "alaw",
+                            "al",
+                            "ulaw",
+                            "ul",
+                        ]
+                    ),
+                    core.models.MusicOnHoldPlaylistEntry.validate_file_extension,
+                    core.models.MusicOnHoldPlaylistEntry.validate_file_size,
+                ],
+                verbose_name="Playlist entry file",
+            ),
         ),
     ]

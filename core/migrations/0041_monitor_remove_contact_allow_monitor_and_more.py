@@ -5,52 +5,171 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0040_alter_sippeer_host_port'),
+        ("core", "0040_alter_sippeer_host_port"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Monitor',
+            name="Monitor",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('callerid', models.CharField(blank=True, help_text='Caller ID to monitor. Blank for all calls.', max_length=64, verbose_name='Caller ID')),
-                ('destination', models.CharField(blank=True, help_text='Destination to monitor. Blank for all destinations.', max_length=64, verbose_name='Destination')),
-                ('force_enable_monitor', models.BooleanField(default=False, help_text='Force enable monitor for this caller ID and destination', verbose_name='Force Enable Monitor')),
-                ('force_disable_monitor', models.BooleanField(default=False, help_text='Force disable monitor for this caller ID and destination', verbose_name='Force Disable Monitor')),
-                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Created')),
-                ('modified', models.DateTimeField(auto_now=True, verbose_name='Modified')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "callerid",
+                    models.CharField(
+                        blank=True,
+                        help_text="Caller ID to monitor. Blank for all calls.",
+                        max_length=64,
+                        verbose_name="Caller ID",
+                    ),
+                ),
+                (
+                    "destination",
+                    models.CharField(
+                        blank=True,
+                        help_text="Destination to monitor. Blank for all destinations.",
+                        max_length=64,
+                        verbose_name="Destination",
+                    ),
+                ),
+                (
+                    "force_enable_monitor",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Force enable monitor for this caller ID and destination",
+                        verbose_name="Force Enable Monitor",
+                    ),
+                ),
+                (
+                    "force_disable_monitor",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Force disable monitor for this caller ID and destination",
+                        verbose_name="Force Disable Monitor",
+                    ),
+                ),
+                (
+                    "created",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created"),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified"),
+                ),
             ],
         ),
         migrations.RemoveField(
-            model_name='contact',
-            name='allow_monitor',
+            model_name="contact",
+            name="allow_monitor",
         ),
         migrations.CreateModel(
-            name='MonitorFilenames',
+            name="MonitorFilenames",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('src', models.CharField(help_text='The caller ID associated with the monitor recording', max_length=64)),
-                ('dst', models.CharField(help_text='The destination number associated with the monitor recording', max_length=64)),
-                ('filename', models.CharField(help_text='The filename of the monitor recording', max_length=255, unique=True, verbose_name='Monitor Filename')),
-                ('cdr_uniqueid', models.CharField(blank=True, help_text='The unique ID of the CDR associated with this monitor recording', max_length=64, null=True, unique=True, verbose_name='CDR UniqueID')),
-                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Created')),
-                ('requested_by_api', models.BooleanField(default=False, help_text='Indicates if the filename is requested by API usage', verbose_name='Requested by API')),
-                ('used_by_system', models.BooleanField(default=False, help_text='Indicates if the filename is used by the system', verbose_name='Used by System')),
-                ('modified', models.DateTimeField(auto_now=True, verbose_name='Modified')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "src",
+                    models.CharField(
+                        help_text="The caller ID associated with the monitor recording",
+                        max_length=64,
+                    ),
+                ),
+                (
+                    "dst",
+                    models.CharField(
+                        help_text="The destination number associated with the monitor recording",
+                        max_length=64,
+                    ),
+                ),
+                (
+                    "filename",
+                    models.CharField(
+                        help_text="The filename of the monitor recording",
+                        max_length=255,
+                        unique=True,
+                        verbose_name="Monitor Filename",
+                    ),
+                ),
+                (
+                    "cdr_uniqueid",
+                    models.CharField(
+                        blank=True,
+                        help_text="The unique ID of the CDR associated with this monitor recording",
+                        max_length=64,
+                        null=True,
+                        unique=True,
+                        verbose_name="CDR UniqueID",
+                    ),
+                ),
+                (
+                    "created",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created"),
+                ),
+                (
+                    "requested_by_api",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Indicates if the filename is requested by API usage",
+                        verbose_name="Requested by API",
+                    ),
+                ),
+                (
+                    "used_by_system",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Indicates if the filename is used by the system",
+                        verbose_name="Used by System",
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified"),
+                ),
             ],
             options={
-                'db_table': 'core_monitor_filenames',
-                'indexes': [models.Index(fields=['src', 'dst'], name='idx_src_dst'), models.Index(fields=['cdr_uniqueid'], name='idx_cdr_uniqueid'), models.Index(fields=['created'], name='idx_created'), models.Index(fields=['filename'], name='idx_filename')],
+                "db_table": "core_monitor_filenames",
+                "indexes": [
+                    models.Index(fields=["src", "dst"], name="idx_src_dst"),
+                    models.Index(fields=["cdr_uniqueid"], name="idx_cdr_uniqueid"),
+                    models.Index(fields=["created"], name="idx_created"),
+                    models.Index(fields=["filename"], name="idx_filename"),
+                ],
             },
         ),
         migrations.AddConstraint(
-            model_name='monitor',
-            constraint=models.CheckConstraint(check=models.Q(models.Q(('callerid', ''), _negated=True), models.Q(('destination', ''), _negated=True), _connector='OR'), name='callerid_or_destination_required'),
+            model_name="monitor",
+            constraint=models.CheckConstraint(
+                check=models.Q(
+                    models.Q(("callerid", ""), _negated=True),
+                    models.Q(("destination", ""), _negated=True),
+                    _connector="OR",
+                ),
+                name="callerid_or_destination_required",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='monitor',
-            constraint=models.CheckConstraint(check=models.Q(('force_enable_monitor', models.F('force_disable_monitor')), _negated=True), name='force_enable_not_equal_disable'),
+            model_name="monitor",
+            constraint=models.CheckConstraint(
+                check=models.Q(
+                    ("force_enable_monitor", models.F("force_disable_monitor")),
+                    _negated=True,
+                ),
+                name="force_enable_not_equal_disable",
+            ),
         ),
     ]

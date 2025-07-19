@@ -4,42 +4,44 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0034_alter_penaltychange_max_penalty_and_more'),
+        ("core", "0034_alter_penaltychange_max_penalty_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='blacklist',
-            options={'verbose_name_plural': '17. Blacklist'},
+            name="blacklist",
+            options={"verbose_name_plural": "17. Blacklist"},
         ),
         migrations.AlterModelOptions(
-            name='callqueueglobalsettings',
-            options={'verbose_name_plural': '12. Queue Global Settings'},
+            name="callqueueglobalsettings",
+            options={"verbose_name_plural": "12. Queue Global Settings"},
         ),
         migrations.AlterModelOptions(
-            name='contact',
-            options={'verbose_name_plural': '19. Contacts'},
+            name="contact",
+            options={"verbose_name_plural": "19. Contacts"},
         ),
         migrations.AlterModelOptions(
-            name='queuerule',
-            options={'verbose_name': 'Queue Rule', 'verbose_name_plural': '13. Queue Rules'},
+            name="queuerule",
+            options={
+                "verbose_name": "Queue Rule",
+                "verbose_name_plural": "13. Queue Rules",
+            },
         ),
         migrations.AlterModelOptions(
-            name='routingrecord',
-            options={'verbose_name_plural': '16. Routing Records'},
+            name="routingrecord",
+            options={"verbose_name_plural": "16. Routing Records"},
         ),
         migrations.AlterModelOptions(
-            name='soundfile',
-            options={'verbose_name_plural': '20. Sound files'},
+            name="soundfile",
+            options={"verbose_name_plural": "20. Sound files"},
         ),
         migrations.AlterModelOptions(
-            name='trunkgroup',
-            options={'verbose_name_plural': '14. Trunk Groups'},
+            name="trunkgroup",
+            options={"verbose_name_plural": "14. Trunk Groups"},
         ),
         migrations.AlterModelOptions(
-            name='whitelist',
-            options={'verbose_name_plural': '18. Whitelist'},
+            name="whitelist",
+            options={"verbose_name_plural": "18. Whitelist"},
         ),
     ]

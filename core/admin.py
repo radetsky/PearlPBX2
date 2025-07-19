@@ -32,9 +32,11 @@ from .models import (
     SoundFile,
 )
 from .forms import (
+    RoutingTableAdminForm,
     SIPUserForm,
     SIPPeerForm,
     DialplanExtensionForm,
+    DialplanContextAdminForm,
     ConfigurationFileForm,
 )
 
@@ -88,6 +90,7 @@ class DialplanExtensionInlineAdmin(admin.TabularInline):
 
 
 class DialplanContextAdmin(admin.ModelAdmin):
+    form = DialplanContextAdminForm
     fields = ["name", "description"]
     list_display = ("name", "description")
     ordering = ["name", "description"]
@@ -138,21 +141,33 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
 class RoutingRecordAdmin(admin.ModelAdmin):
     fields = ["prefix", "name", "context", "routing_table"]
     list_display = ("prefix", "name", "context", "routing_table")
+    list_filter = [
+        "routing_table",
+        "context",
+        ("routing_table", admin.RelatedOnlyFieldListFilter),
+    ]
     ordering = ["prefix", "name"]
-    search_fields = ["prefix", "name"]
+    # Пошук по пов'язаних об'єктах
+    search_fields = ["prefix", "name", "context__name"]
+    list_per_page = 50  # Пагінація
 
 
 class RoutingRecordInlineAdmin(admin.TabularInline):
-    min_num: Optional[int] = 1
-    extra: Optional[int] = 0
     model = RoutingRecord
+    min_num = 1
+    extra = 0
 
-    fields = ["name", "prefix", "context", "routing_table"]
-    ordering = ["prefix"]
-    search_fields = ["prefix"]
+    fields = ["name", "prefix", "context"]
+    ordering = ["name", "prefix"]
+
+    autocomplete_fields = ["context"]
+
+    verbose_name = "Routing Record"
+    verbose_name_plural = "Routing Records"
 
 
 class RoutingTableAdmin(admin.ModelAdmin):
+    form = RoutingTableAdminForm
     fields = ["name"]
     ordering = ["name"]
     search_fields = ["name"]
@@ -166,7 +181,14 @@ class PenaltyChangeInlineAdmin(admin.TabularInline):
 
     fields = ["rule", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
     ordering = ["rule", "seconds"]
-    search_fields = ["rule__name", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
+    search_fields = [
+        "rule__name",
+        "seconds",
+        "max_penalty",
+        "min_penalty",
+        "raise_penalty",
+        "order",
+    ]
 
 
 class QueueRuleAdmin(admin.ModelAdmin):
@@ -174,7 +196,6 @@ class QueueRuleAdmin(admin.ModelAdmin):
     ordering = ["name", "description"]
     search_fields = ["name", "description"]
     inlines = [PenaltyChangeInlineAdmin]
-
 
 
 class ConfigurationFileAdmin(admin.ModelAdmin):
@@ -200,9 +221,9 @@ class ConfigurationFileAdmin(admin.ModelAdmin):
 
 
 class SoundFileAdmin(admin.ModelAdmin):
-    fields = ('language', 'name', 'file')  # Language — перед file
-    list_display = ('language', 'name')
-    search_fields = ('language', 'name')
+    fields = ("language", "name", "file")  # Language — перед file
+    list_display = ("language", "name")
+    search_fields = ("language", "name")
 
 
 admin.site.register(SIPUser, SIPUserAdmin)
