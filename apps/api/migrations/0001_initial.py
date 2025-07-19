@@ -7,7 +7,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,37 +15,138 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='CustomListNames',
+            name="CustomListNames",
             fields=[
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('modified_at', models.DateTimeField(auto_now=True)),
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(help_text='Name of the custom list', max_length=64, unique=True, verbose_name='Custom List Name')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_created', to=settings.AUTH_USER_MODEL)),
-                ('modified_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_modified', to=settings.AUTH_USER_MODEL)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("modified_at", models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Name of the custom list",
+                        max_length=64,
+                        unique=True,
+                        verbose_name="Custom List Name",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "modified_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_modified",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Custom List Names',
-                'db_table': 'custom_list_names',
+                "verbose_name_plural": "Custom List Names",
+                "db_table": "custom_list_names",
             },
         ),
         migrations.CreateModel(
-            name='CustomListEntries',
+            name="CustomListEntries",
             fields=[
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('modified_at', models.DateTimeField(auto_now=True)),
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('callerid', models.CharField(help_text='Value of the custom list entry', max_length=64, verbose_name='Custom List Entry Value')),
-                ('destination', models.CharField(blank=True, default='', help_text='Destination number where calls must be detected. Default= for whole system detection.', max_length=64, verbose_name='Destination')),
-                ('reason', models.CharField(default='', help_text='Reason for detecting the caller ID', max_length=64, verbose_name='Reason')),
-                ('expiration_date', models.DateTimeField(blank=True, help_text='Expiration date for the custom list entry. If not set, the entry is permanent.', null=True, verbose_name='Expiration Date')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_created', to=settings.AUTH_USER_MODEL)),
-                ('list_name', models.ForeignKey(help_text='Custom list name', on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='api.customlistnames', verbose_name='Custom List Name')),
-                ('modified_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_modified', to=settings.AUTH_USER_MODEL)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("modified_at", models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "callerid",
+                    models.CharField(
+                        help_text="Value of the custom list entry",
+                        max_length=64,
+                        verbose_name="Custom List Entry Value",
+                    ),
+                ),
+                (
+                    "destination",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="Destination number where calls must be detected. Default= for whole system detection.",
+                        max_length=64,
+                        verbose_name="Destination",
+                    ),
+                ),
+                (
+                    "reason",
+                    models.CharField(
+                        default="",
+                        help_text="Reason for detecting the caller ID",
+                        max_length=64,
+                        verbose_name="Reason",
+                    ),
+                ),
+                (
+                    "expiration_date",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="Expiration date for the custom list entry. If not set, the entry is permanent.",
+                        null=True,
+                        verbose_name="Expiration Date",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "list_name",
+                    models.ForeignKey(
+                        help_text="Custom list name",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="entries",
+                        to="api.customlistnames",
+                        verbose_name="Custom List Name",
+                    ),
+                ),
+                (
+                    "modified_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_modified",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Custom List Entries',
-                'db_table': 'custom_list_entries',
+                "verbose_name_plural": "Custom List Entries",
+                "db_table": "custom_list_entries",
             },
         ),
     ]

@@ -5,6 +5,7 @@ import shutil
 
 from os import makedirs
 
+
 def generate_password():
     alphabet = string.ascii_letters + string.digits
     while True:
@@ -29,11 +30,13 @@ def generate_32_char_password():
 def generate_64_char_password():
     return generate_safe_password(64)
 
+
 def create_directory(path: str):
     """
     Create a directory if it doesn't exist.
     """
     makedirs(path, exist_ok=True)
+
 
 def remove_directory(directory_path: str) -> bool:
     """

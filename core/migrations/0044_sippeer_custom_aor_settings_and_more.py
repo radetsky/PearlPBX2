@@ -4,25 +4,41 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0043_alter_settings_user_aor_template_and_more'),
+        ("core", "0043_alter_settings_user_aor_template_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='sippeer',
-            name='custom_aor_settings',
-            field=models.TextField(default='', help_text='Custom peer [aor] section', null=True, verbose_name='AOR Settings'),
+            model_name="sippeer",
+            name="custom_aor_settings",
+            field=models.TextField(
+                default="",
+                help_text="Custom peer [aor] section",
+                null=True,
+                verbose_name="AOR Settings",
+            ),
         ),
         migrations.AddField(
-            model_name='sippeer',
-            name='custom_auth_settings',
-            field=models.TextField(default='', help_text='Custom peer [auth] section', null=True, verbose_name='Auth Settings'),
+            model_name="sippeer",
+            name="custom_auth_settings",
+            field=models.TextField(
+                default="",
+                help_text="Custom peer [auth] section",
+                null=True,
+                verbose_name="Auth Settings",
+            ),
         ),
         migrations.AlterField(
-            model_name='sippeer',
-            name='host_port',
-            field=models.CharField(blank=True, default='', help_text='Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.', max_length=256, null=True, verbose_name='The list of host[:port] separated by commas'),
+            model_name="sippeer",
+            name="host_port",
+            field=models.CharField(
+                blank=True,
+                default="",
+                help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
+                max_length=256,
+                null=True,
+                verbose_name="The list of host[:port] separated by commas",
+            ),
         ),
     ]

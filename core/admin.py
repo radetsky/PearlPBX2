@@ -160,7 +160,7 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
     fields = ["name", "prefix", "context"]
     ordering = ["prefix", "name"]
 
-    autocomplete_fields = ['context']
+    autocomplete_fields = ["context"]
 
     verbose_name = "Routing Record"
     verbose_name_plural = "Routing Records"
@@ -181,7 +181,14 @@ class PenaltyChangeInlineAdmin(admin.TabularInline):
 
     fields = ["rule", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
     ordering = ["rule", "seconds"]
-    search_fields = ["rule__name", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
+    search_fields = [
+        "rule__name",
+        "seconds",
+        "max_penalty",
+        "min_penalty",
+        "raise_penalty",
+        "order",
+    ]
 
 
 class QueueRuleAdmin(admin.ModelAdmin):
@@ -189,7 +196,6 @@ class QueueRuleAdmin(admin.ModelAdmin):
     ordering = ["name", "description"]
     search_fields = ["name", "description"]
     inlines = [PenaltyChangeInlineAdmin]
-
 
 
 class ConfigurationFileAdmin(admin.ModelAdmin):
@@ -215,9 +221,9 @@ class ConfigurationFileAdmin(admin.ModelAdmin):
 
 
 class SoundFileAdmin(admin.ModelAdmin):
-    fields = ('language', 'name', 'file')  # Language — перед file
-    list_display = ('language', 'name')
-    search_fields = ('language', 'name')
+    fields = ("language", "name", "file")  # Language — перед file
+    list_display = ("language", "name")
+    search_fields = ("language", "name")
 
 
 admin.site.register(SIPUser, SIPUserAdmin)

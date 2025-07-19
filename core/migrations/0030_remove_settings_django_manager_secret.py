@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0029_create_echo_service'),
+        ("core", "0029_create_echo_service"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='settings',
-            name='django_manager_secret',
+            model_name="settings",
+            name="django_manager_secret",
         ),
     ]

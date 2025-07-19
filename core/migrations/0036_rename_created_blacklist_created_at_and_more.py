@@ -7,64 +7,87 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('core', '0035_alter_blacklist_options_and_more'),
+        ("core", "0035_alter_blacklist_options_and_more"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='blacklist',
-            old_name='created',
-            new_name='created_at',
+            model_name="blacklist",
+            old_name="created",
+            new_name="created_at",
         ),
         migrations.RenameField(
-            model_name='blacklist',
-            old_name='updated',
-            new_name='modified_at',
+            model_name="blacklist",
+            old_name="updated",
+            new_name="modified_at",
         ),
         migrations.RemoveField(
-            model_name='blacklist',
-            name='description',
+            model_name="blacklist",
+            name="description",
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_created', to=settings.AUTH_USER_MODEL),
+            model_name="blacklist",
+            name="created_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="%(class)s_created",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='destination',
-            field=models.CharField(default='blackhole', help_text='Destination number where calls must be blocked. Default= for whole system blocking.', max_length=64, verbose_name='Destination'),
+            model_name="blacklist",
+            name="destination",
+            field=models.CharField(
+                default="blackhole",
+                help_text="Destination number where calls must be blocked. Default= for whole system blocking.",
+                max_length=64,
+                verbose_name="Destination",
+            ),
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='expiration_date',
-            field=models.DateTimeField(blank=True, help_text='Expiration date for the blacklist entry. If not set, the entry is permanent.', null=True, verbose_name='Expiration Date'),
+            model_name="blacklist",
+            name="expiration_date",
+            field=models.DateTimeField(
+                blank=True,
+                help_text="Expiration date for the blacklist entry. If not set, the entry is permanent.",
+                null=True,
+                verbose_name="Expiration Date",
+            ),
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='modified_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_modified', to=settings.AUTH_USER_MODEL),
+            model_name="blacklist",
+            name="modified_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="%(class)s_modified",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='reason',
-            field=models.CharField(default='', help_text='Reason for blocking the caller ID', max_length=64, verbose_name='Reason'),
+            model_name="blacklist",
+            name="reason",
+            field=models.CharField(
+                default="",
+                help_text="Reason for blocking the caller ID",
+                max_length=64,
+                verbose_name="Reason",
+            ),
         ),
         migrations.RemoveField(
-            model_name='blacklist',
-            name='id',
+            model_name="blacklist",
+            name="id",
         ),
         migrations.AddField(
-            model_name='blacklist',
-            name='id',
+            model_name="blacklist",
+            name="id",
             field=models.UUIDField(
-                default=uuid.uuid4,
-                editable=False,
-                primary_key=True,
-                serialize=False
+                default=uuid.uuid4, editable=False, primary_key=True, serialize=False
             ),
         ),
     ]

@@ -14,6 +14,7 @@ from core.models import (
 
 from core.widgets import PasswordWithToggleInput
 
+
 def validate_alphanumeric(value):
     if value == "":
         return True
@@ -210,7 +211,6 @@ class SIPPeerForm(forms.ModelForm):
         help_text="Custom user AOR settings in asterisk pjsip.conf format",
     )
 
-
     class Meta:
         model = SIPPeer
         fields = "__all__"
@@ -258,10 +258,10 @@ class ConfigurationFileForm(forms.ModelForm):
 class RoutingTableAdminForm(forms.ModelForm):
     class Meta:
         model = RoutingTable
-        fields = '__all__'
+        fields = "__all__"
 
     def clean_name(self):
-        name = self.cleaned_data.get('name')
+        name = self.cleaned_data.get("name")
         if not name:
             return name
 
@@ -270,7 +270,7 @@ class RoutingTableAdminForm(forms.ModelForm):
         if DialplanContext.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 f'Context with the name "{name}" already exists in the DialplanContext table. '
-                'Please choose a different name.'
+                "Please choose a different name."
             )
         return name
 
@@ -278,10 +278,10 @@ class RoutingTableAdminForm(forms.ModelForm):
 class DialplanContextAdminForm(forms.ModelForm):
     class Meta:
         model = DialplanContext
-        fields = '__all__'
+        fields = "__all__"
 
     def clean_name(self):
-        name = self.cleaned_data.get('name')
+        name = self.cleaned_data.get("name")
         if not name:
             return name
 
@@ -289,6 +289,6 @@ class DialplanContextAdminForm(forms.ModelForm):
         if RoutingTable.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 f'Context with the name "{name}" already exists in the RoutingTable table. '
-                'Please choose a different name.'
+                "Please choose a different name."
             )
         return name

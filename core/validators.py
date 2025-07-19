@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def validate_bind_ip(value):
     items = value.split(":")
     logger.info(value)
@@ -29,10 +30,10 @@ def validate_bind_ip(value):
 
 def validate_asterisk_context(value):
     """Validator for Asterisk context name"""
-    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_-]*$', value):
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_-]*$", value):
         raise ValidationError(
-            'Context name must start with letter or underscore, '
-            'and contain only letters, digits, underscores, and hyphens.'
+            "Context name must start with letter or underscore, "
+            "and contain only letters, digits, underscores, and hyphens."
         )
     if len(value) > 80:
-        raise ValidationError('Context name is too long (max 80 characters).')
+        raise ValidationError("Context name is too long (max 80 characters).")

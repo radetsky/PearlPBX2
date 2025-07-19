@@ -5,25 +5,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0033_queuerule_alter_musiconhold_options_and_more'),
+        ("core", "0033_queuerule_alter_musiconhold_options_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='penaltychange',
-            name='max_penalty',
-            field=models.IntegerField(blank=True, help_text='Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY', validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)]),
+            model_name="penaltychange",
+            name="max_penalty",
+            field=models.IntegerField(
+                blank=True,
+                help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY",
+                validators=[
+                    django.core.validators.MaxValueValidator(100),
+                    django.core.validators.MinValueValidator(-100),
+                ],
+            ),
         ),
         migrations.AlterField(
-            model_name='penaltychange',
-            name='min_penalty',
-            field=models.IntegerField(blank=True, help_text='Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY', validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)]),
+            model_name="penaltychange",
+            name="min_penalty",
+            field=models.IntegerField(
+                blank=True,
+                help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY",
+                validators=[
+                    django.core.validators.MaxValueValidator(100),
+                    django.core.validators.MinValueValidator(-100),
+                ],
+            ),
         ),
         migrations.AlterField(
-            model_name='penaltychange',
-            name='raise_penalty',
-            field=models.IntegerField(blank=True, help_text='Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY', validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)]),
+            model_name="penaltychange",
+            name="raise_penalty",
+            field=models.IntegerField(
+                blank=True,
+                help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY",
+                validators=[
+                    django.core.validators.MaxValueValidator(100),
+                    django.core.validators.MinValueValidator(-100),
+                ],
+            ),
         ),
     ]

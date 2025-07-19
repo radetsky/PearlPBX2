@@ -4,20 +4,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0044_sippeer_custom_aor_settings_and_more'),
+        ("core", "0044_sippeer_custom_aor_settings_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='dialplanextension',
-            name='ext',
-            field=models.CharField(default='_X!', help_text='Asterisk extension', max_length=64, verbose_name='Extension'),
+            model_name="dialplanextension",
+            name="ext",
+            field=models.CharField(
+                default="_X!",
+                help_text="Asterisk extension",
+                max_length=64,
+                verbose_name="Extension",
+            ),
         ),
         migrations.AlterField(
-            model_name='routingrecord',
-            name='prefix',
-            field=models.CharField(help_text='Prefix of the routing record', max_length=64, verbose_name='Routing Record Prefix'),
+            model_name="routingrecord",
+            name="prefix",
+            field=models.CharField(
+                help_text="Prefix of the routing record",
+                max_length=64,
+                verbose_name="Routing Record Prefix",
+            ),
         ),
     ]

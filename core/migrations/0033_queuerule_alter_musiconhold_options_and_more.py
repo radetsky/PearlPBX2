@@ -8,65 +8,182 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0032_soundfile_language_alter_soundfile_file'),
+        ("core", "0032_soundfile_language_alter_soundfile_file"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='QueueRule',
+            name="QueueRule",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Unique rule name (used in Queue(...,,,rule_name))', max_length=64, unique=True)),
-                ('description', models.TextField(blank=True, help_text='Description or notes for the rule')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Unique rule name (used in Queue(...,,,rule_name))",
+                        max_length=64,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Description or notes for the rule"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Queue Rule',
-                'verbose_name_plural': 'Queue Rules',
-                'db_table': 'queue_rules',
+                "verbose_name": "Queue Rule",
+                "verbose_name_plural": "Queue Rules",
+                "db_table": "queue_rules",
             },
         ),
         migrations.AlterModelOptions(
-            name='musiconhold',
-            options={'verbose_name_plural': '08. Music on hold classes'},
+            name="musiconhold",
+            options={"verbose_name_plural": "08. Music on hold classes"},
         ),
         migrations.RenameField(
-            model_name='queue',
-            old_name='ring_in_use',
-            new_name='ringinuse',
+            model_name="queue",
+            old_name="ring_in_use",
+            new_name="ringinuse",
         ),
         migrations.AddField(
-            model_name='queue',
-            name='queue_announce',
-            field=models.CharField(blank=True, help_text='An announcement may be specified which is played to the caller just\nbefore they are bridged with an agent.', max_length=64, null=True, verbose_name='Queue announcement to the caller'),
+            model_name="queue",
+            name="queue_announce",
+            field=models.CharField(
+                blank=True,
+                help_text="An announcement may be specified which is played to the caller just\nbefore they are bridged with an agent.",
+                max_length=64,
+                null=True,
+                verbose_name="Queue announcement to the caller",
+            ),
         ),
         migrations.AlterField(
-            model_name='musiconholdplaylistentry',
-            name='file',
-            field=models.FileField(blank=True, null=True, storage=core.storages.MOHFileSystemStorage(), upload_to=core.models.moh_file_upload_path, validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['mp3', 'wav', 'gsm', 'ogg', 'alaw', 'al', 'ulaw', 'ul']), core.models.MusicOnHoldPlaylistEntry.validate_file_extension, core.models.MusicOnHoldPlaylistEntry.validate_file_size], verbose_name='Playlist entry file'),
+            model_name="musiconholdplaylistentry",
+            name="file",
+            field=models.FileField(
+                blank=True,
+                null=True,
+                storage=core.storages.MOHFileSystemStorage(),
+                upload_to=core.models.moh_file_upload_path,
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        allowed_extensions=[
+                            "mp3",
+                            "wav",
+                            "gsm",
+                            "ogg",
+                            "alaw",
+                            "al",
+                            "ulaw",
+                            "ul",
+                        ]
+                    ),
+                    core.models.MusicOnHoldPlaylistEntry.validate_file_extension,
+                    core.models.MusicOnHoldPlaylistEntry.validate_file_size,
+                ],
+                verbose_name="Playlist entry file",
+            ),
         ),
         migrations.AlterField(
-            model_name='queue',
-            name='announce',
-            field=models.CharField(blank=True, help_text='An announcement may be specified which is played for the member as\nsoon as they answer a call, typically to indicate to them which queue\nthis call should be answered as, so that agents or members who are\nlistening to more than one queue can differentiated how they should\nengage the customer', max_length=64, null=True, verbose_name='Announcement to the member'),
+            model_name="queue",
+            name="announce",
+            field=models.CharField(
+                blank=True,
+                help_text="An announcement may be specified which is played for the member as\nsoon as they answer a call, typically to indicate to them which queue\nthis call should be answered as, so that agents or members who are\nlistening to more than one queue can differentiated how they should\nengage the customer",
+                max_length=64,
+                null=True,
+                verbose_name="Announcement to the member",
+            ),
         ),
         migrations.CreateModel(
-            name='PenaltyChange',
+            name="PenaltyChange",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('seconds', models.PositiveIntegerField(help_text='After how many seconds in the queue this change is applied')),
-                ('max_penalty', models.CharField(blank=True, help_text='Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY', max_length=4, validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)])),
-                ('min_penalty', models.CharField(blank=True, help_text='Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY', max_length=4, validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)])),
-                ('raise_penalty', models.CharField(blank=True, help_text='Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY', max_length=4, validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(-100)])),
-                ('order', models.PositiveIntegerField(default=0, help_text='Execution order if there are rules with the same time', validators=[django.core.validators.MaxValueValidator(100), django.core.validators.MinValueValidator(0)])),
-                ('rule', models.ForeignKey(help_text='Related queue rule', on_delete=django.db.models.deletion.CASCADE, related_name='penalty_changes', to='core.queuerule')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "seconds",
+                    models.PositiveIntegerField(
+                        help_text="After how many seconds in the queue this change is applied"
+                    ),
+                ),
+                (
+                    "max_penalty",
+                    models.CharField(
+                        blank=True,
+                        help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY",
+                        max_length=4,
+                        validators=[
+                            django.core.validators.MaxValueValidator(100),
+                            django.core.validators.MinValueValidator(-100),
+                        ],
+                    ),
+                ),
+                (
+                    "min_penalty",
+                    models.CharField(
+                        blank=True,
+                        help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY",
+                        max_length=4,
+                        validators=[
+                            django.core.validators.MaxValueValidator(100),
+                            django.core.validators.MinValueValidator(-100),
+                        ],
+                    ),
+                ),
+                (
+                    "raise_penalty",
+                    models.CharField(
+                        blank=True,
+                        help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY",
+                        max_length=4,
+                        validators=[
+                            django.core.validators.MaxValueValidator(100),
+                            django.core.validators.MinValueValidator(-100),
+                        ],
+                    ),
+                ),
+                (
+                    "order",
+                    models.PositiveIntegerField(
+                        default=0,
+                        help_text="Execution order if there are rules with the same time",
+                        validators=[
+                            django.core.validators.MaxValueValidator(100),
+                            django.core.validators.MinValueValidator(0),
+                        ],
+                    ),
+                ),
+                (
+                    "rule",
+                    models.ForeignKey(
+                        help_text="Related queue rule",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="penalty_changes",
+                        to="core.queuerule",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Penalty Change',
-                'verbose_name_plural': 'Penalty Changes',
-                'db_table': 'penalty_changes',
-                'ordering': ['rule', 'seconds', 'order'],
+                "verbose_name": "Penalty Change",
+                "verbose_name_plural": "Penalty Changes",
+                "db_table": "penalty_changes",
+                "ordering": ["rule", "seconds", "order"],
             },
         ),
     ]

@@ -5,5 +5,5 @@ from .admin import ApplyChangesView
 urlpatterns = [
     path("admin/apply", ApplyChangesView.as_view(), name="apply_changes"),
     path("admin/", admin.site.urls),
-    path("api/v1/", include("apps.api.urls"))
+    path("api/v1/", include("apps.api.urls")),
 ]

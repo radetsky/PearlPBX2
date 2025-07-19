@@ -6,31 +6,42 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('core', '0037_remove_whitelist_created_and_more'),
+        ("core", "0037_remove_whitelist_created_and_more"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='contact',
-            old_name='created',
-            new_name='created_at',
+            model_name="contact",
+            old_name="created",
+            new_name="created_at",
         ),
         migrations.RenameField(
-            model_name='contact',
-            old_name='updated',
-            new_name='modified_at',
+            model_name="contact",
+            old_name="updated",
+            new_name="modified_at",
         ),
         migrations.AddField(
-            model_name='contact',
-            name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_created', to=settings.AUTH_USER_MODEL),
+            model_name="contact",
+            name="created_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="%(class)s_created",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='contact',
-            name='modified_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_modified', to=settings.AUTH_USER_MODEL),
+            model_name="contact",
+            name="modified_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="%(class)s_modified",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

@@ -2,6 +2,7 @@ from django.conf import settings
 from django.test import TestCase
 from core.models import SIPTransport, RoutingTable
 
+
 class TestSIPTransport(TestCase):
     def setUp(self) -> None:
         SIPTransport.objects.create(

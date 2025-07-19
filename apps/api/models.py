@@ -4,6 +4,7 @@ import django.db.models.deletion as deletion
 
 from core.models import AuditFields
 
+
 class CustomListNames(AuditFields):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(
@@ -38,17 +39,18 @@ class CustomListEntries(AuditFields):
     )
     destination = models.CharField(
         max_length=64,
-        help_text="Destination number where calls must be detected. Default="" for whole system detection.",
+        help_text="Destination number where calls must be detected. Default="
+        " for whole system detection.",
         verbose_name="Destination",
         default="",
         blank=True,
-        null=False
+        null=False,
     )
     reason = models.CharField(
         max_length=64,
         help_text="Reason for detecting the caller ID",
         verbose_name="Reason",
-        default=""
+        default="",
     )
     expiration_date = models.DateTimeField(
         null=True,
@@ -63,4 +65,3 @@ class CustomListEntries(AuditFields):
 
     def __str__(self):
         return f"{self.list_name.name} - {self.callerid}"
-

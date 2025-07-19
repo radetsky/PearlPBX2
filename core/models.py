@@ -4,7 +4,11 @@ import django.db.models.deletion as deletion
 from django.db import models, transaction
 from django.db.models import Q, F, CheckConstraint
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator,
+    FileExtensionValidator,
+)
 from django.conf import settings
 from django.contrib.auth.models import User
 
@@ -29,7 +33,7 @@ class AuditFields(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='%(class)s_created'
+        related_name="%(class)s_created",
     )
     modified_at = models.DateTimeField(auto_now=True)
     modified_by = models.ForeignKey(
@@ -37,11 +41,12 @@ class AuditFields(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='%(class)s_modified'
+        related_name="%(class)s_modified",
     )
 
     class Meta:
         abstract = True
+
 
 class SIPTransport(models.Model):
     PROTOCOL_CHOICES = [
@@ -155,9 +160,14 @@ class DialplanContext(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if RoutingTable.objects.filter(name=self.name).exclude(pk=self.pk if self.pk else None).exists():
+        if (
+            RoutingTable.objects.filter(name=self.name)
+            .exclude(pk=self.pk if self.pk else None)
+            .exists()
+        ):
             raise ValidationError(
-                f'Context name "{self.name}" already exists in RoutingTable')
+                f'Context name "{self.name}" already exists in RoutingTable'
+            )
         super().save(*args, **kwargs)
 
     @staticmethod
@@ -182,7 +192,7 @@ class RoutingTable(models.Model):
         unique=True,
         verbose_name="Routing table name",
         help_text="Unique name for the routing table and dialplan context, use latin symbols, digits and underscores",
-        validators=[validate_asterisk_context]
+        validators=[validate_asterisk_context],
     )
 
     class Meta:
@@ -192,9 +202,14 @@ class RoutingTable(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if DialplanContext.objects.filter(name=self.name).exclude(pk=self.pk if self.pk else None).exists():
+        if (
+            DialplanContext.objects.filter(name=self.name)
+            .exclude(pk=self.pk if self.pk else None)
+            .exists()
+        ):
             raise ValidationError(
-                f'Context name "{self.name}" already exists in DialplanContext')
+                f'Context name "{self.name}" already exists in DialplanContext'
+            )
         super().save(*args, **kwargs)
 
     @staticmethod
@@ -818,14 +833,15 @@ def moh_file_upload_path(instance, filename):
     """
     Побудова шляху для збереження файлу на основі каталогу классу MusicOnHold.
     """
-    ext = filename.split('.')[-1]
-    base_name = filename.rsplit('.', 1)[0]
+    ext = filename.split(".")[-1]
+    base_name = filename.rsplit(".", 1)[0]
     directory = instance.moh_class.directory if instance.moh_class else "default"
     return f"{directory}/{base_name}.{ext}"
 
 
 class MusicOnHoldPlaylistEntry(models.Model):
     VALID_EXTENSIONS = ["mp3", "wav", "gsm", "ogg", "alaw", "al", "ulaw", "ul"]
+
     def validate_file_extension(value):
         ext = str(value).split(".")[-1]
         if ext.lower() not in MusicOnHoldPlaylistEntry.VALID_EXTENSIONS:
@@ -845,8 +861,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
         blank=True,
         null=True,
         validators=[
-            FileExtensionValidator(
-                allowed_extensions=VALID_EXTENSIONS),
+            FileExtensionValidator(allowed_extensions=VALID_EXTENSIONS),
             validate_file_extension,
             validate_file_size,
         ],
@@ -918,7 +933,7 @@ engage the customer""",
         blank=True,
         verbose_name="Queue announcement to the caller",
         help_text="""An announcement may be specified which is played to the caller just
-before they are bridged with an agent."""
+before they are bridged with an agent.""",
     )
     strategy = models.CharField(
         max_length=32,
@@ -1106,7 +1121,6 @@ class QueueMember(models.Model):
         return self.state_interface if self.state_interface else ""
 
 
-
 class QueueAnnouncements(models.Model):
     name = models.CharField(
         max_length=64,
@@ -1141,22 +1155,22 @@ class QueueRule(models.Model):
     Represents a logical name for an escalation rule.
     For example: 'support_daytime', 'critical_escalation'
     """
+
     name = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Unique rule name (used in Queue(...,,,rule_name))"
+        help_text="Unique rule name (used in Queue(...,,,rule_name))",
     )
 
     description = models.TextField(
-        blank=True,
-        help_text="Description or notes for the rule"
+        blank=True, help_text="Description or notes for the rule"
     )
 
     def __str__(self):
         return self.name
 
     class Meta:
-        db_table = 'queue_rules'
+        db_table = "queue_rules"
         verbose_name = "Queue Rule"
         verbose_name_plural = "13. Queue Rules"
 
@@ -1165,11 +1179,12 @@ class PenaltyChange(models.Model):
     """
     Change of escalation parameters linked to a QueueRule.
     """
+
     rule = models.ForeignKey(
         QueueRule,
         on_delete=models.CASCADE,
-        related_name='penalty_changes',
-        help_text="Related queue rule"
+        related_name="penalty_changes",
+        help_text="Related queue rule",
     )
 
     seconds = models.PositiveIntegerField(
@@ -1179,35 +1194,35 @@ class PenaltyChange(models.Model):
     max_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY"
+        help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY",
     )
 
     min_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY"
+        help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY",
     )
 
     raise_penalty = models.IntegerField(
         blank=True,
         validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY"
+        help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY",
     )
 
     order = models.PositiveIntegerField(
         default=0,
         validators=[MaxValueValidator(100), MinValueValidator(0)],
-        help_text="Execution order if there are rules with the same time"
+        help_text="Execution order if there are rules with the same time",
     )
 
     def __str__(self):
         return f"{self.rule.name} @ {self.seconds}s"
 
     class Meta:
-        db_table = 'penalty_changes'
+        db_table = "penalty_changes"
         verbose_name = "Penalty Change"
         verbose_name_plural = "Penalty Changes"
-        ordering = ['rule', 'seconds', 'order']
+        ordering = ["rule", "seconds", "order"]
 
 
 class ConfigurationFile(models.Model):
@@ -1327,7 +1342,6 @@ class SystemConfiguration(models.Model):
 
 
 class CallQueueGlobalSettings(models.Model):
-
     # Persistent Members
     persistent_members = models.BooleanField(
         default=True,
@@ -1482,17 +1496,18 @@ class Blacklist(AuditFields):
     )
     destination = models.CharField(
         max_length=64,
-        help_text="Destination number where calls must be blocked. Default="" for whole system blocking.",
+        help_text="Destination number where calls must be blocked. Default="
+        " for whole system blocking.",
         verbose_name="Destination",
         default="",
         blank=True,
-        null=False
+        null=False,
     )
     reason = models.CharField(
         max_length=64,
         help_text="Reason for blocking the caller ID",
         verbose_name="Reason",
-        default=""
+        default="",
     )
     expiration_date = models.DateTimeField(
         null=True,
@@ -1519,18 +1534,18 @@ class Whitelist(models.Model):
     )
     destination = models.CharField(
         max_length=64,
-        help_text="Destination number where calls must be allowed. Default="" for whole system allowing.",
+        help_text="Destination number where calls must be allowed. Default="
+        " for whole system allowing.",
         verbose_name="Destination",
         default="",
         blank=True,
-        null=False
-
+        null=False,
     )
     reason = models.CharField(
         max_length=64,
         help_text="Reason for allowing the caller ID",
         verbose_name="Reason",
-        default=""
+        default="",
     )
     expiration_date = models.DateTimeField(
         null=True,
@@ -1558,6 +1573,7 @@ class Contact(AuditFields):
     name = models.CharField(
         max_length=64, help_text="Name of the caller ID", verbose_name="Name"
     )
+
     class Meta:
         db_table = "contacts"
         verbose_name_plural = "19. Contacts"
@@ -1565,12 +1581,13 @@ class Contact(AuditFields):
     def __str__(self):
         return f"{self.name} <{self.callerid}>"
 
+
 def sound_file_upload_path(instance, filename):
     """
     Побудова шляху для збереження файлу на основі мови.
     """
-    ext = filename.split('.')[-1]
-    base_name = instance.name or filename.rsplit('.', 1)[0]
+    ext = filename.split(".")[-1]
+    base_name = instance.name or filename.rsplit(".", 1)[0]
     return f"{instance.language}/{base_name}.{ext}"
 
 
@@ -1596,8 +1613,7 @@ class SoundFile(models.Model):
         blank=True,
         null=True,
         validators=[
-            FileExtensionValidator(
-                allowed_extensions=VALID_EXTENSIONS),
+            FileExtensionValidator(allowed_extensions=VALID_EXTENSIONS),
             validate_file_extension,
             validate_file_size,
         ],
@@ -1627,6 +1643,7 @@ class SoundFile(models.Model):
     class Meta:
         db_table = "sound_files"
         verbose_name_plural = "20. Sound files"
+
 
 class Monitor(models.Model):
     callerid = models.CharField(
@@ -1663,20 +1680,22 @@ class Monitor(models.Model):
             # Один з callerid або destination має бути заповнений
             CheckConstraint(
                 check=~Q(callerid="") | ~Q(destination=""),
-                name="callerid_or_destination_required"
+                name="callerid_or_destination_required",
             ),
             # force_enable_monitor і force_disable_monitor не можуть бути однаковими
             CheckConstraint(
-                check=~Q(force_enable_monitor=F('force_disable_monitor')),
-                name="force_enable_not_equal_disable"
-            )
+                check=~Q(force_enable_monitor=F("force_disable_monitor")),
+                name="force_enable_not_equal_disable",
+            ),
         ]
 
     def __str__(self) -> str:
-        return f"Monitor(\"{self.callerid}\" -> \"{self.destination}\" = <{self.force_enable_monitor}, {self.force_disable_monitor}>)"
+        return f'Monitor("{self.callerid}" -> "{self.destination}" = <{self.force_enable_monitor}, {self.force_disable_monitor}>)'
+
 
 class MonitorFilenames(models.Model):
     """Represent a mapping monitor filenames to CDR UniqueID."""
+
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     src = models.CharField(
         max_length=64,
