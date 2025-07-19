@@ -141,18 +141,29 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
 class RoutingRecordAdmin(admin.ModelAdmin):
     fields = ["prefix", "name", "context", "routing_table"]
     list_display = ("prefix", "name", "context", "routing_table")
+    list_filter = [
+        "routing_table",
+        "context",
+        ("routing_table", admin.RelatedOnlyFieldListFilter),
+    ]
     ordering = ["prefix", "name"]
-    search_fields = ["prefix", "name"]
+    # Пошук по пов'язаних об'єктах
+    search_fields = ["prefix", "name", "context__name"]
+    list_per_page = 50  # Пагінація
 
 
 class RoutingRecordInlineAdmin(admin.TabularInline):
-    min_num: Optional[int] = 1
-    extra: Optional[int] = 0
     model = RoutingRecord
+    min_num = 1
+    extra = 0
 
-    fields = ["name", "prefix", "context", "routing_table"]
-    ordering = ["prefix"]
-    search_fields = ["prefix"]
+    fields = ["name", "prefix", "context"]
+    ordering = ["prefix", "name"]
+
+    autocomplete_fields = ['context']
+
+    verbose_name = "Routing Record"
+    verbose_name_plural = "Routing Records"
 
 
 class RoutingTableAdmin(admin.ModelAdmin):

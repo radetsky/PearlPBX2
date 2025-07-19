@@ -9,7 +9,7 @@ import uuid
 
 from datetime import datetime
 
-from typing import Callable, Generator, Union
+from typing import Callable, Generator
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi

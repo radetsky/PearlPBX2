@@ -16,7 +16,6 @@ from core.models import (
     CallQueueGlobalSettings,
     Queue,
     QueueMember,
-    QueueAnnouncements,
     QueueRule
 )
 
