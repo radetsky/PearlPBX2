@@ -529,7 +529,7 @@ class DialplanExtension(models.Model):
         blank=False,
     )
     ext = models.CharField(
-        max_length=32,
+        max_length=64,
         unique=False,
         null=False,
         blank=False,
@@ -1406,7 +1406,7 @@ class RoutingRecord(models.Model):
         verbose_name="Routing Record Name",
     )
     prefix = models.CharField(
-        max_length=16,
+        max_length=64,
         unique=False,
         help_text="Prefix of the routing record",
         verbose_name="Routing Record Prefix",
