@@ -32,9 +32,11 @@ from .models import (
     SoundFile,
 )
 from .forms import (
+    RoutingTableAdminForm,
     SIPUserForm,
     SIPPeerForm,
     DialplanExtensionForm,
+    DialplanContextAdminForm,
     ConfigurationFileForm,
 )
 
@@ -88,6 +90,7 @@ class DialplanExtensionInlineAdmin(admin.TabularInline):
 
 
 class DialplanContextAdmin(admin.ModelAdmin):
+    form = DialplanContextAdminForm
     fields = ["name", "description"]
     list_display = ("name", "description")
     ordering = ["name", "description"]
@@ -153,6 +156,7 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
 
 
 class RoutingTableAdmin(admin.ModelAdmin):
+    form = RoutingTableAdminForm
     fields = ["name"]
     ordering = ["name"]
     search_fields = ["name"]

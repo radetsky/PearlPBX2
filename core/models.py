@@ -15,7 +15,7 @@ from hashlib import md5
 
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
-from core.validators import validate_bind_ip
+from core.validators import validate_bind_ip, validate_asterisk_context
 
 import logging
 
@@ -130,12 +130,13 @@ class SIPTransport(models.Model):
 
 class DialplanContext(models.Model):
     name = models.CharField(
-        max_length=64,
+        max_length=80,
         unique=True,
         null=False,
         blank=False,
         verbose_name="Context name",
-        help_text="Use latin symbols, digits and undercore",
+        help_text="Unique name for the context or routing tables, use latin symbols, digits and underscores",
+        validators=[validate_asterisk_context],
     )
     description = models.CharField(
         max_length=64,
@@ -152,6 +153,12 @@ class DialplanContext(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if RoutingTable.objects.filter(name=self.name).exclude(pk=self.pk if self.pk else None).exists():
+            raise ValidationError(
+                f'Context name "{self.name}" already exists in RoutingTable')
+        super().save(*args, **kwargs)
 
     @staticmethod
     def getUsersOrCreateUsers():
@@ -171,10 +178,11 @@ class DialplanContext(models.Model):
 
 class RoutingTable(models.Model):
     name = models.CharField(
-        max_length=64,
+        max_length=80,
         unique=True,
-        help_text="Name of the routing table",
-        verbose_name="Routing Table Name",
+        verbose_name="Routing table name",
+        help_text="Unique name for the routing table and dialplan context, use latin symbols, digits and underscores",
+        validators=[validate_asterisk_context]
     )
 
     class Meta:
@@ -182,6 +190,12 @@ class RoutingTable(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if DialplanContext.objects.filter(name=self.name).exclude(pk=self.pk if self.pk else None).exists():
+            raise ValidationError(
+                f'Context name "{self.name}" already exists in DialplanContext')
+        super().save(*args, **kwargs)
 
     @staticmethod
     def getDefaultOrCreateDefault():

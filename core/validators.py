@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import validate_ipv4_address
@@ -5,17 +7,6 @@ from django.core.validators import validate_ipv4_address
 import logging
 
 logger = logging.getLogger(__name__)
-
-""" Just example """
-
-
-def __validate_even(value):
-    if value % 2 != 0:
-        raise ValidationError(
-            _("%(value)s is not an even number"),
-            params={"value": value},
-        )
-
 
 def validate_bind_ip(value):
     items = value.split(":")
@@ -34,3 +25,14 @@ def validate_bind_ip(value):
                 _("%(value)s is not a valid port"),
                 params={"value": items[1]},
             )
+
+
+def validate_asterisk_context(value):
+    """Validator for Asterisk context name"""
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_-]*$', value):
+        raise ValidationError(
+            'Context name must start with letter or underscore, '
+            'and contain only letters, digits, underscores, and hyphens.'
+        )
+    if len(value) > 80:
+        raise ValidationError('Context name is too long (max 80 characters).')
