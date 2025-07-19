@@ -682,23 +682,53 @@ def make_dialplan_extension(extension):
     plaintext += "    }\n"
     return plaintext
 
+def _make_dialplan_h_section():
+    return (
+        "    h => {\n"
+        "        NoOp(Hangup);\n"
+        "        NoOp(HANGUPCAUSE_STRING=${HANGUPCAUSE_KEYS()});\n"
+        "        NoOp(DIALSTATUS=${DIALSTATUS});\n"
+        "        Hangup();\n"
+        "    }\n"
+    )
+
+def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
+    """
+    Returns a tuple for sorting: higher specificity comes first.
+    1. More literal digits/letters (not X, !, [], etc)
+    2. Fewer wildcards (X, !, [], etc)
+    3. Longer pattern
+    4. '_X!' always last
+    """
+    if ext_pattern == '_X!':
+        return (0, 0, 0, 1)
+    # Remove leading underscore
+    pattern = ext_pattern[1:] if ext_pattern.startswith('_') else ext_pattern
+    # Count literal chars (digits/letters)
+    literal_count = sum(1 for c in pattern if c.isdigit() or c.isalpha())
+    # Count wildcards
+    wildcard_count = pattern.count('X') + pattern.count('!') + pattern.count('[') + pattern.count(']')
+    # Length
+    length = len(pattern)
+    # _X! always last
+    is_xbang = 1 if ext_pattern == '_X!' else 0
+    # Sort by: more literal, fewer wildcards, longer, not _X!
+    return (literal_count, -wildcard_count, length, -is_xbang)
+
 
 def make_dialplan_contexts():
     plaintext = "// ==== Printing data of dialplan contexts in PBX admin panel ====\n"
     plaintext += "// ==== Dialplan contexts ====\n"
     for context in DialplanContext.objects.all():
         plaintext += f"// {context.description}\n"
-        plaintext += f"context {context.name}" + " {\n"
-        for extension in DialplanExtension.objects.filter(context=context):
+        plaintext += f"context {context.name} {{\n"
+        # Get all extensions for this context and sort them
+        extensions = list(DialplanExtension.objects.filter(context=context))
+        extensions.sort(key=lambda ext: _asterisk_pattern_specificity(ext.ext), reverse=True)
+        for extension in extensions:
             plaintext += make_dialplan_extension(extension)
-        plaintext += "    h => {\n"
-        plaintext += "        NoOp(Hangup);\n"
-        plaintext += "        NoOp(HANGUPCAUSE_STRING=${HANGUPCAUSE_KEYS()});\n"
-        plaintext += "        NoOp(DIALSTATUS=${DIALSTATUS});\n"
-        plaintext += "        Hangup();\n"
-        plaintext += "    }\n"
+        plaintext += _make_dialplan_h_section()
         plaintext += "}\n"
-
     return plaintext
 
 
@@ -721,7 +751,10 @@ def make_routing_tables():
     plaintext = "// ==== Routing tables ==== \n"
     for rt in RoutingTable.objects.all():
         plaintext += f"context {rt.name} " + "{\n"
-        for dir in RoutingRecord.objects.filter(routing_table=rt).order_by("prefix"):
+        # Get all RoutingRecords for this table and sort them by Asterisk specificity
+        records = list(RoutingRecord.objects.filter(routing_table=rt))
+        records.sort(key=lambda rec: _asterisk_pattern_specificity(rec.prefix), reverse=True)
+        for dir in records:
             plaintext += f"    // {dir.name}\n"
             plaintext += (
                 f"    {dir.prefix} => "
@@ -729,7 +762,6 @@ def make_routing_tables():
                 + f"{dir.context},"
                 + "${EXTEN},1; }\n"
             )
-
         plaintext += "}\n"
     return plaintext
 
