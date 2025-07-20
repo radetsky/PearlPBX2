@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080"
+     xmlns="http://www.w3.org/2000/svg">
+  <!-- Layered pearl with multiple gradients -->
+  <defs>
+    <!-- Base gradient -->
+    <radialGradient id="gBase" cx="50%" cy="42%" r="55%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="35%" stop-color="#F2F3F6"/>
+      <stop offset="60%" stop-color="#D7D8DE"/>
+      <stop offset="78%" stop-color="#BFC1C9"/>
+      <stop offset="90%" stop-color="#A6A9B5"/>
+      <stop offset="100%" stop-color="#888B9A"/>
+    </radialGradient>
+
+    <!-- Cool outer tint -->
+    <radialGradient id="gCool" cx="60%" cy="70%" r="70%">
+      <stop offset="45%" stop-color="rgba(255,255,255,0)" />
+      <stop offset="80%" stop-color="rgba(185,193,215,0.35)" />
+      <stop offset="100%" stop-color="rgba(120,130,160,0.55)" />
+    </radialGradient>
+
+    <!-- Warm subtle tint -->
+    <radialGradient id="gWarm" cx="30%" cy="30%" r="65%">
+      <stop offset="55%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="100%" stop-color="rgba(220,224,237,0.35)"/>
+    </radialGradient>
+
+    <!-- Specular highlight -->
+    <radialGradient id="gHighlight" cx="46%" cy="32%" r="30%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+      <stop offset="65%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+
+  <g>
+    <circle cx="960" cy="540" r="500" fill="url(#gBase)"/>
+    <circle cx="960" cy="540" r="500" fill="url(#gCool)"/>
+    <circle cx="960" cy="540" r="500" fill="url(#gWarm)"/>
+    <circle cx="960" cy="540" r="500" fill="url(#gHighlight)"/>
+  </g>
+</svg>

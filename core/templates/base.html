@@ -1,0 +1,174 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}PearlPBX2{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
+    <link rel="mask-icon" href="{% static 'favicon/safari-pinned-tab.svg' %}" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+    <link rel="stylesheet" href="{% static 'css/uikit.min.css' %}"/>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+    <script src="{% static 'js/uikit.min.js' %}"></script>
+    <script src="{% static 'js/uikit-icons.min.js' %}"></script>
+
+    <script src="{% static 'js/jquery.min.js' %}"></script>
+    <script src="{% static 'js/moment.min.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
+    {% block head %}
+    {% endblock %}
+</head>
+
+<body {% block body_attr %}{% endblock %}>
+{% block body %}
+
+    {% block header %}{% include 'header.html' %}{% endblock %}
+
+    <div id="content" class="uk-padding-small" data-uk-height-viewport="expand: true">
+        <div class="uk-container uk-padding-remove {% block container_attr %}{% endblock %}">
+
+            {% include 'components/notification.html' with messages=messages %}
+
+            {% block breadcrumbs %}
+                {% include 'components/breadcrumbs.html' %}
+            {% endblock %}
+
+            {% include 'components/form_errors_alert.html' %}
+
+            {% block content %}{% endblock %}
+
+        </div>
+    </div>
+
+    {% block body_js %}
+        <script type="text/javascript">
+            function autoClosePasswordVisibility(passwordInput, passwordToggleIcon) {
+                setTimeout(() => {
+                    if (passwordInput.type === 'text') {
+                        passwordInput.type = 'password';
+                        passwordToggleIcon.setAttribute('uk-icon', 'icon: lock');
+                    }
+                }, 5000);
+            }
+
+            function togglePasswordVisibility(passwordToggleIcon) {
+                let passwordFieldContainer = passwordToggleIcon.closest('span');
+                let passwordInput = passwordFieldContainer.querySelector('input');
+
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    passwordToggleIcon.setAttribute('uk-icon', 'icon: unlock');
+                    autoClosePasswordVisibility(passwordInput, passwordToggleIcon);
+                } else {
+                    passwordInput.type = 'password';
+                    passwordToggleIcon.setAttribute('uk-icon', 'icon: lock');
+                }
+            }
+
+            function copyToClipboard(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard
+                        .writeText(text)
+                        .then(function() {
+                            UIkit.notification('Copied!', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
+                        })
+                        .catch(function(error) {
+                            UIkit.notification('Copy error.', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
+                            console.error('copying text to clipboard. error:', error);
+                        });
+                } else {
+                    const textarea = document.createElement("textarea");
+                    textarea.value = text;
+
+                    textarea.style.position = "absolute";
+                    textarea.style.left = "-999999px";
+
+                    document.body.prepend(textarea);
+                    textarea.select();
+
+                    try {
+                        document.execCommand('copy');
+                        UIkit.notification('Copied!', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
+                    } catch (error) {
+                        UIkit.notification('Copy error.', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
+                        console.error('copying text to clipboard. error:', error);
+                    } finally {
+                        textarea.remove();
+                    }
+                }
+            }
+
+            function momentSince(secondsValue) {
+                let now = moment();
+                let duration = moment.duration(now.diff(secondsValue));
+
+                let weeks = Math.floor(duration.asWeeks());
+                let days = Math.floor(duration.asDays()) % 7;
+                let hours = duration.hours();
+                let minutes = duration.minutes();
+                let seconds = duration.seconds();
+
+                let result = '';
+
+                if (weeks > 0) {
+                  result += weeks + 'w, ';
+                }
+
+                if (days > 0) {
+                  result += days + 'd, ';
+                }
+
+                if (hours > 0) {
+                  result += hours + 'h, ';
+                }
+
+                if (minutes >= 0) {
+                  result += minutes + 'm, ';
+                }
+
+                if (seconds >= 0) {
+                  result += seconds + 'sec ';
+                }
+
+                return result.trim();
+            }
+
+            function isElementVisible(el) {
+                /**
+                 * Checks DOM element visibility.
+                 *
+                 * Element is visible if:
+                 * 1. exists in the DOM;
+                 * 2. its `offsetParent` is not null.
+                 *
+                 * @param {HTMLElement} el - DOM element to check.
+                 * @returns {boolean} - `true` if element is visible, otherwise, `false`.
+                 */
+                return el && el.offsetParent !== null;
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.copy-to-clipboard').forEach(function(element) {
+                    element.addEventListener('click', function() {
+                        copyToClipboard(this.textContent);
+                    });
+                });
+            });
+        </script>
+    {% endblock body_js %}
+
+{% endblock body %}
+</body>
+
+</html>

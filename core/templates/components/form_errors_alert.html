@@ -1,0 +1,33 @@
+{% if form.errors %}
+    <div>
+        <div class="uk-alert-danger uk-border-rounded" data-uk-alert>
+            <a class="uk-alert-close" data-uk-close></a>
+
+            <div>
+                {% if form.errors|length > 1 %}
+                    Виникли помилки при заповненні форми. Виправте та повторіть спробу.
+                {% else %}
+                    Виникла помилка при заповненні форми. Виправте та повторіть спробу.
+                {% endif %}
+
+                <button class="uk-button uk-button-small uk-button-primary uk-border-rounded" data-uk-toggle="target: #form-error; animation: uk-animation-fade"
+                        type="button" title="Переглянути додаткову інформацію" data-uk-tooltip>
+                    Детально
+                </button>
+            </div>
+
+            <ul hidden id="form-error" class="uk-list uk-list-collapse uk-margin-remove-top uk-margin-small-left">
+            {% for field, errors in form.errors.items %}
+                <li>
+                    <span class="uk-text-bold">{{ field }}</span>
+                    <ul class="uk-list uk-list-disc uk-list-collapse ">
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Log in{% endblock %}
+
+{% block head %}
+    <style>
+        .spinner {
+            margin-top: 0;
+            margin-bottom: -8px;
+            height: 22px;
+            width: 22px;
+            -webkit-animation: rotation .6s infinite linear;
+            -moz-animation: rotation .6s infinite linear;
+            -o-animation: rotation .6s infinite linear;
+            animation: rotation .6s infinite linear;
+            border-left: 2px solid rgba(255, 255, 255, 0.20);
+            border-right: 2px solid rgba(255, 255, 255, 0.20);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.20);
+            border-top: 2px solid #ffffff;
+            border-radius: 100%;
+        }
+
+        @-webkit-keyframes rotation {
+            from {
+                -webkit-transform: rotate(0deg);
+            }
+            to {
+                -webkit-transform: rotate(359deg);
+            }
+        }
+
+        @-moz-keyframes rotation {
+            from {
+                -moz-transform: rotate(0deg);
+            }
+            to {
+                -moz-transform: rotate(359deg);
+            }
+        }
+
+        @-o-keyframes rotation {
+            from {
+                -o-transform: rotate(0deg);
+            }
+            to {
+                -o-transform: rotate(359deg);
+            }
+        }
+
+        @keyframes rotation {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(359deg);
+            }
+        }
+
+        form.form-loading {
+            pointer-events: none;
+        }
+
+
+        .__is-form-loading,
+        form.form-loading .__is-not-form-loading {
+            display: none;
+        }
+
+        .__is-not-form-loading,
+        form.form-loading .__is-form-loading {
+            display: inline-block;
+        }
+
+        form.form-loading button {
+            opacity: 0.4;
+        }
+
+        html {
+            background-color: rgba(46, 62, 73, 1);
+            height: -webkit-fill-available;
+        }
+
+        body {
+            background-color: rgb(250, 250, 253);
+        }
+
+        .uk-height-viewport {
+            min-height: 100vh;
+            /* mobile viewport bug fix */
+            min-height: -webkit-fill-available;
+        }
+    </style>
+{% endblock head %}
+
+{% block body_attr %}class="uk-background-norepeat uk-height-1-1 uk-background-cover uk-padding-small"
+    data-srcset="{% static 'images/login/640-min.png' %} 640w,
+		             {% static 'images/login/1280-min.png' %} 960w,
+		             {% static 'images/login/1280-min.png' %} 1200w,
+		             {% static 'images/login/1920-min.png' %} 2000w"
+    data-src="{% static 'images/login/1280-min.png' %}"
+    uk-img
+    uk-height-viewport="min-height: 350"
+{% endblock %}
+
+{% block body %}
+
+    {% block header %}{% endblock %}
+
+    <div class="uk-flex uk-flex-center uk-flex-middle uk-position-relative uk-height-viewport uk-position-z-index">
+
+        {% block content %}
+            <div class="uk-card uk-card-default uk-card-default-blur uk-border-rounded uk-width-1-2@s uk-width-1-3@m">
+                <form id="login-form" method="POST" action="{% url 'login' %}">
+                    {% csrf_token %}
+
+                    <div class="uk-card-body">
+                        <div class="uk-margin">
+                            <div class="uk-inline uk-width-1-1">
+                                <label for="username">
+                                    <span class="uk-form-icon" data-uk-icon="icon: user"></span>
+                                    <input class="uk-input uk-border-rounded"
+                                           type="text" required
+                                           autofocus="autofocus" autocomplete="username"
+                                           id="username" name="username" placeholder="Username"
+                                           {% if request.POST %}value="{{ request.POST.username }}"{% endif %}/>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="uk-margin">
+                            <div class="uk-inline uk-width-1-1">
+                                <label for="current-password">
+                                    <a id="toggle-password"
+                                       tabindex='-1'
+                                       title="Click to show/hide password." data-uk-tooltip
+                                       aria-label="Show password. Warning: this action will display your password on the screen."
+                                       onclick="togglePasswordVisibility()"
+                                       class="uk-form-icon uk-text-primary" data-uk-icon="icon: lock"></a>
+                                    <input class="uk-input uk-border-rounded"
+                                           type="password" required
+                                           autocomplete="current-password"
+                                           id="current-password" name="password" placeholder="Password"/>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="uk-card-footer">
+                        <input type="hidden" name="next" value="{{ next }}"/>
+                        <button disabled id="submit-button" class="uk-button uk-button-primary uk-border-rounded uk-width-1-1" type="submit">
+                            <span class="__is-form-loading spinner"></span>
+                            <span class="__is-not-form-loading">Log in</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {% if form.errors %}
+                <script type="text/javascript">
+                    window.addEventListener('load', function () {
+                        UIkit.notification('Please check your username and/or password.', {
+                            pos: 'top-center',
+                            timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }},
+                            status: 'danger'
+                        });
+                    });
+                </script>
+            {% endif %}
+
+            <div class="uk-position-bottom-center uk-position-small uk-position-z-index">
+                <span class="uk-text-small uk-text-muted">© {% now "Y" %} PearlPBX2</span>
+            </div>
+
+        {% endblock content %}
+
+    </div>
+
+    {% block body_js %}
+        <script>
+            const form = document.forms["login-form"];
+            const submitButton = document.querySelector('#submit-button');
+            const username = document.querySelector('#username');
+            const password = document.querySelector('#current-password');
+            const passwordToggleIcon = document.querySelector('#toggle-password');
+
+            form.addEventListener('input', () => {
+                submitButton.disabled = !(username.value && password.value);
+            });
+
+            form.onsubmit = function(e) {
+                e.target.classList.add('form-loading');
+            }
+
+            function autoClosePasswordVisibility() {
+                setTimeout(() => {
+                    password.type = 'password';
+                    passwordToggleIcon.setAttribute('uk-icon', 'icon: lock');
+                }, 3000);
+            }
+
+            function togglePasswordVisibility() {
+                if (password.type === 'password') {
+                    password.type = 'text';
+                    passwordToggleIcon.setAttribute('uk-icon', 'icon: unlock');
+                    autoClosePasswordVisibility();
+                } else {
+                    password.type = 'password';
+                    passwordToggleIcon.setAttribute('uk-icon', 'icon: lock');
+                }
+            }
+        </script>
+    {% endblock body_js %}
+{% endblock body %}

@@ -1,0 +1,23 @@
+{% if messages %}
+    <script type="text/javascript">
+        window.addEventListener('load', function () {
+            {% for message in messages %}
+                UIkit.notification('{{ message|escapejs }}', {
+                    pos: 'top-center',
+                    timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }},
+                    status: '{{ message.tags }}'
+                });
+            {% endfor %}
+        });
+    </script>
+
+{% elif message %}
+    <script type="text/javascript">
+        window.addEventListener('load', function () {
+            UIkit.notification('{{ message|escapejs }}', {
+                pos: 'top-center',
+                timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }},
+                status: '{% if status %}{{ status }}{% else %}danger{% endif %}'});
+        });
+    </script>
+{% endif %}

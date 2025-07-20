@@ -1,0 +1,40 @@
+{% comment %}
+    Breadcrumb navigation component.
+
+    Parameter:
+        breadcrumbs - list of Breadcrumb objects. Each Breadcrumb have:
+            - label (str): display label text.
+            - url (Optional[str]): URL the breadcrumb navigate to. If None, the breadcrumb is disabled/non-clickable.
+{% endcomment %}
+
+{% if breadcrumbs %}
+    <nav aria-label="breadcrumb">
+        <ol class="uk-breadcrumb">
+            {% for breadcrumb in breadcrumbs %}
+                {% if forloop.last %}
+                    <li itemprop="itemListElement" itemscope
+                        itemtype="https://schema.org/ListItem" aria-current="page">
+                        <span itemprop="name">{{ breadcrumb.label|safe }}</span>
+                        <meta itemprop="position" content='{{ forloop.counter }}' />
+                    </li>
+
+                {% else %}
+                    {% if breadcrumb.url %}
+                        <li class="breadcrumb-item" itemprop="itemListElement" itemscope
+                            itemtype="https://schema.org/ListItem">
+                            <a itemprop="item" href="{{ breadcrumb.url }}"><span itemprop="name">{{ breadcrumb.label|safe }}</span></a>
+                            <meta itemprop="position" content="{{ forloop.counter }}" />
+                        </li>
+
+                    {% else %}
+                        <li class="uk-disabled" itemprop="itemListElement" itemscope
+                            itemtype="https://schema.org/ListItem">
+                            <span itemprop="name">{{ breadcrumb.label|safe }}</span>
+                            <meta itemprop="position" content="{{ forloop.counter }}" />
+                        </li>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+{% endif %}
