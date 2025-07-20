@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Page not found{% endblock %}
+
+{% block head %}
+    <style>
+        .uk-card-default .uk-card-header {
+            border-bottom: 1px solid #c6c6c6;
+        }
+
+        .uk-card-default .uk-card-footer {
+            border-top: 1px solid #c6c6c6;
+        }
+
+        html {
+            background-color: rgba(67, 82, 162, 0.76);
+            height: -webkit-fill-available;
+        }
+
+        body {
+            background-color: rgb(250, 250, 253);
+        }
+
+        .uk-height-viewport {
+            min-height: 100vh;
+            /* mobile viewport bug fix */
+            min-height: -webkit-fill-available;
+        }
+    </style>
+{% endblock head %}
+
+{% block body_attr %}class="uk-background-norepeat uk-height-1-1 uk-background-cover uk-background-secondary uk-padding-small"
+    data-srcset="{% static 'images/login/640-min.png' %} 640w,
+    {% static 'images/login/1280-min.png' %} 960w,
+    {% static 'images/login/1280-min.png' %} 1200w,
+    {% static 'images/login/1920-min.png' %} 2000w"
+    data-src="{% static 'images/login/1280-min.png' %}"
+    uk-img
+    uk-height-viewport="min-height: 400"
+{% endblock %}
+
+{% block body %}
+
+    {% block header %}{% endblock %}
+
+    <div class="uk-flex uk-flex-center uk-flex-middle uk-position-relative uk-height-viewport">
+
+        {% block content %}
+            <div class="uk-card uk-card-large uk-card-default uk-card-default-blur uk-border-rounded">
+
+                <div class="uk-card-header">
+                    <h1 class="uk-flex uk-flex-middle">
+                        <span>404</span>
+                    </h1>
+                </div>
+
+                <div class="uk-card-body">
+                    <div class="uk-margin uk-text-large">
+                        Page not found.
+                    </div>
+                    <div class="uk-margin">
+                        To continue, return to the main screen.
+                    </div>
+                </div>
+
+                <div class="uk-card-footer">
+                    <a class="uk-button uk-button-primary uk-border-rounded" href="/">Main page</a>
+                </div>
+
+            </div>
+
+            <div class="uk-position-bottom-center uk-position-small">
+                <span class="uk-text-small uk-text-muted">© {% now "Y" %} PearlPBX2</span>
+            </div>
+        {% endblock content %}
+
+    </div>
+{% endblock body %}

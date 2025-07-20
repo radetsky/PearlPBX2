@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Base pearl gradient -->
+    <radialGradient id="gPearl" cx="50%" cy="40%" r="53%">
+      <stop offset="0%"  stop-color="#FFFFFF"/>
+      <stop offset="40%" stop-color="#F4F5F7"/>
+      <stop offset="68%" stop-color="#D4D6DC"/>
+      <stop offset="85%" stop-color="#B5B8C2"/>
+      <stop offset="100%" stop-color="#8D90A0"/>
+    </radialGradient>
+    <!-- Mask gradient for inner sheen ring -->
+    <radialGradient id="gMask" cx="50%" cy="55%" r="60%">
+      <stop offset="55%" stop-color="white"/>
+      <stop offset="75%" stop-color="rgba(255,255,255,0.35)"/>
+      <stop offset="100%" stop-color="black"/>
+    </radialGradient>
+    <mask id="mSheen">
+      <rect width="100%" height="100%" fill="url(#gMask)"/>
+    </mask>
+    <!-- Sheen highlight gradient -->
+    <radialGradient id="gSheen" cx="48%" cy="34%" r="30%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.9)"/>
+      <stop offset="70%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="960" cy="540" r="500" fill="url(#gPearl)"/>
+  <circle cx="960" cy="540" r="500" fill="url(#gSheen)" mask="url(#mSheen)"/>
+</svg>

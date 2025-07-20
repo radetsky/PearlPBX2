@@ -56,7 +56,7 @@ ROOT_URLCONF = "pbx.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -64,6 +64,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.template_config_context_processor",
             ],
         },
     },
@@ -118,6 +119,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # For collectstatic in production
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -184,3 +187,12 @@ ASTERISK_MANAGER_SECRET = env.str(
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"
 PEARLPBX_DEFAULT_ROUTING_PREFIX = "_2XX"
+
+TEMPLATE_DATE_FORMAT = "d/m/y"
+TEMPLATE_TIME_FORMAT = "H:i:s"
+TEMPLATE_DATETIME_FORMAT = "%s %s" % (
+    TEMPLATE_DATE_FORMAT, TEMPLATE_TIME_FORMAT)
+TEMPLATE_MOMENT_DATETIME_FORMAT = "DD/MM/YY HH:mm:ss"
+TEMPLATE_POPUP_TIMEOUT_MS = 5000
+
+LOGIN_REDIRECT_URL = '/'

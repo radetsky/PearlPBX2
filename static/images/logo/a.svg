@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080"
+     xmlns="http://www.w3.org/2000/svg" version="1.1">
+  <!-- Simple pearl-like circle with one radial gradient -->
+  <defs>
+    <radialGradient id="gPearlSimple" cx="50%" cy="38%" r="52%">
+      <stop offset="0%"  stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#F5F5F7" />
+      <stop offset="65%" stop-color="#D9DADE" />
+      <stop offset="78%" stop-color="#C5C7CE" />
+      <stop offset="90%" stop-color="#B0B3BC" />
+      <stop offset="100%" stop-color="#8D90A0" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="960" cy="540" r="500" fill="url(#gPearlSimple)"/>
+</svg>

@@ -1,0 +1,56 @@
+{% load static %}
+
+<header id="top-header" class="uk-background-primary uk-position-fixed">
+    <div class="uk-container">
+        <form id="logout" action="{% url 'logout' %}" method="POST" hidden>
+            {% csrf_token %}
+        </form>
+
+        <nav data-uk-navbar="mode: click;" id="navbar" class="uk-navbar uk-light">
+            <div class="uk-navbar-left">
+                <a class="uk-navbar-item uk-logo" href="{% url 'homepage' %}">
+                    <img height="30" width="39" src="{% static 'images/logo/a.svg' %}" alt="PearlPBX2" data-uk-svg>
+                </a>
+
+                <ul class="uk-navbar-nav uk-visible@m">
+                    {% for page in allowed_dashboard_pages %}
+                        <li {% if page.url == selected_dashboard_page.url %}class="uk-active"{% endif %}>
+                            <a href="{{ page.url }}" class="uk-flex uk-flex-middle">
+                                <span data-uk-icon="icon: {{ page.item_icon }}"></span> {{ page.title }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <a href="#" data-uk-navbar-toggle-icon
+                   class="uk-navbar-toggle uk-navbar-toggle-animate uk-hidden@m"></a>
+                <div class="uk-navbar-dropdown">
+                    <ul class="uk-nav uk-navbar-dropdown-nav">
+                        {% for page in allowed_dashboard_pages %}
+                            <li {% if page.url == selected_dashboard_page.url %}class="uk-active"{% endif %}><a href="{{ page.url }}" class="uk-flex uk-flex-middle">
+                                {% if item_icon %}
+                                    <span data-uk-icon="icon: {{ page.item_icon }}"></span>
+                                {% endif %}
+                                {{ page.title }}
+                            </a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="uk-navbar-right">
+                <ul class="uk-navbar-nav">
+                    <li>
+                        <span class="uk-navbar-item">
+                            <button onclick="return confirm('End session?')"
+                                    class="uk-link"
+                                    data-uk-icon="icon: sign-out"
+                                    title="End session" data-uk-tooltip
+                                    type="submit" form="logout">{{ request.user.username }}</button>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+</header>
