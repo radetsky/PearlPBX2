@@ -226,6 +226,28 @@ class SoundFileAdmin(admin.ModelAdmin):
     search_fields = ("language", "name")
 
 
+
+class QueueMemberAdmin(admin.ModelAdmin):
+    list_display = ("member_name", "interface",
+                    "state_interface", "queue", "penalty")
+    search_fields = ("member_name", "interface", "state_interface", "queue__name")
+    ordering = ("member_name", "queue__name", "penalty")
+
+class QueueMemberInlineAdmin(admin.TabularInline):
+    model = QueueMember
+    extra = 0
+    min_num = 1
+    fields = ("member_name", "interface", "state_interface", "penalty",)
+    ordering = ("member_name",)
+
+class QueueAdmin(admin.ModelAdmin):
+    list_display = ["name"]
+    search_fields = ["name"]
+    ordering = ["name"]
+
+    inlines = [QueueMemberInlineAdmin]
+
+
 admin.site.register(SIPUser, SIPUserAdmin)
 admin.site.register(SIPPeer, SIPPeerAdmin)
 admin.site.register(SIPTransport, SIPTransportAdmin)
@@ -240,9 +262,9 @@ admin.site.register(RoutingRecord, RoutingRecordAdmin)
 admin.site.register(ConfigurationFile, ConfigurationFileAdmin)
 admin.site.register(SoundFile, SoundFileAdmin)
 admin.site.register(QueueRule, QueueRuleAdmin)
+admin.site.register(Queue, QueueAdmin)
+admin.site.register(QueueMember, QueueMemberAdmin)
 
-admin.site.register(Queue)
-admin.site.register(QueueMember)
 admin.site.register(QueueAnnouncements)
 admin.site.register(CallQueueGlobalSettings)
 admin.site.register(TrunkGroup)
