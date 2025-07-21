@@ -19,8 +19,14 @@ class NotFoundView(TemplateView):
     template_name = "404.html"
 
 
-class HomepageDispatchView(
+class HomepageView(
     LoginRequiredMixin,
     TemplateView,
 ):
     template_name = "home.html"
+
+class ReportsView(
+    LoginRequiredMixin,
+    TemplateView,
+):
+    template_name = "reports.html"
