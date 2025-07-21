@@ -65,6 +65,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.template_config_context_processor",
+                "core.context_processors.header_menu_context_processor",
             ],
         },
     },
@@ -196,3 +197,24 @@ TEMPLATE_MOMENT_DATETIME_FORMAT = "DD/MM/YY HH:mm:ss"
 TEMPLATE_POPUP_TIMEOUT_MS = 5000
 
 LOGIN_REDIRECT_URL = '/'
+
+HEADER_MENU_PAGES = [
+    {
+        "title": "Dashboard",
+        "url": "/dashboard/",
+        "item_icon": "home",
+        "allowed_roles": ["admin", "superuser"],
+    },
+    {
+        "title": "Reports",
+        "url": "/reports/",
+        "item_icon": "print",
+        "allowed_roles": ["admin", "superuser"],
+    },
+    {
+        "title": "Admin panel",
+        "url": "/admin",
+        "item_icon": "settings",
+        "allowed_roles": ["superuser"],
+    },
+]

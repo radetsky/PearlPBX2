@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+    <h2>Reports</h2>
+    <p>Here you can view various reports related to your system.</p>
+    <ul class="uk-list uk-list-striped">
+        <li><a href="#">Call Log</a></li>
+        <li><a href="#">Queues Activity</a></li>
+        <li><a href="#">Callback</a></li>
+        <li><a href="#">AutoDialer</a></li>
+    </ul>
+    <div class="uk-position-bottom-center uk-position-small">
+        <span class="uk-text-small uk-text-muted">© {% now "Y" %} PearlPBX2</span>
+    </div>
+{% endblock content %}

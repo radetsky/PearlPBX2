@@ -13,10 +13,10 @@
                 </a>
 
                 <ul class="uk-navbar-nav uk-visible@m">
-                    {% for page in allowed_dashboard_pages %}
-                        <li {% if page.url == selected_dashboard_page.url %}class="uk-active"{% endif %}>
-                            <a href="{{ page.url }}" class="uk-flex uk-flex-middle">
-                                <span data-uk-icon="icon: {{ page.item_icon }}"></span> {{ page.title }}
+                    {% for item in allowed_header_menu_items %}
+                        <li {% if item.url == selected_header_menu_item.url %}class="uk-active"{% endif %}>
+                            <a href="{{ item.url }}" class="uk-flex uk-flex-middle">
+                                <span data-uk-icon="icon: {{ item.item_icon }}"></span> {{ item.title }}
                             </a>
                         </li>
                     {% endfor %}
@@ -26,12 +26,12 @@
                    class="uk-navbar-toggle uk-navbar-toggle-animate uk-hidden@m"></a>
                 <div class="uk-navbar-dropdown">
                     <ul class="uk-nav uk-navbar-dropdown-nav">
-                        {% for page in allowed_dashboard_pages %}
-                            <li {% if page.url == selected_dashboard_page.url %}class="uk-active"{% endif %}><a href="{{ page.url }}" class="uk-flex uk-flex-middle">
-                                {% if item_icon %}
-                                    <span data-uk-icon="icon: {{ page.item_icon }}"></span>
+                        {% for item in allowed_header_menu_items %}
+                            <li {% if item.url == selected_header_menu_item.url %}class="uk-active"{% endif %}><a href="{{ item.url }}" class="uk-flex uk-flex-middle">
+                                {% if item.item_icon %}
+                                    <span data-uk-icon="icon: {{ item.item_icon }}"></span>
                                 {% endif %}
-                                {{ page.title }}
+                                {{ item.title }}
                             </a></li>
                         {% endfor %}
                     </ul>
