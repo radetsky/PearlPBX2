@@ -88,28 +88,28 @@
             <h3 class="uk-heading-divider">Statistics</h3>
             <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-text-center" uk-grid>
                 <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small">
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
                         <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_calls }}</h3>
                         <p class="uk-text-meta uk-margin-remove">Total calls</p>
                     </div>
                 </div>
                 <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small">
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
                         <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_calls }}</h3>
                         <p class="uk-text-meta uk-margin-remove">Answered</p>
                     </div>
                 </div>
                 <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small">
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
                         <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.total_duration|floatformat:0 }}с</h3>
                         <p class="uk-text-meta uk-margin-remove">Total duration</p>
                     </div>
                 </div>
                 <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small">
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: credit-card; ratio: 2" class="uk-text-danger"></span>
                         <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.total_billsec|floatformat:0 }}с</h3>
                         <p class="uk-text-meta uk-margin-remove">Billed duration</p>
@@ -158,8 +158,8 @@
                                 {% for cdr in cdrs %}
                                 <tr class="uk-animation-fade">
                                     <td class="uk-text-nowrap uk-text-small">
-                                        {{ cdr.calldate|date:"d.m.Y" }}<br>
-                                        <span class="uk-text-muted">{{ cdr.calldate|date:"H:i:s" }}</span>
+                                        {{ cdr.start|date:"d.m.Y" }}<br>
+                                        <span class="uk-text-muted">{{ cdr.start|date:"H:i:s" }}</span>
                                     </td>
                                     <td class="uk-text-bold">{{ cdr.src|default:"-" }}</td>
                                     <td class="uk-text-bold">{{ cdr.dst|default:"-" }}</td>
