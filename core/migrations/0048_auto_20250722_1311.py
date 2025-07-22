@@ -8,11 +8,11 @@ def replace_cdr_conf(apps, schema_editor):
     content = """[general]
 enable=yes
 channeldefaultenabled=yes
-unanswered = yes
-congestion = no
-ignorestatechanges = no
-ignoredialchanges = no
-endbeforehexten=no
+unanswered=yes
+congestion=no
+ignorestatechanges=no
+ignoredialchanges=no
+endbeforehexten=yes
 initiatedseconds=no
 batch=no
 scheduleronly=no
