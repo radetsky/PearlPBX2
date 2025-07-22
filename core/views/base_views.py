@@ -7,7 +7,7 @@ from django.views.generic import TemplateView
 class LoginView(django_auth_views.LoginView):
     login_url = "/login/"
     template_name = "login.html"
-    success_url = reverse_lazy('homepage')
+    success_url = reverse_lazy("homepage")
     redirect_authenticated_user = True
 
 
@@ -24,6 +24,7 @@ class HomepageView(
     TemplateView,
 ):
     template_name = "home.html"
+
 
 class ReportsView(
     LoginRequiredMixin,
