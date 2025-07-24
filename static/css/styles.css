@@ -35,3 +35,76 @@
 .uk-tab>*>a {
     border-bottom: 2px solid transparent;
 }
+
+.uk-badge-answered {
+    background: #32d296;
+}
+
+.uk-badge-busy {
+    background: #faa05a;
+}
+
+.uk-badge-no-answer {
+    background: #666;
+}
+
+.uk-badge-failed {
+    background: #f0506e;
+}
+
+.stats-card {
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Стилі для тривалості дзвінків */
+.duration-zero {
+    color: #f0506e;
+}
+
+.duration-short {
+    color: #faa05a;
+}
+
+.duration-medium {
+    color: #0f6ecd;
+}
+
+.duration-long {
+    color: #32d296;
+}
+
+/* Стилі для інтерактивних рядків таблиці */
+.cdr-row {
+    transition: all 0.2s ease;
+}
+
+.cdr-row:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cdr-row:active {
+    transform: translateY(0);
+}
+
+/* Стилі для модального вікна */
+.uk-modal-dialog {
+    max-width: 800px;
+}
+
+.uk-description-list dt {
+    font-weight: 600;
+    color: #666;
+}
+
+.uk-description-list dd code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}

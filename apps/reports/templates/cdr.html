@@ -82,43 +82,6 @@
             </form>
         </div>
 
-        {% if statistics %}
-    <!-- Statistics -->
-        <div class="uk-margin-large-top">
-            <h3 class="uk-heading-divider">Statistics</h3>
-            <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-text-center" uk-grid>
-                <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
-                        <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
-                        <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_calls }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Total calls</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
-                        <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
-                        <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_calls }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Answered</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
-                        <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
-                        <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.total_duration|floatformat:0 }}с</h3>
-                        <p class="uk-text-meta uk-margin-remove">Total duration</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
-                        <span uk-icon="icon: credit-card; ratio: 2" class="uk-text-danger"></span>
-                        <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.total_billsec|floatformat:0 }}с</h3>
-                        <p class="uk-text-meta uk-margin-remove">Billed duration</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
         {% if cdrs %}
     <!-- Results table -->
         <div class="uk-margin-large-top">
@@ -134,7 +97,7 @@
                         <table class="uk-table uk-table-hover uk-table-striped uk-table-small">
                             <thead>
                                 <tr>
-                                    <th class="uk-table-shrink">
+                                    <th class="uk-table-shrink uk-width-small">
                                         <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
                                     </th>
                                     <th class="uk-table-shrink">
@@ -146,28 +109,33 @@
                                     <th class="uk-table-shrink">
                                         <span uk-icon="clock" class="uk-margin-small-right"></span>Duration
                                     </th>
-                                    <th class="uk-table-shrink">
+                                    <th class="uk-table-shrink uk-width-small">
                                         <span uk-icon="info" class="uk-margin-small-right"></span>Status
                                     </th>
                                     <th>
                                         <span uk-icon="link" class="uk-margin-small-right"></span>Channel
                                     </th>
+                                    <th>
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>Dst. Channel
+                                    </th>
+                                    <th>
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>URL
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for cdr in cdrs %}
-                                <tr class="uk-animation-fade">
+                                <tr class="uk-animation-fade cdr-row" tabindex="0" data-cdr-id="cdr-{{ forloop.counter }}">
                                     <td class="uk-text-nowrap uk-text-small">
-                                        {{ cdr.start|date:"d.m.Y" }}<br>
+                                        {{ cdr.start|date:"d.m.Y" }}
                                         <span class="uk-text-muted">{{ cdr.start|date:"H:i:s" }}</span>
                                     </td>
                                     <td class="uk-text-bold">{{ cdr.src|default:"-" }}</td>
                                     <td class="uk-text-bold">{{ cdr.dst|default:"-" }}</td>
                                     <td class="uk-text-small">
-                                        <div>{{ cdr.duration }}s</div>
-                                        <div class="uk-text-muted">({{ cdr.billsec }}s billed)</div>
+                                        <div>{{ cdr.duration|duration_format }}</div>
                                     </td>
-                                    <td>
+                                    <td style="max-width: 120px;">
                                         {% if cdr.disposition == 'ANSWERED' %}
                                             <span class="uk-badge uk-badge-answered">{{ cdr.disposition }}</span>
                                         {% elif cdr.disposition == 'BUSY' %}
@@ -178,8 +146,17 @@
                                             <span class="uk-badge uk-badge-failed">{{ cdr.disposition|default:"UNKNOWN" }}</span>
                                         {% endif %}
                                     </td>
-                                    <td class="uk-text-truncate uk-text-small" style="max-width: 200px;" uk-tooltip="title: {{ cdr.channel|default:'-' }}">
-                                        {{ cdr.channel|default:"-"|truncatechars:30 }}
+                                    <td class="uk-text-truncate uk-text-small" style="max-width: 120px;">
+                                        {{ cdr.channel|channel_name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small" style="max-width: 120px;">
+                                        {{ cdr.dstchannel|channel_name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small">
+                                        <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a>
+                                        <div id="cdr-{{ forloop.counter }}" style="display:none;">
+                                            {{ cdrs_json|index:forloop.counter0|json_script:"cdr" }}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -225,6 +202,43 @@
         </div>
         {% endif %}
 
+        {% if statistics %}
+    <!-- Statistics -->
+        <div class="uk-margin-large-top">
+            <h3 class="uk-heading-divider">Statistics</h3>
+            <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-text-center" uk-grid>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
+                        <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_calls }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Total calls</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
+                        <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_calls }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Answered</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
+                        <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.total_duration|duration_smart }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Total duration</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: credit-card; ratio: 2" class="uk-text-danger"></span>
+                        <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.total_billsec|duration_smart }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Billed duration</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
     <!-- Export notification -->
         {% if 'export' in request.GET %}
         <div class="uk-position-top-right uk-margin-top" uk-notification>
@@ -237,12 +251,127 @@
     </div>
 
 
+    <!-- CDR Details Modal -->
+    <div id="cdr-details-modal" class="uk-modal" uk-modal>
+        <div class="uk-modal-dialog uk-modal-body uk-border-rounded">
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            <h3 class="uk-modal-title">CDR Details</h3>
+            <table class="uk-table uk-table-small uk-table-divider cdr-details-mini-table" style="font-size: 13px; line-height: 1.1;">
+                <tbody id="cdr-details-table">
+                </tbody>
+            </table>
+    <style>
+    /* Compact modal table for CDR details */
+    .cdr-details-mini-table td, .cdr-details-mini-table th {
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        font-size: 13px;
+    }
+    .cdr-details-mini-table tr {
+        margin-bottom: 0;
+    }
+    .cdr-details-mini-table {
+        margin-bottom: 0;
+    }
+    </style>
+        </div>
+    </div>
+
     <script>
-    // Animation for statistics cards
+        // Анімація для статистичних карток
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.stats-card');
             cards.forEach((card, index) => {
                 card.style.animationDelay = (index * 0.1) + 's';
+            });
+
+            // Додаткова анімація для рядків CDR
+            const rows = document.querySelectorAll('.cdr-row');
+            rows.forEach((row, index) => {
+                row.style.animationDelay = (index * 0.05) + 's';
+
+                // Додати звуковий ефект при hover (опціонально)
+                row.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-1px)';
+                });
+
+                row.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+
+        // Закрити модальне вікно при натисканні Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                UIkit.modal('.uk-modal.uk-open').hide();
+            }
+        });
+
+        // Додати функцію копіювання для ID та каналів
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                UIkit.notification({
+                    message: 'Скопійовано в буфер обміну!',
+                    status: 'success',
+                    timeout: 2000
+                });
+            });
+        }
+
+        // Показати модальне вікно з деталями CDR
+        function showCdrModal(cdr) {
+            const table = document.getElementById('cdr-details-table');
+            table.innerHTML = '';
+            const fields = [
+                ['Start', cdr.start],
+                ['End', cdr.end],
+                ['Answer', cdr.answer],
+                ['Source', cdr.src],
+                ['Destination', cdr.dst],
+                ['Source Channel', cdr.channel],
+                ['Destination Channel', cdr.dstchannel],
+                ['Duration', cdr.duration],
+                ['Billed Duration', cdr.billsec],
+                ['Disposition', cdr.disposition],
+                ['Account Code', cdr.accountcode],
+                ['CLID', cdr.clid],
+                ['DContext', cdr.dcontext],
+                ['LastApp', cdr.lastapp],
+                ['LastData', cdr.lastdata],
+                ['AMAFflags', cdr.amaflags],
+                ['Userfield', cdr.userfield],
+                ['UniqueID', cdr.uniqueid],
+                ['LinkedID', cdr.linkedid],
+                ['PeerAccount', cdr.peeraccount],
+                ['Sequence', cdr.sequence]
+            ];
+            fields.forEach(([label, value]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><strong>${label}</strong></td><td>${value !== null && value !== undefined && value !== '' ? value : '-'}</td>`;
+                table.appendChild(row);
+            });
+            UIkit.modal('#cdr-details-modal').show();
+        }
+
+        // Додаємо обробник на всі рядки та лінки
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.cdr-row, .cdr-details-link').forEach(function(el) {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', function(e) {
+                    // Якщо клік по лінці або по рядку
+                    let cdrId = this.getAttribute('data-cdr-id');
+                    if (cdrId) {
+                        const script = document.getElementById(cdrId);
+                        if (script) {
+                            const cdr = JSON.parse(script.textContent);
+                            showCdrModal(cdr);
+                            e.preventDefault();
+                        }
+                    }
+                });
             });
         });
     </script>

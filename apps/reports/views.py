@@ -8,42 +8,38 @@ from .forms import CDRReportForm
 
 
 def cdr_report_view(request):
+
     form = CDRReportForm(request.GET or None)
     cdrs = None
     statistics = None
 
+    def filter_cdr_queryset(form):
+        qs = CDR.objects.all()
+        if not form.is_valid():
+            return qs.none()
+        data = form.cleaned_data
+        if data.get("start_date"):
+            qs = qs.filter(start__gte=data["start_date"])
+        if data.get("end_date"):
+            qs = qs.filter(end__lte=data["end_date"])
+        if data.get("src_number"):
+            qs = qs.filter(src__icontains=data["src_number"])
+        if data.get("dst_number"):
+            qs = qs.filter(dst__icontains=data["dst_number"])
+        if data.get("src_channel"):
+            qs = qs.filter(channel__icontains=data["src_channel"])
+        if data.get("dst_channel"):
+            qs = qs.filter(dstchannel__icontains=data["dst_channel"])
+        if data.get("disposition"):
+            qs = qs.filter(disposition=data["disposition"])
+        if data.get("min_duration") is not None:
+            qs = qs.filter(duration__gte=data["min_duration"])
+        if data.get("max_duration") is not None:
+            qs = qs.filter(duration__lte=data["max_duration"])
+        return qs.order_by("-start")
+    cdrs_json = []
     if form.is_valid():
-        cdrs = CDR.objects.all()
-
-        start_date = form.cleaned_data.get("start_date")
-        end_date = form.cleaned_data.get("end_date")
-        if start_date:
-            cdrs = cdrs.filter(start__gte=start_date)
-        if end_date:
-            cdrs = cdrs.filter(end__lte=end_date)
-
-        src_number = form.cleaned_data.get("src_number")
-        dst_number = form.cleaned_data.get("dst_number")
-        if src_number:
-            cdrs = cdrs.filter(src__icontains=src_number)
-        if dst_number:
-            cdrs = cdrs.filter(dst__icontains=dst_number)
-        src_channel = form.cleaned_data.get("src_channel")
-        if src_channel:
-            cdrs = cdrs.filter(channel__icontains=src_channel)
-        dst_channel = form.cleaned_data.get("dst_channel")
-        if dst_channel:
-            cdrs = cdrs.filter(dstchannel__icontains=dst_channel)
-
-        disposition = form.cleaned_data.get("disposition")
-        if disposition:
-            cdrs = cdrs.filter(disposition=disposition)
-
-        min_duration = form.cleaned_data.get("min_duration")
-        if min_duration is not None:
-            cdrs = cdrs.filter(duration__gte=min_duration)
-
-        cdrs = cdrs.order_by("-start")
+        cdrs = filter_cdr_queryset(form)
 
         statistics = {
             "total_calls": cdrs.count(),
@@ -52,20 +48,45 @@ def cdr_report_view(request):
             "answered_calls": cdrs.filter(disposition="ANSWERED").count(),
         }
 
-        paginator = Paginator(cdrs, 50)  # 50 записів на сторінку
+        paginator = Paginator(cdrs, 50)
         page_number = request.GET.get("page")
         cdrs = paginator.get_page(page_number)
+        cdrs_json = [
+            {
+                "start": cdr.start,
+                "end": cdr.end,
+                "answer": cdr.answer,
+                "src": cdr.src,
+                "dst": cdr.dst,
+                "channel": cdr.channel,
+                "dstchannel": cdr.dstchannel,
+                "duration": cdr.duration,
+                "billsec": cdr.billsec,
+                "disposition": cdr.disposition,
+                "accountcode": cdr.accountcode,
+                "clid": cdr.clid,
+                "dcontext": cdr.dcontext,
+                "lastapp": cdr.lastapp,
+                "lastdata": cdr.lastdata,
+                "amaflags": cdr.amaflags,
+                "userfield": cdr.userfield,
+                "uniqueid": cdr.uniqueid,
+                "linkedid": cdr.linkedid,
+                "peeraccount": cdr.peeraccount,
+                "sequence": cdr.sequence,
+            }
+            for cdr in cdrs
+        ]
 
-    if "export" in request.GET and cdrs:
-        return export_cdr_csv(
-            request,
-            CDR.objects.filter(**{k: v for k, v in form.cleaned_data.items() if v}),
-        )
+    if "export" in request.GET and form.is_valid():
+        export_queryset = filter_cdr_queryset(form)
+        return export_cdr_csv(request, export_queryset)
 
     context = {
         "form": form,
         "cdrs": cdrs,
         "statistics": statistics,
+        "cdrs_json": cdrs_json if cdrs else [],
     }
 
     return render(request, "cdr.html", context)
@@ -79,13 +100,13 @@ def export_cdr_csv(request, queryset):
     writer = csv.writer(response)
     writer.writerow(
         [
-            "Дата/Час",
-            "Відправник",
-            "Отримувач",
-            "Тривалість",
-            "Оплачена тривалість",
-            "Статус",
-            "Канал",
+            "Date/Time",
+            "Source",
+            "Destination",
+            "Duration",
+            "Billed Duration",
+            "Status",
+            "Channel",
         ]
     )
 
@@ -99,6 +120,7 @@ def export_cdr_csv(request, queryset):
                 cdr.billsec,
                 cdr.disposition,
                 cdr.channel,
+                cdr.dstchannel,
             ]
         )
 
