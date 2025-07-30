@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "core",
     "apps.api",
+    "apps.reports",
     "pbx.apps.MyAdminConfig",  # replaces 'django.contrib.admin'
 ]
 
@@ -56,7 +57,7 @@ ROOT_URLCONF = "pbx.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": ["templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -191,12 +192,11 @@ PEARLPBX_DEFAULT_ROUTING_PREFIX = "_2XX"
 
 TEMPLATE_DATE_FORMAT = "d/m/y"
 TEMPLATE_TIME_FORMAT = "H:i:s"
-TEMPLATE_DATETIME_FORMAT = "%s %s" % (
-    TEMPLATE_DATE_FORMAT, TEMPLATE_TIME_FORMAT)
+TEMPLATE_DATETIME_FORMAT = "%s %s" % (TEMPLATE_DATE_FORMAT, TEMPLATE_TIME_FORMAT)
 TEMPLATE_MOMENT_DATETIME_FORMAT = "DD/MM/YY HH:mm:ss"
 TEMPLATE_POPUP_TIMEOUT_MS = 5000
 
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = "/"
 
 HEADER_MENU_PAGES = [
     {

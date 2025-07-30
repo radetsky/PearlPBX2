@@ -19,7 +19,11 @@ from hashlib import md5
 
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
-from core.validators import validate_bind_ip, validate_asterisk_context, validate_asterisk_extension_prefix
+from core.validators import (
+    validate_bind_ip,
+    validate_asterisk_context,
+    validate_asterisk_extension_prefix,
+)
 
 import logging
 

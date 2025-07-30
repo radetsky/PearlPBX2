@@ -1,0 +1,378 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% load static %}
+
+{% block content %}
+    <div class="uk-container uk-container-large uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>Call Detail Report (CDR)</span></h1>
+
+    <!-- Filter form -->
+        <div class="uk-card uk-card-default uk-card-body uk-margin-large-top uk-border-rounded">
+            <div class="uk-card-header uk-padding-small">
+                <h3 class="uk-card-title uk-margin-remove-bottom">
+                    <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+                </h3>
+            </div>
+
+            <form method="get" class="uk-form-stacked">
+                <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                    <div>
+                        <label class="uk-form-label" for="id_start_date">{{ form.start_date.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.start_date|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_end_date">{{ form.end_date.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.end_date|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_src_number">{{ form.src_number.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.src_number|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_dst_number">{{ form.dst_number.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.dst_number|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_src_channel">{{ form.src_channel.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.src_channel|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_dst_channel">{{ form.dst_channel.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.dst_channel|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_disposition">{{ form.disposition.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.disposition|add_class:"uk-select uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_min_duration">{{ form.min_duration.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.min_duration|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="uk-margin-top">
+                    <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
+                        <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                    </button>
+                    <a href="{% url 'cdr_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
+                        <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                    </a>
+                    {% if cdrs %}
+                        <button type="submit" name="export" value="csv" class="uk-button uk-border-rounded uk-button-secondary">
+                            <span uk-icon="download" class="uk-margin-small-right"></span>Export CSV
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        {% if cdrs %}
+    <!-- Results table -->
+        <div class="uk-margin-large-top">
+            <div class="uk-card uk-card-default">
+                <div class="uk-card-header">
+                    <h3 class="uk-card-title uk-margin-remove-bottom">
+                        <span uk-icon="table" class="uk-margin-small-right"></span>
+                        Results ({{ cdrs.paginator.count }} records)
+                    </h3>
+                </div>
+                <div class="uk-card-body uk-padding-remove">
+                    <div class="uk-overflow-auto">
+                        <table class="uk-table uk-table-hover uk-table-striped uk-table-small">
+                            <thead>
+                                <tr>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Source
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Duration
+                                    </th>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="info" class="uk-margin-small-right"></span>Status
+                                    </th>
+                                    <th>
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>Channel
+                                    </th>
+                                    <th>
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>Dst. Channel
+                                    </th>
+                                    <th>
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>URL
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cdr in cdrs %}
+                                <tr class="uk-animation-fade cdr-row" tabindex="0" data-cdr-id="cdr-{{ forloop.counter }}">
+                                    <td class="uk-text-nowrap uk-text-small">
+                                        {{ cdr.start|date:"d.m.Y" }}
+                                        <span class="uk-text-muted">{{ cdr.start|date:"H:i:s" }}</span>
+                                    </td>
+                                    <td class="uk-text-bold">{{ cdr.src|default:"-" }}</td>
+                                    <td class="uk-text-bold">{{ cdr.dst|default:"-" }}</td>
+                                    <td class="uk-text-small">
+                                        <div>{{ cdr.duration|duration_format }}</div>
+                                    </td>
+                                    <td style="max-width: 120px;">
+                                        {% if cdr.disposition == 'ANSWERED' %}
+                                            <span class="uk-badge uk-badge-answered">{{ cdr.disposition }}</span>
+                                        {% elif cdr.disposition == 'BUSY' %}
+                                            <span class="uk-badge uk-badge-busy">{{ cdr.disposition }}</span>
+                                        {% elif cdr.disposition == 'NO ANSWER' %}
+                                            <span class="uk-badge uk-badge-no-answer">{{ cdr.disposition }}</span>
+                                        {% else %}
+                                            <span class="uk-badge uk-badge-failed">{{ cdr.disposition|default:"UNKNOWN" }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small" style="max-width: 120px;">
+                                        {{ cdr.channel|channel_name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small" style="max-width: 120px;">
+                                        {{ cdr.dstchannel|channel_name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small">
+                                        <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a>
+                                        <div id="cdr-{{ forloop.counter }}" style="display:none;">
+                                            {{ cdrs_json|index:forloop.counter0|json_script:"cdr" }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="uk-text-center uk-text-muted uk-padding">
+                                        <div uk-icon="icon: info; ratio: 2"></div>
+                                        <p class="uk-margin-small-top">No data found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                {% if cdrs.has_other_pages %}
+                <div class="uk-card-footer">
+                    <ul class="uk-pagination uk-flex-center uk-margin-remove">
+                        {% if cdrs.has_previous %}
+                            <li>
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ cdrs.previous_page_number }}">
+                                    <span uk-icon="chevron-left"></span>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <li class="uk-active">
+                            <span>{{ cdrs.number }} of {{ cdrs.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if cdrs.has_next %}
+                            <li>
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ cdrs.next_page_number }}">
+                                    <span uk-icon="chevron-right"></span>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if statistics %}
+    <!-- Statistics -->
+        <div class="uk-margin-large-top">
+            <h3 class="uk-heading-divider">Statistics</h3>
+            <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-text-center" uk-grid>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
+                        <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_calls }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Total calls</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
+                        <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_calls }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Answered</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
+                        <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.total_duration|duration_smart }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Total duration</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: credit-card; ratio: 2" class="uk-text-danger"></span>
+                        <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.total_billsec|duration_smart }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Billed duration</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    <!-- Export notification -->
+        {% if 'export' in request.GET %}
+        <div class="uk-position-top-right uk-margin-top" uk-notification>
+            <div class="uk-alert-success" uk-alert>
+                <a class="uk-alert-close" uk-close></a>
+                <p><span uk-icon="check"></span> File exported successfully!</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+
+    <!-- CDR Details Modal -->
+    <div id="cdr-details-modal" class="uk-modal" uk-modal>
+        <div class="uk-modal-dialog uk-modal-body uk-border-rounded">
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            <h3 class="uk-modal-title">CDR Details</h3>
+            <table class="uk-table uk-table-small uk-table-divider cdr-details-mini-table" style="font-size: 13px; line-height: 1.1;">
+                <tbody id="cdr-details-table">
+                </tbody>
+            </table>
+    <style>
+    /* Compact modal table for CDR details */
+    .cdr-details-mini-table td, .cdr-details-mini-table th {
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        font-size: 13px;
+    }
+    .cdr-details-mini-table tr {
+        margin-bottom: 0;
+    }
+    .cdr-details-mini-table {
+        margin-bottom: 0;
+    }
+    </style>
+        </div>
+    </div>
+
+    <script>
+        // Анімація для статистичних карток
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.stats-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = (index * 0.1) + 's';
+            });
+
+            // Додаткова анімація для рядків CDR
+            const rows = document.querySelectorAll('.cdr-row');
+            rows.forEach((row, index) => {
+                row.style.animationDelay = (index * 0.05) + 's';
+
+                // Додати звуковий ефект при hover (опціонально)
+                row.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-1px)';
+                });
+
+                row.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+
+        // Закрити модальне вікно при натисканні Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                UIkit.modal('.uk-modal.uk-open').hide();
+            }
+        });
+
+        // Додати функцію копіювання для ID та каналів
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                UIkit.notification({
+                    message: 'Скопійовано в буфер обміну!',
+                    status: 'success',
+                    timeout: 2000
+                });
+            });
+        }
+
+        // Показати модальне вікно з деталями CDR
+        function showCdrModal(cdr) {
+            const table = document.getElementById('cdr-details-table');
+            table.innerHTML = '';
+            const fields = [
+                ['Start', cdr.start],
+                ['End', cdr.end],
+                ['Answer', cdr.answer],
+                ['Source', cdr.src],
+                ['Destination', cdr.dst],
+                ['Source Channel', cdr.channel],
+                ['Destination Channel', cdr.dstchannel],
+                ['Duration', cdr.duration],
+                ['Billed Duration', cdr.billsec],
+                ['Disposition', cdr.disposition],
+                ['Account Code', cdr.accountcode],
+                ['CLID', cdr.clid],
+                ['DContext', cdr.dcontext],
+                ['LastApp', cdr.lastapp],
+                ['LastData', cdr.lastdata],
+                ['AMAFflags', cdr.amaflags],
+                ['Userfield', cdr.userfield],
+                ['UniqueID', cdr.uniqueid],
+                ['LinkedID', cdr.linkedid],
+                ['PeerAccount', cdr.peeraccount],
+                ['Sequence', cdr.sequence]
+            ];
+            fields.forEach(([label, value]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><strong>${label}</strong></td><td>${value !== null && value !== undefined && value !== '' ? value : '-'}</td>`;
+                table.appendChild(row);
+            });
+            UIkit.modal('#cdr-details-modal').show();
+        }
+
+        // Додаємо обробник на всі рядки та лінки
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.cdr-row, .cdr-details-link').forEach(function(el) {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', function(e) {
+                    // Якщо клік по лінці або по рядку
+                    let cdrId = this.getAttribute('data-cdr-id');
+                    if (cdrId) {
+                        const script = document.getElementById(cdrId);
+                        if (script) {
+                            const cdr = JSON.parse(script.textContent);
+                            showCdrModal(cdr);
+                            e.preventDefault();
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock content %}

@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% load static %}
+
+{% block content %}
+<div class="uk-container uk-container-large uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>Call Recordings Report</span></h1>
+
+    <!-- Filter form -->
+    <div class="uk-card uk-card-default uk-card-body uk-margin-large-top uk-border-rounded">
+        <div class="uk-card-header uk-padding-small">
+            <h3 class="uk-card-title uk-margin-remove-bottom">
+                <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+            </h3>
+        </div>
+        <form method="get" class="uk-form-stacked">
+            <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                <div>
+                    <label class="uk-form-label" for="id_src">{{ form.src.label }}</label>
+                    <div class="uk-form-controls">
+                        {{ form.src|add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+                <div>
+                    <label class="uk-form-label" for="id_dst">{{ form.dst.label }}</label>
+                    <div class="uk-form-controls">
+                        {{ form.dst|add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+                <div>
+                    <label class="uk-form-label" for="id_created_start">{{ form.created_start.label }}</label>
+                    <div class="uk-form-controls">
+                        {{ form.created_start|add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+                <div>
+                    <label class="uk-form-label" for="id_created_end">{{ form.created_end.label }}</label>
+                    <div class="uk-form-controls">
+                        {{ form.created_end|add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+            </div>
+            <div class="uk-margin-top">
+                <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
+                    <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                </button>
+                <a href="{% url 'monitor_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
+                    <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    {% if recordings %}
+    <!-- Results table -->
+    <div class="uk-margin-large-top">
+        <div class="uk-card uk-card-default">
+            <div class="uk-card-header">
+                <h3 class="uk-card-title uk-margin-remove-bottom">
+                    <span uk-icon="table" class="uk-margin-small-right"></span>
+                    Results ({{ recordings.paginator.count }} records)
+                </h3>
+            </div>
+            <div class="uk-card-body uk-padding-remove">
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-hover uk-table-striped uk-table-small">
+                        <thead>
+                            <tr>
+                                <th class="uk-table-shrink uk-width-small">
+                                    <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
+                                </th>
+                                <th class="uk-table-shrink">
+                                    <span uk-icon="phone" class="uk-margin-small-right"></span>Source
+                                </th>
+                                <th class="uk-table-shrink">
+                                    <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
+                                </th>
+                                <th>
+                                    <span uk-icon="file-audio" class="uk-margin-small-right"></span>Filename
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in recordings %}
+                            <tr class="uk-animation-fade">
+                                <td class="uk-text-nowrap uk-text-small">
+                                    {{ rec.created|date:"d.m.Y H:i:s" }}
+                                </td>
+                                <td class="uk-text-bold">{{ rec.src|default:"-" }}</td>
+                                <td class="uk-text-bold">{{ rec.dst|default:"-" }}</td>
+                                <td class="uk-text-truncate uk-text-small">
+                                    {{ rec.filename|default:"-" }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="uk-text-center uk-text-muted uk-padding">
+                                    <div uk-icon="icon: info; ratio: 2"></div>
+                                    <p class="uk-margin-small-top">No data found</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Pagination -->
+            {% if recordings.has_other_pages %}
+            <div class="uk-card-footer">
+                <ul class="uk-pagination uk-flex-center uk-margin-remove">
+                    {% if recordings.has_previous %}
+                        <li>
+                            <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ recordings.previous_page_number }}">
+                                <span uk-icon="chevron-left"></span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="uk-active">
+                        <span>{{ recordings.number }} of {{ recordings.paginator.num_pages }}</span>
+                    </li>
+                    {% if recordings.has_next %}
+                        <li>
+                            <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ recordings.next_page_number }}">
+                                <span uk-icon="chevron-right"></span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}

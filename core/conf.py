@@ -682,6 +682,7 @@ def make_dialplan_extension(extension):
     plaintext += "    }\n"
     return plaintext
 
+
 def _make_dialplan_h_section():
     return (
         "    h => {\n"
@@ -692,6 +693,7 @@ def _make_dialplan_h_section():
         "    }\n"
     )
 
+
 def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
     """
     Returns a tuple for sorting: higher specificity comes first.
@@ -700,18 +702,23 @@ def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
     3. Longer pattern
     4. '_X!' always last
     """
-    if ext_pattern == '_X!':
+    if ext_pattern == "_X!":
         return (0, 0, 0, 1)
     # Remove leading underscore
-    pattern = ext_pattern[1:] if ext_pattern.startswith('_') else ext_pattern
+    pattern = ext_pattern[1:] if ext_pattern.startswith("_") else ext_pattern
     # Count literal chars (digits/letters)
     literal_count = sum(1 for c in pattern if c.isdigit() or c.isalpha())
     # Count wildcards
-    wildcard_count = pattern.count('X') + pattern.count('!') + pattern.count('[') + pattern.count(']')
+    wildcard_count = (
+        pattern.count("X")
+        + pattern.count("!")
+        + pattern.count("[")
+        + pattern.count("]")
+    )
     # Length
     length = len(pattern)
     # _X! always last
-    is_xbang = 1 if ext_pattern == '_X!' else 0
+    is_xbang = 1 if ext_pattern == "_X!" else 0
     # Sort by: more literal, fewer wildcards, longer, not _X!
     return (literal_count, -wildcard_count, length, -is_xbang)
 
@@ -724,7 +731,9 @@ def make_dialplan_contexts():
         plaintext += f"context {context.name} {{\n"
         # Get all extensions for this context and sort them
         extensions = list(DialplanExtension.objects.filter(context=context))
-        extensions.sort(key=lambda ext: _asterisk_pattern_specificity(ext.ext), reverse=True)
+        extensions.sort(
+            key=lambda ext: _asterisk_pattern_specificity(ext.ext), reverse=True
+        )
         for extension in extensions:
             plaintext += make_dialplan_extension(extension)
         plaintext += _make_dialplan_h_section()
@@ -753,7 +762,9 @@ def make_routing_tables():
         plaintext += f"context {rt.name} " + "{\n"
         # Get all RoutingRecords for this table and sort them by Asterisk specificity
         records = list(RoutingRecord.objects.filter(routing_table=rt))
-        records.sort(key=lambda rec: _asterisk_pattern_specificity(rec.prefix), reverse=True)
+        records.sort(
+            key=lambda rec: _asterisk_pattern_specificity(rec.prefix), reverse=True
+        )
         for dir in records:
             plaintext += f"    // {dir.name}\n"
             plaintext += (

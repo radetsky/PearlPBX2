@@ -226,19 +226,24 @@ class SoundFileAdmin(admin.ModelAdmin):
     search_fields = ("language", "name")
 
 
-
 class QueueMemberAdmin(admin.ModelAdmin):
-    list_display = ("member_name", "interface",
-                    "state_interface", "queue", "penalty")
+    list_display = ("member_name", "interface", "state_interface", "queue", "penalty")
     search_fields = ("member_name", "interface", "state_interface", "queue__name")
     ordering = ("member_name", "queue__name", "penalty")
+
 
 class QueueMemberInlineAdmin(admin.TabularInline):
     model = QueueMember
     extra = 0
     min_num = 1
-    fields = ("member_name", "interface", "state_interface", "penalty",)
+    fields = (
+        "member_name",
+        "interface",
+        "state_interface",
+        "penalty",
+    )
     ordering = ("member_name",)
+
 
 class QueueAdmin(admin.ModelAdmin):
     list_display = ["name"]

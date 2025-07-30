@@ -64,10 +64,10 @@ def validate_asterisk_extension_prefix(value):
         return
 
     # Check that it starts with _
-    if not value.startswith('_'):
+    if not value.startswith("_"):
         raise ValidationError(
             _('Asterisk extension pattern must start with the "_" character'),
-            code='missing_underscore'
+            code="missing_underscore",
         )
 
     # Remove the first character _ for further validation
@@ -75,78 +75,74 @@ def validate_asterisk_extension_prefix(value):
 
     if not pattern:
         raise ValidationError(
-            _('Pattern cannot be empty after "_"'),
-            code='empty_pattern'
+            _('Pattern cannot be empty after "_"'), code="empty_pattern"
         )
 
     # Regular expression for validating Asterisk pattern
     # Allowed characters: digits, X, Z, N, [ranges], +, -, ., !, spaces
-    asterisk_pattern_regex = r'^[0-9XZN\[\]0-9\-\+\.\!\s]*$'
+    asterisk_pattern_regex = r"^[0-9XZN\[\]0-9\-\+\.\!\s]*$"
 
     if not re.match(asterisk_pattern_regex, pattern):
         raise ValidationError(
-            _('Invalid characters in pattern. Allowed: digits, X, Z, N, [ranges], +, -, ., !'),
-            code='invalid_characters'
+            _(
+                "Invalid characters in pattern. Allowed: digits, X, Z, N, [ranges], +, -, ., !"
+            ),
+            code="invalid_characters",
         )
 
     # Check for correct square brackets usage
-    if '[' in pattern or ']' in pattern:
-        bracket_count = pattern.count('[')
-        closing_bracket_count = pattern.count(']')
+    if "[" in pattern or "]" in pattern:
+        bracket_count = pattern.count("[")
+        closing_bracket_count = pattern.count("]")
 
         if bracket_count != closing_bracket_count:
             raise ValidationError(
-                _('Unbalanced square brackets in pattern'),
-                code='unbalanced_brackets'
+                _("Unbalanced square brackets in pattern"), code="unbalanced_brackets"
             )
 
         # Check that all opening brackets have corresponding closing brackets
-        bracket_pairs = re.findall(r'\[[^\]]*\]', pattern)
+        bracket_pairs = re.findall(r"\[[^\]]*\]", pattern)
         for pair in bracket_pairs:
             content = pair[1:-1]
             if not content:
                 raise ValidationError(
-                    _('Empty square brackets are not allowed'),
-                    code='empty_brackets'
+                    _("Empty square brackets are not allowed"), code="empty_brackets"
                 )
 
             # Check ranges like [1-9]
-            if '-' in content:
-                parts = content.split('-')
+            if "-" in content:
+                parts = content.split("-")
                 if len(parts) == 2:
                     try:
                         start, end = int(parts[0]), int(parts[1])
                         if start >= end or start < 0 or end > 9:
                             raise ValidationError(
-                                _('Invalid range in brackets: %(content)s'),
-                                params={'content': pair},
-                                code='invalid_range'
+                                _("Invalid range in brackets: %(content)s"),
+                                params={"content": pair},
+                                code="invalid_range",
                             )
                     except (ValueError, IndexError):
                         raise ValidationError(
-                            _('Invalid range format: %(content)s'),
-                            params={'content': pair},
-                            code='invalid_range_format'
+                            _("Invalid range format: %(content)s"),
+                            params={"content": pair},
+                            code="invalid_range_format",
                         )
 
     # Check maximum length (Asterisk has a limit)
     if len(value) > 80:
         raise ValidationError(
-            _('Pattern is too long (maximum 80 characters)'),
-            code='too_long'
+            _("Pattern is too long (maximum 80 characters)"), code="too_long"
         )
 
     # Additional checks for common mistakes
 
     # Check that . and ! are not doubled after other special symbols
-    if '..' in pattern or '!!' in pattern:
+    if ".." in pattern or "!!" in pattern:
         raise ValidationError(
-            _('Double wildcards (.., !!) are not recommended'),
-            code='double_wildcards'
+            _("Double wildcards (.., !!) are not recommended"), code="double_wildcards"
         )
 
     # Warning about potentially problematic patterns
-    if pattern.endswith('X.') or pattern.endswith('Z.') or pattern.endswith('N.'):
+    if pattern.endswith("X.") or pattern.endswith("Z.") or pattern.endswith("N."):
         # This is not an error, but may be undesirable
         pass
-
