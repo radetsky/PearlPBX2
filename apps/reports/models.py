@@ -46,7 +46,9 @@ class CDR(models.Model):
     disposition = models.CharField(max_length=45, blank=True)
     amaflags = models.CharField(max_length=45, blank=True)
     userfield = models.CharField(max_length=256, blank=True)
-    uniqueid = models.CharField(max_length=150, blank=False, null=False, primary_key=True)
+    uniqueid = models.CharField(
+        max_length=150, blank=False, null=False, primary_key=True
+    )
     linkedid = models.CharField(max_length=150, blank=True)
     peeraccount = models.CharField(max_length=80, blank=True)
     sequence = models.IntegerField(null=True, blank=True)

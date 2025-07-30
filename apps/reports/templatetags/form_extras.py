@@ -7,8 +7,8 @@ register = template.Library()
 @register.filter
 def add_class(field, css_class):
     """Додає CSS клас до поля форми"""
-    if hasattr(field, 'as_widget'):
-        return field.as_widget(attrs={'class': css_class})
+    if hasattr(field, "as_widget"):
+        return field.as_widget(attrs={"class": css_class})
     return field
 
 
@@ -29,11 +29,11 @@ def channel_name(channel):
         return ""
 
     # Основне розділення по дефісу
-    base_channel = channel.split('-')[0]
+    base_channel = channel.split("-")[0]
 
     # Для Local каналів також прибираємо ;1 або ;2 в кінці
-    if base_channel.startswith('Local/'):
-        base_channel = base_channel.split(';')[0]
+    if base_channel.startswith("Local/"):
+        base_channel = base_channel.split(";")[0]
 
     return base_channel
 
@@ -50,8 +50,8 @@ def channel_type(channel):
     if not channel:
         return ""
 
-    channel_name = channel.split('-')[0]  # Прибираємо номер
-    return channel_name.split('/')[0]  # Беремо тільки тип
+    channel_name = channel.split("-")[0]  # Прибираємо номер
+    return channel_name.split("/")[0]  # Беремо тільки тип
 
 
 @register.filter
@@ -66,14 +66,14 @@ def channel_endpoint(channel):
     if not channel:
         return ""
 
-    channel_name = channel.split('-')[0]  # Прибираємо номер
-    if '/' in channel_name:
-        endpoint = channel_name.split('/', 1)[1]  # Беремо все після першого /
+    channel_name = channel.split("-")[0]  # Прибираємо номер
+    if "/" in channel_name:
+        endpoint = channel_name.split("/", 1)[1]  # Беремо все після першого /
         # Для Local каналів прибираємо @context та ;1/;2
-        if '@' in endpoint:
-            endpoint = endpoint.split('@')[0]
-        if ';' in endpoint:
-            endpoint = endpoint.split(';')[0]
+        if "@" in endpoint:
+            endpoint = endpoint.split("@")[0]
+        if ";" in endpoint:
+            endpoint = endpoint.split(";")[0]
         return endpoint
     return channel_name
 
@@ -214,4 +214,4 @@ def index(sequence, position):
     try:
         return sequence[position]
     except (IndexError, TypeError):
-        return ''
+        return ""

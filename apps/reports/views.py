@@ -1,14 +1,48 @@
+import csv
+
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse
-import csv
-from .models import CDR
-from .forms import CDRReportForm
+
+from apps.reports.models import CDR
+from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm
+from core.models import MonitorFilenames
+
+
+def monitor_report_view(request):
+    form = MonitorFilenamesReportForm(request.GET or None)
+    recordings = None
+
+    def filter_monitor_queryset(form):
+        qs = MonitorFilenames.objects.all()
+        if not form.is_valid():
+            return qs.none()
+        data = form.cleaned_data
+        if data.get("src"):
+            qs = qs.filter(src__icontains=data["src"])
+        if data.get("dst"):
+            qs = qs.filter(dst__icontains=data["dst"])
+        if data.get("created_start"):
+            qs = qs.filter(created__gte=data["created_start"])
+        if data.get("created_end"):
+            qs = qs.filter(created__lte=data["created_end"])
+        return qs.order_by("-created")
+
+    if form.is_valid():
+        recordings = filter_monitor_queryset(form)
+        paginator = Paginator(recordings, 50)
+        page_number = request.GET.get("page")
+        recordings = paginator.get_page(page_number)
+
+    context = {
+        "form": form,
+        "recordings": recordings,
+    }
+    return render(request, "monitor.html", context)
 
 
 def cdr_report_view(request):
-
     form = CDRReportForm(request.GET or None)
     cdrs = None
     statistics = None
@@ -37,6 +71,7 @@ def cdr_report_view(request):
         if data.get("max_duration") is not None:
             qs = qs.filter(duration__lte=data["max_duration"])
         return qs.order_by("-start")
+
     cdrs_json = []
     if form.is_valid():
         cdrs = filter_cdr_queryset(form)

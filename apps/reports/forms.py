@@ -3,6 +3,40 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+# Form for searching MonitorFilenames (call recordings)
+class MonitorFilenamesReportForm(forms.Form):
+    src = forms.CharField(
+        label="Source number",
+        max_length=64,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter source number"}
+        ),
+    )
+    dst = forms.CharField(
+        label="Destination number",
+        max_length=64,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter destination number"}
+        ),
+    )
+    created_start = forms.DateTimeField(
+        label="Created from",
+        required=False,
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "form-control"}
+        ),
+    )
+    created_end = forms.DateTimeField(
+        label="Created to",
+        required=False,
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "form-control"}
+        ),
+    )
+
+
 class CDRReportForm(forms.Form):
     DISPOSITION_CHOICES = [
         ("", "All"),
