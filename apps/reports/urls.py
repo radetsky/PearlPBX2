@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from apps.reports.views import CDRReportView, MonitorReportView, AudioFileView
 
 urlpatterns = [
-    path("cdr/", views.cdr_report_view, name="cdr_report"),
-    path("monitor/", views.monitor_report_view, name="monitor_report"),
+    path("cdr/", CDRReportView.as_view(), name="cdr_report"),
+    path("monitor/", MonitorReportView.as_view(), name="monitor_report"),
+    path("audio/<uuid:record_id>/", AudioFileView.as_view(), name="audio_file"),
 ]

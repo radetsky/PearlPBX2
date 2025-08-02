@@ -1,3 +1,4 @@
+import os
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
@@ -16,6 +17,8 @@ from collections.abc import Iterable
 from typing import Optional
 
 from hashlib import md5
+
+from django.urls import reverse
 
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
@@ -1758,14 +1761,38 @@ class MonitorFilenames(models.Model):
         """
         Returns the monitor filename in the format:
         <YYYY>/<MM>/<DD>/<src>_<dst>_<id>
-        YYYYMMDD is the date from created field.
-        src is the caller ID, dst is the destination number, and id is the UUID.
-        This is used to generate a unique filename for the monitor recording.
-        The format is designed to be unique and easily identifiable.
         Example: "2023/10/01/1234567890_0987654321_123e4567-e89b-12d3-a456-426614174000"
         """
-        date_str = self.created.strftime("%Y/%m/%d")
-        return f"{date_str}/{self.src}_{self.dst}_{self.id}"
+        return f"{self.created.strftime('%Y/%m/%d')}/{self.src}_{self.dst}_{self.id}"
+
+    def get_audio_file_path(self, ext: Optional[str] = None) -> str:
+        """Return the full path to the audio file, optionally for a given extension."""
+        if ext is None:
+            # Default to .mp3, fallback to .wav if .mp3 does not exist
+            mp3_path = os.path.join(
+                settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ".mp3"
+            )
+            wav_path = os.path.join(
+                settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ".wav"
+            )
+            if os.path.exists(mp3_path):
+                return mp3_path
+            return wav_path
+        return os.path.join(
+            settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ext
+        )
+
+    def audio_file_exists(self) -> bool:
+        """Check if the audio file exists (either .mp3 or .wav)."""
+        return os.path.exists(self.get_audio_file_path(ext=".mp3")) or os.path.exists(
+            self.get_audio_file_path(ext=".wav")
+        )
+
+    def get_audio_url(self) -> str | None:
+        """Return the URL for accessing the audio file, or None if not found."""
+        if self.audio_file_exists():
+            return reverse("audio_file", kwargs={"record_id": self.id})
+        return None
 
     def __str__(self) -> str:
-        return str(self.monitor_filename())
+        return self.monitor_filename()
