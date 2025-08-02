@@ -78,7 +78,7 @@
                                 <th>
                                     <span uk-icon="file-audio" class="uk-margin-small-right"></span>Filename
                                 </th>
-                                <th>
+                                <th class="uk-text-center">
                                     <span uk-icon="play" class="uk-margin-small-right"></span>Audio
                                 </th>
                             </tr>
@@ -102,13 +102,11 @@
                                 </td>
                                 <td class="uk-text-center">
                                     {% if rec.get_audio_url %}
-                                        <div class="simple-player" data-audio="{{ rec.get_audio_url }}">
-                                            <button class="play-btn" onclick="togglePlay(this)">▶</button>
-                                            <div class="progress-container" onclick="setProgress(event, this)">
-                                                <div class="progress-bar"></div>
-                                            </div>
-                                            <div class="time-info">0:00 / 0:00</div>
-                                        </div>
+				     <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ rec.get_audio_url }}">
+		    			<button class="compact-btn">▶</button>
+		    			<span>Play</span>
+				     </div>
+
                                     {% else %}
                                         <span class="uk-text-muted">No audio</span>
                                     {% endif %}
