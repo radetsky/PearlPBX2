@@ -78,6 +78,9 @@
                                 <th>
                                     <span uk-icon="file-audio" class="uk-margin-small-right"></span>Filename
                                 </th>
+                                <th class="uk-text-center">
+                                    <span uk-icon="play" class="uk-margin-small-right"></span>Audio
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -89,8 +92,24 @@
                                 <td class="uk-text-bold">{{ rec.src|default:"-" }}</td>
                                 <td class="uk-text-bold">{{ rec.dst|default:"-" }}</td>
                                 <td class="uk-text-truncate uk-text-small">
-                                    {{ rec.filename|default:"-" }}
+                                    {% if rec.get_audio_url %}
+                                        <a href="{{ rec.get_audio_url }}" target="_blank" class="uk-link-muted uk-text-truncate">
+                                            <span uk-icon="file-audio" class="uk-margin-small-right"></span>{{ rec.filename|default:"[audio]" }}
+                                        </a>
+                                    {% else %}
+                                        {{ rec.filename|default:"-" }}
+                                    {% endif %}
                                 </td>
+                                <td class="uk-text-center">
+                                    {% if rec.get_audio_url %}
+				     <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ rec.get_audio_url }}">
+		    			<button class="compact-btn">▶</button>
+		    			<span>Play</span>
+				     </div>
+
+                                    {% else %}
+                                        <span class="uk-text-muted">No audio</span>
+                                    {% endif %}
                             </tr>
                             {% empty %}
                             <tr>
