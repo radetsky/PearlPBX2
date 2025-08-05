@@ -151,12 +151,12 @@ def validate_asterisk_extension_prefix(value):
 
 
 class AsteriskDialplanValidator(BaseValidator):
-    """Django валідатор для Asterisk dialplan steps"""
+    """Django validator for Asterisk dialplan steps"""
 
-    message = "Невірний синтаксис Asterisk dialplan: %(error)s"
+    message = "Invalid Asterisk dialplan syntax: %(error)s"
     code = "invalid_dialplan_syntax"
 
-    # Дозволені Asterisk applications
+    # Allowed Asterisk applications
     ASTERISK_APPLICATIONS = {
         "Answer",
         "Dial",
@@ -289,7 +289,7 @@ class AsteriskDialplanValidator(BaseValidator):
         self.allowed_macros = allowed_macros
 
     def __call__(self, value):
-        """Валідує Asterisk dialplan steps"""
+        """Validates Asterisk dialplan steps"""
         if not value:
             return
 
@@ -303,105 +303,103 @@ class AsteriskDialplanValidator(BaseValidator):
             )
 
     def validate_dialplan_steps(self, dialplan_content: str):
-        """Валідує кроки dialplan"""
+        """Validates dialplan steps"""
         if not dialplan_content.strip():
-            raise ValidationError("Порожній dialplan контент")
+            raise ValidationError("Dialplan content is empty")
 
-        # Розбиваємо на рядки та очищуємо
+        # Split into lines and clean
         lines = []
         for line in dialplan_content.split("\n"):
             line = line.strip()
-            if line:  # Додаємо всі непорожні рядки
+            if line:  # Add all non-empty lines
                 lines.append(line)
 
         if not lines:
-            raise ValidationError("Діалплан не містить кроків")
+            raise ValidationError("Dialplan does not contain any steps")
 
         for line_num, line in enumerate(lines, 1):
             try:
                 self.validate_dialplan_step(line, line_num)
             except ValidationError as e:
-                raise ValidationError(f"Рядок {line_num}: {str(e)}")
+                raise ValidationError(f"Line {line_num}: {str(e)}")
 
     def validate_dialplan_step(self, step: str, line_num: int):
-        """Валідує окремий крок dialplan"""
+        """Validates a single dialplan step"""
         step = step.strip()
 
         if not step:
             return
 
-        # Пропускаємо коментарі
+        # Skip comments
         if step.startswith("//") or step.startswith("/*") or step.startswith(";"):
             return
 
-        # Перевіряємо, чи закінчується крок крапкою з комою
+        # Check if the step ends with a semicolon
         if not step.endswith(";"):
-            raise ValidationError(
-                f"Крок повинен закінчуватися крапкою з комою: '{step}'"
-            )
+            raise ValidationError(f"Step must end with a semicolon: '{step}'")
 
-        # Видаляємо крапку з комою для аналізу
+        # Remove the semicolon for analysis
         step_content = step[:-1].strip()
 
-        # Аналізуємо application call
+        # Analyze application call
         self.parse_application_call(step_content, line_num)
 
     def parse_application_call(self, step_content: str, line_num: int):
-        """Парсить виклик Asterisk application"""
+        """Parses an Asterisk application call"""
         if not step_content:
-            raise ValidationError("Порожній крок")
+            raise ValidationError("Empty step")
 
-        # Перевіряємо формат application(parameters)
+        # Check format application(parameters)
         if "(" in step_content:
-            # Знаходимо назву application
+            # Find application name
             paren_pos = step_content.find("(")
             app_name = step_content[:paren_pos].strip()
-            # Якщо перший символ &, то теж вирізати. То макрос.
+            # If first character is &, remove it (macro)
             if app_name.startswith("&"):
                 app_name = app_name[1:]
 
-            # Перевіряємо, чи це дозволена Asterisk application
+            # Check if this is an allowed Asterisk application
             if (
                 app_name not in self.ASTERISK_APPLICATIONS
                 and app_name not in self.allowed_macros
             ):
                 raise ValidationError(
-                    f"Невідома Asterisk application або macro '{app_name}'"
+                    f"Unknown Asterisk application or macro '{app_name}'"
                 )
 
-            # Перевіряємо правильність дужок
+            # Check correct parenthesis
             if not step_content.endswith(")"):
                 raise ValidationError(
-                    "Application виклик повинен закінчуватися дужкою ')'"
+                    "Application call must end with a closing parenthesis ')'"
                 )
 
-            # Витягуємо параметри
+            # Extract parameters
             params_part = step_content[paren_pos + 1 : -1]
             self.validate_parameters(params_part, app_name, line_num)
 
         else:
-            # Якщо немає дужок, це може бути простий виклик без параметрів
+            # If no parenthesis, may be a simple call without parameters
             if step_content not in self.ASTERISK_APPLICATIONS:
                 raise ValidationError(
-                    f"Невідома Asterisk application або неправильний формат: '{step_content}'"
+                    f"Unknown Asterisk application or invalid format: '{step_content}'"
                 )
 
     def validate_parameters(self, params_str: str, app_name: str, line_num: int):
-        """Валідує параметри application"""
+        """Validates application parameters"""
         if not params_str.strip():
-            return  # Порожні параметри допустимі
+            return  # Empty parameters are allowed
 
-        # Перевіряємо баланс дужок і лапок
+        # Check balanced brackets and quotes
         self.check_balanced_brackets_and_quotes(params_str, line_num)
 
-        # Парсимо параметри (враховуючи вкладені дужки та лапки)
+        # Parse parameters (considering nested brackets and quotes)
         params = self.parse_parameters(params_str)
 
-        # Додаткова валідація для специфічних applications
+        # Additional validation for specific applications
         self.validate_specific_application_params(app_name, params, line_num)
 
     def check_balanced_brackets_and_quotes(self, text: str, line_num: int):
-        """Перевіряє збалансованість дужок і лапок"""
+        """Checks for balanced brackets and quotes"""
         stack = []
         quote_char = None
         i = 0
@@ -443,7 +441,7 @@ class AsteriskDialplanValidator(BaseValidator):
             raise ValidationError(f"Незакрита лапка: '{quote_char}'")
 
     def parse_parameters(self, params_str: str) -> List[str]:
-        """Парсить параметри з врахуванням вкладених структур"""
+        """Parses parameters considering nested structures"""
         params = []
         current_param = ""
         paren_level = 0
@@ -493,53 +491,51 @@ class AsteriskDialplanValidator(BaseValidator):
     def validate_specific_application_params(
         self, app_name: str, params: List[str], line_num: int
     ):
-        """Специфічна валідація для окремих applications"""
+        """Specific validation for certain applications"""
 
-        # Валідація для AGI
+        # Validation for AGI
         if app_name == "AGI":
             if not params:
-                raise ValidationError("AGI потребує принаймні один параметр (script)")
+                raise ValidationError("AGI requires at least one parameter (script)")
 
             script_param = params[0]
             if not script_param:
-                raise ValidationError("AGI script параметр не може бути порожнім")
+                raise ValidationError("AGI script parameter cannot be empty")
 
-        # Валідація для Dial
+        # Validation for Dial
         elif app_name == "Dial":
             if not params:
                 raise ValidationError(
-                    "Dial потребує принаймні один параметр (destination)"
+                    "Dial requires at least one parameter (destination)"
                 )
 
-        # Валідація для Playback
+        # Validation for Playback
         elif app_name == "Playback":
             if not params:
                 raise ValidationError(
-                    "Playback потребує принаймні один параметр (filename)"
+                    "Playback requires at least one parameter (filename)"
                 )
 
-        # Валідація для Wait
+        # Validation for Wait
         elif app_name == "Wait":
             if params:
                 wait_time = params[0]
-                # Перевіряємо, чи це число або змінна
+                # Check if it's a number or variable
                 if not (
                     wait_time.isdigit()
                     or "${" in wait_time
                     or wait_time.replace(".", "").isdigit()
                 ):
-                    raise ValidationError(
-                        "Wait параметр повинен бути числом або змінною"
-                    )
+                    raise ValidationError("Wait parameter must be a number or variable")
 
 
-# Допоміжні функції
+# Helper functions
 class DialplanHelper:
-    """Помічник для роботи з dialplan"""
+    """Helper for working with dialplan"""
 
     @staticmethod
     def parse_dialplan_steps(dialplan_text: str) -> List[Dict[str, str]]:
-        """Парсить dialplan текст і повертає структуровані кроки"""
+        """Parses dialplan text and returns structured steps"""
         steps = []
 
         for line_num, line in enumerate(dialplan_text.split("\n"), 1):
@@ -583,7 +579,7 @@ class DialplanHelper:
 
     @staticmethod
     def validate_dialplan(dialplan_text: str) -> Tuple[bool, Optional[str]]:
-        """Валідує dialplan і повертає (is_valid, error_message)"""
+        """Validates dialplan and returns (is_valid, error_message)"""
         try:
             validator = AsteriskDialplanValidator()
             validator(dialplan_text)
@@ -593,7 +589,7 @@ class DialplanHelper:
 
     @staticmethod
     def format_dialplan(steps: List[str]) -> str:
-        """Форматує список кроків у правильний dialplan"""
+        """Formats a list of steps into a valid dialplan"""
         formatted_steps = []
         for step in steps:
             step = step.strip()
