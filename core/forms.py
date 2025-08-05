@@ -219,6 +219,27 @@ class SIPPeerForm(forms.ModelForm):
 
 
 class DialplanExtensionForm(forms.ModelForm):
+    DIALPLAN_TEMPLATE = (
+        """
+NoOp(CALL BEGIN >>>> :'${CALLERID(name)}'@<${CALLERID(num)}>);
+Set(CHANNEL(language)=ua);
+Set(TIMEOUT(absolute)=3600);
+// Only for outgoing call thru the PSTN
+Set(CALLERID(num)=?
+// For GSM or FXO gateways
+// Set(CALLERID(num)=${CALLERID(NAME)});
+// ====================================================
+// Normalize the CallerID for incoming calls.
+// You can edit the macro to use in your country.
+// Admin -> Dialplan macros -> callerid_normalization()
+// Or create the new one for your conditions.
+&callerid_normalization();
+// Turn on record of the call except rules in the database
+AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
+// And now, you can Answer the call or something else what do you want
+"""
+    )
+
     context = DialplanContextChoiceField(
         label="Context",
         required=True,
@@ -232,19 +253,24 @@ class DialplanExtensionForm(forms.ModelForm):
 
     dialplan = forms.CharField(
         label="Dialplan",
-        widget=forms.Textarea,
+        widget=forms.Textarea(attrs={
+            "cols": 80,
+            "rows": 24,
+            "style": "font-family:monospace; font-size:16px;",
+        }),
         required=True,
         help_text="Use Asterisk AEL syntax to define the dialplan.",
+        initial=DIALPLAN_TEMPLATE.strip(),
     )
 
     description = forms.CharField(
         label="Description", required=False, help_text="Description of the extension."
     )
 
+
     class Meta:
         model = DialplanExtension
         fields = "__all__"
-
 
 class ConfigurationFileForm(forms.ModelForm):
     class Meta:
