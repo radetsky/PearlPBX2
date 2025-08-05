@@ -23,6 +23,7 @@ from django.urls import reverse
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
 from core.validators import (
+    AsteriskDialplanValidator,
     validate_bind_ip,
     validate_asterisk_context,
     validate_asterisk_extension_prefix,
@@ -556,49 +557,6 @@ class SIPPeer(models.Model):
         return self.name
 
 
-class DialplanExtension(models.Model):
-    context = models.ForeignKey(
-        DialplanContext,
-        related_name="extensions",
-        on_delete=deletion.PROTECT,
-        null=True,
-        blank=False,
-    )
-    ext = models.CharField(
-        max_length=64,
-        unique=False,
-        null=False,
-        blank=False,
-        default="_X!",
-        verbose_name="Extension",
-        help_text="Asterisk extension",
-        validators=[validate_asterisk_extension_prefix],
-    )
-    dialplan = models.TextField(verbose_name="Extension scenario")
-    description = models.CharField(
-        max_length=64,
-        unique=False,
-        null=False,
-        blank=True,
-        verbose_name="Extension description",
-        help_text="Use latin symbols, digits and undercore to describe",
-    )
-
-    @property
-    def context_name(self):
-        return self.context.name
-
-    class Meta:
-        db_table = "dialplan_extensions"
-        verbose_name_plural = "05. Dialplan extensions"
-
-        constraints = [
-            models.UniqueConstraint(
-                fields=["context", "ext"], name="unique extension inside context"
-            )
-        ]
-
-
 class DialplanMacro(models.Model):
     name = models.CharField(
         max_length=32,
@@ -621,6 +579,57 @@ class DialplanMacro(models.Model):
     class Meta:
         db_table = "dialplan_macros"
         verbose_name_plural = "06. Dialplan macros"
+
+
+class DialplanExtension(models.Model):
+    context = models.ForeignKey(
+        DialplanContext,
+        related_name="extensions",
+        on_delete=deletion.PROTECT,
+        null=True,
+        blank=False,
+    )
+    ext = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=False,
+        default="_X!",
+        verbose_name="Extension",
+        help_text="Asterisk extension",
+        validators=[validate_asterisk_extension_prefix],
+    )
+    dialplan = models.TextField(
+        verbose_name="Extension scenario",
+        validators=[
+            AsteriskDialplanValidator(
+                allowed_macros=DialplanMacro.objects.values_list("name", flat=True)
+            )
+        ],
+        help_text="Use Asterisk AEL syntax to define the dialplan.",
+    )
+    description = models.CharField(
+        max_length=64,
+        unique=False,
+        null=False,
+        blank=True,
+        verbose_name="Extension description",
+        help_text="Use latin symbols, digits and undercore to describe",
+    )
+
+    @property
+    def context_name(self):
+        return self.context.name
+
+    class Meta:
+        db_table = "dialplan_extensions"
+        verbose_name_plural = "05. Dialplan extensions"
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["context", "ext"], name="unique extension inside context"
+            )
+        ]
 
 
 class ManagerUsers(models.Model):

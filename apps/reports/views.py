@@ -13,6 +13,7 @@ from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm
 
 from core.models import MonitorFilenames
 
+
 class AudioFileView(View):
     def get(self, request, record_id):
         record = get_object_or_404(MonitorFilenames, id=record_id)
@@ -192,5 +193,3 @@ class CDRReportView(View):
             )
 
         return response
-
-
