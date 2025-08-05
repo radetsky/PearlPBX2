@@ -219,8 +219,7 @@ class SIPPeerForm(forms.ModelForm):
 
 
 class DialplanExtensionForm(forms.ModelForm):
-    DIALPLAN_TEMPLATE = (
-        """
+    DIALPLAN_TEMPLATE = """
 NoOp(CALL BEGIN >>>> :'${CALLERID(name)}'@<${CALLERID(num)}>);
 Set(CHANNEL(language)=ua);
 Set(TIMEOUT(absolute)=3600);
@@ -238,7 +237,6 @@ Set(CALLERID(num)=?
 AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
 // And now, you can Answer the call or something else what do you want
 """
-    )
 
     context = DialplanContextChoiceField(
         label="Context",
@@ -253,11 +251,13 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
 
     dialplan = forms.CharField(
         label="Dialplan",
-        widget=forms.Textarea(attrs={
-            "cols": 80,
-            "rows": 24,
-            "style": "font-family:monospace; font-size:16px;",
-        }),
+        widget=forms.Textarea(
+            attrs={
+                "cols": 80,
+                "rows": 24,
+                "style": "font-family:monospace; font-size:16px;",
+            }
+        ),
         required=True,
         help_text="Use Asterisk AEL syntax to define the dialplan.",
         initial=DIALPLAN_TEMPLATE.strip(),
@@ -267,10 +267,10 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
         label="Description", required=False, help_text="Description of the extension."
     )
 
-
     class Meta:
         model = DialplanExtension
         fields = "__all__"
+
 
 class ConfigurationFileForm(forms.ModelForm):
     class Meta:

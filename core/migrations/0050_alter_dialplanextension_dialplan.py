@@ -5,15 +5,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0049_add_pgsql_to_cdr_configuration'),
+        ("core", "0049_add_pgsql_to_cdr_configuration"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='dialplanextension',
-            name='dialplan',
-            field=models.TextField(help_text='Use Asterisk AEL syntax to define the dialplan.', validators=[core.validators.AsteriskDialplanValidator()], verbose_name='Extension scenario'),
+            model_name="dialplanextension",
+            name="dialplan",
+            field=models.TextField(
+                help_text="Use Asterisk AEL syntax to define the dialplan.",
+                validators=[core.validators.AsteriskDialplanValidator()],
+                verbose_name="Extension scenario",
+            ),
         ),
     ]

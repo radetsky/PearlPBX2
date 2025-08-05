@@ -1,4 +1,3 @@
-from django.db import models
 from django.core.validators import BaseValidator
 from typing import List, Dict, Optional, Tuple
 import re
@@ -155,35 +154,134 @@ class AsteriskDialplanValidator(BaseValidator):
     """Django валідатор для Asterisk dialplan steps"""
 
     message = "Невірний синтаксис Asterisk dialplan: %(error)s"
-    code = 'invalid_dialplan_syntax'
+    code = "invalid_dialplan_syntax"
 
     # Дозволені Asterisk applications
     ASTERISK_APPLICATIONS = {
-        'Answer', 'Dial', 'Hangup', 'Playback', 'Background', 'WaitExten',
-        'Goto', 'GotoIf', 'Set', 'NoOp', 'Verbose', 'Log', 'Echo',
-        'VoiceMail', 'VoiceMailMain', 'Queue', 'AGI', 'Busy', 'Congestion',
-        'Read', 'SayNumber', 'SayDigits', 'DateTime', 'Festival',
-        'MixMonitor', 'StopMixMonitor', 'Record', 'Wait', 'System',
-        'Return', 'ExecIf', 'While', 'EndWhile', 'For', 'EndFor',
-        'If', 'ElseIf', 'Else', 'EndIf', 'Switch', 'Case', 'Default',
-        'EndSwitch', 'Macro', 'MacroExit', 'GoSub', 'GoSubIf', 'Return',
-        'StackPop', 'UserEvent', 'Progress', 'Ringing', 'SIPAddHeader',
-        'SIPRemoveHeader', 'SetCallerPres', 'SetMusicOnHold', 'StartMusicOnHold',
-        'StopMusicOnHold', 'WaitMusicOnHold', 'SetAccount', 'ResetCDR',
-        'NoCDR', 'ForkCDR', 'Park', 'ParkAndAnnounce', 'ParkedCall',
-        'UnparkCall', 'PickupChan', 'Pickup', 'ChannelRedirect',
-        'SendDTMF', 'SendText', 'SendImage', 'ReceiveText', 'GetCPEID',
-        'Flash', 'ZapRAS', 'ZapSendKeypadFacility', 'SetLanguage',
-        'SayUnixTime', 'SayPhonetic', 'SayAlpha', 'StripMSD', 'Zapateller',
-        'PrivacyManager', 'Authenticate', 'DBget', 'DBput', 'DBdel',
-        'DBdeltree', 'EAGI', 'FastAGI', 'DeadAGI', 'Festival', 'Flite',
-        'Swift', 'Cepstral', 'SpeechCreate', 'SpeechActivateGrammar',
-        'SpeechStart', 'SpeechBackground', 'SpeechDeactivateGrammar',
-        'SpeechProcessingSound', 'SpeechDestroy', 'MySQL', 'ODBC',
-        'Realtime', 'Curl', 'TrySystem', 'VMAuthenticate', 'VoiceMailPlayMsg',
-        'MailboxExists', 'HasVoicemail', 'HasNewVoicemail', 'SayCountPL',
-        'Milliwatt', 'TestServer', 'TestClient', 'WaitForRing', 'WaitForSilence',
-        'WaitForNoise', 'BackgroundDetect', 'TalkDetect', 'Eval'
+        "Answer",
+        "Dial",
+        "Hangup",
+        "Playback",
+        "Background",
+        "WaitExten",
+        "Goto",
+        "GotoIf",
+        "Set",
+        "NoOp",
+        "Verbose",
+        "Log",
+        "Echo",
+        "VoiceMail",
+        "VoiceMailMain",
+        "Queue",
+        "AGI",
+        "Busy",
+        "Congestion",
+        "Read",
+        "SayNumber",
+        "SayDigits",
+        "DateTime",
+        "Festival",
+        "MixMonitor",
+        "StopMixMonitor",
+        "Record",
+        "Wait",
+        "System",
+        "Return",
+        "ExecIf",
+        "While",
+        "EndWhile",
+        "For",
+        "EndFor",
+        "If",
+        "ElseIf",
+        "Else",
+        "EndIf",
+        "Switch",
+        "Case",
+        "Default",
+        "EndSwitch",
+        "Macro",
+        "MacroExit",
+        "GoSub",
+        "GoSubIf",
+        "Return",
+        "StackPop",
+        "UserEvent",
+        "Progress",
+        "Ringing",
+        "SIPAddHeader",
+        "SIPRemoveHeader",
+        "SetCallerPres",
+        "SetMusicOnHold",
+        "StartMusicOnHold",
+        "StopMusicOnHold",
+        "WaitMusicOnHold",
+        "SetAccount",
+        "ResetCDR",
+        "NoCDR",
+        "ForkCDR",
+        "Park",
+        "ParkAndAnnounce",
+        "ParkedCall",
+        "UnparkCall",
+        "PickupChan",
+        "Pickup",
+        "ChannelRedirect",
+        "SendDTMF",
+        "SendText",
+        "SendImage",
+        "ReceiveText",
+        "GetCPEID",
+        "Flash",
+        "ZapRAS",
+        "ZapSendKeypadFacility",
+        "SetLanguage",
+        "SayUnixTime",
+        "SayPhonetic",
+        "SayAlpha",
+        "StripMSD",
+        "Zapateller",
+        "PrivacyManager",
+        "Authenticate",
+        "DBget",
+        "DBput",
+        "DBdel",
+        "DBdeltree",
+        "EAGI",
+        "FastAGI",
+        "DeadAGI",
+        "Festival",
+        "Flite",
+        "Swift",
+        "Cepstral",
+        "SpeechCreate",
+        "SpeechActivateGrammar",
+        "SpeechStart",
+        "SpeechBackground",
+        "SpeechDeactivateGrammar",
+        "SpeechProcessingSound",
+        "SpeechDestroy",
+        "MySQL",
+        "ODBC",
+        "Realtime",
+        "Curl",
+        "TrySystem",
+        "VMAuthenticate",
+        "VoiceMailPlayMsg",
+        "MailboxExists",
+        "HasVoicemail",
+        "HasNewVoicemail",
+        "SayCountPL",
+        "Milliwatt",
+        "TestServer",
+        "TestClient",
+        "WaitForRing",
+        "WaitForSilence",
+        "WaitForNoise",
+        "BackgroundDetect",
+        "TalkDetect",
+        "Eval",
     }
 
     def __init__(self, allowed_macros=[], limit_value=None):
@@ -201,9 +299,7 @@ class AsteriskDialplanValidator(BaseValidator):
             raise
         except Exception as e:
             raise ValidationError(
-                self.message,
-                code=self.code,
-                params={'error': str(e)}
+                self.message, code=self.code, params={"error": str(e)}
             )
 
     def validate_dialplan_steps(self, dialplan_content: str):
@@ -213,7 +309,7 @@ class AsteriskDialplanValidator(BaseValidator):
 
         # Розбиваємо на рядки та очищуємо
         lines = []
-        for line in dialplan_content.split('\n'):
+        for line in dialplan_content.split("\n"):
             line = line.strip()
             if line:  # Додаємо всі непорожні рядки
                 lines.append(line)
@@ -235,13 +331,14 @@ class AsteriskDialplanValidator(BaseValidator):
             return
 
         # Пропускаємо коментарі
-        if step.startswith('//') or step.startswith('/*') or step.startswith(';'):
+        if step.startswith("//") or step.startswith("/*") or step.startswith(";"):
             return
 
         # Перевіряємо, чи закінчується крок крапкою з комою
-        if not step.endswith(';'):
+        if not step.endswith(";"):
             raise ValidationError(
-                f"Крок повинен закінчуватися крапкою з комою: '{step}'")
+                f"Крок повинен закінчуватися крапкою з комою: '{step}'"
+            )
 
         # Видаляємо крапку з комою для аналізу
         step_content = step[:-1].strip()
@@ -255,33 +352,39 @@ class AsteriskDialplanValidator(BaseValidator):
             raise ValidationError("Порожній крок")
 
         # Перевіряємо формат application(parameters)
-        if '(' in step_content:
+        if "(" in step_content:
             # Знаходимо назву application
-            paren_pos = step_content.find('(')
+            paren_pos = step_content.find("(")
             app_name = step_content[:paren_pos].strip()
             # Якщо перший символ &, то теж вирізати. То макрос.
-            if app_name.startswith('&'):
+            if app_name.startswith("&"):
                 app_name = app_name[1:]
 
             # Перевіряємо, чи це дозволена Asterisk application
-            if app_name not in self.ASTERISK_APPLICATIONS and app_name not in self.allowed_macros:
+            if (
+                app_name not in self.ASTERISK_APPLICATIONS
+                and app_name not in self.allowed_macros
+            ):
                 raise ValidationError(
-                    f"Невідома Asterisk application або macro '{app_name}'")
+                    f"Невідома Asterisk application або macro '{app_name}'"
+                )
 
             # Перевіряємо правильність дужок
-            if not step_content.endswith(')'):
+            if not step_content.endswith(")"):
                 raise ValidationError(
-                    "Application виклик повинен закінчуватися дужкою ')'")
+                    "Application виклик повинен закінчуватися дужкою ')'"
+                )
 
             # Витягуємо параметри
-            params_part = step_content[paren_pos + 1:-1]
+            params_part = step_content[paren_pos + 1 : -1]
             self.validate_parameters(params_part, app_name, line_num)
 
         else:
             # Якщо немає дужок, це може бути простий виклик без параметрів
             if step_content not in self.ASTERISK_APPLICATIONS:
                 raise ValidationError(
-                    f"Невідома Asterisk application або неправильний формат: '{step_content}'")
+                    f"Невідома Asterisk application або неправильний формат: '{step_content}'"
+                )
 
     def validate_parameters(self, params_str: str, app_name: str, line_num: int):
         """Валідує параметри application"""
@@ -318,17 +421,18 @@ class AsteriskDialplanValidator(BaseValidator):
 
             # Обробка дужок (тільки поза лапками)
             elif quote_char is None:
-                if char in '([{':
+                if char in "([{":
                     stack.append(char)
-                elif char in ')]}':
+                elif char in ")]}":
                     if not stack:
                         raise ValidationError(f"Незбалансована дужка '{char}'")
 
                     last = stack.pop()
-                    pairs = {'(': ')', '[': ']', '{': '}'}
+                    pairs = {"(": ")", "[": "]", "{": "}"}
                     if pairs.get(last) != char:
                         raise ValidationError(
-                            f"Неправильна пара дужок: '{last}' та '{char}'")
+                            f"Неправильна пара дужок: '{last}' та '{char}'"
+                        )
 
             i += 1
 
@@ -357,19 +461,24 @@ class AsteriskDialplanValidator(BaseValidator):
             elif quote_char is not None:
                 current_param += char
             else:
-                if char == '(':
+                if char == "(":
                     paren_level += 1
-                elif char == ')':
+                elif char == ")":
                     paren_level -= 1
-                elif char == '[':
+                elif char == "[":
                     bracket_level += 1
-                elif char == ']':
+                elif char == "]":
                     bracket_level -= 1
-                elif char == '{':
+                elif char == "{":
                     brace_level += 1
-                elif char == '}':
+                elif char == "}":
                     brace_level -= 1
-                elif char == ',' and paren_level == 0 and bracket_level == 0 and brace_level == 0:
+                elif (
+                    char == ","
+                    and paren_level == 0
+                    and bracket_level == 0
+                    and brace_level == 0
+                ):
                     params.append(current_param.strip())
                     current_param = ""
                     continue
@@ -381,41 +490,47 @@ class AsteriskDialplanValidator(BaseValidator):
 
         return params
 
-    def validate_specific_application_params(self, app_name: str, params: List[str], line_num: int):
+    def validate_specific_application_params(
+        self, app_name: str, params: List[str], line_num: int
+    ):
         """Специфічна валідація для окремих applications"""
 
         # Валідація для AGI
-        if app_name == 'AGI':
+        if app_name == "AGI":
             if not params:
-                raise ValidationError(
-                    "AGI потребує принаймні один параметр (script)")
+                raise ValidationError("AGI потребує принаймні один параметр (script)")
 
             script_param = params[0]
             if not script_param:
-                raise ValidationError(
-                    "AGI script параметр не може бути порожнім")
+                raise ValidationError("AGI script параметр не може бути порожнім")
 
         # Валідація для Dial
-        elif app_name == 'Dial':
+        elif app_name == "Dial":
             if not params:
                 raise ValidationError(
-                    "Dial потребує принаймні один параметр (destination)")
+                    "Dial потребує принаймні один параметр (destination)"
+                )
 
         # Валідація для Playback
-        elif app_name == 'Playback':
+        elif app_name == "Playback":
             if not params:
                 raise ValidationError(
-                    "Playback потребує принаймні один параметр (filename)")
+                    "Playback потребує принаймні один параметр (filename)"
+                )
 
         # Валідація для Wait
-        elif app_name == 'Wait':
+        elif app_name == "Wait":
             if params:
                 wait_time = params[0]
                 # Перевіряємо, чи це число або змінна
-                if not (wait_time.isdigit() or '${' in wait_time or wait_time.replace('.', '').isdigit()):
+                if not (
+                    wait_time.isdigit()
+                    or "${" in wait_time
+                    or wait_time.replace(".", "").isdigit()
+                ):
                     raise ValidationError(
-                        "Wait параметр повинен бути числом або змінною")
-
+                        "Wait параметр повинен бути числом або змінною"
+                    )
 
 
 # Допоміжні функції
@@ -427,35 +542,42 @@ class DialplanHelper:
         """Парсить dialplan текст і повертає структуровані кроки"""
         steps = []
 
-        for line_num, line in enumerate(dialplan_text.split('\n'), 1):
+        for line_num, line in enumerate(dialplan_text.split("\n"), 1):
             line = line.strip()
-            if not line or line.startswith('//') or line.startswith(';'):
+            if not line or line.startswith("//") or line.startswith(";"):
                 continue
 
-            if not line.endswith(';'):
+            if not line.endswith(";"):
                 continue
 
             step_content = line[:-1].strip()
 
-            if '(' in step_content:
-                paren_pos = step_content.find('(')
+            if "(" in step_content:
+                paren_pos = step_content.find("(")
                 app_name = step_content[:paren_pos].strip()
-                params_str = step_content[paren_pos + 1:-
-                                          1] if step_content.endswith(')') else ""
+                params_str = (
+                    step_content[paren_pos + 1 : -1]
+                    if step_content.endswith(")")
+                    else ""
+                )
 
-                steps.append({
-                    'line': line_num,
-                    'application': app_name,
-                    'parameters': params_str,
-                    'raw': line
-                })
+                steps.append(
+                    {
+                        "line": line_num,
+                        "application": app_name,
+                        "parameters": params_str,
+                        "raw": line,
+                    }
+                )
             else:
-                steps.append({
-                    'line': line_num,
-                    'application': step_content,
-                    'parameters': '',
-                    'raw': line
-                })
+                steps.append(
+                    {
+                        "line": line_num,
+                        "application": step_content,
+                        "parameters": "",
+                        "raw": line,
+                    }
+                )
 
         return steps
 
@@ -475,8 +597,7 @@ class DialplanHelper:
         formatted_steps = []
         for step in steps:
             step = step.strip()
-            if not step.endswith(';'):
-                step += ';'
+            if not step.endswith(";"):
+                step += ";"
             formatted_steps.append(step)
-        return '\n'.join(formatted_steps)
-
+        return "\n".join(formatted_steps)

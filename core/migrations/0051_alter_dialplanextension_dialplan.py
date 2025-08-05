@@ -5,15 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0050_alter_dialplanextension_dialplan'),
+        ("core", "0050_alter_dialplanextension_dialplan"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='dialplanextension',
-            name='dialplan',
-            field=models.TextField(help_text='Use Asterisk AEL syntax to define the dialplan.', validators=[core.validators.AsteriskDialplanValidator(allowed_macros=('callerid_normalization',))], verbose_name='Extension scenario'),
+            model_name="dialplanextension",
+            name="dialplan",
+            field=models.TextField(
+                help_text="Use Asterisk AEL syntax to define the dialplan.",
+                validators=[
+                    core.validators.AsteriskDialplanValidator(
+                        allowed_macros=("callerid_normalization",)
+                    )
+                ],
+                verbose_name="Extension scenario",
+            ),
         ),
     ]
