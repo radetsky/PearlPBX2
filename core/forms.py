@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from core.models import (
+    DialplanMacro,
     SIPPeer,
     SIPTransport,
     SIPUser,
@@ -12,6 +13,7 @@ from core.models import (
     ConfigurationFile,
 )
 
+from core.validators import AsteriskDialplanValidator
 from core.widgets import PasswordWithToggleInput
 
 
@@ -266,6 +268,21 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
     description = forms.CharField(
         label="Description", required=False, help_text="Description of the extension."
     )
+
+    def clean_dialplan(self):
+        dialplan = self.cleaned_data["dialplan"]
+
+        allowed_macros = {
+            f"&{name}" for name in DialplanMacro.objects.values_list("name", flat=True)
+        }
+
+        validator = AsteriskDialplanValidator(allowed_macros=allowed_macros)
+        try:
+            validator(dialplan)
+        except ValidationError as e:
+            raise forms.ValidationError(e.messages)
+
+        return dialplan
 
     class Meta:
         model = DialplanExtension
