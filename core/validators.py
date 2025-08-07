@@ -1,5 +1,5 @@
+from typing import List, Dict, Optional, Tuple, Set
 from django.core.validators import BaseValidator
-from typing import List, Dict, Optional, Tuple
 import re
 
 from django.core.exceptions import ValidationError
@@ -284,9 +284,20 @@ class AsteriskDialplanValidator(BaseValidator):
         "Eval",
     }
 
-    def __init__(self, allowed_macros=[], limit_value=None):
+    # Block keywords for AEL
+    BLOCK_KEYWORDS = {"if", "else", "while", "for", "switch"}
+    CONDITION_OPERATORS = {"==", "!=", ">", "<", ">=", "<=", "&&", "||", "!"}
+
+    def __init__(self, limit_value=None, allowed_macros: Optional[Set[str]] = None):
+        """
+        Initialize validator
+
+        Args:
+            limit_value: Not used, kept for BaseValidator compatibility
+            allowed_macros: Set of allowed macro names that can be called in dialplan
+        """
         super().__init__(limit_value)
-        self.allowed_macros = allowed_macros
+        self.allowed_macros = allowed_macros or set()
 
     def __call__(self, value):
         """Validates Asterisk dialplan steps"""
@@ -303,28 +314,238 @@ class AsteriskDialplanValidator(BaseValidator):
             )
 
     def validate_dialplan_steps(self, dialplan_content: str):
-        """Validates dialplan steps"""
+        """Validates dialplan steps with support for block constructs"""
         if not dialplan_content.strip():
-            raise ValidationError("Dialplan content is empty")
+            raise ValidationError("Empty dialplan content")
 
-        # Split into lines and clean
-        lines = []
-        for line in dialplan_content.split("\n"):
-            line = line.strip()
-            if line:  # Add all non-empty lines
-                lines.append(line)
+        # Preprocessing - remove extra spaces but preserve structure
+        lines = dialplan_content.split("\n")
+        processed_lines = []
 
-        if not lines:
-            raise ValidationError("Dialplan does not contain any steps")
+        for i, line in enumerate(lines):
+            stripped_line = line.strip()
+            if stripped_line:
+                processed_lines.append((i + 1, stripped_line))
 
-        for line_num, line in enumerate(lines, 1):
+        if not processed_lines:
+            raise ValidationError("Dialplan contains no steps")
+
+        # Parse with block construct support
+        self.parse_block_structure(processed_lines)
+
+    def parse_block_structure(self, lines: List[Tuple[int, str]]):
+        """Parses block structure of AEL (if/else/while etc.)"""
+        i = 0
+        while i < len(lines):
+            line_num, line = lines[i]
+
             try:
-                self.validate_dialplan_step(line, line_num)
+                if self.is_block_start(line):
+                    i = self.parse_block(lines, i)
+                else:
+                    self.validate_dialplan_step(line, line_num)
+                    i += 1
             except ValidationError as e:
                 raise ValidationError(f"Line {line_num}: {str(e)}")
 
+    def is_block_start(self, line: str) -> bool:
+        """Checks if line is the start of a block"""
+        line_lower = line.lower().strip()
+
+        # Check if constructs
+        if line_lower.startswith("if") and "(" in line and "{" in line:
+            return True
+
+        # Check else
+        if line_lower.startswith("else") and "{" in line:
+            return True
+
+        # Check else too
+        if line_lower.startswith("}") and "else" in line and "{" in line:
+            return True
+
+        # Check while, for
+        for keyword in ["while", "for"]:
+            if line_lower.startswith(keyword) and "(" in line and "{" in line:
+                return True
+
+        return False
+
+    def parse_block(self, lines: List[Tuple[int, str]], start_idx: int) -> int:
+        """Parses block construct and returns index after the block"""
+        line_num, line = lines[start_idx]
+
+        # Validate block header
+        self.validate_block_header(line, line_num)
+
+        # Find block body
+        brace_count = line.count("{") - line.count("}")
+        current_idx = start_idx + 1
+
+        while current_idx < len(lines) and brace_count > 0:
+            inner_line_num, inner_line = lines[current_idx]
+
+            # Count braces
+            brace_count += inner_line.count("{") - inner_line.count("}")
+
+            if brace_count > 0:  # Still inside the block
+                if inner_line.strip() == "}":
+                    # Just closing brace
+                    pass
+                elif self.is_block_start(inner_line):
+                    # Nested block
+                    current_idx = self.parse_block(lines, current_idx) - 1
+                else:
+                    # Regular step
+                    self.validate_dialplan_step(inner_line, inner_line_num)
+
+            current_idx += 1
+
+        if brace_count != 0:
+            raise ValidationError(
+                f"Unbalanced braces in block starting at line {line_num}"
+            )
+
+        # Check if there's an else after if
+        if current_idx < len(lines):
+            next_line_num, next_line = lines[current_idx]
+            if next_line.lower().strip().startswith("else"):
+                return self.parse_block(lines, current_idx)
+
+        return current_idx
+
+    def validate_block_header(self, line: str, line_num: int):
+        """Validates block header (if, else, while etc.)"""
+        line_stripped = line.strip()
+
+        if line_stripped.lower().startswith("if"):
+            self.validate_if_condition(line_stripped, line_num)
+        elif line_stripped.lower().startswith("else"):
+            self.validate_else_statement(line_stripped, line_num)
+        elif line_stripped.lower().startswith("while"):
+            self.validate_while_condition(line_stripped, line_num)
+        elif line_stripped.lower().startswith("for"):
+            self.validate_for_loop(line_stripped, line_num)
+
+    def validate_if_condition(self, line: str, line_num: int):
+        """Validates if condition"""
+        # Expected format: if (condition) {
+        if not line.startswith("if"):
+            raise ValidationError("IF statement must start with 'if'")
+
+        # Find condition in parentheses
+        paren_start = line.find("(")
+        paren_end = line.rfind(")")
+
+        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+            raise ValidationError("IF statement must have condition in parentheses")
+
+        condition = line[paren_start + 1 : paren_end].strip()
+        if not condition:
+            raise ValidationError("Condition in IF statement cannot be empty")
+
+        # Validate condition
+        self.validate_condition_expression(condition, line_num)
+
+        # Check for opening brace
+        if "{" not in line[paren_end:]:
+            raise ValidationError("IF statement must have opening brace '{'")
+
+    def validate_else_statement(self, line: str, line_num: int):
+        """Validates else statement"""
+        if not line.startswith("else"):
+            raise ValidationError("ELSE statement must start with 'else'")
+
+        # Check for opening brace
+        if "{" not in line:
+            raise ValidationError("ELSE statement must have opening brace '{'")
+
+    def validate_while_condition(self, line: str, line_num: int):
+        """Validates while condition"""
+        if not line.startswith("while"):
+            raise ValidationError("WHILE statement must start with 'while'")
+
+        # Similar to if
+        paren_start = line.find("(")
+        paren_end = line.rfind(")")
+
+        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+            raise ValidationError("WHILE statement must have condition in parentheses")
+
+        condition = line[paren_start + 1 : paren_end].strip()
+        if not condition:
+            raise ValidationError("Condition in WHILE statement cannot be empty")
+
+        self.validate_condition_expression(condition, line_num)
+
+        if "{" not in line[paren_end:]:
+            raise ValidationError("WHILE statement must have opening brace '{'")
+
+    def validate_for_loop(self, line: str, line_num: int):
+        """Validates for loop"""
+        if not line.startswith("for"):
+            raise ValidationError("FOR statement must start with 'for'")
+
+        # FOR loops in AEL have format: for (init; condition; increment)
+        paren_start = line.find("(")
+        paren_end = line.rfind(")")
+
+        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+            raise ValidationError("FOR statement must have parameters in parentheses")
+
+        for_params = line[paren_start + 1 : paren_end].strip()
+        if not for_params:
+            raise ValidationError("FOR statement must have parameters")
+
+        if "{" not in line[paren_end:]:
+            raise ValidationError("FOR statement must have opening brace '{'")
+
+    def validate_condition_expression(self, condition: str, line_num: int):
+        """Validates condition expression"""
+        if not condition.strip():
+            raise ValidationError("Condition cannot be empty")
+
+        # Check balance of parentheses in condition
+        paren_count = 0
+        brace_count = 0
+        quote_char = None
+
+        for char in condition:
+            if char in ['"', "'"] and quote_char is None:
+                quote_char = char
+            elif char == quote_char:
+                quote_char = None
+            elif quote_char is None:
+                if char == "(":
+                    paren_count += 1
+                elif char == ")":
+                    paren_count -= 1
+                elif char == "{":
+                    brace_count += 1
+                elif char == "}":
+                    brace_count -= 1
+
+        if paren_count != 0:
+            raise ValidationError("Unbalanced parentheses in condition")
+
+        if brace_count != 0:
+            raise ValidationError("Unbalanced braces in condition")
+
+        if quote_char is not None:
+            raise ValidationError("Unclosed quote in condition")
+
+        # Check if condition contains at least one comparison operator or variable
+        has_comparison = any(op in condition for op in self.CONDITION_OPERATORS)
+        has_variable = "${" in condition or condition.strip().isdigit()
+        has_function_call = "(" in condition and ")" in condition
+
+        if not (has_comparison or has_variable or has_function_call):
+            raise ValidationError(
+                "Condition must contain comparison operator, variable or function call"
+            )
+
     def validate_dialplan_step(self, step: str, line_num: int):
-        """Validates a single dialplan step"""
+        """Validates individual dialplan step"""
         step = step.strip()
 
         if not step:
@@ -334,54 +555,117 @@ class AsteriskDialplanValidator(BaseValidator):
         if step.startswith("//") or step.startswith("/*") or step.startswith(";"):
             return
 
-        # Check if the step ends with a semicolon
-        if not step.endswith(";"):
-            raise ValidationError(f"Step must end with a semicolon: '{step}'")
+        # Skip closing braces
+        if step == "}":
+            return
 
-        # Remove the semicolon for analysis
+        # Check block constructs (they shouldn't have ;)
+        if self.is_block_start(step):
+            raise ValidationError("Block constructs should be handled separately")
+
+        # Check if step ends with semicolon
+        if not step.endswith(";"):
+            raise ValidationError(f"Step must end with semicolon: '{step}'")
+
+        # Remove semicolon for analysis
         step_content = step[:-1].strip()
 
         # Analyze application call
         self.parse_application_call(step_content, line_num)
 
     def parse_application_call(self, step_content: str, line_num: int):
-        """Parses an Asterisk application call"""
+        """Parses Asterisk application call"""
         if not step_content:
             raise ValidationError("Empty step")
+
+        # Check for macro calls first
+        if self.is_macro_call(step_content):
+            self.validate_macro_call(step_content, line_num)
+            return
 
         # Check format application(parameters)
         if "(" in step_content:
             # Find application name
             paren_pos = step_content.find("(")
             app_name = step_content[:paren_pos].strip()
-            # If first character is &, remove it (macro)
-            if app_name.startswith("&"):
-                app_name = app_name[1:]
 
-            # Check if this is an allowed Asterisk application
-            if (
-                app_name not in self.ASTERISK_APPLICATIONS
-                and app_name not in self.allowed_macros
-            ):
-                raise ValidationError(
-                    f"Unknown Asterisk application or macro '{app_name}'"
-                )
+            # Check if it's allowed Asterisk application
+            if app_name not in self.ASTERISK_APPLICATIONS:
+                raise ValidationError(f"Unknown Asterisk application '{app_name}'")
 
-            # Check correct parenthesis
+            # Check correct parentheses
             if not step_content.endswith(")"):
-                raise ValidationError(
-                    "Application call must end with a closing parenthesis ')'"
-                )
+                raise ValidationError("Application call must end with parenthesis ')'")
 
             # Extract parameters
             params_part = step_content[paren_pos + 1 : -1]
             self.validate_parameters(params_part, app_name, line_num)
 
         else:
-            # If no parenthesis, may be a simple call without parameters
+            # If no parentheses, it might be simple call without parameters
             if step_content not in self.ASTERISK_APPLICATIONS:
                 raise ValidationError(
-                    f"Unknown Asterisk application or invalid format: '{step_content}'"
+                    f"Unknown Asterisk application or incorrect format: '{step_content}'"
+                )
+
+    def is_macro_call(self, step_content: str) -> bool:
+        """Checks if step is a macro call"""
+        # Macro calls can be: MacroName(), MacroName(params), or just MacroName
+        if not self.allowed_macros:
+            return False
+
+        # Extract potential macro name
+        if "(" in step_content:
+            macro_name = step_content.split("(")[0].strip()
+        else:
+            macro_name = step_content.strip()
+
+        return macro_name in self.allowed_macros
+
+    def validate_macro_call(self, step_content: str, line_num: int):
+        """Validates macro call"""
+        if "(" in step_content:
+            paren_pos = step_content.find("(")
+            macro_name = step_content[:paren_pos].strip()
+
+            if macro_name not in self.allowed_macros:
+                raise ValidationError(
+                    f"Unknown macro '{macro_name}'. Allowed macros: {', '.join(sorted(self.allowed_macros))}"
+                )
+
+            # Check correct parentheses
+            if not step_content.endswith(")"):
+                raise ValidationError("Macro call must end with parenthesis ')'")
+
+            # Extract and validate parameters
+            params_part = step_content[paren_pos + 1 : -1]
+            self.validate_macro_parameters(params_part, macro_name, line_num)
+        else:
+            # Simple macro call without parameters
+            macro_name = step_content.strip()
+            if macro_name not in self.allowed_macros:
+                raise ValidationError(
+                    f"Unknown macro '{macro_name}'. Allowed macros: {', '.join(sorted(self.allowed_macros))}"
+                )
+
+    def validate_macro_parameters(
+        self, params_str: str, macro_name: str, line_num: int
+    ):
+        """Validates macro parameters"""
+        if not params_str.strip():
+            return  # Empty parameters are allowed
+
+        # Check balance of brackets and quotes
+        self.check_balanced_brackets_and_quotes(params_str, line_num)
+
+        # Parse parameters (considering nested brackets and quotes)
+        params = self.parse_parameters(params_str)
+
+        # Basic validation - macros can have any parameters
+        for i, param in enumerate(params):
+            if not param.strip():
+                raise ValidationError(
+                    f"Parameter {i+1} in macro '{macro_name}' cannot be empty"
                 )
 
     def validate_parameters(self, params_str: str, app_name: str, line_num: int):
@@ -389,7 +673,7 @@ class AsteriskDialplanValidator(BaseValidator):
         if not params_str.strip():
             return  # Empty parameters are allowed
 
-        # Check balanced brackets and quotes
+        # Check balance of brackets and quotes
         self.check_balanced_brackets_and_quotes(params_str, line_num)
 
         # Parse parameters (considering nested brackets and quotes)
@@ -399,7 +683,7 @@ class AsteriskDialplanValidator(BaseValidator):
         self.validate_specific_application_params(app_name, params, line_num)
 
     def check_balanced_brackets_and_quotes(self, text: str, line_num: int):
-        """Checks for balanced brackets and quotes"""
+        """Checks balance of brackets and quotes"""
         stack = []
         quote_char = None
         i = 0
@@ -407,38 +691,38 @@ class AsteriskDialplanValidator(BaseValidator):
         while i < len(text):
             char = text[i]
 
-            # Обробка лапок
+            # Handle quotes
             if char in ['"', "'"] and quote_char is None:
                 quote_char = char
             elif char == quote_char:
                 quote_char = None
             elif quote_char is not None:
-                # Всередині лапок - пропускаємо все
+                # Inside quotes - skip everything
                 i += 1
                 continue
 
-            # Обробка дужок (тільки поза лапками)
+            # Handle brackets (only outside quotes)
             elif quote_char is None:
                 if char in "([{":
                     stack.append(char)
                 elif char in ")]}":
                     if not stack:
-                        raise ValidationError(f"Незбалансована дужка '{char}'")
+                        raise ValidationError(f"Unbalanced bracket '{char}'")
 
                     last = stack.pop()
                     pairs = {"(": ")", "[": "]", "{": "}"}
                     if pairs.get(last) != char:
                         raise ValidationError(
-                            f"Неправильна пара дужок: '{last}' та '{char}'"
+                            f"Incorrect bracket pair: '{last}' and '{char}'"
                         )
 
             i += 1
 
         if stack:
-            raise ValidationError(f"Незакрита дужка: '{stack[-1]}'")
+            raise ValidationError(f"Unclosed bracket: '{stack[-1]}'")
 
         if quote_char:
-            raise ValidationError(f"Незакрита лапка: '{quote_char}'")
+            raise ValidationError(f"Unclosed quote: '{quote_char}'")
 
     def parse_parameters(self, params_str: str) -> List[str]:
         """Parses parameters considering nested structures"""
@@ -491,7 +775,7 @@ class AsteriskDialplanValidator(BaseValidator):
     def validate_specific_application_params(
         self, app_name: str, params: List[str], line_num: int
     ):
-        """Specific validation for certain applications"""
+        """Specific validation for individual applications"""
 
         # Validation for AGI
         if app_name == "AGI":
@@ -520,13 +804,13 @@ class AsteriskDialplanValidator(BaseValidator):
         elif app_name == "Wait":
             if params:
                 wait_time = params[0]
-                # Check if it's a number or variable
+                # Check if it's number or variable
                 if not (
                     wait_time.isdigit()
                     or "${" in wait_time
                     or wait_time.replace(".", "").isdigit()
                 ):
-                    raise ValidationError("Wait parameter must be a number or variable")
+                    raise ValidationError("Wait parameter must be number or variable")
 
 
 # Helper functions
@@ -578,10 +862,12 @@ class DialplanHelper:
         return steps
 
     @staticmethod
-    def validate_dialplan(dialplan_text: str) -> Tuple[bool, Optional[str]]:
+    def validate_dialplan(
+        dialplan_text: str, allowed_macros: Optional[Set[str]] = None
+    ) -> Tuple[bool, Optional[str]]:
         """Validates dialplan and returns (is_valid, error_message)"""
         try:
-            validator = AsteriskDialplanValidator()
+            validator = AsteriskDialplanValidator(allowed_macros=allowed_macros)
             validator(dialplan_text)
             return True, None
         except ValidationError as e:
@@ -589,7 +875,7 @@ class DialplanHelper:
 
     @staticmethod
     def format_dialplan(steps: List[str]) -> str:
-        """Formats a list of steps into a valid dialplan"""
+        """Formats list of steps into proper dialplan"""
         formatted_steps = []
         for step in steps:
             step = step.strip()

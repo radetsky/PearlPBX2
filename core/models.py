@@ -603,7 +603,10 @@ class DialplanExtension(models.Model):
         verbose_name="Extension scenario",
         validators=[
             AsteriskDialplanValidator(
-                allowed_macros=DialplanMacro.objects.values_list("name", flat=True)
+                allowed_macros={
+                    f"&{name}"
+                    for name in DialplanMacro.objects.values_list("name", flat=True)
+                }
             )
         ],
         help_text="Use Asterisk AEL syntax to define the dialplan.",
