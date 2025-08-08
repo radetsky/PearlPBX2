@@ -23,7 +23,6 @@ from django.urls import reverse
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
 from core.utils import generate_32_char_password, generate_64_char_password
 from core.validators import (
-    AsteriskDialplanValidator,
     validate_bind_ip,
     validate_asterisk_context,
     validate_asterisk_extension_prefix,
