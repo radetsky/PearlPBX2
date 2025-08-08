@@ -282,6 +282,8 @@ class AsteriskDialplanValidator(BaseValidator):
         "BackgroundDetect",
         "TalkDetect",
         "Eval",
+        "PauseQueueMember",
+        "UnPauseQueueMember",
     }
 
     # Block keywords for AEL
