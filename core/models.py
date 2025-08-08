@@ -601,14 +601,6 @@ class DialplanExtension(models.Model):
     )
     dialplan = models.TextField(
         verbose_name="Extension scenario",
-        validators=[
-            AsteriskDialplanValidator(
-                allowed_macros={
-                    f"&{name}"
-                    for name in DialplanMacro.objects.values_list("name", flat=True)
-                }
-            )
-        ],
         help_text="Use Asterisk AEL syntax to define the dialplan.",
     )
     description = models.CharField(
