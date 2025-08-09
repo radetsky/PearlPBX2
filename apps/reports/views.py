@@ -8,13 +8,14 @@ from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, Http404, FileResponse
 
+from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
 from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm
 
 from core.models import MonitorFilenames
 
 
-class AudioFileView(View):
+class AudioFileView(ReportViewPermissionMixin, View):
     def get(self, request, record_id):
         record = get_object_or_404(MonitorFilenames, id=record_id)
         file_path = record.get_audio_file_path()
@@ -41,7 +42,7 @@ class AudioFileView(View):
         return response
 
 
-class MonitorReportView(View):
+class MonitorReportView(ReportViewPermissionMixin, View):
     def get(self, request):
         form = MonitorFilenamesReportForm(request.GET or None)
         recordings = None
@@ -74,7 +75,7 @@ class MonitorReportView(View):
         return render(request, "monitor.html", context)
 
 
-class CDRReportView(View):
+class CDRReportView(ReportViewPermissionMixin, View):
     def get(self, request):
         form = CDRReportForm(request.GET or None)
         cdrs = None
