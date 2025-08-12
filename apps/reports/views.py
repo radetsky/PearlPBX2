@@ -23,9 +23,6 @@ class AudioFileView(ReportViewPermissionMixin, View):
         if not os.path.exists(file_path):
             raise Http404("Audio file does not exist")
 
-        if not request.user.has_perm("monitorfilenames.view_permission"):
-            raise Http404("You do not have permission to access this file")
-
         content_type, _ = mimetypes.guess_type(file_path)
         if content_type is None:
             content_type = "audio/wav"
