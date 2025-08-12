@@ -244,7 +244,7 @@ class WhiteListView(AllowedHostsIPMixin, View):
 class ContactsView(AllowedHostsIPMixin, View):
     def get(self, request):
         contacts = Contact.objects.all().values(
-            "id", "callerid", "name", "allow_monitor"
+            "id", "callerid", "name"
         )
         return JsonResponse(list(contacts), safe=False)
 
@@ -253,21 +253,19 @@ class ContactsView(AllowedHostsIPMixin, View):
             data = json.loads(request.body)
             callerid = data.get("callerid", "").strip()
             name = data.get("name", "").strip()
-            allow_monitor = data.get("allow_monitor", False)
 
             if not callerid or not name:
                 return JsonResponse({"error": "Missing required fields"}, status=400)
 
             contact, created = Contact.objects.update_or_create(
                 callerid=callerid,
-                defaults={"name": name, "allow_monitor": allow_monitor},
+                defaults={"name": name},
             )
             return JsonResponse(
                 {
                     "id": str(contact.id),
                     "callerid": contact.callerid,
                     "name": contact.name,
-                    "allow_monitor": contact.allow_monitor,
                     "created": created,
                 },
                 status=201 if created else 200,

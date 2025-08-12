@@ -2,6 +2,7 @@
 
 from django.db import migrations
 
+
 def create_res_config_pgsql_conf(apps, schema_editor):
     ConfigurationFile = apps.get_model("core", "ConfigurationFile")
     from django.conf import settings

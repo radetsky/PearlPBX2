@@ -341,15 +341,9 @@ class ContactsViewTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.url_list = "/api/v1/contacts/"
-        self.contact = Contact.objects.create(
-            callerid="123456789", name="John Doe", allow_monitor=True
-        )
+        self.contact = Contact.objects.create(callerid="123456789", name="John Doe")
         self.url_detail = f"/api/v1/contacts/{self.contact.id}/"
-        self.new_contact_data = {
-            "callerid": "987654321",
-            "name": "Jane Smith",
-            "allow_monitor": False,
-        }
+        self.new_contact_data = {"callerid": "987654321", "name": "Jane Smith"}
 
     def test_get_contacts_list(self):
         response = self.client.get(self.url_list)
@@ -376,7 +370,6 @@ class ContactsViewTests(TestCase):
         update_data = {
             "callerid": self.contact.callerid,
             "name": "Updated Name",
-            "allow_monitor": False,
         }
         response = self.client.post(
             self.url_list, data=json.dumps(update_data), content_type="application/json"
@@ -384,7 +377,6 @@ class ContactsViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["name"], "Updated Name")
-        self.assertFalse(data["allow_monitor"])
         self.assertEqual(data["callerid"], self.contact.callerid)
 
     def test_create_contact_missing_fields(self):

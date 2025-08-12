@@ -4,17 +4,15 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('reports', '0001_initial'),
+        ("reports", "0001_initial"),
     ]
 
     operations = [
         migrations.RunSQL(
             "DROP INDEX IF EXISTS idx_cdr_uniqueid_uniqueid;",
-            reverse_sql="CREATE INDEX idx_cdr_uniqueid_uniqueid ON cdr (uniqueid);"
+            reverse_sql="CREATE INDEX idx_cdr_uniqueid_uniqueid ON cdr (uniqueid);",
         ),
-
         migrations.RunSQL(
             """
             ALTER TABLE cdr DROP CONSTRAINT IF EXISTS cdr_pkey;
@@ -23,9 +21,8 @@ class Migration(migrations.Migration):
             reverse_sql="""
             ALTER TABLE cdr DROP COLUMN IF EXISTS id;
             ALTER TABLE cdr ADD PRIMARY KEY (uniqueid);
-            """
+            """,
         ),
-
         migrations.RunSQL(
             """
             CREATE INDEX idx_cdr_uniqueid_uniqueid ON cdr (uniqueid);
@@ -36,6 +33,6 @@ class Migration(migrations.Migration):
             DROP INDEX IF EXISTS idx_cdr_uniqueid_uniqueid;
             DROP INDEX IF EXISTS idx_cdr_linkedid;
             DROP INDEX IF EXISTS idx_cdr_uniqueid_seq;
-            """
+            """,
         ),
     ]
