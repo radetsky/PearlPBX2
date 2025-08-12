@@ -736,7 +736,7 @@ def make_dialplan_contexts():
         )
         for extension in extensions:
             plaintext += make_dialplan_extension(extension)
-        plaintext += _make_dialplan_h_section()
+        # plaintext += _make_dialplan_h_section()
         plaintext += "}\n"
     return plaintext
 

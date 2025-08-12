@@ -13,13 +13,13 @@ class ReportViewPermissionMixin(AccessMixin):
 
     # Permission mapping based on view class names
     VIEW_PERMISSION_MAPPING = {
-        'CDRReportView': 'view_cdr_report',
-        'MonitorReportView': 'view_call_recordings',
-        'AudioFileView': 'view_call_recordings',
-        'QueueReportsView': 'view_queue_reports',
-        'CallbackStatisticsView': 'view_callback_statistics',
-        'AutoDialerLogsView': 'view_autodialer_logs',
-        'MissedCallsReportView': 'view_missed_calls_report',
+        "CDRReportView": "view_cdr_report",
+        "MonitorReportView": "view_call_recordings",
+        "AudioFileView": "view_call_recordings",
+        "QueueReportsView": "view_queue_reports",
+        "CallbackStatisticsView": "view_callback_statistics",
+        "AutoDialerLogsView": "view_autodialer_logs",
+        "MissedCallsReportView": "view_missed_calls_report",
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
@@ -65,7 +65,7 @@ class ReportViewPermissionMixin(AccessMixin):
         permission = self.get_required_permission()
 
         # Check if user has permission directly or through group
-        return self.request.user.has_perm(f'auth.{permission}')
+        return self.request.user.has_perm(f"auth.{permission}")
 
     def dispatch(self, request, *args, **kwargs):
         """
@@ -86,15 +86,20 @@ class ReportViewPermissionMixin(AccessMixin):
         # Redirect to login if user is not authenticated
         path = self.request.get_full_path()
         resolved_login_url = resolve_url(self.get_login_url())
-        login_scheme, login_netloc = resolve_url(resolved_login_url).split(
-            '://', 1)[0], resolve_url(resolved_login_url).split('://', 1)[1].split('/', 1)[0]
+        login_scheme, login_netloc = (
+            resolve_url(resolved_login_url).split("://", 1)[0],
+            resolve_url(resolved_login_url).split("://", 1)[1].split("/", 1)[0],
+        )
         current_scheme, current_netloc = self.request.scheme, self.request.get_host()
 
-        if ((not login_scheme or login_scheme == current_scheme) and
-                (not login_netloc or login_netloc == current_netloc)):
+        if (not login_scheme or login_scheme == current_scheme) and (
+            not login_netloc or login_netloc == current_netloc
+        ):
             path = self.request.get_full_path()
 
-        return HttpResponseRedirect(f"{resolved_login_url}?{self.redirect_field_name}={path}")
+        return HttpResponseRedirect(
+            f"{resolved_login_url}?{self.redirect_field_name}={path}"
+        )
 
 
 # Example usage in views.py:

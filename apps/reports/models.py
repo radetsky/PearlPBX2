@@ -29,6 +29,7 @@ class QueueLog(models.Model):
 
 
 class CDR(models.Model):
+    id = models.AutoField(primary_key=True)
     accountcode = models.CharField(max_length=80, blank=True)
     src = models.CharField(max_length=80, blank=True)
     dst = models.CharField(max_length=80, blank=True)
@@ -46,16 +47,15 @@ class CDR(models.Model):
     disposition = models.CharField(max_length=45, blank=True)
     amaflags = models.CharField(max_length=45, blank=True)
     userfield = models.CharField(max_length=256, blank=True)
-    uniqueid = models.CharField(
-        max_length=150, blank=False, null=False, primary_key=True
-    )
+    uniqueid = models.CharField(max_length=150, blank=False, null=False, db_index=True)
     linkedid = models.CharField(max_length=150, blank=True)
     peeraccount = models.CharField(max_length=80, blank=True)
     sequence = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "cdr"
-        managed = True
+        managed = False
+        unique_together = [["uniqueid", "sequence"]]
         indexes = [
             models.Index(fields=["src"], name="idx_cdr_src"),
             models.Index(fields=["dst"], name="idx_cdr_dst"),
@@ -67,7 +67,9 @@ class CDR(models.Model):
             models.Index(fields=["billsec"], name="idx_cdr_billsec"),
             models.Index(fields=["disposition"], name="idx_cdr_disposition"),
             models.Index(fields=["uniqueid"], name="idx_cdr_uniqueid_uniqueid"),
+            models.Index(fields=["linkedid"], name="idx_cdr_linkedid"),
+            models.Index(fields=["uniqueid", "sequence"], name="idx_cdr_uniqueid_seq"),
         ]
 
     def __str__(self):
-        return f"{self.start} {self.src} -> {self.dst}"
+        return f"{self.start} {self.src} -> {self.dst} (ID: {self.uniqueid})"
