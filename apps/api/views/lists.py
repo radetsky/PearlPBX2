@@ -243,9 +243,7 @@ class WhiteListView(AllowedHostsIPMixin, View):
 @method_decorator(csrf_exempt, name="dispatch")
 class ContactsView(AllowedHostsIPMixin, View):
     def get(self, request):
-        contacts = Contact.objects.all().values(
-            "id", "callerid", "name"
-        )
+        contacts = Contact.objects.all().values("id", "callerid", "name")
         return JsonResponse(list(contacts), safe=False)
 
     def post(self, request):
