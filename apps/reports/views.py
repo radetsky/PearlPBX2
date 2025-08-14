@@ -14,6 +14,272 @@ from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm
 
 from core.models import MonitorFilenames
 
+from django.views.generic import FormView
+from django.db.models import Count, Avg, F, Case, When, IntegerField
+from django.db.models.functions import Cast
+
+from django.db.models.functions import TruncDate, TruncHour
+from .forms import QueueLogReportForm
+from .models import QueueLog
+
+
+class QueueLogReportView(ReportViewPermissionMixin, FormView):
+    template_name = "queue.html"
+    form_class = QueueLogReportForm
+
+    def form_valid(self, form):
+        context = self.get_context_data(form=form)
+        queryset = form.get_queryset()
+        report_type = form.cleaned_data.get("report_type", "summary")
+
+        context.update(
+            {
+                "queryset": queryset,
+                "report_data": self.get_report_data(queryset, report_type),
+                "report_type": report_type,
+                "total_records": queryset.count(),
+            }
+        )
+
+        # Якщо запит на експорт
+        if self.request.GET.get("export") == "csv":
+            return self.export_csv(queryset, report_type)
+
+        return render(self.request, self.template_name, context)
+
+    def form_invalid(self, form):
+        # If form is invalid, show basic data
+        context = self.get_context_data(form=form)
+        queryset = QueueLog.objects.none()
+        context.update(
+            {
+                "queryset": queryset,
+                "report_data": {},
+                "report_type": "summary",
+                "total_records": 0,
+            }
+        )
+        return render(self.request, self.template_name, context)
+
+    def get_report_data(self, queryset, report_type):
+        """Generates report data based on type"""
+        if report_type == "summary":
+            return self.get_summary_data(queryset)
+        elif report_type == "detailed":
+            return self.get_detailed_data(queryset)
+        elif report_type == "agent_performance":
+            return self.get_agent_performance_data(queryset)
+        elif report_type == "queue_performance":
+            return self.get_queue_performance_data(queryset)
+        return {}
+
+    def get_summary_data(self, queryset):
+        """Summary statistics"""
+        total_calls = queryset.filter(event="ENTERQUEUE").count()
+        answered_calls = queryset.filter(
+            event__in=["COMPLETEAGENT", "COMPLETECALLER"]
+        ).count()
+        abandoned_calls = queryset.filter(event="ABANDON").count()
+
+        # Average wait time (from data1 for ABANDON and CONNECT)
+        avg_wait_time = (
+            queryset.filter(
+                event__in=["ABANDON", "CONNECT"], data1__isnull=False)
+            .exclude(data1="")
+            .aggregate(
+                avg=Avg(
+                    Case(
+                        # Only fully numeric strings
+                        When(
+                            data1__regex=r'^[0-9]+$',  # avoid backslash issues
+                            # force integer branch
+                            then=Cast(F("data1"), output_field=IntegerField())
+                        ),
+                        # non-numeric -> NULL (excluded from AVG)
+                        default=None,
+                        output_field=IntegerField(),       # expression type for Django ORM
+                    )
+                )
+            )["avg"] or 0
+        )
+        # Daily statistics
+        daily_stats = (
+            queryset.annotate(date=TruncDate("time"))
+            .values("date")
+            .annotate(
+                total=Count("id"),
+                answered=Count(
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                ),
+                abandoned=Count(Case(When(event="ABANDON", then=1))),
+            )
+            .order_by("date")
+        )
+
+        return {
+            "total_calls": total_calls,
+            "answered_calls": answered_calls,
+            "abandoned_calls": abandoned_calls,
+            "answer_rate": (answered_calls / total_calls * 100)
+            if total_calls > 0
+            else 0,
+            "abandon_rate": (abandoned_calls / total_calls * 100)
+            if total_calls > 0
+            else 0,
+            "avg_wait_time": round(avg_wait_time, 2),
+            "daily_stats": list(daily_stats),
+        }
+
+    def get_detailed_data(self, queryset):
+        """Detailed report"""
+        return {
+            "calls_by_hour": list(
+                queryset.annotate(hour=TruncHour("time"))
+                .values("hour")
+                .annotate(count=Count("id"))
+                .order_by("hour")
+            ),
+            "events_distribution": list(
+                queryset.values("event").annotate(count=Count("id")).order_by("-count")
+            ),
+            "recent_calls": queryset[:50],  # Last 50 calls
+        }
+
+    def get_agent_performance_data(self, queryset):
+        """Agent performance"""
+        # Agent statistics
+        agents_data = (
+            queryset.exclude(agent="")
+            .values("agent")
+            .annotate(
+                total_events=Count("id"),
+                answered=Count(
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                ),
+                connects=Count(Case(When(event="CONNECT", then=1))),
+                ringnoanswer=Count(Case(When(event="RINGNOANSWER", then=1))),
+            )
+            .order_by("-answered")
+        )
+
+        # Average talk time for each agent
+        for agent_data in agents_data:
+            agent = agent_data["agent"]
+            # Talk time stored in data2 for COMPLETEAGENT/COMPLETECALLER
+            talk_time = (
+                queryset.filter(
+                    agent=agent,
+                    event__in=["COMPLETEAGENT", "COMPLETECALLER"],
+                    data2__isnull=False,
+                )
+                .exclude(data2="")
+                .aggregate(
+                    avg=Avg(
+                        Case(
+                            When(data2__regex=r"^\d+", then=F("data2")),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
+                    )
+                )["avg"]
+                or 0
+            )
+
+            agent_data["avg_talk_time"] = round(talk_time, 2)
+            agent_data["answer_rate"] = (
+                agent_data["answered"] / agent_data["connects"] * 100
+                if agent_data["connects"] > 0
+                else 0
+            )
+
+        return {
+            "agents_data": list(agents_data),
+            "top_performers": list(agents_data)[:10],
+        }
+
+    def get_queue_performance_data(self, queryset):
+        """Queue performance"""
+        queues_data = (
+            queryset.exclude(queuename="")
+            .values("queuename")
+            .annotate(
+                total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
+                answered=Count(
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                ),
+                abandoned=Count(Case(When(event="ABANDON", then=1))),
+            )
+            .order_by("-total_calls")
+        )
+
+        # Add calculated fields
+        for queue_data in queues_data:
+            total = queue_data["total_calls"]
+            queue_data["answer_rate"] = (
+                queue_data["answered"] / total * 100 if total > 0 else 0
+            )
+            queue_data["abandon_rate"] = (
+                queue_data["abandoned"] / total * 100 if total > 0 else 0
+            )
+
+        return {
+            "queues_data": list(queues_data),
+            "queue_comparison": list(queues_data)[:10],
+        }
+
+    def export_csv(self, queryset, report_type):
+        """Export data to CSV"""
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="queuelog_report_{report_type}.csv"'
+        )
+
+        writer = csv.writer(response)
+
+        if report_type == "detailed":
+            writer.writerow(
+                [
+                    "Time",
+                    "Call ID",
+                    "Queue",
+                    "Agent",
+                    "Event",
+                    "Data 1",
+                    "Data 2",
+                    "Data 3",
+                ]
+            )
+            for record in queryset:
+                writer.writerow(
+                    [
+                        record.time,
+                        record.callid,
+                        record.queuename,
+                        record.agent,
+                        record.event,
+                        record.data1,
+                        record.data2,
+                        record.data3,
+                    ]
+                )
+        else:
+            # For other report types export aggregated data
+            report_data = self.get_report_data(queryset, report_type)
+
+            if report_type == "summary":
+                writer.writerow(["Metric", "Value"])
+                writer.writerow(["Total Calls", report_data.get("total_calls", 0)])
+                writer.writerow(["Answered", report_data.get("answered_calls", 0)])
+                writer.writerow(["Abandoned", report_data.get("abandoned_calls", 0)])
+                writer.writerow(
+                    ["Answer Rate %", f"{report_data.get('answer_rate', 0):.2f}%"]
+                )
+                writer.writerow(
+                    ["Average Wait Time (sec)", report_data.get("avg_wait_time", 0)]
+                )
+
+        return response
+
 
 class AudioFileView(ReportViewPermissionMixin, View):
     def get(self, request, record_id):

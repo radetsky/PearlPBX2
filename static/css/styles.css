@@ -316,3 +316,77 @@
     display: flex;
     justify-content: space-between;
 }
+
+.report-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #1e87f0;
+}
+
+.metric-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1e87f0;
+    line-height: 1;
+}
+
+.metric-label {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.performance-good {
+    border-left-color: #32d296;
+}
+
+.performance-good .metric-number {
+    color: #32d296;
+}
+
+.performance-warning {
+    border-left-color: #faa05a;
+}
+
+.performance-warning .metric-number {
+    color: #faa05a;
+}
+
+.performance-danger {
+    border-left-color: #f0506e;
+}
+
+.performance-danger .metric-number {
+    color: #f0506e;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.agent-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}

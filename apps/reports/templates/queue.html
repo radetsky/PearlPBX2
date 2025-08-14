@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% load math_extras %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="uk-container uk-container-expand uk-margin-top">
+    <!-- Header -->
+    <div class="report-card">
+        <h1 class="uk-heading-medium uk-margin-remove">
+            <span uk-icon="icon: receiver; ratio: 1.5" class="uk-margin-small-right"></span>
+            QueueLog Asterisk Report
+        </h1>
+        <p class="uk-margin-small-top uk-text-large">
+            Queue Analytics and Agent Performance
+        </p>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+        <form method="post" class="uk-form-stacked">
+            {% csrf_token %}
+
+            <div class="uk-grid-match uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                <!-- Dates -->
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_from.id_for_label }}">
+                        {{ form.date_from.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_from |add_class:"uk-input uk-border-rounded"}}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_to.id_for_label }}">
+                        {{ form.date_to.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_to |add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+
+                <!-- Queue -->
+                <div>
+                    <label class="uk-form-label" for="{{ form.queuename.id_for_label }}">
+                        {{ form.queuename.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.queuename |add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+
+                <!-- Agent -->
+                <div>
+                    <label class="uk-form-label" for="{{ form.agent.id_for_label }}">
+                        {{ form.agent.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.agent |add_class:"uk-input uk-border-rounded" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events -->
+            <div class="uk-margin">
+                <label class="uk-form-label">{{ form.event.label }}</label>
+                <div class="uk-form-controls">
+                    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                        {% for choice in form.event %}
+                            <div>
+                                <label>{{ choice.tag }} {{ choice.choice_label }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Type -->
+            <div class="uk-margin">
+                <label class="uk-form-label">{{ form.report_type.label }}</label>
+                <div class="uk-form-controls">
+                    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                        {% for choice in form.report_type %}
+                            <div>
+                                <label>{{ choice.tag }} {{ choice.choice_label }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="uk-margin">
+                <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
+                    <span uk-icon="search"></span> Generate Report
+                </button>
+
+                {% if total_records > 0 %}
+                    <a href="?export=csv&{{ request.GET.urlencode }}" class="uk-button uk-button-secondary uk-margin-small-left">
+                        <span uk-icon="download"></span> Export CSV
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    {% if total_records > 0 %}
+        <!-- Summary Statistics -->
+        {% if report_type == 'summary' %}
+            <div class="uk-grid-match uk-child-width-1-2@s uk-child-width-1-4@l uk-grid-small" uk-grid>
+                <div>
+                    <div class="metric-card">
+                        <div class="metric-number">{{ report_data.total_calls }}</div>
+                        <div class="metric-label">Total Calls</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="metric-card performance-good">
+                        <div class="metric-number">{{ report_data.answered_calls }}</div>
+                        <div class="metric-label">Answered</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="metric-card performance-danger">
+                        <div class="metric-number">{{ report_data.abandoned_calls }}</div>
+                        <div class="metric-label">Abandoned</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="metric-card {% if report_data.answer_rate >= 80 %}performance-good{% elif report_data.answer_rate >= 60 %}performance-warning{% else %}performance-danger{% endif %}">
+                        <div class="metric-number">{{ report_data.answer_rate|floatformat:1 }}%</div>
+                        <div class="metric-label">Answer Rate</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="metric-card">
+                        <div class="metric-number">{{ report_data.avg_wait_time }}</div>
+                        <div class="metric-label">Avg Wait Time (sec)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Statistics -->
+            {% if report_data.daily_stats %}
+                <div class="chart-container">
+                    <h3 class="uk-card-title">
+                        <span uk-icon="calendar"></span> Daily Statistics
+                    </h3>
+
+                    <div class="uk-overflow-auto">
+                        <table class="uk-table uk-table-striped uk-table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Total</th>
+                                    <th>Answered</th>
+                                    <th>Abandoned</th>
+                                    <th>Answer Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in report_data.daily_stats %}
+                                    <tr>
+                                        <td>{{ day.date|date:"d.m.Y" }}</td>
+                                        <td>{{ day.total }}</td>
+                                        <td class="uk-text-success">{{ day.answered }}</td>
+                                        <td class="uk-text-danger">{{ day.abandoned }}</td>
+                                        <td>
+                                            {% if day.total > 0 %}
+                                                <span class="uk-badge {% if day.answered|div:day.total >= 0.8 %}uk-badge-success{% elif day.answered|div:day.total >= 0.6 %}uk-badge-warning{% else %}uk-badge-danger{% endif %}">
+                                                    {{ day.answered|div:day.total|mul:100|floatformat:1 }}%
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
+        <!-- Agent Performance -->
+        {% elif report_type == 'agent_performance' %}
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="users"></span> Agent Performance
+                </h3>
+
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-hover">
+                        <thead>
+                            <tr>
+                                <th>Agent</th>
+                                <th>Total Events</th>
+                                <th>Answered</th>
+                                <th>Connects</th>
+                                <th>Ring No Answer</th>
+                                <th>Answer Rate</th>
+                                <th>Avg Talk Time (sec)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in report_data.agents_data %}
+                                <tr>
+                                    <td>
+                                        <div class="uk-flex uk-flex-middle">
+                                            <div class="agent-avatar uk-margin-small-right">
+                                                {{ agent.agent|first|upper }}
+                                            </div>
+                                            <strong>{{ agent.agent }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>{{ agent.total_events }}</td>
+                                    <td class="uk-text-success">{{ agent.answered }}</td>
+                                    <td>{{ agent.connects }}</td>
+                                    <td class="uk-text-danger">{{ agent.ringnoanswer }}</td>
+                                    <td>
+                                        <span class="uk-badge {% if agent.answer_rate >= 80 %}uk-badge-success{% elif agent.answer_rate >= 60 %}uk-badge-warning{% else %}uk-badge-danger{% endif %}">
+                                            {{ agent.answer_rate|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ agent.avg_talk_time|floatformat:0 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <!-- Queue Performance -->
+        {% elif report_type == 'queue_performance' %}
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="list"></span> Queue Performance
+                </h3>
+
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-hover">
+                        <thead>
+                            <tr>
+                                <th>Queue</th>
+                                <th>Total Calls</th>
+                                <th>Answered</th>
+                                <th>Abandoned</th>
+                                <th>Answer Rate</th>
+                                <th>Abandon Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for queue in report_data.queues_data %}
+                                <tr>
+                                    <td><strong>{{ queue.queuename }}</strong></td>
+                                    <td>{{ queue.total_calls }}</td>
+                                    <td class="uk-text-success">{{ queue.answered }}</td>
+                                    <td class="uk-text-danger">{{ queue.abandoned }}</td>
+                                    <td>
+                                        <span class="uk-badge {% if queue.answer_rate >= 80 %}uk-badge-success{% elif queue.answer_rate >= 60 %}uk-badge-warning{% else %}uk-badge-danger{% endif %}">
+                                            {{ queue.answer_rate|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="uk-badge {% if queue.abandon_rate <= 10 %}uk-badge-success{% elif queue.abandon_rate <= 20 %}uk-badge-warning{% else %}uk-badge-danger{% endif %}">
+                                            {{ queue.abandon_rate|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <!-- Detailed Report -->
+        {% elif report_type == 'detailed' %}
+            <!-- Event Distribution -->
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="pie-chart"></span> Event Distribution
+                </h3>
+
+                <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                    {% for event in report_data.events_distribution %}
+                        <div>
+                            <div class="metric-card">
+                                <div class="metric-number">{{ event.count }}</div>
+                                <div class="metric-label">{{ event.event }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Calls -->
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="clock"></span> Recent Calls
+                </h3>
+
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-small">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Call ID</th>
+                                <th>Queue</th>
+                                <th>Agent</th>
+                                <th>Event</th>
+                                <th>Data1</th>
+                                <th>Data2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for call in report_data.recent_calls %}
+                                <tr>
+                                    <td class="uk-text-nowrap">{{ call.time|date:"d.m.Y H:i:s" }}</td>
+                                    <td class="uk-text-small">{{ call.callid|truncatechars:15 }}</td>
+                                    <td>{{ call.queuename }}</td>
+                                    <td>{{ call.agent }}</td>
+                                    <td>
+                                        <span class="uk-badge {% if call.event == 'ABANDON' %}uk-badge-danger{% elif call.event in 'COMPLETEAGENT,COMPLETECALLER' %}uk-badge-success{% else %}uk-badge{% endif %}">
+                                            {{ call.event }}
+                                        </span>
+                                    </td>
+                                    <td class="uk-text-small">{{ call.data1 }}</td>
+                                    <td class="uk-text-small">{{ call.data2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <!-- No Data Message -->
+        <div class="uk-card uk-card-default uk-card-body uk-text-center">
+            <span uk-icon="icon: info; ratio: 3" class="uk-text-muted"></span>
+            <h3 class="uk-card-title">No Data Found</h3>
+            <p>No records match the selected filters. Please adjust your search criteria and try again.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock content %}
