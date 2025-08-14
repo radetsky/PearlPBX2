@@ -16,7 +16,7 @@ class ReportViewPermissionMixin(AccessMixin):
         "CDRReportView": "view_cdr_report",
         "MonitorReportView": "view_call_recordings",
         "AudioFileView": "view_call_recordings",
-        "QueueReportsView": "view_queue_reports",
+        "QueueLogReportView": "view_queue_reports",
         "CallbackStatisticsView": "view_callback_statistics",
         "AutoDialerLogsView": "view_autodialer_logs",
         "MissedCallsReportView": "view_missed_calls_report",
