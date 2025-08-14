@@ -176,13 +176,15 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                 .aggregate(
                     avg=Avg(
                         Case(
-                            When(data2__regex=r"^\d+", then=F("data2")),
-                            default=0,
-                            output_field=IntegerField(),
+                            When(
+                                data2__regex=r'^[0-9]+$',  # only pure digits
+                                then=Cast(F("data2"), output_field=IntegerField())
+                            ),
+                            default=None,                  # skip non-numeric rows
+                            output_field=IntegerField(),   # result type for ORM
                         )
                     )
-                )["avg"]
-                or 0
+                )["avg"] or 0
             )
 
             agent_data["avg_talk_time"] = round(talk_time, 2)
