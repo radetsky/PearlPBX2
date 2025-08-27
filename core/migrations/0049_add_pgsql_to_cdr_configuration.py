@@ -18,6 +18,10 @@ user={db_settings.get('USER', 'postgres')}
 table=cdr              ;SQL table where CDRs will be inserted
 ;encoding=LATIN9        ; Encoding of logged characters in Asterisk
 ;timezone=UTC           ; Uncomment if you want datetime fields in UTC/GMT
+keepalives=1
+keepalives_idle=60
+keepalives_interval=30
+keepalives_count=10
 """
 
     ConfigurationFile.objects.update_or_create(

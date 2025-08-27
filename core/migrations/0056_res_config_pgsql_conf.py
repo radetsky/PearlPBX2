@@ -14,6 +14,10 @@ dbport={db_settings.get('PORT', '5432')}
 dbname={db_settings.get('NAME', 'asterisk')}
 dbuser={db_settings.get('USER', 'asterisk')}
 dbpass={db_settings.get('PASSWORD', 'password')}
+keepalives=1
+keepalives_idle=60
+keepalives_interval=30
+keepalives_count=10
 """
 
     ConfigurationFile.objects.update_or_create(
