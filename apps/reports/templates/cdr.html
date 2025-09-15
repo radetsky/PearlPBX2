@@ -152,7 +152,15 @@
                                         {{ cdr.dstchannel|channel_name|default:"-" }}
                                     </td>
                                     <td class="uk-text-truncate uk-text-small">
-                                        <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a>
+                                        {% if cdr.get_audio_url %}
+                                            <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ cdr.get_audio_url }}">
+                                                <button class="compact-btn">▶</button>
+                                                <span>Play</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="uk-text-muted">No audio</span>
+                                        {% endif %}
+                                        <!-- <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a> -->
                                         <div id="cdr-{{ forloop.counter }}" style="display:none;">
                                             {{ cdrs_json|index:forloop.counter0|json_script:"cdr" }}
                                         </div>

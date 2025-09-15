@@ -1,5 +1,6 @@
 from django.db import models
 
+from core.models import MonitorFilenames
 
 class QueueLog(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -73,3 +74,12 @@ class CDR(models.Model):
 
     def __str__(self):
         return f"{self.start} {self.src} -> {self.dst} (ID: {self.uniqueid})"
+
+    def get_audio_url(self):
+        try:
+            filename_object = MonitorFilenames.objects.get(uniqueid=self.uniqueid)
+            if not filename_object:
+                return None
+            return filename_object.get_audio_url()
+        except MonitorFilenames.DoesNotExist:
+            return None

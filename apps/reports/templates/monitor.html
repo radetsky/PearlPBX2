@@ -101,14 +101,14 @@
                                 </td>
                                 <td class="uk-text-center">
                                     {% if rec.get_audio_url %}
-				     <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ rec.get_audio_url }}">
-		    			<button class="compact-btn">▶</button>
-		    			<span>Play</span>
-				     </div>
-
+                                        <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ rec.get_audio_url }}">
+                                            <button class="compact-btn">▶</button>
+                                            <span>Play</span>
+                                        </div>
                                     {% else %}
                                         <span class="uk-text-muted">No audio</span>
                                     {% endif %}
+                                </td>
                             </tr>
                             {% empty %}
                             <tr>
