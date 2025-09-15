@@ -17,7 +17,7 @@ class QueueLogReportForm(forms.Form):
                 "class": "uk-input",
             }
         ),
-        initial=lambda: datetime.now() - timedelta(days=7),
+        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
     )
 
     date_to = forms.DateTimeField(
@@ -29,7 +29,7 @@ class QueueLogReportForm(forms.Form):
                 "class": "uk-input",
             }
         ),
-        initial=datetime.now,
+        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
     )
 
     # Queue filter
@@ -151,6 +151,7 @@ class MonitorFilenamesReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
+        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
     )
     created_end = forms.DateTimeField(
         label="Created to",
@@ -158,6 +159,7 @@ class MonitorFilenamesReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
+        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
     )
 
 
@@ -175,8 +177,7 @@ class CDRReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0)
-        - timedelta(days=1),
+        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
     )
 
     end_date = forms.DateTimeField(
@@ -184,7 +185,7 @@ class CDRReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now(),
+        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
     )
 
     src_number = forms.CharField(
