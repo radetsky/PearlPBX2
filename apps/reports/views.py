@@ -109,7 +109,8 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total=Count("id"),
                 answered=Count(
-                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(
+                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 abandoned=Count(Case(When(event="ABANDON", then=1))),
             )
@@ -140,7 +141,8 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                 .order_by("hour")
             ),
             "events_distribution": list(
-                queryset.values("event").annotate(count=Count("id")).order_by("-count")
+                queryset.values("event").annotate(
+                    count=Count("id")).order_by("-count")
             ),
             "recent_calls": queryset[:50],  # Last 50 calls
         }
@@ -154,7 +156,8 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total_events=Count("id"),
                 answered=Count(
-                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(
+                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 connects=Count(Case(When(event="CONNECT", then=1))),
                 ringnoanswer=Count(Case(When(event="RINGNOANSWER", then=1))),
@@ -178,7 +181,8 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                         Case(
                             When(
                                 data2__regex=r'^[0-9]+$',  # only pure digits
-                                then=Cast(F("data2"), output_field=IntegerField())
+                                then=Cast(
+                                    F("data2"), output_field=IntegerField())
                             ),
                             default=None,                  # skip non-numeric rows
                             output_field=IntegerField(),   # result type for ORM
@@ -207,7 +211,8 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
                 answered=Count(
-                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(
+                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 abandoned=Count(Case(When(event="ABANDON", then=1))),
             )
@@ -270,14 +275,19 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
             if report_type == "summary":
                 writer.writerow(["Metric", "Value"])
-                writer.writerow(["Total Calls", report_data.get("total_calls", 0)])
-                writer.writerow(["Answered", report_data.get("answered_calls", 0)])
-                writer.writerow(["Abandoned", report_data.get("abandoned_calls", 0)])
                 writer.writerow(
-                    ["Answer Rate %", f"{report_data.get('answer_rate', 0):.2f}%"]
+                    ["Total Calls", report_data.get("total_calls", 0)])
+                writer.writerow(
+                    ["Answered", report_data.get("answered_calls", 0)])
+                writer.writerow(
+                    ["Abandoned", report_data.get("abandoned_calls", 0)])
+                writer.writerow(
+                    ["Answer Rate %",
+                        f"{report_data.get('answer_rate', 0):.2f}%"]
                 )
                 writer.writerow(
-                    ["Average Wait Time (sec)", report_data.get("avg_wait_time", 0)]
+                    ["Average Wait Time (sec)", report_data.get(
+                        "avg_wait_time", 0)]
                 )
 
         return response
@@ -408,6 +418,7 @@ class CDRReportView(ReportViewPermissionMixin, View):
                     "linkedid": cdr.linkedid,
                     "peeraccount": cdr.peeraccount,
                     "sequence": cdr.sequence,
+                    "audio": cdr.get_audio_url(),
                 }
                 for cdr in cdrs
             ]

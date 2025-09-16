@@ -152,7 +152,15 @@
                                         {{ cdr.dstchannel|channel_name|default:"-" }}
                                     </td>
                                     <td class="uk-text-truncate uk-text-small">
-                                        <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a>
+                                        {% if cdr.get_audio_url %}
+                                            <div class="compact-player" data-audio="{{ cdr.get_audio_url }}">
+                                                <button class="compact-btn">▶</button>
+                                                <span>Play</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="uk-text-muted">No audio</span>
+                                        {% endif %}
+                                        <!-- <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a> -->
                                         <div id="cdr-{{ forloop.counter }}" style="display:none;">
                                             {{ cdrs_json|index:forloop.counter0|json_script:"cdr" }}
                                         </div>
@@ -345,10 +353,33 @@
                 ['UniqueID', cdr.uniqueid],
                 ['LinkedID', cdr.linkedid],
                 ['PeerAccount', cdr.peeraccount],
-                ['Sequence', cdr.sequence]
+                ['Sequence', cdr.sequence],
+		['Audio', cdr.audio],
             ];
             fields.forEach(([label, value]) => {
                 const row = document.createElement('tr');
+                if (label === 'Audio' && value) {
+                    table.appendChild(row);
+			row.innerHTML = `<td>
+                                <strong>${label}</strong>
+                            </td>
+                            <td>
+                                <div class="material-player" data-audio="${value}">
+                                    <button class="material-btn" onclick="toggleMaterialPlay(this)">▶</button>
+                                    <div class="material-progress-container">
+                                        <div class="material-progress" onclick="setMaterialProgress(event, this)">
+                                            <div class="material-progress-bar"></div>
+                                        </div>
+                                        <div class="material-time">
+                                            <span class="current-time">0:00</span>
+                                            <span class="total-time">0:00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>`;
+		    table.appendChild(row);
+                    return;
+                }
                 row.innerHTML = `<td><strong>${label}</strong></td><td>${value !== null && value !== undefined && value !== '' ? value : '-'}</td>`;
                 table.appendChild(row);
             });
