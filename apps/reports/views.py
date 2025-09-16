@@ -408,6 +408,7 @@ class CDRReportView(ReportViewPermissionMixin, View):
                     "linkedid": cdr.linkedid,
                     "peeraccount": cdr.peeraccount,
                     "sequence": cdr.sequence,
+                    "audio": cdr.get_audio_url(),
                 }
                 for cdr in cdrs
             ]

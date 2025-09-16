@@ -153,7 +153,7 @@
                                     </td>
                                     <td class="uk-text-truncate uk-text-small">
                                         {% if cdr.get_audio_url %}
-                                            <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ cdr.get_audio_url }}">
+                                            <div class="compact-player" data-audio="{{ cdr.get_audio_url }}">
                                                 <button class="compact-btn">▶</button>
                                                 <span>Play</span>
                                             </div>
@@ -353,10 +353,29 @@
                 ['UniqueID', cdr.uniqueid],
                 ['LinkedID', cdr.linkedid],
                 ['PeerAccount', cdr.peeraccount],
-                ['Sequence', cdr.sequence]
+                ['Sequence', cdr.sequence],
+		['Audio', cdr.audio],
             ];
             fields.forEach(([label, value]) => {
                 const row = document.createElement('tr');
+                if (label === 'Audio' && value) {
+                    table.appendChild(row);
+			row.innerHTML = `<td><strong>${label}</strong></td><td><div class="material-player" data-audio="${value}">
+    <button class="material-btn" onclick="toggleMaterialPlay(this)">▶</button>
+    <div class="material-progress-container">
+        <div class="material-progress" onclick="setMaterialProgress(event, this)">
+            <div class="material-progress-bar"></div>
+        </div>
+        <div class="material-time">
+            <span class="current-time">0:00</span>
+            <span class="total-time">0:00</span>
+        </div>
+    </div>
+    <div style="font-size:12px;color:#666;">{{ label|default:"Recording" }}</div>
+</div></td>`;
+		    table.appendChild(row);
+                    return;
+                }
                 row.innerHTML = `<td><strong>${label}</strong></td><td>${value !== null && value !== undefined && value !== '' ? value : '-'}</td>`;
                 table.appendChild(row);
             });
