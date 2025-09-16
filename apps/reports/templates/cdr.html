@@ -360,19 +360,23 @@
                 const row = document.createElement('tr');
                 if (label === 'Audio' && value) {
                     table.appendChild(row);
-			row.innerHTML = `<td><strong>${label}</strong></td><td><div class="material-player" data-audio="${value}">
-    <button class="material-btn" onclick="toggleMaterialPlay(this)">▶</button>
-    <div class="material-progress-container">
-        <div class="material-progress" onclick="setMaterialProgress(event, this)">
-            <div class="material-progress-bar"></div>
-        </div>
-        <div class="material-time">
-            <span class="current-time">0:00</span>
-            <span class="total-time">0:00</span>
-        </div>
-    </div>
-    <div style="font-size:12px;color:#666;">{{ label|default:"Recording" }}</div>
-</div></td>`;
+			row.innerHTML = `<td>
+                                <strong>${label}</strong>
+                            </td>
+                            <td>
+                                <div class="material-player" data-audio="${value}">
+                                    <button class="material-btn" onclick="toggleMaterialPlay(this)">▶</button>
+                                    <div class="material-progress-container">
+                                        <div class="material-progress" onclick="setMaterialProgress(event, this)">
+                                            <div class="material-progress-bar"></div>
+                                        </div>
+                                        <div class="material-time">
+                                            <span class="current-time">0:00</span>
+                                            <span class="total-time">0:00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>`;
 		    table.appendChild(row);
                     return;
                 }
