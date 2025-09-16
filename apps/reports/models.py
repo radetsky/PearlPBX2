@@ -77,7 +77,7 @@ class CDR(models.Model):
 
     def get_audio_url(self):
         try:
-            filename_object = MonitorFilenames.objects.get(uniqueid=self.uniqueid)
+            filename_object = MonitorFilenames.objects.get(cdr_uniqueid=self.uniqueid)
             if not filename_object:
                 return None
             return filename_object.get_audio_url()
