@@ -88,7 +88,7 @@ class QueueLogReportForm(forms.Form):
         queues = (
             QueueLog.objects.values_list("queuename", flat=True)
             .distinct()
-            .exclude(queuename="")
+            .exclude(queuename="NONE")
         )
         queue_choices = [("", "All Queues")] + [(q, q) for q in sorted(queues)]
         self.fields["queuename"].choices = queue_choices
@@ -97,7 +97,7 @@ class QueueLogReportForm(forms.Form):
         agents = (
             QueueLog.objects.values_list("agent", flat=True)
             .distinct()
-            .exclude(agent="")
+            .exclude(agent="NONE")
         )
         agent_choices = [("", "All Agents")] + [(a, a) for a in sorted(agents)]
         self.fields["agent"].choices = agent_choices

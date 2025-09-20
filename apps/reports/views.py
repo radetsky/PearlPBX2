@@ -151,7 +151,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         """Agent performance"""
         # Agent statistics
         agents_data = (
-            queryset.exclude(agent="")
+            queryset.exclude(agent="NONE")
             .values("agent")
             .annotate(
                 total_events=Count("id"),
@@ -206,7 +206,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
     def get_queue_performance_data(self, queryset):
         """Queue performance"""
         queues_data = (
-            queryset.exclude(queuename="")
+            queryset.exclude(queuename="NONE")
             .values("queuename")
             .annotate(
                 total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
