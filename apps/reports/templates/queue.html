@@ -147,7 +147,7 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Total</th>
+                                    <th>Total Log Entries</th>
                                     <th>Answered</th>
                                     <th>Abandoned</th>
                                     <th>Answer Rate</th>
@@ -309,7 +309,18 @@
                         </thead>
                         <tbody>
                             {% for call in report_data.recent_calls %}
-                                <tr>
+                                <tr class="cdr-row" style="cursor:pointer;"
+                                    data-time="{{ call.time|date:'d.m.Y H:i:s' }}"
+                                    data-callid="{{ call.callid }}"
+                                    data-queuename="{{ call.queuename }}"
+                                    data-agent="{{ call.agent }}"
+                                    data-event="{{ call.event }}"
+                                    data-data1="{{ call.data1 }}"
+                                    data-data2="{{ call.data2 }}"
+                                    data-data3="{{ call.data3 }}"
+                                    data-data4="{{ call.data4 }}"
+                                    data-data5="{{ call.data5 }}"
+                                    onclick="showQueueLogModal(this)">
                                     <td class="uk-text-nowrap">{{ call.time|date:"d.m.Y H:i:s" }}</td>
                                     <td class="uk-text-small">{{ call.callid|truncatechars:15 }}</td>
                                     <td>{{ call.queuename }}</td>
@@ -338,4 +349,87 @@
         </div>
     {% endif %}
 </div>
+
+<!-- Modal for Queue Log Details -->
+<div id="queue-log-modal" class="uk-modal-container" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body uk-border-rounded">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        <h3 class="uk-modal-title">Queue Log Details</h3>
+        <div id="queue-log-modal-table-container">
+            <div class="uk-text-center uk-margin" id="queue-log-modal-loading" style="display:none;">
+                <span uk-spinner></span> Loading...
+            </div>
+            <table class="uk-table uk-table-striped uk-table-small uk-margin-remove" id="queue-log-modal-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Queue</th>
+                        <th>Agent</th>
+                        <th>Event</th>
+                        <th>Data1</th>
+                        <th>Data2</th>
+                        <th>Data3</th>
+                        <th>Data4</th>
+                        <th>Data5</th>
+                    </tr>
+                </thead>
+                <tbody id="queue-log-modal-table-body">
+                </tbody>
+            </table>
+            <div class="uk-text-center uk-margin" id="queue-log-modal-empty" style="display:none;">
+                <span class="uk-text-muted">No records found for this Call ID.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showQueueLogModal(row) {
+    var callid = row.dataset.callid;
+    var modal = UIkit.modal('#queue-log-modal');
+    var loading = document.getElementById('queue-log-modal-loading');
+    var table = document.getElementById('queue-log-modal-table');
+    var tbody = document.getElementById('queue-log-modal-table-body');
+    var empty = document.getElementById('queue-log-modal-empty');
+
+    // Reset
+    loading.style.display = '';
+    table.style.display = 'none';
+    empty.style.display = 'none';
+    tbody.innerHTML = '';
+
+    modal.show();
+
+    fetch(`/reports/queuelog/records/${encodeURIComponent(callid)}/`)
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            if (data.records && data.records.length > 0) {
+                table.style.display = '';
+                data.records.forEach(function(rec) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${rec.time}</td>
+                        <td>${rec.queuename}</td>
+                        <td>${rec.agent}</td>
+                        <td>${rec.event}</td>
+                        <td>${rec.data1}</td>
+                        <td>${rec.data2}</td>
+                        <td>${rec.data3}</td>
+                        <td>${rec.data4}</td>
+                        <td>${rec.data5}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.style.display = '';
+            } else {
+                empty.style.display = '';
+            }
+        })
+        .catch(() => {
+            loading.style.display = 'none';
+            empty.style.display = '';
+        });
+}
+</script>
 {% endblock content %}

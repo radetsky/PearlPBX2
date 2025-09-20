@@ -6,7 +6,7 @@ from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Sum
-from django.http import HttpResponse, Http404, FileResponse
+from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
@@ -22,6 +22,28 @@ from django.db.models.functions import TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
 
+# AJAX endpoint: return all QueueLog records for a given callid as JSON
+
+
+class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
+    def get(self, request, callid):
+        records = QueueLog.objects.filter(callid=callid).order_by('time')
+        data = [
+            {
+                "time": r.time.strftime('%Y-%m-%d %H:%M:%S') if r.time else '',
+                "callid": r.callid,
+                "queuename": r.queuename,
+                "agent": r.agent,
+                "event": r.event,
+                "data1": r.data1,
+                "data2": r.data2,
+                "data3": r.data3,
+                "data4": r.data4,
+                "data5": r.data5,
+            }
+            for r in records
+        ]
+        return JsonResponse({"records": data})
 
 class QueueLogReportView(ReportViewPermissionMixin, FormView):
     template_name = "queue.html"
