@@ -23,8 +23,6 @@ from .forms import QueueLogReportForm
 from .models import QueueLog
 
 # AJAX endpoint: return all QueueLog records for a given callid as JSON
-
-
 class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
     def get(self, request, callid):
         records = QueueLog.objects.filter(callid=callid).order_by('time')
@@ -93,7 +91,51 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             return self.get_agent_performance_data(queryset)
         elif report_type == "queue_performance":
             return self.get_queue_performance_data(queryset)
+        elif report_type == "lost_and_found":
+            return self.get_lost_and_found_data(queryset)
+
         return {}
+
+    def get_lost_and_found_data(self, queryset):
+        """Lost and Found report: For each ABANDON, find callerid, then in CDR find calls from/to this number after ABANDON."""
+        from apps.reports.models import CDR
+
+        lost_calls = queryset.filter(event="ABANDON").order_by("-time")[:50]
+        results = []
+        for lost in lost_calls:
+            # Get callerid from CDR by uniqueid == lost.callid
+            callerid = None
+            if lost.callid:
+                cdr = CDR.objects.filter(uniqueid=lost.callid).first()
+                if cdr:
+                    callerid = cdr.src
+            if not callerid:
+                callerid = lost.agent or lost.data1 or lost.callid
+            abandon_time = lost.time
+            # Outgoing: дзвінки з цього номера після abandon
+            outgoing = (
+                CDR.objects.filter(src=callerid, start__gt=abandon_time)
+                .order_by("start")
+                .first()
+            )
+            # Incoming: дзвінки на цей номер після abandon
+            incoming = (
+                CDR.objects.filter(dst=callerid, start__gt=abandon_time)
+                .order_by("start")
+                .first()
+            )
+            results.append({
+                "abandon_time": abandon_time,
+                "callerid": callerid,
+                "outgoing_time": outgoing.start if outgoing else None,
+                "outgoing_dstchannel": outgoing.dstchannel if outgoing else None,
+                "incoming_time": incoming.start if incoming else None,
+                "incoming_channel": incoming.channel if incoming else None,
+            })
+        return {
+            "lost_and_found": results,
+            "total_lost_calls": lost_calls.count(),
+        }
 
     def get_summary_data(self, queryset):
         """Summary statistics"""

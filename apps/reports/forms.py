@@ -71,6 +71,7 @@ class QueueLogReportForm(forms.Form):
         ("detailed", "Detailed Report"),
         ("agent_performance", "Agent Performance"),
         ("queue_performance", "Queue Performance"),
+        ("lost_and_found", "Lost and Found"),
     ]
 
     report_type = forms.ChoiceField(

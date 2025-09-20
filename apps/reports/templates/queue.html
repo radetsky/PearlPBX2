@@ -338,6 +338,40 @@
                     </table>
                 </div>
             </div>
+        {% elif report_type == "lost_and_found" %}
+            <!-- Lost and Found Report -->
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="search"></span> Lost and Found Report
+                </h3>
+
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-small">
+                        <thead>
+                            <tr>
+                                <th>Abandon Time</th>
+                                <th>Caller ID</th>
+                                <th>Outgoing Call (from this number)</th>
+                                <th>Outgoing: With Whom (dstchannel)</th>
+                                <th>Incoming Call (to this number)</th>
+                                <th>Incoming: With Whom (channel)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in report_data.lost_and_found %}
+                                <tr>
+                                    <td>{{ row.abandon_time|date:"d.m.Y H:i:s" }}</td>
+                                    <td>{{ row.callerid }}</td>
+                                    <td>{% if row.outgoing_time %}{{ row.outgoing_time|date:"d.m.Y H:i:s" }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.outgoing_dstchannel %}{{ row.outgoing_dstchannel }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.incoming_time %}{{ row.incoming_time|date:"d.m.Y H:i:s" }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.incoming_channel %}{{ row.incoming_channel }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         {% endif %}
 
     {% else %}
