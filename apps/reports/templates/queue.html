@@ -337,6 +337,63 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination for Recent Calls -->
+                {% if report_data.recent_calls.has_other_pages %}
+                    <div class="uk-margin-top uk-text-center">
+                        <ul class="uk-pagination uk-flex-center">
+                            {% if report_data.recent_calls.has_previous %}
+                                <li><a href="?page=1&date_from={{ form.date_from.value|default:'' }}&date_to={{ form.date_to.value|default:'' }}&queuename={{ form.queuename.value|default:'' }}&agent={{ form.agent.value|default:'' }}&report_type={{ form.report_type.value|default:'' }}{% for event in form.event.value %}&event={{ event }}{% endfor %}"><span uk-pagination-previous></span></a></li>
+                                <li><a href="?page={{ report_data.recent_calls.previous_page_number }}&date_from={{ form.date_from.value|default:'' }}&date_to={{ form.date_to.value|default:'' }}&queuename={{ form.queuename.value|default:'' }}&agent={{ form.agent.value|default:'' }}&report_type={{ form.report_type.value|default:'' }}{% for event in form.event.value %}&event={{ event }}{% endfor %}">{{ report_data.recent_calls.previous_page_number }}</a></li>
+                            {% endif %}
+
+                            <li class="uk-active"><span>{{ report_data.recent_calls.number }}</span></li>
+
+                            {% if report_data.recent_calls.has_next %}
+                                <li><a href="?page={{ report_data.recent_calls.next_page_number }}&date_from={{ form.date_from.value|default:'' }}&date_to={{ form.date_to.value|default:'' }}&queuename={{ form.queuename.value|default:'' }}&agent={{ form.agent.value|default:'' }}&report_type={{ form.report_type.value|default:'' }}{% for event in form.event.value %}&event={{ event }}{% endfor %}">{{ report_data.recent_calls.next_page_number }}</a></li>
+                                <li><a href="?page={{ report_data.recent_calls.paginator.num_pages }}&date_from={{ form.date_from.value|default:'' }}&date_to={{ form.date_to.value|default:'' }}&queuename={{ form.queuename.value|default:'' }}&agent={{ form.agent.value|default:'' }}&report_type={{ form.report_type.value|default:'' }}{% for event in form.event.value %}&event={{ event }}{% endfor %}"><span uk-pagination-next></span></a></li>
+                            {% endif %}
+                        </ul>
+                        <p class="uk-text-small uk-text-muted uk-margin-small-top">
+                            Page {{ report_data.recent_calls.number }} of {{ report_data.recent_calls.paginator.num_pages }}
+                            ({{ report_data.recent_calls.paginator.count }} records total)
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        {% elif report_type == "lost_and_found" %}
+            <!-- Lost and Found Report -->
+            <div class="chart-container">
+                <h3 class="uk-card-title">
+                    <span uk-icon="search"></span> Lost and Found Report
+                </h3>
+
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-small">
+                        <thead>
+                            <tr>
+                                <th>Abandon Time</th>
+                                <th>Caller ID</th>
+                                <th>Incoming Call (from this number)</th>
+                                <th>Incoming: Operator (dstchannel)</th>
+                                <th>Outgoing Call (to this number)</th>
+                                <th>Outgoing: With Whom (channel)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in report_data.lost_and_found %}
+                                <tr>
+                                    <td>{{ row.abandon_time|date:"d.m.Y H:i:s" }}</td>
+                                    <td>{{ row.callerid }}</td>
+                                    <td>{% if row.incoming_time %}{{ row.incoming_time|date:"d.m.Y H:i:s" }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.incoming_dstchannel %}{{ row.incoming_dstchannel }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.outgoing_time %}{{ row.outgoing_time|date:"d.m.Y H:i:s" }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                    <td>{% if row.outgoing_channel %}{{ row.outgoing_channel }}{% else %}<span class="uk-text-muted">—</span>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         {% endif %}
 

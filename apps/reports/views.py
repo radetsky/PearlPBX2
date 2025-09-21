@@ -23,8 +23,6 @@ from .forms import QueueLogReportForm
 from .models import QueueLog
 
 # AJAX endpoint: return all QueueLog records for a given callid as JSON
-
-
 class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
     def get(self, request, callid):
         records = QueueLog.objects.filter(callid=callid).order_by('time')
@@ -49,6 +47,17 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
     template_name = "queue.html"
     form_class = QueueLogReportForm
 
+    def get(self, request, *args, **kwargs):
+        """Handle GET requests for pagination"""
+        if request.GET:
+            # Create form with GET data for pagination
+            form = QueueLogReportForm(request.GET)
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
+        return super().get(request, *args, **kwargs)
+
     def form_valid(self, form):
         context = self.get_context_data(form=form)
         queryset = form.get_queryset()
@@ -57,7 +66,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         context.update(
             {
                 "queryset": queryset,
-                "report_data": self.get_report_data(queryset, report_type),
+                "report_data": self.get_report_data(queryset, report_type, self.request),
                 "report_type": report_type,
                 "total_records": queryset.count(),
             }
@@ -83,17 +92,61 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         )
         return render(self.request, self.template_name, context)
 
-    def get_report_data(self, queryset, report_type):
+    def get_report_data(self, queryset, report_type, request=None):
         """Generates report data based on type"""
         if report_type == "summary":
             return self.get_summary_data(queryset)
         elif report_type == "detailed":
-            return self.get_detailed_data(queryset)
+            return self.get_detailed_data(queryset, request)
         elif report_type == "agent_performance":
             return self.get_agent_performance_data(queryset)
         elif report_type == "queue_performance":
             return self.get_queue_performance_data(queryset)
+        elif report_type == "lost_and_found":
+            return self.get_lost_and_found_data(queryset)
+
         return {}
+
+    def get_lost_and_found_data(self, queryset):
+        """Lost and Found report: For each ABANDON, find callerid, then in CDR find calls from/to this number after ABANDON."""
+        from apps.reports.models import CDR
+
+        lost_calls = queryset.filter(event="ABANDON").order_by("-time")[:50]
+        results = []
+        for lost in lost_calls:
+            # Get callerid from CDR by uniqueid == lost.callid
+            callerid = None
+            if lost.callid:
+                cdr = CDR.objects.filter(uniqueid=lost.callid).first()
+                if cdr:
+                    callerid = cdr.src
+            if not callerid:
+                callerid = lost.agent or lost.data1 or lost.callid
+            abandon_time = lost.time
+            # Outgoing: дзвінки з цього номера після abandon
+            incoming = (
+                CDR.objects.filter(src=callerid, start__gt=abandon_time, disposition="ANSWERED")
+                .order_by("start")
+                .first()
+            )
+            # Incoming: дзвінки на цей номер після abandon
+            outgoing = (
+                CDR.objects.filter(dst=callerid, start__gt=abandon_time, disposition="ANSWERED")
+                .order_by("start")
+                .first()
+            )
+            results.append({
+                "abandon_time": abandon_time,
+                "callerid": callerid,
+                "incoming_time": incoming.start if incoming else None,
+                "incoming_dstchannel": incoming.dstchannel if incoming else None,
+                "outgoing_time": outgoing.start if outgoing else None,
+                "outgoing_channel": outgoing.channel if outgoing else None,
+            })
+        return {
+            "lost_and_found": results,
+            "total_lost_calls": lost_calls.count(),
+        }
 
     def get_summary_data(self, queryset):
         """Summary statistics"""
@@ -153,8 +206,18 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             "daily_stats": list(daily_stats),
         }
 
-    def get_detailed_data(self, queryset):
+    def get_detailed_data(self, queryset, request=None):
         """Detailed report"""
+        recent_calls = queryset.order_by("-time")
+        paginated_calls = None
+
+        if request:
+            paginator = Paginator(recent_calls, 50)
+            page_number = request.GET.get("page")
+            paginated_calls = paginator.get_page(page_number)
+        else:
+            paginated_calls = recent_calls[:50]
+
         return {
             "calls_by_hour": list(
                 queryset.annotate(hour=TruncHour("time"))
@@ -166,7 +229,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                 queryset.values("event").annotate(
                     count=Count("id")).order_by("-count")
             ),
-            "recent_calls": queryset[:50],  # Last 50 calls
+            "recent_calls": paginated_calls,
         }
 
     def get_agent_performance_data(self, queryset):

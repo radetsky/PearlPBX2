@@ -367,8 +367,13 @@ class FastAGIHandler:
         """
         Dial each peer with the specified extension, retrying up to max_attempts.
         """
+        # Shuffle peers randomly at the beginning of each function call
+        random.shuffle(peers)
+
         for attempt in range(1, max_attempts + 1):
-            peer = random.choice(peers)
+            # Select peer sequentially from the shuffled array
+            peer_index = (attempt - 1) % len(peers)
+            peer = peers[peer_index]
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
             yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "Tt")
             try:
