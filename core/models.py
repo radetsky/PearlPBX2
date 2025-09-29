@@ -235,15 +235,6 @@ class RoutingTable(models.Model):
 
 
 class SIPUser(models.Model):
-    USER_TELEPHONE_TYPE_CHOICES = [
-        ("spa502g", "Cisco SPA502G"),
-        ("spa504g", "Cisco SPA504G"),
-        ("gsp1200", "Grandstream GXP1200"),
-        ("softphone", "Softphone"),
-        ("webrtc", "WebRTC"),
-        ("other", "Other"),
-    ]
-
     INTEGRATION_CHOICES = [
         ("none", "None"),
         ("your_taxi", "Your Taxi"),
@@ -303,16 +294,6 @@ class SIPUser(models.Model):
         on_delete=deletion.PROTECT,
         null=True,
         blank=True,
-    )
-    telephone_type = models.CharField(
-        max_length=32,
-        unique=False,
-        null=True,
-        blank=True,
-        choices=USER_TELEPHONE_TYPE_CHOICES,
-        default="other",
-        help_text="Type of telephone for the user",
-        verbose_name="Telephone type",
     )
     auth_type = models.CharField(
         max_length=32,

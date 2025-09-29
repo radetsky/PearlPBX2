@@ -42,7 +42,7 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
     """Генератор конфігурацій для телефонів Grandstream GXP"""
 
     def get_supported_models(self) -> list:
-        return ['GXP1610', 'GXP1620', 'GXP1625', 'GXP2130', 'GXP2135', 'GXP2160', 'GXP2170']
+        return ['GXP1200','GXP1610', 'GXP1620', 'GXP1625', 'GXP2130', 'GXP2135', 'GXP2160', 'GXP2170']
 
     def _generate_config_text(self, name: str, secret: str, sipserver: str, **kwargs) -> str:
         """Генерує текстову конфігурацію для Grandstream"""
@@ -201,8 +201,8 @@ class CiscoSPAGenerator(PhoneConfigGenerator):
             'Register_Expires_1': '3600',
             'Line_Enable_1': 'Yes',
             'SIP_Port_1': '5060',
-            'RTP_Port_Min_1': '16384',
-            'RTP_Port_Max_1': '16482'
+            'RTP_Port_Min_1': '10000',
+            'RTP_Port_Max_1': '20000'
         }
 
         # Додаткові параметри з kwargs
@@ -242,6 +242,7 @@ class Provisioning:
                                     secret: str, sipserver: str, **kwargs) -> bytes:
         """Генерує конфігурацію для телефонів Grandstream"""
         return self.generators['grandstream'].generate_config(
+            max_address=mac_address,
             name=name, secret=secret,
             sipserver=sipserver, **kwargs
         )
