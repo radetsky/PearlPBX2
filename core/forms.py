@@ -98,12 +98,6 @@ class SIPUserForm(forms.ModelForm):
         empty_label=None,
     )
 
-    telephone_type = forms.ChoiceField(
-        label="Telephone type",
-        required=True,
-        help_text="Select type of the telephone",
-        choices=SIPUser.USER_TELEPHONE_TYPE_CHOICES,
-    )
     auth_type = forms.ChoiceField(
         label="Auth type",
         required=True,
@@ -155,7 +149,6 @@ class SIPUserForm(forms.ModelForm):
             "nat",
             "extension",
             "routing_table",
-            "telephone_type",
             "auth_type",
             "integration",
             "custom_extension",
