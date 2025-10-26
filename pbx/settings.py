@@ -191,6 +191,8 @@ ASTERISK_MONITOR_DIR = env.str(
     "ASTERISK_MONITOR_DIR", default="/var/spool/asterisk/monitor"
 )
 
+TFTP_DIR = env.str("TFTP_DIR", default="/var/lib/tftpboot/")
+
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"
 PEARLPBX_DEFAULT_ROUTING_PREFIX = "_2XX"

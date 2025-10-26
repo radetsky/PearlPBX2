@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 import re
 import socket
+from xml.dom import minidom
 
 
 def is_valid_ip(address):
@@ -25,29 +26,29 @@ def is_valid_fqdn(name):
     return fqdn_regex.match(name) is not None
 
 class PhoneConfigGenerator(ABC):
-    """Абстрактний базовий клас для генераторів конфігурацій телефонів"""
+    """Abstract base class for phone configuration generators"""
 
     @abstractmethod
     def generate_config(self, **kwargs) -> bytes:
-        """Генерує конфігураційний файл у потрібному форматі"""
+        """Generate a configuration file in the required format"""
         pass
 
     @abstractmethod
     def get_supported_models(self) -> list:
-        """Повертає список підтримуваних моделей"""
+        """Return the list of supported models"""
         pass
 
 
 class GrandstreamGXPGenerator(PhoneConfigGenerator):
-    """Генератор конфігурацій для телефонів Grandstream GXP"""
+    """Configuration generator for Grandstream GXP phones"""
 
     def get_supported_models(self) -> list:
         return ['GXP1200','GXP1610', 'GXP1620', 'GXP1625', 'GXP2130', 'GXP2135', 'GXP2160', 'GXP2170']
 
     def _generate_config_text(self, name: str, secret: str, sipserver: str, **kwargs) -> str:
-        """Генерує текстову конфігурацію для Grandstream"""
+        """Generate a text configuration for Grandstream"""
 
-        # Базові параметри
+        # Base parameters
         config_params = {
             'P3': name,        # Display Name
             'P30': sipserver,  # NTP Server
@@ -67,27 +68,27 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
             'P401': 0          # Second account inactive
         }
 
-        # Додаткові параметри з kwargs
+        # Additional parameters from kwargs
         for key, value in kwargs.items():
             if key.startswith('P') and key[1:].isdigit():
                 config_params[key] = value
 
-        # Сортуємо параметри за номерами
+        # Sort parameters by number
         sorted_params = sorted(config_params.items(),
                                key=lambda x: int(x[0][1:]))
 
-        # Формуємо конфігурацію
+        # Build configuration lines
         config_lines = [f"{param}={value}" for param, value in sorted_params]
         return '\n'.join(config_lines)
 
     def _convert_to_binary(self, h_mac: str, config_text: str) -> bytes:
-        """Конвертує текстову конфігурацію у binary формат Grandstream"""
+        """Convert text configuration into Grandstream binary format"""
 
         h_crlf = '0d0a'
         b_mac = bytes.fromhex(h_mac)
         b_crlf = bytes.fromhex(h_crlf)
 
-        # Обробляємо конфігурацію як в оригінальному Perl скрипті
+        # Process configuration as in the original Perl script
         a_body = ""
         for line in config_text.split('\n'):
             line = line.strip()
@@ -96,13 +97,13 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
                 key = key.strip()
                 val = val.strip()
 
-                # URL-encode значення
+                # URL-encode the value
                 val = urllib.parse.quote(val, safe='A-Za-z0-9._-')
                 a_body += f"{key}={val}&"
 
         a_body += 'gnkey=0b82'
 
-        # Вирівнювання
+        # Padding/alignment
         if len(a_body) % 2 != 0:
             a_body += '\0'
         if len(a_body) % 4 != 0:
@@ -110,7 +111,7 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
 
         a_body_bytes = a_body.encode('ascii')
 
-        # Довжина та checksum
+        # Length and checksum
         d_length = 8 + (len(a_body_bytes) // 2)
         b_length = struct.pack('>I', d_length)
 
@@ -128,7 +129,7 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
         return b_length + b_checksum + b_mac + b_crlf + b_crlf + a_body_bytes
 
     def generate_config(self, **kwargs) -> bytes:
-        """Генерує binary конфігурацію для Grandstream"""
+        """Generate the binary configuration for Grandstream"""
 
         mac_address = kwargs.get('mac_address', '')
         if not isinstance(mac_address, str) or not mac_address.islower() or len(mac_address) != 12 or not all(c in '0123456789abcdef' for c in mac_address):
@@ -152,19 +153,21 @@ class GrandstreamGXPGenerator(PhoneConfigGenerator):
         if not all([mac_address, name, secret, sipserver]):
             raise ValueError("mac_address, name, secret, and sipserver are required parameters")
 
+        # Remove parameters that are passed separately from kwargs
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in ['name', 'secret', 'sipserver', 'mac_address']}
         config_text = self._generate_config_text(
-            name, secret, sipserver, **kwargs)
+            name, secret, sipserver, **filtered_kwargs)
         return self._convert_to_binary(mac_address, config_text)
 
 
 class CiscoSPAGenerator(PhoneConfigGenerator):
-    """Генератор конфігурацій для телефонів Cisco SPA"""
+    """Configuration generator for Cisco SPA phones"""
 
     def get_supported_models(self) -> list:
         return ['SPA112', 'SPA122', 'SPA232D', 'SPA504G', 'SPA508G', 'SPA514G', 'SPA525G2']
 
     def generate_config(self, **kwargs) -> bytes:
-        """Генерує XML конфігурацію для Cisco SPA"""
+        """Generate an XML configuration for Cisco SPA"""
 
         name = kwargs.get('name', '')
         secret = kwargs.get('secret', '')
@@ -184,10 +187,10 @@ class CiscoSPAGenerator(PhoneConfigGenerator):
             raise ValueError(
                 "name, secret, and sipserver are required parameters")
 
-        # Створюємо XML структуру
+        # Create XML structure
         root = ET.Element('flat-profile')
 
-        # Основні SIP параметри
+        # Primary SIP parameters
         sip_params = {
             'Line_1_Display_Name': name,
             'Line_1_User_ID': name,
@@ -205,21 +208,28 @@ class CiscoSPAGenerator(PhoneConfigGenerator):
             'RTP_Port_Max_1': '20000'
         }
 
-        # Додаткові параметри з kwargs
+        # Additional parameters from kwargs
         sip_params.update(kwargs)
 
-        # Додаємо параметри в XML
+        # Add parameters to XML
         for param, value in sorted(sip_params.items()):
             elem = ET.SubElement(root, param.replace('_', ' '))
             elem.text = str(value)
 
-        # Конвертуємо в bytes
-        xml_str = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+        # Convert to bytes
+        # Pretty-print with newlines/indentation
+        tree = ET.ElementTree(root)
+        try:
+            ET.indent(tree, space="  ")
+            xml_str = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+        except AttributeError:
+            rough = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+            xml_str = minidom.parseString(rough).toprettyxml(encoding='utf-8')
         return xml_str
 
 
 class Provisioning:
-    """Основний клас для управління provisioning різних телефонів"""
+    """Main class for managing provisioning of different phones"""
 
     def __init__(self):
         self.generators = {
@@ -228,11 +238,11 @@ class Provisioning:
         }
 
     def get_supported_vendors(self) -> list:
-        """Повертає список підтримуваних вендорів"""
+        """Return the list of supported vendors"""
         return list(self.generators.keys())
 
     def get_supported_models(self, vendor: str) -> list:
-        """Повертає список підтримуваних моделей для вендора"""
+        """Return the list of supported models for a vendor"""
         if vendor.lower() not in self.generators:
             raise ValueError(f"Vendor '{vendor}' not supported")
 
@@ -240,28 +250,28 @@ class Provisioning:
 
     def generate_grandstream_config(self, mac_address: str, name: str,
                                     secret: str, sipserver: str, **kwargs) -> bytes:
-        """Генерує конфігурацію для телефонів Grandstream"""
+        """Generate configuration for Grandstream phones"""
         return self.generators['grandstream'].generate_config(
-            max_address=mac_address,
+            mac_address=mac_address,
             name=name, secret=secret,
             sipserver=sipserver, **kwargs
         )
 
     def generate_cisco_config(self, name: str, secret: str, sipserver: str,
                               model: str = 'SPA504G', **kwargs) -> bytes:
-        """Генерує конфігурацію для телефонів Cisco SPA"""
+        """Generate configuration for Cisco SPA phones"""
         return self.generators['cisco'].generate_config(
             name=name, secret=secret, sipserver=sipserver,
             model=model, **kwargs
         )
 
     def save_config(self, config_data: bytes, filename: str) -> bool:
-        """Зберігає конфігурацію у файл"""
+        """Save configuration to a file"""
         try:
             with open(filename, 'wb') as f:
                 f.write(config_data)
             return True
         except Exception as e:
-            print(f"Помилка при збереженні файлу: {e}")
+            print(f"Error saving file: {e}")
             return False
 
