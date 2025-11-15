@@ -13,14 +13,19 @@ from apps.provision.provisioning_manager import PhoneProvisioningManager
 @admin.register(PhoneDevice)
 class PhoneDeviceAdmin(admin.ModelAdmin):
     form = PhoneDeviceForm
-    list_display = ['mac_address', 'telephone_type', 'get_sip_user_username', 'get_configuration_status', 'created_at', 'modified_at']
-    list_filter = ['telephone_type', 'created_at', 'modified_at']
+    list_display = ['mac_address',
+                    'telephone_type',
+                    'get_sip_user_username',
+                    'sip_server',
+                    'get_configuration_status']
+
+    list_filter = ['telephone_type', 'sip_server']
     search_fields = ['mac_address', 'sip_user__username', 'sip_user__name']
     readonly_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
 
     fieldsets = (
         ('Device Information', {
-            'fields': ('telephone_type', 'mac_address', 'sip_user')
+            'fields': ('telephone_type', 'mac_address', 'sip_user', 'sip_server')
         }),
         ('Audit Information', {
             'fields': ('created_at', 'created_by', 'modified_at', 'modified_by'),
