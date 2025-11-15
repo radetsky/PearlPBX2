@@ -51,6 +51,8 @@ class PhoneProvisioningManager:
 
         vendor, model = self.phone_mapping[device.telephone_type]
         sip_server = self.get_sip_server()
+        if device.sip_server and device.sip_server.strip():
+            sip_server = device.sip_server.strip()
 
         # Prepare parameters
         params = {

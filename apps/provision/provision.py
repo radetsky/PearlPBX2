@@ -167,57 +167,45 @@ class CiscoSPAGenerator(PhoneConfigGenerator):
         return ['SPA112', 'SPA122', 'SPA232D', 'SPA504G', 'SPA508G', 'SPA514G', 'SPA525G2']
 
     def generate_config(self, **kwargs) -> bytes:
-        """Generate an XML configuration for Cisco SPA"""
+        """Generate an XML configuration for Cisco SPA with the specified structure"""
 
         name = kwargs.get('name', '')
         secret = kwargs.get('secret', '')
         sipserver = kwargs.get('sipserver', '')
 
-        if not isinstance(name, str) or not name:
-            raise ValueError("name must be a non-empty string")
-        if not isinstance(secret, str) or not secret:
-            raise ValueError("secret must be a non-empty string")
-        if not isinstance(sipserver, str) or not sipserver:
-            raise ValueError("sipserver must be a non-empty string")
-        if not isinstance(sipserver, str) or not sipserver:
-            raise ValueError("sipserver must be a non-empty string")
-        if not (is_valid_ip(sipserver) or is_valid_fqdn(sipserver)):
-            raise ValueError("sipserver must be a valid IPv4 address or FQDN")
         if not all([name, secret, sipserver]):
-            raise ValueError(
-                "name, secret, and sipserver are required parameters")
+            raise ValueError("name, secret, and sipserver are required parameters")
 
         # Create XML structure
         root = ET.Element('flat-profile')
 
-        # Primary SIP parameters
-        sip_params = {
-            'Line_1_Display_Name': name,
-            'Line_1_User_ID': name,
-            'Line_1_Password': secret,
-            'Line_1_Use_Auth_ID': 'Yes',
-            'Line_1_Auth_ID': name,
-            'Proxy_1': sipserver,
-            'Register_1': sipserver,
-            'Outbound_Proxy_1': sipserver,
-            'Use_Outbound_Proxy_1': 'Yes',
-            'Register_Expires_1': '3600',
-            'Line_Enable_1': 'Yes',
-            'SIP_Port_1': '5060',
-            'RTP_Port_Min_1': '10000',
-            'RTP_Port_Max_1': '20000'
+        # Add required fields with groups
+        fields = {
+            'User_ID_1_': {'value': name, 'group': 'Ext_1/Subscriber_Information'},
+            'Password_1_': {'value': secret, 'group': 'Ext_1/Subscriber_Information'},
+            'Use_Auth_ID_1_': {'value': 'No', 'group': 'Ext_1/Subscriber_Information'},
+            'Auth_ID_1_': {'value': '', 'group': 'Ext_1/Subscriber_Information'},
+            'Display_Name_1_': {'value': name, 'group': 'Ext_1/Subscriber_Information'},
+            'Proxy_1_': {'value': sipserver, 'group': 'Ext_1/Proxy_and_Registration'},
+            'Station_Name': {'value': name, 'group': 'Phone/General'},
+            'Station_Display_Name': {'value': name, 'group': 'Phone/General'},
+            'Voice_Mail_Number': {'value': '', 'ua': 'rw'},
+            'Text_Logo': {'value': 'PearlPBX', 'group': 'Phone/General'},
+            'BMP_Picture_Download_URL': {'value': '', 'group': 'Phone/General'},
+            'Select_Logo': {'value': 'Text Logo', 'group': 'Phone/General'},
+            'Select_Background_Picture': {'value': 'None', 'group': 'Phone/General'},
+            'Time_Format': {'value': '24hr', 'group': 'User/Supplementary_Services'},
+            'DND_Serv': {'value': 'No', 'group': 'Phone/Supplementary_Services'},
         }
 
-        # Additional parameters from kwargs
-        sip_params.update(kwargs)
+        for field, attributes in fields.items():
+            elem = ET.SubElement(root, field)
+            elem.text = attributes.get('value', '')
+            for attr, attr_value in attributes.items():
+                if attr != 'value':
+                    elem.set(attr, attr_value)
 
-        # Add parameters to XML
-        for param, value in sorted(sip_params.items()):
-            elem = ET.SubElement(root, param.replace('_', ' '))
-            elem.text = str(value)
-
-        # Convert to bytes
-        # Pretty-print with newlines/indentation
+        # Convert to bytes with pretty-printing
         tree = ET.ElementTree(root)
         try:
             ET.indent(tree, space="  ")
@@ -225,6 +213,7 @@ class CiscoSPAGenerator(PhoneConfigGenerator):
         except AttributeError:
             rough = ET.tostring(root, encoding='utf-8', xml_declaration=True)
             xml_str = minidom.parseString(rough).toprettyxml(encoding='utf-8')
+
         return xml_str
 
 

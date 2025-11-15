@@ -38,6 +38,9 @@ class PhoneDevice(AuditFields):
         max_length=255,
         help_text="SIP server address",
         verbose_name="SIP Server",
+        null=False,
+        blank=False,
+        default="",
     )
 
     class Meta(AuditFields.Meta):
