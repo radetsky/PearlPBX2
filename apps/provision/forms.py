@@ -4,7 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.provision.models import PhoneDevice
-from core.models import SIPUser
+from core.models import SIPUser, Settings
 
 
 class SIPUserChoiceField(forms.ModelChoiceField):
@@ -19,6 +19,13 @@ class PhoneDeviceForm(forms.ModelForm):
         required=False,
         empty_label="No SIP User assigned",
         help_text="Select SIP user for this device"
+    )
+
+    sip_server = forms.CharField(
+        max_length=255,
+        required=False,
+        help_text="SIP server address for this device",
+        initial=Settings.objects.first().ip_addr_for_provisioning if Settings.objects.exists() else ''
     )
 
     def clean_mac_address(self):
@@ -45,4 +52,4 @@ class PhoneDeviceForm(forms.ModelForm):
 
     class Meta:
         model = PhoneDevice
-        fields = ['telephone_type', 'mac_address', 'sip_user']
+        fields = ['telephone_type', 'mac_address', 'sip_user', 'sip_server']

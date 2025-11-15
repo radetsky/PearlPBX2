@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import SIPUser, AuditFields
+from core.models import SIPUser, AuditFields, Settings
 
 class PhoneDevice(AuditFields):
 
@@ -31,6 +31,13 @@ class PhoneDevice(AuditFields):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
+        help_text="SIP user associated with this device",
+        verbose_name="SIP User",
+    )
+    sip_server = models.CharField(
+        max_length=255,
+        help_text="SIP server address",
+        verbose_name="SIP Server",
     )
 
     class Meta(AuditFields.Meta):
