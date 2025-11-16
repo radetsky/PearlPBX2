@@ -25,7 +25,7 @@ class PhoneDeviceForm(forms.ModelForm):
         max_length=255,
         required=False,
         help_text="SIP server address for this device",
-        initial=Settings.objects.first().ip_addr_for_provisioning if Settings.objects.exists() else ''
+        initial='127.0.0.1'
     )
 
     def clean_mac_address(self):
