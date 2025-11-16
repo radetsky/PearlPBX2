@@ -11,25 +11,27 @@ from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime, timezone
 import argparse
 
+
 class CallbackException(Exception):
     pass
 
+
 class Callback:
     """Callback Service Class"""
+
     def __init__(self, **kwargs):
         self.params = kwargs
-
         self.logger = self.setup_logging()
-
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
-        self.callerids = self.set_callerid()
         self.dbtable = self.params.get("db_table", "callback_callbacknumber")
 
     def setup_logging(self):
         logger = logging.getLogger("callback")
         loglevel = self.params.get("loglevel", logging.DEBUG)
-        logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
+        logging.basicConfig(
+            level=loglevel, format="%(asctime)s %(levelname)s %(message)s"
+        )
         return logger
 
     def db_connect(self):
@@ -66,21 +68,6 @@ class Callback:
         )
         return client
 
-    def set_callerid(self):
-        """ Read the caller IDs from environment variable and return a list """
-        callerids = self.params.get("callerids", "")
-        return [cid.strip() for cid in callerids.split(",") if cid.strip()]
-
-    def get_callerid(self):
-
-        if not self.callerids:
-            return None
-
-        if len(self.callerids) == 1:
-            return self.callerids[0]
-
-        return random.choice(self.callerids)
-
     def on_disconnect(self):
         time.sleep(5)
         self.ami = self.ami_connect()
@@ -97,35 +84,60 @@ class Callback:
             dst = event.keys["DestExten"]
             self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
 
+    def select_first_available(self) -> tuple:
+        """
+        Select the first available callback entry from the database table.
+        Locks the selected row to prevent other processes from accessing it.
 
-    def select_first_available(self):
+        Returns:
+            tuple: A tuple containing id, dst, service_name, and src of the selected entry.
+
+        Raises:
+            ValueError: If no available entry is found.
+        """
         cursor = self.conn.cursor()
 
-        cursor.execute(
-            f"SELECT id, dst, service_name from {self.dbtable} where updated is null order by created limit 1 for update skip locked"
+        query = (
+            f"SELECT id, dst, service_name, src "
+            f"FROM {self.dbtable} "
+            f"WHERE updated IS NULL "
+            f"ORDER BY created "
+            f"LIMIT 1 FOR UPDATE SKIP LOCKED"
         )
-        id_and_dst = cursor.fetchone()
-        if id_and_dst is None:
-            raise ValueError
 
-        return id_and_dst
+        cursor.execute(query)
+        result = cursor.fetchone()
 
+        if result is None:
+            raise ValueError("No available callback entry found.")
 
-    def update_call_status(self, id: int, dst: str, status: str, callerid: str | None):
+        return result
+
+    def update_call_status(self, id: int, dst: str, status: str):
         dt = datetime.now(timezone.utc)
         cursor = self.conn.cursor()
 
         cursor.execute(
-            f"update {self.dbtable} set updated=%s, src=%s, dial_status=%s where dst=%s and id=%s",
-            (dt, callerid, status, dst, id),
+            f"update {self.dbtable} set updated=%s, dial_status=%s where dst=%s and id=%s",
+            (dt, status, dst, id),
         )
         self.conn.commit()
 
-    def call_dst(self, id: int, dst: str, service_name: str):
+    def call_dst(
+        self, id: int, dst: str, service_name: str, callerid: str | None = None
+    ):
         self.logger.info(f"Calling to {dst}")
-        outbound_context = service_name.replace(" ", "_").lower() if service_name else "callback_outbound"
-        answer_context = f"callback-{service_name.replace(' ', '_').lower()}" if service_name else "callback_answer"
-        callerid = self.get_callerid()
+        outbound_context = (
+            service_name.replace(" ", "_").lower()
+            if service_name
+            else "callback_outbound"
+        )
+        answer_context = (
+            f"callback-{service_name.replace(' ', '_').lower()}"
+            if service_name
+            else "callback_answer"
+        )
+
         kwargs = {
             "ActionID": dst,
             "Channel": f"Local/{dst}@{outbound_context}",
@@ -143,9 +155,9 @@ class Callback:
         resp = self.ami.send_action(action)
         logging.info(resp.response)
         if resp.response.status == "Success":
-            self.update_call_status(id, dst, "ANSWER", callerid)
+            self.update_call_status(id, dst, "ANSWER")
         if resp.response.status == "Error":
-            self.update_call_status(id, dst, "BUSY", callerid)
+            self.update_call_status(id, dst, "BUSY")
 
     def process(self):
         """
@@ -156,8 +168,8 @@ class Callback:
         """
 
         try:
-            (id, dst, service_name) = self.select_first_available()
-            self.call_dst(id, dst, service_name)
+            (id, dst, service_name, callerid) = self.select_first_available()
+            self.call_dst(id, dst, service_name, callerid)
 
         except ValueError:
             logging.info("No destinations to call")
@@ -165,7 +177,9 @@ class Callback:
         finally:
             time.sleep(1)
 
+
 ######################### Main #########################
+
 
 def parse_args():
     """Parse command line arguments.
@@ -178,16 +192,35 @@ def parse_args():
     parser.add_argument("--db_name", required=False, help="Database name")
     parser.add_argument("--db_user", required=False, help="Database user")
     parser.add_argument("--db_pass", required=False, help="Database password")
-    parser.add_argument("--db_table", required=False, help="Database table to use for callbacks")
-    parser.add_argument("--ami_host", required=False, help="Asterisk Manager Interface host")
-    parser.add_argument("--ami_port", type=int, required=False, help="Asterisk Manager Interface port")
-    parser.add_argument("--ami_user", required=False, help="Asterisk Manager Interface user")
-    parser.add_argument("--ami_pass", required=False, help="Asterisk Manager Interface password")
-    parser.add_argument("--callerids", required=False, help="Comma separated list of caller IDs to use")
-    parser.add_argument("--process_count", type=int, required=False, help="Number of processes to spawn")
-    parser.add_argument("--loglevel", type=int, default=logging.INFO, help="Logging level (default: INFO)")
-    parser.add_argument("--dump_config", action="store_true", help="Dump configuration and exit")
+    parser.add_argument(
+        "--db_table", required=False, help="Database table to use for callbacks"
+    )
+    parser.add_argument(
+        "--ami_host", required=False, help="Asterisk Manager Interface host"
+    )
+    parser.add_argument(
+        "--ami_port", type=int, required=False, help="Asterisk Manager Interface port"
+    )
+    parser.add_argument(
+        "--ami_user", required=False, help="Asterisk Manager Interface user"
+    )
+    parser.add_argument(
+        "--ami_pass", required=False, help="Asterisk Manager Interface password"
+    )
+    parser.add_argument(
+        "--process_count", type=int, required=False, help="Number of processes to spawn"
+    )
+    parser.add_argument(
+        "--loglevel",
+        type=int,
+        default=logging.INFO,
+        help="Logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--dump_config", action="store_true", help="Dump configuration and exit"
+    )
     return parser.parse_args()
+
 
 def read_env_vars(args):
     """Read environment variables and return as a dictionary."""
@@ -201,7 +234,6 @@ def read_env_vars(args):
     ami_port = int(os.getenv("AMI_PORT", "5038"))
     ami_user = os.getenv("AMI_USER", "ami_user")
     ami_pass = os.getenv("AMI_PASS", "ami_pass")
-    callerids = os.getenv("CALLERIDS", "")
     process_count = int(os.getenv("VA_PROCESS_COUNT", "1"))
     loglevel = int(os.getenv("LOGLEVEL", str(logging.INFO)))
 
@@ -216,10 +248,10 @@ def read_env_vars(args):
         "ami_port": ami_port,
         "ami_user": ami_user,
         "ami_pass": ami_pass,
-        "callerids": callerids,
         "process_count": process_count,
         "loglevel": loglevel,
     }
+
 
 def merge_args_env(args, env_vars):
     """Merge command line arguments with environment variables.
@@ -227,8 +259,11 @@ def merge_args_env(args, env_vars):
     """
     merged = {}
     for key in env_vars:
-        merged[key] = getattr(args, key) if getattr(args, key) is not None else env_vars[key]
+        merged[key] = (
+            getattr(args, key) if getattr(args, key) is not None else env_vars[key]
+        )
     return merged
+
 
 def setup_processes(count: int):
     logging.info(f"Setup dedicated processes: {count}")
@@ -243,7 +278,6 @@ def setup_processes(count: int):
 
 
 if __name__ == "__main__":
-
     args = parse_args()
     env_vars = read_env_vars(args)
     params = merge_args_env(args, env_vars)
