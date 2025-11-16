@@ -1,15 +1,12 @@
+import argparse
 import json
 import logging
 import os
-import time
-import random
-
 import psycopg2
-import requests
+import time
 
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime, timezone
-import argparse
 
 
 class CallbackException(Exception):
@@ -101,6 +98,7 @@ class Callback:
             f"SELECT id, dst, service_name, src "
             f"FROM {self.dbtable} "
             f"WHERE updated IS NULL "
+            f"AND schedule_time <= NOW() "
             f"ORDER BY created "
             f"LIMIT 1 FOR UPDATE SKIP LOCKED"
         )

@@ -4,6 +4,7 @@ FastAGI server using Twisted and StarPy.
 
 import os
 import logging
+import random
 import time
 import uuid
 
@@ -18,7 +19,6 @@ from starpy.error import AGICommandFailure
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
-import random
 
 # ---------------- Logging Setup ----------------
 logging.basicConfig(level=logging.DEBUG)
@@ -224,6 +224,22 @@ class Database:
 
             return global_monitor
 
+    def add_callback_record(self, src: str, dst: str, service_name: str) -> None:
+        """Add a callback record to the database."""
+        with self.get_session() as session:
+            session.execute(
+                text(
+                    """INSERT INTO callback_callbacknumber (src, dst, service_name)
+                    VALUES (:src, :dst, :service_name)"""
+                ),
+                {
+                    "src": src,
+                    "dst": dst,
+                    "service_name": service_name,
+                },
+            )
+            session.commit()
+
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -247,6 +263,8 @@ class FastAGIHandler:
             return self.dial_trunk_group()
         elif network_script == "mixmonitor":
             return self.mixmonitor()
+        elif network_script == "add-callback":
+            return self.add_callback()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -256,6 +274,24 @@ class FastAGIHandler:
     def handle_failure(self, reason) -> None:
         logger.error("AGI error: %s", reason.getTraceback())
         self.agi.finish()
+
+    def add_callback(self) -> Deferred:
+        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        service_name = self.agi.variables.get(b"agi_arg_3", b"").decode("utf-8")
+        logger.debug(
+            f"Handling ADD CALLBACK Caller ID: {caller_id}, Destination: {destination}, Service Name: {service_name}"
+        )
+        if not caller_id or not destination or not service_name:
+            logger.error("Missing parameters for add callback")
+            self.sequence.append(self.agi.setVariable, "CALLBACK_ADDED", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        db.add_callback_record(caller_id, destination, service_name)
+        self.sequence.append(self.agi.setVariable, "CALLBACK_ADDED", "1")
+        self.sequence.append(self.agi.finish)
+        return self.sequence()
 
     def mixmonitor(self) -> Deferred:
         """
