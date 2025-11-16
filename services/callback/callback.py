@@ -1,0 +1,299 @@
+import argparse
+import json
+import logging
+import os
+import psycopg2
+import time
+
+from asterisk.ami import AMIClient, SimpleAction
+from datetime import datetime, timezone
+
+
+class CallbackException(Exception):
+    pass
+
+
+class Callback:
+    """Callback Service Class"""
+
+    def __init__(self, **kwargs):
+        self.params = kwargs
+        self.logger = self.setup_logging()
+        self.conn = self.db_connect()
+        self.ami = self.ami_connect()
+        self.dbtable = self.params.get("db_table", "callback_number")
+
+    def setup_logging(self):
+        logger = logging.getLogger("callback")
+        loglevel = self.params.get("loglevel", logging.DEBUG)
+        logging.basicConfig(
+            level=loglevel, format="%(asctime)s %(levelname)s %(message)s"
+        )
+        return logger
+
+    def db_connect(self):
+        self.logger.debug("Connecting to the database")
+        dbname = self.params.get("db_name")
+        dbhost = self.params.get("db_host")
+        dbport = self.params.get("db_port")
+        dbuser = self.params.get("db_user")
+        dbpass = self.params.get("db_pass")
+
+        try:
+            conn = psycopg2.connect(
+                f"dbname={dbname} user={dbuser} password={dbpass} host={dbhost} port={dbport}"
+            )
+        except psycopg2.Error as e:
+            self.logger.error(f"Database connection error: {e}")
+            raise CallbackException("Database connection error")
+
+        return conn
+
+    def ami_connect(self):
+        self.logger.debug("Connecting to the asterisk manager interface")
+        ami_host = self.params.get("ami_host", "127.0.0.1")
+        ami_port = int(self.params.get("ami_port", 5038))
+        ami_user = self.params.get("ami_user")
+        ami_pass = self.params.get("ami_pass")
+
+        client = AMIClient(address=ami_host, port=ami_port, timeout=3600)
+        client.login(username=ami_user, secret=ami_pass)
+        client.add_event_listener(
+            on_event=self.event_listener,
+            on_disconnect=self.on_disconnect,
+            white_list=["DialBegin", "DialState", "DialEnd"],
+        )
+        return client
+
+    def on_disconnect(self):
+        time.sleep(5)
+        self.ami = self.ami_connect()
+
+    def event_listener(self, event, **kwargs):
+        self.logger.debug(event)
+
+        if event.name == "DialEnd" and (
+            event.keys["DestChannelStateDesc"] == "Down"
+            or event.keys["DestChannelStateDesc"] == "Up"
+        ):
+            status = event.keys["DialStatus"]
+            src = event.keys["DestCallerIDNum"]
+            dst = event.keys["DestExten"]
+            self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
+
+    def select_first_available(self) -> tuple:
+        """
+        Select the first available callback entry from the database table.
+        Locks the selected row to prevent other processes from accessing it.
+
+        Returns:
+            tuple: A tuple containing id, dst, service_name, and src of the selected entry.
+
+        Raises:
+            ValueError: If no available entry is found.
+        """
+        cursor = self.conn.cursor()
+
+        query = (
+            f"SELECT id, dst, service_name, src "
+            f"FROM {self.dbtable} "
+            f"WHERE updated IS NULL "
+            f"AND schedule_time <= NOW() "
+            f"ORDER BY created "
+            f"LIMIT 1 FOR UPDATE SKIP LOCKED"
+        )
+
+        cursor.execute(query)
+        result = cursor.fetchone()
+
+        if result is None:
+            raise ValueError("No available callback entry found.")
+
+        return result
+
+    def update_call_status(self, id: int, dst: str, status: str):
+        dt = datetime.now(timezone.utc)
+        cursor = self.conn.cursor()
+
+        cursor.execute(
+            f"update {self.dbtable} set updated=%s, dial_status=%s where dst=%s and id=%s",
+            (dt, status, dst, id),
+        )
+        self.conn.commit()
+
+    def call_dst(
+        self, id: int, dst: str, service_name: str, callerid: str | None = None
+    ):
+        self.logger.info(f"Calling to {dst}")
+        outbound_context = (
+            service_name.replace(" ", "_").lower()
+            if service_name
+            else "callback_outbound"
+        )
+        answer_context = (
+            f"callback-{service_name.replace(' ', '_').lower()}"
+            if service_name
+            else "callback_answer"
+        )
+
+        kwargs = {
+            "ActionID": dst,
+            "Channel": f"Local/{dst}@{outbound_context}",
+            "Context": answer_context,
+            "Exten": dst,
+            "Priority": 1,
+            "Timeout": 60000,
+        }
+        if callerid:
+            kwargs["Variable"] = f'ORIGCID="{callerid}"'
+            kwargs["CallerID"] = callerid
+
+        action = SimpleAction("Originate", **kwargs)
+        logging.debug(action)
+        resp = self.ami.send_action(action)
+        logging.info(resp.response)
+        if resp.response.status == "Success":
+            self.update_call_status(id, dst, "ANSWER")
+        if resp.response.status == "Error":
+            self.update_call_status(id, dst, "BUSY")
+
+    def process(self):
+        """
+        Select first available number to call
+        Call
+        Wait for the answer
+        TODO - Webhook
+        """
+
+        try:
+            (id, dst, service_name, callerid) = self.select_first_available()
+            self.call_dst(id, dst, service_name, callerid)
+
+        except ValueError:
+            logging.info("No destinations to call")
+
+        finally:
+            time.sleep(1)
+
+
+######################### Main #########################
+
+
+def parse_args():
+    """Parse command line arguments.
+    CLI Parameters override environment variables.
+    """
+
+    parser = argparse.ArgumentParser(description="Callback Service")
+    parser.add_argument("--db_host", required=False, help="Database host")
+    parser.add_argument("--db_port", type=int, required=False, help="Database port")
+    parser.add_argument("--db_name", required=False, help="Database name")
+    parser.add_argument("--db_user", required=False, help="Database user")
+    parser.add_argument("--db_pass", required=False, help="Database password")
+    parser.add_argument(
+        "--db_table", required=False, help="Database table to use for callbacks"
+    )
+    parser.add_argument(
+        "--ami_host", required=False, help="Asterisk Manager Interface host"
+    )
+    parser.add_argument(
+        "--ami_port", type=int, required=False, help="Asterisk Manager Interface port"
+    )
+    parser.add_argument(
+        "--ami_user", required=False, help="Asterisk Manager Interface user"
+    )
+    parser.add_argument(
+        "--ami_pass", required=False, help="Asterisk Manager Interface password"
+    )
+    parser.add_argument(
+        "--process_count", type=int, required=False, help="Number of processes to spawn"
+    )
+    parser.add_argument(
+        "--loglevel",
+        type=int,
+        default=logging.INFO,
+        help="Logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--dump_config", action="store_true", help="Dump configuration and exit"
+    )
+    return parser.parse_args()
+
+
+def read_env_vars(args):
+    """Read environment variables and return as a dictionary."""
+    db_host = os.getenv("DB_HOST", "127.0.0.1")
+    db_port = int(os.getenv("DB_PORT", "5432"))
+    db_name = os.getenv("DB_NAME", "callback_db")
+    db_user = os.getenv("DB_USER", "callback_user")
+    db_pass = os.getenv("DB_PASS", "callback_pass")
+    db_table = os.getenv("DB_TABLE", "callback_numbers")
+    ami_host = os.getenv("AMI_HOST", "127.0.0.1")
+    ami_port = int(os.getenv("AMI_PORT", "5038"))
+    ami_user = os.getenv("AMI_USER", "ami_user")
+    ami_pass = os.getenv("AMI_PASS", "ami_pass")
+    process_count = int(os.getenv("VA_PROCESS_COUNT", "1"))
+    loglevel = int(os.getenv("LOGLEVEL", str(logging.INFO)))
+
+    return {
+        "db_host": db_host,
+        "db_port": db_port,
+        "db_name": db_name,
+        "db_user": db_user,
+        "db_pass": db_pass,
+        "db_table": db_table,
+        "ami_host": ami_host,
+        "ami_port": ami_port,
+        "ami_user": ami_user,
+        "ami_pass": ami_pass,
+        "process_count": process_count,
+        "loglevel": loglevel,
+    }
+
+
+def merge_args_env(args, env_vars):
+    """Merge command line arguments with environment variables.
+    Command line arguments take precedence over environment variables.
+    """
+    merged = {}
+    for key in env_vars:
+        merged[key] = (
+            getattr(args, key) if getattr(args, key) is not None else env_vars[key]
+        )
+    return merged
+
+
+def setup_processes(count: int):
+    logging.info(f"Setup dedicated processes: {count}")
+    i = 0
+    while i < count:
+        pid = os.fork()
+        if pid > 0:
+            i = i + 1
+            continue
+        else:
+            break
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    env_vars = read_env_vars(args)
+    params = merge_args_env(args, env_vars)
+
+    if args.dump_config:
+        print(json.dumps(params, indent=4))
+        exit(0)
+
+    ps = params.get("process_count", 1)
+    if ps is not None and ps > 1:
+        setup_processes(ps - 1)  # We also use parent process
+
+    callback = Callback(**params)
+
+    while True:
+        try:
+            callback.process()
+
+        except (KeyboardInterrupt, SystemExit):
+            callback.ami.logoff()
+            exit(0)

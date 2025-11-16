@@ -1,3 +1,5 @@
+from django.db.models import Q, F
+from django.db import models
 import os
 from uuid import uuid4
 
@@ -1641,17 +1643,15 @@ class SoundFile(models.Model):
 class Monitor(models.Model):
     callerid = models.CharField(
         max_length=64,
-        unique=False,
-        null=False,
         blank=True,
+        null=False,
         help_text="Caller ID to monitor. Blank for all calls.",
         verbose_name="Caller ID",
     )
     destination = models.CharField(
         max_length=64,
-        unique=False,
-        null=False,
         blank=True,
+        null=False,
         help_text="Destination to monitor. Blank for all destinations.",
         verbose_name="Destination",
     )
@@ -1670,21 +1670,23 @@ class Monitor(models.Model):
 
     class Meta:
         constraints = [
-            # Один з callerid або destination має бути заповнений
-            CheckConstraint(
-                check=~Q(callerid="") | ~Q(destination=""),
+            # Один із callerid або destination має бути заповнений
+            models.CheckConstraint(
+                condition=~Q(callerid="") | ~Q(destination=""), # type: ignore
                 name="callerid_or_destination_required",
             ),
             # force_enable_monitor і force_disable_monitor не можуть бути однаковими
-            CheckConstraint(
-                check=~Q(force_enable_monitor=F("force_disable_monitor")),
+            models.CheckConstraint(
+                condition=~Q(force_enable_monitor=F("force_disable_monitor")), # type: ignore
                 name="force_enable_not_equal_disable",
             ),
         ]
 
-    def __str__(self) -> str:
-        return f'Monitor("{self.callerid}" -> "{self.destination}" = <{self.force_enable_monitor}, {self.force_disable_monitor}>)'
-
+    def __str__(self):
+        return (
+            f'Monitor("{self.callerid}" -> "{self.destination}" = '
+            f'<{self.force_enable_monitor}, {self.force_disable_monitor}>)'
+        )
 
 class MonitorFilenames(models.Model):
     """Represent a mapping monitor filenames to CDR UniqueID."""
