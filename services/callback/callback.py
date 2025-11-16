@@ -24,6 +24,7 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.callerids = self.set_callerid()
+        self.dbtable = self.params.get("db_table", "callback_callbacknumber")
 
     def setup_logging(self):
         logger = logging.getLogger("callback")
@@ -99,10 +100,9 @@ class Callback:
 
     def select_first_available(self):
         cursor = self.conn.cursor()
-        db_table = self.params.get("db_table", "callback_numbers")
 
         cursor.execute(
-            f"SELECT id, dst from {db_table} where updated is null order by created limit 1 for update skip locked"
+            f"SELECT id, dst, service_name from {self.dbtable} where updated is null order by created limit 1 for update skip locked"
         )
         id_and_dst = cursor.fetchone()
         if id_and_dst is None:
@@ -114,30 +114,29 @@ class Callback:
     def update_call_status(self, id: int, dst: str, status: str, callerid: str | None):
         dt = datetime.now(timezone.utc)
         cursor = self.conn.cursor()
-        db_table = self.params.get("db_table", "callback_numbers")
 
         cursor.execute(
-            f"update {db_table} set updated=%s, src=%s, dial_status=%s where dst=%s and id=%s",
+            f"update {self.dbtable} set updated=%s, src=%s, dial_status=%s where dst=%s and id=%s",
             (dt, callerid, status, dst, id),
         )
         self.conn.commit()
 
-    def call_dst(self, id: int, dst: str):
+    def call_dst(self, id: int, dst: str, service_name: str):
         self.logger.info(f"Calling to {dst}")
-        channel = os.getenv("AMI_CHANNEL")
-        context = os.getenv("AMI_CONTEXT")
+        outbound_context = service_name.replace(" ", "_").lower() if service_name else "callback_outbound"
+        answer_context = f"callback-{service_name.replace(' ', '_').lower()}" if service_name else "callback_answer"
         callerid = self.get_callerid()
         kwargs = {
             "ActionID": dst,
-            "Channel": f"Local/{dst}@{channel}",
+            "Channel": f"Local/{dst}@{outbound_context}",
+            "Context": answer_context,
             "Exten": dst,
             "Priority": 1,
-            "Context": context,
-            "CallerID": callerid,
             "Timeout": 60000,
         }
         if callerid:
             kwargs["Variable"] = f'ORIGCID="{callerid}"'
+            kwargs["CallerID"] = callerid
 
         action = SimpleAction("Originate", **kwargs)
         logging.debug(action)
@@ -157,8 +156,8 @@ class Callback:
         """
 
         try:
-            (id, dst) = self.select_first_available()
-            self.call_dst(id, dst)
+            (id, dst, service_name) = self.select_first_available()
+            self.call_dst(id, dst, service_name)
 
         except ValueError:
             logging.info("No destinations to call")
