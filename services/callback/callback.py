@@ -21,7 +21,7 @@ class Callback:
         self.logger = self.setup_logging()
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
-        self.dbtable = self.params.get("db_table", "callback_callbacknumber")
+        self.dbtable = self.params.get("db_table", "callback_number")
 
     def setup_logging(self):
         logger = logging.getLogger("callback")

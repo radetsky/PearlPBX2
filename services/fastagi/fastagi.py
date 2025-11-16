@@ -229,7 +229,7 @@ class Database:
         with self.get_session() as session:
             session.execute(
                 text(
-                    """INSERT INTO callback_callbacknumber (src, dst, service_name)
+                    """INSERT INTO callback_number (src, dst, service_name)
                     VALUES (:src, :dst, :service_name)"""
                 ),
                 {
