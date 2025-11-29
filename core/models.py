@@ -162,7 +162,7 @@ class DialplanContext(models.Model):
     )
 
     class Meta:
-        db_table = "diaplan_contexts"
+        db_table = "dialplan_contexts"
         verbose_name_plural = "04. Dialplan contexts"
 
     def __str__(self):

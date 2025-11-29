@@ -102,16 +102,20 @@ class Callback:
                     a.id AS id,
                     a.src AS src,
                     a.dst AS dst,
-                    b.context_outbound AS context_outbound,
-                    b.context_inbound AS context_inbound
+                    co_out.name AS context_outbound,
+                    co_in.name AS context_inbound
                 FROM
-                    callback_number a,
-                    callback_service b
+                    callback_number a
+                JOIN
+                    callback_service b ON a.service_id = b.id
+                JOIN
+                    dialplan_contexts co_out ON b.context_outbound_id = co_out.id
+                JOIN
+                    dialplan_contexts co_in ON b.context_inbound_id = co_in.id
                 WHERE
                     b.is_active = TRUE
                     AND a.updated IS NULL
                     AND a.schedule_time <= NOW()
-                    AND a.service_id = b.id
                 ORDER BY
                     a.created
                 LIMIT 1
