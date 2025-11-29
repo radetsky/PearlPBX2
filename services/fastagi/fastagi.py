@@ -227,10 +227,11 @@ class Database:
     def add_callback_record(self, src: str, dst: str, service_name: str) -> None:
         """Add a callback record to the database."""
         with self.get_session() as session:
+
             session.execute(
                 text(
-                    """INSERT INTO callback_number (src, dst, service_name)
-                    VALUES (:src, :dst, :service_name)"""
+                    """INSERT INTO callback_number (src, dst, service_id)
+                        VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name));"""
                 ),
                 {
                     "src": src,

@@ -92,15 +92,30 @@ class Callback:
         Raises:
             ValueError: If no available entry is found.
         """
+
+        # begin new transaction
+        self.conn.autocommit = False
+
         cursor = self.conn.cursor()
 
-        query = (
-            f"SELECT id, dst, service_name, src "
-            f"FROM {self.dbtable} "
-            f"WHERE updated IS NULL "
-            f"AND schedule_time <= NOW() "
-            f"ORDER BY created "
-            f"LIMIT 1 FOR UPDATE SKIP LOCKED"
+        query = ("""SELECT
+                    a.id AS id,
+                    a.src AS src,
+                    a.dst AS dst,
+                    b.context_outbound AS context_outbound,
+                    b.context_inbound AS context_inbound
+                FROM
+                    callback_number a,
+                    callback_service b
+                WHERE
+                    b.is_active = TRUE
+                    AND a.updated IS NULL
+                    AND a.schedule_time <= NOW()
+                    AND a.service_id = b.id
+                ORDER BY
+                    a.created
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED;"""
         )
 
         cursor.execute(query)
@@ -122,38 +137,27 @@ class Callback:
         self.conn.commit()
 
     def call_dst(
-        self, id: int, dst: str, service_name: str, callerid: str | None = None
-    ):
-        self.logger.info(f"Calling to {dst}")
-        outbound_context = (
-            service_name.replace(" ", "_").lower()
-            if service_name
-            else "callback_outbound"
-        )
-        answer_context = (
-            f"callback-{service_name.replace(' ', '_').lower()}"
-            if service_name
-            else "callback_answer"
-        )
+        self, id: int, src: str, dst: str, context_outbound: str, context_inbound: str):
+        self.logger.info(f"Calling from {src} to {dst}")
 
         kwargs = {
             "ActionID": dst,
-            "Channel": f"Local/{dst}@{outbound_context}",
-            "Context": answer_context,
+            "Channel": f"Local/{dst}@{context_outbound}",
+            "Context": context_inbound,
             "Exten": dst,
             "Priority": 1,
             "Timeout": 60000,
         }
-        if callerid:
-            kwargs["Variable"] = f'ORIGCID="{callerid}"'
-            kwargs["CallerID"] = callerid
+        if src and src != "":
+            kwargs["Variable"] = f'ORIGCID="{src}"'
+            kwargs["CallerID"] = src
 
         action = SimpleAction("Originate", **kwargs)
         logging.debug(action)
         resp = self.ami.send_action(action)
         logging.info(resp.response)
         if resp.response.status == "Success":
-            self.update_call_status(id, dst, "ANSWER")
+            self.update_call_status(id, dst, "ANSWERED")
         if resp.response.status == "Error":
             self.update_call_status(id, dst, "BUSY")
 
@@ -166,8 +170,8 @@ class Callback:
         """
 
         try:
-            (id, dst, service_name, callerid) = self.select_first_available()
-            self.call_dst(id, dst, service_name, callerid)
+            (id, src, dst, context_outbound, context_inbound) = self.select_first_available()
+            self.call_dst(id, src, dst, context_outbound, context_inbound)
 
         except ValueError:
             logging.info("No destinations to call")
