@@ -235,7 +235,7 @@ def read_env_vars(args):
     db_name = os.getenv("DB_NAME", "callback_db")
     db_user = os.getenv("DB_USER", "callback_user")
     db_pass = os.getenv("DB_PASS", "callback_pass")
-    db_table = os.getenv("DB_TABLE", "callback_numbers")
+    db_table = os.getenv("DB_TABLE", "callback_number")
     ami_host = os.getenv("AMI_HOST", "127.0.0.1")
     ami_port = int(os.getenv("AMI_PORT", "5038"))
     ami_user = os.getenv("AMI_USER", "ami_user")
