@@ -794,12 +794,13 @@ def make_manager_conf():
     manager_port = settings.ASTERISK_MANAGER_PORT
     manager_username = settings.ASTERISK_MANAGER_USERNAME
     manager_secret = settings.ASTERISK_MANAGER_SECRET
+    manager_bind = settings.ASTERISK_MANAGER_BIND
 
     plaintext += "[general]\n"
     plaintext += "enabled = yes\n"
     plaintext += "webenabled = yes\n"
     plaintext += f"port = {manager_port}\n"
-    plaintext += f"bindaddr = {manager_host}\n"
+    plaintext += f"bindaddr = {manager_bind}\n"
     plaintext += "displayconnects = yes\n"
     plaintext += "timestampevents = yes\n"
     plaintext += "authtimeout = 10\n"

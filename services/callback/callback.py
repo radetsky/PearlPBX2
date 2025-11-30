@@ -43,6 +43,7 @@ class Callback:
             conn = psycopg2.connect(
                 f"dbname={dbname} user={dbuser} password={dbpass} host={dbhost} port={dbport}"
             )
+            conn.autocommit = False # Enable transaction management
         except psycopg2.Error as e:
             self.logger.error(f"Database connection error: {e}")
             raise CallbackException("Database connection error")
@@ -93,9 +94,6 @@ class Callback:
             ValueError: If no available entry is found.
         """
 
-        # begin new transaction
-        self.conn.autocommit = False
-
         cursor = self.conn.cursor()
 
         query = ("""SELECT
@@ -126,6 +124,7 @@ class Callback:
         result = cursor.fetchone()
 
         if result is None:
+            self.conn.rollback()
             raise ValueError("No available callback entry found.")
 
         return result
