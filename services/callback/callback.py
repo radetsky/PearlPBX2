@@ -22,12 +22,13 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
+        self.active_calls = {}
 
     def setup_logging(self):
         logger = logging.getLogger("callback")
         loglevel = self.params.get("loglevel", logging.DEBUG)
         logging.basicConfig(
-            level=loglevel, format="%(asctime)s %(levelname)s %(message)s"
+            level=loglevel, format="%(asctime)s %(process)d %(levelname)s %(message)s"
         )
         return logger
 
@@ -71,8 +72,6 @@ class Callback:
         self.ami = self.ami_connect()
 
     def event_listener(self, event, **kwargs):
-        self.logger.debug(event)
-
         if event.name == "DialEnd" and (
             event.keys["DestChannelStateDesc"] == "Down"
             or event.keys["DestChannelStateDesc"] == "Up"
@@ -80,7 +79,9 @@ class Callback:
             status = event.keys["DialStatus"]
             src = event.keys["DestCallerIDNum"]
             dst = event.keys["DestExten"]
-            self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
+
+            if dst in self.active_calls:
+                self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
 
     def select_first_available(self) -> tuple:
         """
@@ -112,7 +113,7 @@ class Callback:
                     dialplan_contexts co_in ON b.context_inbound_id = co_in.id
                 WHERE
                     b.is_active = TRUE
-                    AND a.updated IS NULL
+                    AND a.dial_status = 'NEW'
                     AND a.schedule_time <= NOW()
                 ORDER BY
                     a.created
@@ -127,6 +128,13 @@ class Callback:
             self.conn.rollback()
             raise ValueError("No available callback entry found.")
 
+        update_query = (
+            """UPDATE callback_number
+               SET dial_status = 'PENDING'
+               WHERE id = %s;"""
+        )
+        cursor.execute(update_query, (result[0],))
+        self.conn.commit()
         return result
 
     def update_call_status(self, id: int, dst: str, status: str):
@@ -143,6 +151,7 @@ class Callback:
         self, id: int, src: str, dst: str, context_outbound: str, context_inbound: str):
         self.logger.info(f"Calling from {src} to {dst}")
 
+
         kwargs = {
             "ActionID": dst,
             "Channel": f"Local/{dst}@{context_outbound}",
@@ -155,14 +164,18 @@ class Callback:
             kwargs["Variable"] = f'ORIGCID="{src}"'
             kwargs["CallerID"] = src
 
+        self.active_calls[dst] = id
+
         action = SimpleAction("Originate", **kwargs)
-        logging.debug(action)
+        self.logger.debug(action)
         resp = self.ami.send_action(action)
-        logging.info(resp.response)
+        self.logger.info(resp.response)
         if resp.response.status == "Success":
             self.update_call_status(id, dst, "ANSWERED")
         if resp.response.status == "Error":
             self.update_call_status(id, dst, "BUSY")
+
+        del self.active_calls[dst]
 
     def process(self):
         """
@@ -242,6 +255,8 @@ def read_env_vars(args):
     process_count = int(os.getenv("VA_PROCESS_COUNT", "1"))
     loglevel = int(os.getenv("LOGLEVEL", str(logging.INFO)))
 
+    print("LOGLEVEL=", loglevel)
+
     return {
         "db_host": db_host,
         "db_port": db_port,
@@ -260,18 +275,18 @@ def read_env_vars(args):
 
 def merge_args_env(args, env_vars):
     """Merge command line arguments with environment variables.
-    Command line arguments take precedence over environment variables.
+    Environment variables are used in priority if command line argument is not provided.
     """
     merged = {}
     for key in env_vars:
         merged[key] = (
-            getattr(args, key) if getattr(args, key) is not None else env_vars[key]
+            env_vars[key] if env_vars[key] is not None else getattr(args, key)
         )
     return merged
 
 
 def setup_processes(count: int):
-    logging.info(f"Setup dedicated processes: {count}")
+    print(f"Setup dedicated processes: {count}")
     i = 0
     while i < count:
         pid = os.fork()
@@ -284,8 +299,12 @@ def setup_processes(count: int):
 
 if __name__ == "__main__":
     args = parse_args()
+    print("Arguments:", args)
     env_vars = read_env_vars(args)
+    print("Environment Variables:", env_vars)
     params = merge_args_env(args, env_vars)
+
+    print("Parameters:", params)
 
     if args.dump_config:
         print(json.dumps(params, indent=4))
@@ -293,6 +312,7 @@ if __name__ == "__main__":
 
     ps = params.get("process_count", 1)
     if ps is not None and ps > 1:
+        print(f"Setting up {ps} processes")
         setup_processes(ps - 1)  # We also use parent process
 
     callback = Callback(**params)
