@@ -224,19 +224,20 @@ class Database:
 
             return global_monitor
 
-    def add_callback_record(self, src: str, dst: str, service_name: str) -> None:
+    def add_callback_record(self, src: str, dst: str, service_name: str, delay_seconds: str) -> None:
         """Add a callback record to the database."""
         with self.get_session() as session:
 
             session.execute(
                 text(
-                    """INSERT INTO callback_number (src, dst, service_id)
-                        VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name));"""
+                    """INSERT INTO callback_number (src, dst, service_id, schedule_time)
+                        VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name), now() + interval ':delay_seconds seconds');"""
                 ),
                 {
                     "src": src,
                     "dst": dst,
                     "service_name": service_name,
+                    "delay_seconds": int(delay_seconds),
                 },
             )
             session.commit()
@@ -280,6 +281,8 @@ class FastAGIHandler:
         caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
         destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
         service_name = self.agi.variables.get(b"agi_arg_3", b"").decode("utf-8")
+        delay_seconds = self.agi.variables.get(b"agi_arg_4", b"5").decode("utf-8")
+
         logger.debug(
             f"Handling ADD CALLBACK Caller ID: {caller_id}, Destination: {destination}, Service Name: {service_name}"
         )
@@ -289,7 +292,7 @@ class FastAGIHandler:
             self.sequence.append(self.agi.finish)
             return self.sequence()
 
-        db.add_callback_record(caller_id, destination, service_name)
+        db.add_callback_record(caller_id, destination, service_name, delay_seconds)
         self.sequence.append(self.agi.setVariable, "CALLBACK_ADDED", "1")
         self.sequence.append(self.agi.finish)
         return self.sequence()

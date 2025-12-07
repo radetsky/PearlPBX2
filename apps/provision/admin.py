@@ -1,8 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
-from django.http import HttpResponseRedirect
 from django.contrib import messages
-from django.urls import path, reverse
+from django.urls import path
 from django.utils.html import format_html
 
 from apps.provision.models import PhoneDevice

@@ -1,10 +1,8 @@
-from datetime import timedelta, datetime
-
 from django import forms
 from django.utils import timezone
 
 from apps.reports.models import QueueLog
-
+from apps.callback.models import CallbackService
 
 class QueueLogReportForm(forms.Form):
     # Date filters
@@ -239,3 +237,68 @@ class CDRReportForm(forms.Form):
         required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
     )
+
+
+class CallbackNumberReportForm(forms.Form):
+    DIAL_STATUS_CHOICES = [
+        ("", "All"),
+        ("NEW", "New"),
+        ("ANSWERED", "Answered"),
+        ("BUSY", "Busy"),
+        ("PENDING", "Pending"),
+    ]
+
+    start_date = forms.DateTimeField(
+        label="Created from",
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "form-control"}
+        ),
+        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
+    )
+
+    end_date = forms.DateTimeField(
+        label="Created to",
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "form-control"}
+        ),
+        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
+    )
+
+    src = forms.CharField(
+        label="Source number",
+        max_length=16,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter source number"}
+        ),
+    )
+
+    dst = forms.CharField(
+        label="Destination number",
+        max_length=16,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter destination number"}
+        ),
+    )
+
+    dial_status = forms.ChoiceField(
+        label="Dial status",
+        choices=DIAL_STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    service = forms.ChoiceField(
+        label="Service",
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        choices=[("", "All")],
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically populate service list
+        services = CallbackService.objects.filter(is_active=True)
+        service_choices = [("", "All")] + [(s.id, s.name) for s in services]
+        self.fields["service"].choices = service_choices

@@ -4,8 +4,7 @@ import os
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
-from django.db import models, transaction
-from django.db.models import Q, F, CheckConstraint
+from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinValueValidator,
@@ -162,7 +161,7 @@ class DialplanContext(models.Model):
     )
 
     class Meta:
-        db_table = "diaplan_contexts"
+        db_table = "dialplan_contexts"
         verbose_name_plural = "04. Dialplan contexts"
 
     def __str__(self):

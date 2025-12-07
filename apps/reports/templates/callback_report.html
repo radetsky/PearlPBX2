@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% load static %}
+
+{% block content %}
+    <div class="uk-container uk-container-expand uk-margin-top">
+        <h1 class="uk-heading-line uk-text-center"><span>Callback Report</span></h1>
+        <!-- Filter form -->
+        <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+            <div class="uk-card-header uk-padding-small">
+                <h3 class="uk-card-title uk-margin-remove-bottom">
+                    <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+                </h3>
+            </div>
+
+            <form method="get" class="uk-form-stacked">
+                <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                    <div>
+                        <label class="uk-form-label" for="id_start_date">{{ form.start_date.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.start_date|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_end_date">{{ form.end_date.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.end_date|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_src">{{ form.src.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.src|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_dst">{{ form.dst.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.dst|add_class:"uk-input uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_dial_status">{{ form.dial_status.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.dial_status|add_class:"uk-select uk-border-rounded" }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="uk-form-label" for="id_service">{{ form.service.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.service|add_class:"uk-select uk-border-rounded" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="uk-margin-top">
+                    <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
+                        <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                    </button>
+                    <a href="{% url 'callback_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
+                        <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                    </a>
+                    {% if callbacks %}
+                        <button type="submit" name="export" value="csv" class="uk-button uk-border-rounded uk-button-secondary">
+                            <span uk-icon="download" class="uk-margin-small-right"></span>Export CSV
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        {% if callbacks %}
+        <!-- Results table -->
+        <div class="uk-margin-large-top">
+            <div class="uk-card uk-card-default">
+                <div class="uk-card-header">
+                    <h3 class="uk-card-title uk-margin-remove-bottom">
+                        <span uk-icon="table" class="uk-margin-small-right"></span>
+                        Results ({{ callbacks.paginator.count }} records)
+                    </h3>
+                </div>
+                <div class="uk-card-body uk-padding-remove">
+                    <div class="uk-overflow-auto">
+                        <table class="uk-table uk-table-hover uk-table-striped uk-table-small">
+                            <thead>
+                                <tr>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="hashtag" class="uk-margin-small-right"></span>ID
+                                    </th>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>Created
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Source
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
+                                    </th>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="info" class="uk-margin-small-right"></span>Status
+                                    </th>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Updated
+                                    </th>
+                                    <th class="uk-table-shrink uk-width-small">
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Schedule
+                                    </th>
+                                    <th>
+                                        <span uk-icon="server" class="uk-margin-small-right"></span>Service
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cb in callbacks %}
+                                <tr class="uk-animation-fade callback-row">
+                                    <td class="uk-text-bold">{{ cb.id }}</td>
+                                    <td class="uk-text-nowrap uk-text-small">
+                                        {{ cb.created|date:"d.m.Y" }}
+                                        <span class="uk-text-muted">{{ cb.created|date:"H:i:s" }}</span>
+                                    </td>
+                                    <td class="uk-text-bold">{{ cb.src|default:"-" }}</td>
+                                    <td class="uk-text-bold">{{ cb.dst|default:"-" }}</td>
+                                    <td style="max-width: 120px;">
+                                        {% if cb.dial_status == 'ANSWERED' %}
+                                            <span class="uk-badge uk-badge-answered">{{ cb.dial_status }}</span>
+                                        {% elif cb.dial_status == 'BUSY' %}
+                                            <span class="uk-badge uk-badge-busy">{{ cb.dial_status }}</span>
+                                        {% elif cb.dial_status == 'NEW' %}
+                                            <span class="uk-badge" style="background: #1e87f0;">{{ cb.dial_status }}</span>
+                                        {% elif cb.dial_status == 'PENDING' %}
+                                            <span class="uk-badge" style="background: #faa05a;">{{ cb.dial_status }}</span>
+                                        {% else %}
+                                            <span class="uk-badge uk-badge-failed">{{ cb.dial_status|default:"UNKNOWN" }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="uk-text-nowrap uk-text-small">
+                                        {% if cb.updated %}
+                                            {{ cb.updated|date:"d.m.Y" }}
+                                            <span class="uk-text-muted">{{ cb.updated|date:"H:i:s" }}</span>
+                                        {% else %}
+                                            <span class="uk-text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="uk-text-nowrap uk-text-small">
+                                        {{ cb.schedule_time|date:"d.m.Y" }}
+                                        <span class="uk-text-muted">{{ cb.schedule_time|date:"H:i:s" }}</span>
+                                    </td>
+                                    <td class="uk-text-truncate uk-text-small" style="max-width: 150px;">
+                                        {{ cb.service.name|default:"-" }}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="uk-text-center uk-text-muted uk-padding">
+                                        <div uk-icon="icon: info; ratio: 2"></div>
+                                        <p class="uk-margin-small-top">No data found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                {% if callbacks.has_other_pages %}
+                <div class="uk-card-footer">
+                    <ul class="uk-pagination uk-flex-center uk-margin-remove">
+                        {% if callbacks.has_previous %}
+                            <li>
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ callbacks.previous_page_number }}">
+                                    <span uk-icon="chevron-left"></span>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <li class="uk-active">
+                            <span>{{ callbacks.number }} of {{ callbacks.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if callbacks.has_next %}
+                            <li>
+                                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ callbacks.next_page_number }}">
+                                    <span uk-icon="chevron-right"></span>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if statistics %}
+        <!-- Statistics -->
+        <div class="uk-margin-large-top">
+            <h3 class="uk-heading-divider">Statistics</h3>
+            <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-5@m uk-text-center" uk-grid>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
+                        <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_callbacks }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Total callbacks</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: plus-circle; ratio: 2" style="color: #1e87f0;"></span>
+                        <h3 class="uk-card-title uk-margin-small-top" style="color: #1e87f0;">{{ statistics.new_callbacks }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">New</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
+                        <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_callbacks }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Answered</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: ban; ratio: 2" class="uk-text-danger"></span>
+                        <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.busy_callbacks }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Busy</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
+                        <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
+                        <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.pending_callbacks }}</h3>
+                        <p class="uk-text-meta uk-margin-remove">Pending</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.stats-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = (index * 0.1) + 's';
+            });
+
+            const rows = document.querySelectorAll('.callback-row');
+            rows.forEach((row, index) => {
+                row.style.animationDelay = (index * 0.05) + 's';
+
+                row.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-1px)';
+                });
+
+                row.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+{% endblock content %}

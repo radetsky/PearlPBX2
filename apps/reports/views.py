@@ -8,9 +8,11 @@ from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 
+from apps.callback.models import CallbackNumber
+
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
-from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm
+from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm, CallbackNumberReportForm
 
 from core.models import MonitorFilenames
 
@@ -21,6 +23,8 @@ from django.db.models.functions import Cast
 from django.db.models.functions import TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
+
+
 
 # AJAX endpoint: return all QueueLog records for a given callid as JSON
 class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
@@ -551,6 +555,94 @@ class CDRReportView(ReportViewPermissionMixin, View):
                     cdr.disposition,
                     cdr.channel,
                     cdr.dstchannel,
+                ]
+            )
+
+        return response
+
+class CallbackNumberReportView(ReportViewPermissionMixin, View):
+    def get(self, request):
+        form = CallbackNumberReportForm(request.GET or None)
+        callbacks = None
+        statistics = None
+
+        def filter_callback_queryset(form):
+            qs = CallbackNumber.objects.all()
+            if not form.is_valid():
+                return qs.none()
+            data = form.cleaned_data
+            if data.get("start_date"):
+                qs = qs.filter(created__gte=data["start_date"])
+            if data.get("end_date"):
+                qs = qs.filter(created__lte=data["end_date"])
+            if data.get("src"):
+                qs = qs.filter(src__icontains=data["src"])
+            if data.get("dst"):
+                qs = qs.filter(dst__icontains=data["dst"])
+            if data.get("dial_status"):
+                qs = qs.filter(dial_status=data["dial_status"])
+            if data.get("service"):
+                qs = qs.filter(service_id=data["service"])
+            return qs.order_by("-created")
+
+        if form.is_valid():
+            callbacks = filter_callback_queryset(form)
+
+            statistics = {
+                "total_callbacks": callbacks.count(),
+                "new_callbacks": callbacks.filter(dial_status="NEW").count(),
+                "answered_callbacks": callbacks.filter(dial_status="ANSWERED").count(),
+                "busy_callbacks": callbacks.filter(dial_status="BUSY").count(),
+                "pending_callbacks": callbacks.filter(dial_status="PENDING").count(),
+            }
+
+            paginator = Paginator(callbacks, 50)
+            page_number = request.GET.get("page")
+            callbacks = paginator.get_page(page_number)
+
+        if "export" in request.GET and form.is_valid():
+            export_queryset = filter_callback_queryset(form)
+            return self.export_callback_csv(request, export_queryset)
+
+        context = {
+            "form": form,
+            "callbacks": callbacks,
+            "statistics": statistics,
+        }
+
+        return render(request, "callback_report.html", context)
+
+    @staticmethod
+    def export_callback_csv(request, queryset):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="callback_report.csv"'
+        response.write("\ufeff")  # BOM for UTF-8
+
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "ID",
+                "Created",
+                "Source",
+                "Destination",
+                "Status",
+                "Updated",
+                "Schedule Time",
+                "Service",
+            ]
+        )
+
+        for cb in queryset:
+            writer.writerow(
+                [
+                    cb.id,
+                    cb.created,
+                    cb.src,
+                    cb.dst,
+                    cb.dial_status,
+                    cb.updated,
+                    cb.schedule_time,
+                    cb.service.name if cb.service else "",
                 ]
             )
 

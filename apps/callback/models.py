@@ -34,6 +34,7 @@ class CallbackNumber(models.Model):
         ('NEW', 'New'),
         ('ANSWERED', 'Answered'),
         ('BUSY', 'Busy'),
+        ('PENDING', 'Pending'),
     ]
 
     id = models.BigAutoField(primary_key=True)
