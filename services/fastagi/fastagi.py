@@ -230,14 +230,14 @@ class Database:
 
             session.execute(
                 text(
-                    """INSERT INTO callback_number (src, dst, service_id, scheduled_time)
+                    """INSERT INTO callback_number (src, dst, service_id, schedule_time)
                         VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name), now() + interval ':delay_seconds seconds');"""
                 ),
                 {
                     "src": src,
                     "dst": dst,
                     "service_name": service_name,
-                    "delay_seconds": delay_seconds,
+                    "delay_seconds": int(delay_seconds),
                 },
             )
             session.commit()
