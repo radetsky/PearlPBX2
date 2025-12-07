@@ -790,7 +790,6 @@ def make_manager_conf():
     plaintext = "; === This is auto generated file. Do not edit it! ===\n"
     plaintext += "; === Use PearlPBX admin panel! ===\n"
 
-    manager_host = settings.ASTERISK_MANAGER_HOST
     manager_port = settings.ASTERISK_MANAGER_PORT
     manager_username = settings.ASTERISK_MANAGER_USERNAME
     manager_secret = settings.ASTERISK_MANAGER_SECRET

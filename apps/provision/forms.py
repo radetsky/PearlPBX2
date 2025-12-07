@@ -4,7 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.provision.models import PhoneDevice
-from core.models import SIPUser, Settings
+from core.models import SIPUser
 
 
 class SIPUserChoiceField(forms.ModelChoiceField):

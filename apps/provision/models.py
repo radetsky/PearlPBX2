@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import SIPUser, AuditFields, Settings
+from core.models import SIPUser, AuditFields
 
 class PhoneDevice(AuditFields):
 

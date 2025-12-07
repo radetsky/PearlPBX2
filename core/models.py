@@ -4,8 +4,7 @@ import os
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
-from django.db import models, transaction
-from django.db.models import Q, F, CheckConstraint
+from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinValueValidator,
