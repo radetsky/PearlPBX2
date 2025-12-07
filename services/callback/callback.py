@@ -154,7 +154,7 @@ class Callback:
 
         kwargs = {
             "ActionID": dst,
-            "Channel": f"Local/{dst}@{context_outbound}",
+            "Channel": f"Local/{dst}@{context_outbound}/n",
             "Context": context_inbound,
             "Exten": dst,
             "Priority": 1,
@@ -168,7 +168,13 @@ class Callback:
 
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
-        resp = self.ami.send_action(action)
+        try:
+            resp = self.ami.send_action(action)
+        except Exception as e:
+            self.logger.error(f"AMI connection error: {e}")
+            self.ami = self.ami_connect()
+            resp = self.ami.send_action(action)
+
         self.logger.info(resp.response)
         if resp.response.status == "Success":
             self.update_call_status(id, dst, "ANSWERED")
