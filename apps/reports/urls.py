@@ -5,6 +5,7 @@ from apps.reports.views import (
     AudioFileView,
     QueueLogReportView,
     QueueLogRecordsByCallIdView,
+    CallbackNumberReportView,
 )
 
 urlpatterns = [
@@ -13,4 +14,6 @@ urlpatterns = [
     path("audio/<uuid:record_id>/", AudioFileView.as_view(), name="audio_file"),
     path("queuelog/", QueueLogReportView.as_view(), name="queuelog_report"),
     path("queuelog/records/<str:callid>/", QueueLogRecordsByCallIdView.as_view(), name="queuelog_records_by_callid"),
+    path("callback/", CallbackNumberReportView.as_view(), name="callback_report"),
+
 ]
