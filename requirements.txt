@@ -1,10 +1,14 @@
 asgiref==3.10.0
 asterisk-ami==0.1.7
+channels==4.3.2
+channels_redis==4.3.0
 dj-database-url==3.0.1
 Django==5.2.8
 django-environ==0.12.0
+msgpack==1.1.2
 psycopg2-binary==2.9.11
 python-decouple==3.8
+redis==7.1.0
 sqlparse==0.5.3
 typing_extensions==4.15.0
 Unipath==1.1

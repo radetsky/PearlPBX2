@@ -2,7 +2,9 @@ import argparse
 import json
 import logging
 import os
+import signal
 import psycopg2
+import sys
 import time
 
 from asterisk.ami import AMIClient, SimpleAction
@@ -303,15 +305,18 @@ def setup_processes(count: int):
             break
 
 
+def handle_signal(signum, frame):
+    """Обробка сигналів для graceful shutdown"""
+    print(f"Received signal {signum}")
+    sys.exit(0)
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
     args = parse_args()
-    print("Arguments:", args)
     env_vars = read_env_vars(args)
-    print("Environment Variables:", env_vars)
     params = merge_args_env(args, env_vars)
-
-    print("Parameters:", params)
-
     if args.dump_config:
         print(json.dumps(params, indent=4))
         exit(0)
