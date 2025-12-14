@@ -48,6 +48,7 @@ class DashboardAMIListener:
 
             # Події черг
             'QueueMemberStatus': self.handle_queue_member_status,
+            'QueueMember': self.handle_queue_member,
             'QueueCallerJoin': self.handle_queue_caller_join,
             'QueueCallerLeave': self.handle_queue_caller_leave,
             'QueueCallerAbandon': self.handle_queue_caller_leave,
@@ -104,7 +105,7 @@ class DashboardAMIListener:
                 json.dumps(message)
             )
 
-            self.logger.debug(f"Published event: {event_type}")
+            self.logger.debug(f"Published event: {event_type} {data}")
         except Exception as e:
             self.logger.error(f"Error publishing event: {e}")
 
@@ -410,8 +411,65 @@ class DashboardAMIListener:
 
     # ============ ОБРОБНИКИ ПОДІЙ ЧЕРГ ============
 
+    async def handle_queue_params(self, event):
+        """Обробка параметрів черги"""
+        # Event: QueueParams
+        # Queue: DEFAULT
+        # Max: 0
+        # Strategy: ringall
+        # Calls: 0
+        # Holdtime: 0
+        # TalkTime: 33
+        # Completed: 3
+        # Abandoned: 0
+        # ServiceLevel: 0
+        # ServicelevelPerf: 66.7
+        # ServicelevelPerf2: 66.7
+        # Weight: 0
+
+        queue_name = event.get('Queue')
+        if queue_name not in self.queue_state:
+            self.queue_state[queue_name] = {
+                'members': {}, 'calls': {}, 'stats': {'waiting': 0}}
+        # Можна зберегти додаткові параметри черги, якщо потрібно
+        self.queue_state[queue_name]['params'] = {
+            'max': event.get('Max'),
+            'strategy': event.get('Strategy'),
+            'calls': event.get('Calls'),
+            'holdtime': event.get('Holdtime'),
+            'talktime': event.get('TalkTime'),
+            'completed': event.get('Completed'),
+            'abandoned': event.get('Abandoned'),
+            'service_level': event.get('ServiceLevel'),
+            'service_level_perf': event.get('ServicelevelPerf'),
+            'service_level_perf2': event.get('ServicelevelPerf2'),
+            'weight': event.get('Weight')
+        }
+        self.logger.debug(f"Queue {queue_name} parameters updated")
+
     async def handle_queue_member_status(self, event):
         """Обробка статусу агента"""
+
+        """Event: QueueMemberStatus
+            Privilege: agent,all
+            Timestamp: 1765742326.994064
+            Queue: DEFAULT
+            MemberName: 201
+            Interface: PJSIP/ppbxuser201
+            StateInterface: PJSIP/ppbxuser201
+            Membership: static
+            Penalty: 0
+            CallsTaken: 0
+            LastCall: 0
+            LastPause: 0
+            LoginTime: 1765220918
+            InCall: 0
+            Status: 1
+            Paused: 0
+            PausedReason:
+            Ringinuse: 0
+            Wrapuptime: 0"""
+
         queue_name = event.get('Queue')
         member_name = event.get('MemberName')
         status = event.get('Status')
@@ -433,7 +491,17 @@ class DashboardAMIListener:
             'status': status,
             'paused': paused,
             'calls_taken': int(calls_taken),
-            'last_update': datetime.now().isoformat()
+            'last_update': datetime.now().isoformat(),
+            'logintime': event.get('LoginTime'),
+            'location': event.get('Location'),
+            'state_interface': event.get('StateInterface'),
+            'membership': event.get('Membership'),
+            'penalty': event.get('Penalty'),
+            'last_call': event.get('LastCall'),
+            'last_pause': event.get('LastPause'),
+            'in_call': event.get('InCall'),
+            'paused_reason': event.get('PausedReason'),
+            'wrapup_time': event.get('Wrapuptime')
         }
 
         await self.update_queue_state(queue_name)
@@ -442,7 +510,98 @@ class DashboardAMIListener:
             'queue': queue_name,
             'member': member_name,
             'status': status,
-            'paused': paused
+            'paused': paused,
+            'calls_taken': int(calls_taken),
+            'last_update': datetime.now().isoformat(),
+            'logintime': event.get('LoginTime'),
+            'location': event.get('Location'),
+            'state_interface': event.get('StateInterface'),
+            'membership': event.get('Membership'),
+            'penalty': event.get('Penalty'),
+            'last_call': event.get('LastCall'),
+            'last_pause': event.get('LastPause'),
+            'in_call': event.get('InCall'),
+            'paused_reason': event.get('PausedReason'),
+            'wrapup_time': event.get('Wrapuptime')
+        })
+
+        self.logger.info(
+            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}")
+
+
+    async def handle_queue_member(self, event):
+        """Обробка статусу агента"""
+
+        """Event: QueueMember
+                Queue: check_local
+                Name: rad
+                Location: Local/0504139380@mobile-out
+                StateInterface: Local/0504139380@mobile-out
+                Membership: static
+                Penalty: 0
+                CallsTaken: 0
+                LastCall: 0
+                LastPause: 0
+                LoginTime: 1765220918
+                InCall: 0
+                Status: 1
+                Paused: 0
+                PausedReason:
+                Wrapuptime: 0"""
+
+        queue_name = event.get('Queue')
+        member_name = event.get('Name')
+        status = event.get('Status')
+        paused = event.get('Paused', '0') == '1'
+        calls_taken = event.get('CallsTaken', '0')
+
+        if queue_name not in self.queue_state:
+                self.queue_state[queue_name] = {
+                    'members': {},
+                    'calls': {},
+                    'stats': {
+                        'waiting': 0,
+                        'answered': 0
+                    }
+                }
+
+        self.queue_state[queue_name]['members'][member_name] = {
+            'name': member_name,
+            'status': status,
+            'paused': paused,
+            'calls_taken': int(calls_taken),
+            'last_update': datetime.now().isoformat(),
+            'logintime': event.get('LoginTime'),
+            'location': event.get('Location'),
+            'state_interface': event.get('StateInterface'),
+            'membership': event.get('Membership'),
+            'penalty': event.get('Penalty'),
+            'last_call': event.get('LastCall'),
+            'last_pause': event.get('LastPause'),
+            'in_call': event.get('InCall'),
+            'paused_reason': event.get('PausedReason'),
+            'wrapup_time': event.get('Wrapuptime')
+        }
+
+        await self.update_queue_state(queue_name)
+
+        await self.publish_event('queue_member_status', {
+            'queue': queue_name,
+            'member': member_name,
+            'status': status,
+            'paused': paused,
+            'calls_taken': int(calls_taken),
+            'last_update': datetime.now().isoformat(),
+            'logintime': event.get('LoginTime'),
+            'location': event.get('Location'),
+            'state_interface': event.get('StateInterface'),
+            'membership': event.get('Membership'),
+            'penalty': event.get('Penalty'),
+            'last_call': event.get('LastCall'),
+            'last_pause': event.get('LastPause'),
+            'in_call': event.get('InCall'),
+            'paused_reason': event.get('PausedReason'),
+            'wrapup_time': event.get('Wrapuptime')
         })
 
         self.logger.info(

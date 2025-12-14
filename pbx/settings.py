@@ -36,11 +36,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     "core",
     "apps.api",
     "apps.callback",
     "apps.provision",
     "apps.reports",
+    "apps.dashboard",
     "pbx.apps.MyAdminConfig",  # replaces 'django.contrib.admin'
 ]
 
@@ -122,7 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"  # For collectstatic in production
 
@@ -170,6 +172,8 @@ LOGGING = {
         },
     },
 }
+
+ASGI_APPLICATION = 'pbx.asgi.application'
 
 CHANNEL_LAYERS = {
     'default': {
