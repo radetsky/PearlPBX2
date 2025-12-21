@@ -30,6 +30,8 @@
 
     {% block head %}
     {% endblock %}
+    {% block extra_css %}
+    {% endblock %}
 </head>
 
 <body {% block body_attr %}{% endblock %}>
@@ -171,6 +173,8 @@
     {% endblock body_js %}
 
 {% endblock body %}
+{% block extra_js %}{% endblock extra_js %}
+
 </body>
 
 </html>

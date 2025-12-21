@@ -15,5 +15,4 @@ urlpatterns = [
     path("queuelog/", QueueLogReportView.as_view(), name="queuelog_report"),
     path("queuelog/records/<str:callid>/", QueueLogRecordsByCallIdView.as_view(), name="queuelog_records_by_callid"),
     path("callback/", CallbackNumberReportView.as_view(), name="callback_report"),
-
 ]
