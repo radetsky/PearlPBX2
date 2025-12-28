@@ -104,13 +104,6 @@ class SIPUserForm(forms.ModelForm):
         help_text="Select type of authentication",
         choices=SIPUser.AUTHTYPE_CHOICES,
     )
-    integration = forms.ChoiceField(
-        label="Integration",
-        required=True,
-        help_text="Select type of integration",
-        choices=SIPUser.INTEGRATION_CHOICES,
-    )
-
     custom_extension = forms.CharField(
         label="Incoming dialplan",
         widget=forms.Textarea,
@@ -150,7 +143,6 @@ class SIPUserForm(forms.ModelForm):
             "extension",
             "routing_table",
             "auth_type",
-            "integration",
             "custom_extension",
             "custom_settings",
             "custom_auth_settings",

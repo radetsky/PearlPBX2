@@ -236,11 +236,6 @@ class RoutingTable(models.Model):
 
 
 class SIPUser(models.Model):
-    INTEGRATION_CHOICES = [
-        ("none", "None"),
-        ("your_taxi", "Your Taxi"),
-    ]
-
     AUTHTYPE_CHOICES = [
         ("userpass", "Plaintext"),
         ("md5", "MD5"),
@@ -305,16 +300,6 @@ class SIPUser(models.Model):
         default="userpass",
         help_text="Type of authentication",
         verbose_name="Auth type",
-    )
-    integration = models.CharField(
-        max_length=32,
-        unique=False,
-        null=True,
-        blank=True,
-        choices=INTEGRATION_CHOICES,
-        default="none",
-        help_text="Integration with external services",
-        verbose_name="Integration",
     )
     allowed_extension = models.CharField(
         max_length=32,
