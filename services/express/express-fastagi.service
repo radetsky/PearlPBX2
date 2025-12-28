@@ -1,0 +1,28 @@
+[Unit]
+Description=Express FastAGI Service
+After=network.target asterisk.service
+Wants=asterisk.service
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+WorkingDirectory=/opt/express-fastagi
+Environment="PATH=/opt/express-fastagi/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/express-fastagi/venv/bin/python /opt/express-fastagi/express_fastagi.py
+Restart=always
+RestartSec=10
+
+# Logging to systemd journal only
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=express-fastagi
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
