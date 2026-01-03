@@ -17,10 +17,8 @@ class ReportViewPermissionMixin(AccessMixin):
         "MonitorReportView": "view_call_recordings",
         "AudioFileView": "view_call_recordings",
         "QueueLogReportView": "view_queue_reports",
+        "QueueLogRecordsByCallIdView": "view_queue_reports",
         "CallbackNumberReportView": "view_callback_numbers",
-        "AutoDialerLogsView": "view_autodialer_logs",
-        "MissedCallsReportView": "view_missed_calls_report",
-
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
