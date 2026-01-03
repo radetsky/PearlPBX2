@@ -17,9 +17,10 @@ class ReportViewPermissionMixin(AccessMixin):
         "MonitorReportView": "view_call_recordings",
         "AudioFileView": "view_call_recordings",
         "QueueLogReportView": "view_queue_reports",
-        "CallbackStatisticsView": "view_callback_statistics",
+        "CallbackNumberReportView": "view_callback_numbers",
         "AutoDialerLogsView": "view_autodialer_logs",
         "MissedCallsReportView": "view_missed_calls_report",
+
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
@@ -101,31 +102,3 @@ class ReportViewPermissionMixin(AccessMixin):
             f"{resolved_login_url}?{self.redirect_field_name}={path}"
         )
 
-
-# Example usage in views.py:
-
-"""
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from .mixins import GroupCheckMixin
-
-# Auto-detection based on class name
-class CDRReportView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/cdr_report.html'
-    # Permission 'view_cdr_report' will be auto-detected
-
-class CallRecordingsView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/call_recordings.html'
-    # Permission 'view_call_recordings' will be auto-detected
-
-# Manual permission specification
-class CustomReportView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/custom.html'
-    required_permission = 'view_cdr_report'  # Explicitly set permission
-
-# With custom settings
-class QueueReportsView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/queue_reports.html'
-    raise_exception = True  # Raise 403 instead of redirecting
-    permission_denied_message = "Access to queue reports is restricted."
-"""
