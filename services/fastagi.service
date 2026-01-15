@@ -1,0 +1,26 @@
+[Unit]
+Description=FastAGI Server for PearlPBX2
+After=network.target postgresql.service
+Requires=network.target
+
+[Service]
+Type=simple
+Environment=HOME=/usr/local/PearlPBX2/services/fastagi
+WorkingDirectory=/usr/local/PearlPBX2/services/fastagi
+ExecStart=/usr/local/PearlPBX2/services/fastagi/.python-venv/bin/python /usr/local/PearlPBX2/services/fastagi/fastagi.py
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=fastagi
+RuntimeDirectoryMode=0755
+User=asterisk
+Group=asterisk
+EnvironmentFile=/usr/local/PearlPBX2/services/fastagi/env
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/spool/asterisk/monitor
+
+[Install]
+WantedBy=multi-user.target

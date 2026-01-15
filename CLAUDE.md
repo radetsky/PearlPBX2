@@ -102,19 +102,6 @@ gunicorn pbx.wsgi:application --bind 0.0.0.0:8000
 uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000
 ```
 
-### Testing
-```bash
-# Run all tests
-python manage.py test
-
-# Run specific app tests
-python manage.py test apps.api
-python manage.py test core
-
-# Run with verbose output
-python manage.py test --verbosity=2
-```
-
 ### Static Files
 ```bash
 # Collect static files for production
@@ -179,6 +166,7 @@ python listener.py
 - Key validators: `validate_alphanumeric`, `validate_bind_ip`, `validate_asterisk_context`, `validate_asterisk_extension_prefix`
 - Dialplan extensions use Asterisk AEL syntax and must be validated with `AsteriskDialplanValidator`
 - RoutingTable and DialplanContext names must be unique across both models
+- Password fields should use `PasswordWithToggleInput` widget from `core/widgets.py`
 
 ### Security Considerations
 - Django runs as user `asterisk` to access `/etc/asterisk` (see INSTALL.md)
@@ -208,13 +196,6 @@ python listener.py
 ### Environment Variables
 All services can be configured via environment variables. Key variables are documented in `env.sample`. Always check existing documentation before implementing new features.
 
-## Important Notes from Copilot Instructions
-
-- Always check for existing solutions on the internet (especially GitHub) before implementing new features
-- Consult Django and Asterisk documentation for best practices
-- Follow security best practices, especially for user input and authentication
-- If Django admin cannot implement required logic, create custom views and templates
-
 ## Project Settings
 
 **Django Settings Module**: `pbx.settings`
@@ -240,3 +221,27 @@ All services can be configured via environment variables. Key variables are docu
 - `/reports/` - CDR and call reports
 - `/api/v1/` - REST API endpoints
 - `/` - Core application views (login, etc.)
+
+## Testing
+
+```bash
+# Run all tests
+python manage.py test
+
+# Run tests for a specific app
+python manage.py test core
+python manage.py test apps.api
+python manage.py test apps.callback
+python manage.py test apps.dashboard
+python manage.py test apps.provision
+python manage.py test apps.reports
+
+# Run a specific test class
+python manage.py test core.tests.TestClassName
+
+# Run a single test method
+python manage.py test core.tests.TestClassName.test_method_name
+
+# Verbose output
+python manage.py test --verbosity=2
+```
