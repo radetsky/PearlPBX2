@@ -296,9 +296,10 @@ def make_pjsip_conf_users_template():
     result = "; ==== Users template ====\n"
     result += "[user-template](!)\n"
     settings = Settings.objects.first()
-    user_template = settings.user_template
-    if user_template and not user_template.endswith("\n"):
-        user_template += "\n"
+    if settings and settings.user_template:
+        user_template = settings.user_template
+        if not user_template.endswith("\n"):
+            user_template += "\n"
         result += user_template
     result += "\n"
     return result
@@ -308,9 +309,10 @@ def make_pjsip_conf_users_aor_template():
     result = "; ==== Users AOR template ====\n"
     result += "[user-aor-template](!)\n"
     settings = Settings.objects.first()
-    user_aor_template = settings.user_aor_template
-    if user_aor_template and not user_aor_template.endswith("\n"):
-        user_aor_template += "\n"
+    if settings and settings.user_aor_template:
+        user_aor_template = settings.user_aor_template
+        if not user_aor_template.endswith("\n"):
+            user_aor_template += "\n"
         result += user_aor_template
     result += "qualify_frequency=30\n"
     result += "qualify_timeout=5.0\n"
@@ -322,10 +324,11 @@ def make_pjsip_conf_users_auth_template():
     result = "; ==== Users AUTH template ====\n"
     result += "[user-auth-template](!)\n"
     settings = Settings.objects.first()
-    user_auth_template = settings.user_auth_template
-    if not user_auth_template.endswith("\n"):
-        user_auth_template += "\n"
-    result += user_auth_template
+    if settings and settings.user_auth_template:
+        user_auth_template = settings.user_auth_template
+        if not user_auth_template.endswith("\n"):
+            user_auth_template += "\n"
+        result += user_auth_template
     result += "\n\n"
     return result
 
@@ -366,6 +369,9 @@ def make_pjsip_conf_users():
     result = "; ==== Users section ====\n"
     users = SIPUser.objects.all()
     for user in users:
+        if not user.transport or not user.routing_table:
+            continue
+
         if user.transport.protocol == "wss":
             result += __make_pjsip_conf_webrtc_user(user)
             continue
@@ -384,7 +390,7 @@ def make_pjsip_conf_users():
             result += "rtp_symmetric=yes\n"
             result += "rewrite_contact=yes\n"
             result += "force_rport=yes\n"
-        result += user.custom_settings + "\n\n"
+        result += (user.custom_settings or "") + "\n\n"
 
         result += f"[{user.username}](user-auth-template)\n"
         if user.auth_type == SIPUser.AUTHTYPE_CHOICES[0][0]:  # userpass
@@ -399,10 +405,10 @@ def make_pjsip_conf_users():
             result += f"username = {user.username}\n"
             result += f"realm = {user.realm}\n"
 
-        result += user.custom_auth_settings + "\n\n"
+        result += (user.custom_auth_settings or "") + "\n\n"
 
         result += f"[{user.username}](user-aor-template)\n"
-        result += user.custom_aor_settings + "\n\n"
+        result += (user.custom_aor_settings or "") + "\n\n"
 
         result += "\n"
 
@@ -414,24 +420,30 @@ def make_pjsip_webrtc_templates():
     if len(qs) == 0:
         return ""
 
+    settings = Settings.objects.first()
+    if not settings:
+        return ""
+
     result = "; ==== WebRTC templates ====\n"
     result += """; WebRTC Template for Endpoint
 ; -----------
 [webrtc-template-endpoint](!)\n"""
-    settings = Settings.objects.first()
-    result += settings.webrtc_template
+    if settings.webrtc_template:
+        result += settings.webrtc_template
     result += "\n\n"
 
     result += """; WebRTC Template for AOR
 ; -----------
 [webrtc-template-aor](!)\n"""
-    result += settings.webrtc_aor_template
+    if settings.webrtc_aor_template:
+        result += settings.webrtc_aor_template
     result += "\n\n"
 
     result += """; WebRTC Template for Auth
 ; -----------
 [webrtc-template-auth](!)\n"""
-    result += settings.webrtc_auth_template
+    if settings.webrtc_auth_template:
+        result += settings.webrtc_auth_template
     result += "\n\n"
 
     return result
