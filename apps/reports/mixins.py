@@ -1,7 +1,8 @@
+from typing import Any
 from django.contrib.auth.mixins import AccessMixin
 from django.shortcuts import resolve_url
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.http import HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.core.exceptions import PermissionDenied, ImproperlyConfigured
 
 
@@ -10,6 +11,8 @@ class ReportViewPermissionMixin(AccessMixin):
     Mixin that checks if user has specific permission based on view name or explicit permission.
     Can be used with auto-detection or manual permission specification.
     """
+
+    request: HttpRequest
 
     # Permission mapping based on view class names
     VIEW_PERMISSION_MAPPING = {
@@ -66,14 +69,16 @@ class ReportViewPermissionMixin(AccessMixin):
         # Check if user has permission directly or through group
         return self.request.user.has_perm(f"auth.{permission}")
 
-    def dispatch(self, request, *args, **kwargs):
+    def dispatch(
+        self, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
         """
         Check permission before dispatching to view.
         """
         if not self.has_permission():
             return self.handle_no_permission()
 
-        return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
 
     def handle_no_permission(self):
         """
