@@ -11,8 +11,10 @@ class MOHFileSystemStorage(FileSystemStorage):
         super().__init__(*args, **kwargs)
         if settings.DEVMODE == settings.DEVMODE_WITHOUT_ASTERISK:
             self.location = "moh/"
+            self.base_url = "/moh/"
         else:
             self.location = "/var/lib/asterisk/moh/"
+            self.base_url = "/moh/"
 
 
 class SoundsFileSystemStorage(FileSystemStorage):

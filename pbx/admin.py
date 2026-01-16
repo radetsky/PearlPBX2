@@ -17,6 +17,7 @@ from core.conf import (
     make_queuerules_conf,
     make_extensions_ael,
     make_manager_conf,
+    make_musiconhold_conf,
 )
 
 from core.models import ConfigurationFile, SystemConfiguration
@@ -57,6 +58,7 @@ class ApplyChangesView(TemplateView):
         cfgfiles["/etc/asterisk/queues.conf"] = make_queues_conf()
         cfgfiles["/etc/asterisk/queuerules.conf"] = make_queuerules_conf()
         cfgfiles["/etc/asterisk/manager.conf"] = make_manager_conf()
+        cfgfiles["/etc/asterisk/musiconhold.conf"] = make_musiconhold_conf()
         for cfg in self.get_latest_configuration_files():
             if cfg.path not in cfgfiles:
                 cfgfiles[cfg.path] = cfg.content

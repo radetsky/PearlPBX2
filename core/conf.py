@@ -16,6 +16,8 @@ from core.models import (
     Queue,
     QueueMember,
     QueueRule,
+    MusicOnHold,
+    MusicOnHoldPlaylistEntry,
 )
 
 from django.conf import settings
@@ -826,6 +828,40 @@ def make_manager_conf():
         plaintext += f"deny = {user.deny}\n" if user.deny else ""
         plaintext += f"permit = {user.permit}\n" if user.permit else ""
         plaintext += f"acl = {user.acl}\n" if user.acl else ""
+        plaintext += "\n"
+
+    return plaintext
+
+
+def make_musiconhold_conf():
+    plaintext = "; === This is auto generated file. Do not edit it! ===\n"
+    plaintext += "; === Use PearlPBX admin panel! ===\n\n"
+
+    plaintext += "[general]\n"
+    plaintext += "cachertclasses=yes\n"
+    plaintext += "preferchannelclass=yes\n\n"
+
+    moh_classes = MusicOnHold.objects.all()
+    for moh in moh_classes:
+        plaintext += f"[{moh.name}]\n"
+        plaintext += f"mode={moh.mode}\n"
+
+        if moh.mode == "files":
+            directory = moh.directory if moh.directory else "moh"
+            plaintext += f"directory=moh/{directory}\n"
+            if moh.sort:
+                plaintext += f"sort={moh.sort}\n"
+
+        elif moh.mode == "playlist":
+            playlist_entries = MusicOnHoldPlaylistEntry.objects.filter(moh_class=moh)
+            for entry in playlist_entries:
+                if entry.file:
+                    file_path = str(entry.file)
+                    file_without_ext = file_path.rsplit(".", 1)[0]
+                    plaintext += f"entry=/var/lib/asterisk/moh/{file_without_ext}\n"
+                elif entry.url:
+                    plaintext += f"entry={entry.url}\n"
+
         plaintext += "\n"
 
     return plaintext
