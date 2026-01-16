@@ -1,0 +1,99 @@
+services:
+  django:
+    build: .
+    container_name: pearlpbx2-django
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pearlpbx2}
+      - DB_USER=${DB_USER:-pearlpbx2}
+      - DB_PASS=${DB_PASS:-pearlpbx2}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ASTERISK_MANAGER_HOST=asterisk
+      - ASTERISK_MANAGER_PORT=5038
+      - ASTERISK_MANAGER_USERNAME=${ASTERISK_MANAGER_USERNAME:-admin}
+      - ASTERISK_MANAGER_SECRET=${ASTERISK_MANAGER_SECRET:-admin}
+      - ASTERISK_MANAGER_BIND=0.0.0.0
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
+      - DEVMODE=${DEVMODE:-Development}
+      - ALLOWED_HOSTS=localhost,127.0.0.1,django
+      - ASTERISK_CONFIG_DIR=/etc/asterisk
+      - ASTERISK_ROOT_DIR=/
+      - ASTERISK_BACKUP_DIR=/var/spool/asterisk/backup
+    volumes:
+      - asterisk_config:/etc/asterisk
+      - asterisk_lib:/var/lib/asterisk
+      - asterisk_spool:/var/spool/asterisk
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  asterisk:
+    image: andrius/asterisk:22
+    container_name: pearlpbx2-asterisk
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10099:10000-10099/udp"
+    volumes:
+      - asterisk_config:/etc/asterisk
+      - asterisk_lib:/var/lib/asterisk
+      - asterisk_spool:/var/spool/asterisk
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    container_name: pearlpbx2-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pearlpbx2}
+      POSTGRES_USER: ${DB_USER:-pearlpbx2}
+      POSTGRES_PASSWORD: ${DB_PASS:-pearlpbx2}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pearlpbx2} -d ${DB_NAME:-pearlpbx2}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+
+  redis:
+    image: redis:7-alpine
+    container_name: pearlpbx2-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+
+networks:
+  pearlpbx:
+    name: pearlpbx
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  asterisk_config:
+  asterisk_lib:
+  asterisk_spool:
