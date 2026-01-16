@@ -1,7 +1,8 @@
+from typing import Any
 from django.contrib.auth.mixins import AccessMixin
 from django.shortcuts import resolve_url
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.http import HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.core.exceptions import PermissionDenied, ImproperlyConfigured
 
 
@@ -11,15 +12,16 @@ class ReportViewPermissionMixin(AccessMixin):
     Can be used with auto-detection or manual permission specification.
     """
 
+    request: HttpRequest
+
     # Permission mapping based on view class names
     VIEW_PERMISSION_MAPPING = {
         "CDRReportView": "view_cdr_report",
         "MonitorReportView": "view_call_recordings",
         "AudioFileView": "view_call_recordings",
         "QueueLogReportView": "view_queue_reports",
-        "CallbackStatisticsView": "view_callback_statistics",
-        "AutoDialerLogsView": "view_autodialer_logs",
-        "MissedCallsReportView": "view_missed_calls_report",
+        "QueueLogRecordsByCallIdView": "view_queue_reports",
+        "CallbackNumberReportView": "view_callback_numbers",
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
@@ -67,14 +69,16 @@ class ReportViewPermissionMixin(AccessMixin):
         # Check if user has permission directly or through group
         return self.request.user.has_perm(f"auth.{permission}")
 
-    def dispatch(self, request, *args, **kwargs):
+    def dispatch(
+        self, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
         """
         Check permission before dispatching to view.
         """
         if not self.has_permission():
             return self.handle_no_permission()
 
-        return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]
 
     def handle_no_permission(self):
         """
@@ -101,31 +105,3 @@ class ReportViewPermissionMixin(AccessMixin):
             f"{resolved_login_url}?{self.redirect_field_name}={path}"
         )
 
-
-# Example usage in views.py:
-
-"""
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from .mixins import GroupCheckMixin
-
-# Auto-detection based on class name
-class CDRReportView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/cdr_report.html'
-    # Permission 'view_cdr_report' will be auto-detected
-
-class CallRecordingsView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/call_recordings.html'
-    # Permission 'view_call_recordings' will be auto-detected
-
-# Manual permission specification
-class CustomReportView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/custom.html'
-    required_permission = 'view_cdr_report'  # Explicitly set permission
-
-# With custom settings
-class QueueReportsView(LoginRequiredMixin, GroupCheckMixin, TemplateView):
-    template_name = 'reports/queue_reports.html'
-    raise_exception = True  # Raise 403 instead of redirecting
-    permission_denied_message = "Access to queue reports is restricted."
-"""

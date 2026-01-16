@@ -1,0 +1,22 @@
+[Unit]
+Description=PearlPBX2 ASGI Uvicorn
+After=network.target
+
+[Service]
+User=asterisk
+Group=asterisk
+WorkingDirectory=/usr/local/PearlPBX2
+
+# Завантаження змінних оточення
+EnvironmentFile=/usr/local/PearlPBX2/.env
+
+ExecStart=/usr/local/PearlPBX2/.venv/bin/uvicorn pbx.asgi:application \
+          --host 127.0.0.1 \
+          --port 8000 \
+          --workers 3
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

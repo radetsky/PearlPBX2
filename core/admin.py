@@ -40,6 +40,9 @@ from .forms import (
     ConfigurationFileForm,
 )
 
+# TODO: Use some template, edit and use UIKIT accordion to make admin forms better readable
+# Right here we just can hide fieldsets
+# [ custom_extension, custom_settings, custom_auth_settings,custom_aor_settings ]
 
 class SIPUserAdmin(admin.ModelAdmin):
     form = SIPUserForm

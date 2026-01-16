@@ -2,6 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.static import serve
 from .admin import ApplyChangesView
 
 urlpatterns = [
@@ -15,3 +16,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Serve MOH files
+MOH_ROOT = "/var/lib/asterisk/moh/" if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK else "moh/"
+urlpatterns += [
+    path("moh/<path:path>", serve, {"document_root": MOH_ROOT}),
+]
