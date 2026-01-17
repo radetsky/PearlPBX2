@@ -24,6 +24,8 @@ from django.db.models.functions import TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
 
+CONTENT_TYPE_CSV = "text/csv"
+
 
 
 # AJAX endpoint: return all QueueLog records for a given callid as JSON
@@ -111,6 +113,14 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
         return {}
 
+    def _get_callerid_for_lost_call(self, lost, CDR):
+        """Extract callerid from CDR or fallback to queue log fields."""
+        if lost.callid:
+            cdr = CDR.objects.filter(uniqueid=lost.callid).first()
+            if cdr:
+                return cdr.src
+        return lost.agent or lost.data1 or lost.callid
+
     def get_lost_and_found_data(self, queryset):
         """Lost and Found report: For each ABANDON, find callerid, then in CDR find calls from/to this number after ABANDON."""
         from apps.reports.models import CDR
@@ -118,22 +128,14 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         lost_calls = queryset.filter(event="ABANDON").order_by("-time")[:50]
         results = []
         for lost in lost_calls:
-            # Get callerid from CDR by uniqueid == lost.callid
-            callerid = None
-            if lost.callid:
-                cdr = CDR.objects.filter(uniqueid=lost.callid).first()
-                if cdr:
-                    callerid = cdr.src
-            if not callerid:
-                callerid = lost.agent or lost.data1 or lost.callid
+            callerid = self._get_callerid_for_lost_call(lost, CDR)
             abandon_time = lost.time
-            # Outgoing: дзвінки з цього номера після abandon
+
             incoming = (
                 CDR.objects.filter(src=callerid, start__gt=abandon_time, disposition="ANSWERED")
                 .order_by("start")
                 .first()
             )
-            # Incoming: дзвінки на цей номер після abandon
             outgoing = (
                 CDR.objects.filter(dst=callerid, start__gt=abandon_time, disposition="ANSWERED")
                 .order_by("start")
@@ -325,7 +327,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
     def export_csv(self, queryset, report_type):
         """Export data to CSV"""
-        response = HttpResponse(content_type="text/csv")
+        response = HttpResponse(content_type=CONTENT_TYPE_CSV)
         response["Content-Disposition"] = (
             f'attachment; filename="queuelog_report_{report_type}.csv"'
         )
@@ -440,39 +442,67 @@ class MonitorReportView(ReportViewPermissionMixin, View):
 
 
 class CDRReportView(ReportViewPermissionMixin, View):
+    def _filter_cdr_queryset(self, form):
+        """Filter CDR queryset based on form data."""
+        qs = CDR.objects.all()
+        if not form.is_valid():
+            return qs.none()
+        data = form.cleaned_data
+        if data.get("start_date"):
+            qs = qs.filter(start__gte=data["start_date"])
+        if data.get("end_date"):
+            qs = qs.filter(end__lte=data["end_date"])
+        if data.get("src_number"):
+            qs = qs.filter(src__icontains=data["src_number"])
+        if data.get("dst_number"):
+            qs = qs.filter(dst__icontains=data["dst_number"])
+        if data.get("src_channel"):
+            qs = qs.filter(channel__icontains=data["src_channel"])
+        if data.get("dst_channel"):
+            qs = qs.filter(dstchannel__icontains=data["dst_channel"])
+        if data.get("disposition"):
+            qs = qs.filter(disposition=data["disposition"])
+        if data.get("min_duration") is not None:
+            qs = qs.filter(duration__gte=data["min_duration"])
+        if data.get("max_duration") is not None:
+            qs = qs.filter(duration__lte=data["max_duration"])
+        return qs.order_by("-start")
+
+    def _cdr_to_dict(self, cdr):
+        """Convert CDR object to dictionary for JSON serialization."""
+        return {
+            "start": cdr.start,
+            "end": cdr.end,
+            "answer": cdr.answer,
+            "src": cdr.src,
+            "dst": cdr.dst,
+            "channel": cdr.channel,
+            "dstchannel": cdr.dstchannel,
+            "duration": cdr.duration,
+            "billsec": cdr.billsec,
+            "disposition": cdr.disposition,
+            "accountcode": cdr.accountcode,
+            "clid": cdr.clid,
+            "dcontext": cdr.dcontext,
+            "lastapp": cdr.lastapp,
+            "lastdata": cdr.lastdata,
+            "amaflags": cdr.amaflags,
+            "userfield": cdr.userfield,
+            "uniqueid": cdr.uniqueid,
+            "linkedid": cdr.linkedid,
+            "peeraccount": cdr.peeraccount,
+            "sequence": cdr.sequence,
+            "audio": cdr.get_audio_url(),
+        }
+
     def get(self, request):
         form = CDRReportForm(request.GET or None)
         cdrs = None
         statistics = None
-
-        def filter_cdr_queryset(form):
-            qs = CDR.objects.all()
-            if not form.is_valid():
-                return qs.none()
-            data = form.cleaned_data
-            if data.get("start_date"):
-                qs = qs.filter(start__gte=data["start_date"])
-            if data.get("end_date"):
-                qs = qs.filter(end__lte=data["end_date"])
-            if data.get("src_number"):
-                qs = qs.filter(src__icontains=data["src_number"])
-            if data.get("dst_number"):
-                qs = qs.filter(dst__icontains=data["dst_number"])
-            if data.get("src_channel"):
-                qs = qs.filter(channel__icontains=data["src_channel"])
-            if data.get("dst_channel"):
-                qs = qs.filter(dstchannel__icontains=data["dst_channel"])
-            if data.get("disposition"):
-                qs = qs.filter(disposition=data["disposition"])
-            if data.get("min_duration") is not None:
-                qs = qs.filter(duration__gte=data["min_duration"])
-            if data.get("max_duration") is not None:
-                qs = qs.filter(duration__lte=data["max_duration"])
-            return qs.order_by("-start")
-
         cdrs_json = []
+
         if form.is_valid():
-            cdrs = filter_cdr_queryset(form)
+            cdrs = self._filter_cdr_queryset(form)
 
             statistics = {
                 "total_calls": cdrs.count(),
@@ -484,36 +514,10 @@ class CDRReportView(ReportViewPermissionMixin, View):
             paginator = Paginator(cdrs, 50)
             page_number = request.GET.get("page")
             cdrs = paginator.get_page(page_number)
-            cdrs_json = [
-                {
-                    "start": cdr.start,
-                    "end": cdr.end,
-                    "answer": cdr.answer,
-                    "src": cdr.src,
-                    "dst": cdr.dst,
-                    "channel": cdr.channel,
-                    "dstchannel": cdr.dstchannel,
-                    "duration": cdr.duration,
-                    "billsec": cdr.billsec,
-                    "disposition": cdr.disposition,
-                    "accountcode": cdr.accountcode,
-                    "clid": cdr.clid,
-                    "dcontext": cdr.dcontext,
-                    "lastapp": cdr.lastapp,
-                    "lastdata": cdr.lastdata,
-                    "amaflags": cdr.amaflags,
-                    "userfield": cdr.userfield,
-                    "uniqueid": cdr.uniqueid,
-                    "linkedid": cdr.linkedid,
-                    "peeraccount": cdr.peeraccount,
-                    "sequence": cdr.sequence,
-                    "audio": cdr.get_audio_url(),
-                }
-                for cdr in cdrs
-            ]
+            cdrs_json = [self._cdr_to_dict(cdr) for cdr in cdrs]
 
         if "export" in request.GET and form.is_valid():
-            export_queryset = filter_cdr_queryset(form)
+            export_queryset = self._filter_cdr_queryset(form)
             return self.export_cdr_csv(request, export_queryset)
 
         context = {
@@ -527,7 +531,7 @@ class CDRReportView(ReportViewPermissionMixin, View):
 
     @staticmethod
     def export_cdr_csv(request, queryset):
-        response = HttpResponse(content_type="text/csv")
+        response = HttpResponse(content_type=CONTENT_TYPE_CSV)
         response["Content-Disposition"] = 'attachment; filename="cdr_report.csv"'
         response.write("\ufeff")  # BOM for UTF-8
 
@@ -561,32 +565,33 @@ class CDRReportView(ReportViewPermissionMixin, View):
         return response
 
 class CallbackNumberReportView(ReportViewPermissionMixin, View):
+    def _filter_callback_queryset(self, form):
+        """Filter callback queryset based on form data."""
+        qs = CallbackNumber.objects.all()
+        if not form.is_valid():
+            return qs.none()
+        data = form.cleaned_data
+        if data.get("start_date"):
+            qs = qs.filter(created__gte=data["start_date"])
+        if data.get("end_date"):
+            qs = qs.filter(created__lte=data["end_date"])
+        if data.get("src"):
+            qs = qs.filter(src__icontains=data["src"])
+        if data.get("dst"):
+            qs = qs.filter(dst__icontains=data["dst"])
+        if data.get("dial_status"):
+            qs = qs.filter(dial_status=data["dial_status"])
+        if data.get("service"):
+            qs = qs.filter(service_id=data["service"])
+        return qs.order_by("-created")
+
     def get(self, request):
         form = CallbackNumberReportForm(request.GET or None)
         callbacks = None
         statistics = None
 
-        def filter_callback_queryset(form):
-            qs = CallbackNumber.objects.all()
-            if not form.is_valid():
-                return qs.none()
-            data = form.cleaned_data
-            if data.get("start_date"):
-                qs = qs.filter(created__gte=data["start_date"])
-            if data.get("end_date"):
-                qs = qs.filter(created__lte=data["end_date"])
-            if data.get("src"):
-                qs = qs.filter(src__icontains=data["src"])
-            if data.get("dst"):
-                qs = qs.filter(dst__icontains=data["dst"])
-            if data.get("dial_status"):
-                qs = qs.filter(dial_status=data["dial_status"])
-            if data.get("service"):
-                qs = qs.filter(service_id=data["service"])
-            return qs.order_by("-created")
-
         if form.is_valid():
-            callbacks = filter_callback_queryset(form)
+            callbacks = self._filter_callback_queryset(form)
 
             statistics = {
                 "total_callbacks": callbacks.count(),
@@ -601,7 +606,7 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
             callbacks = paginator.get_page(page_number)
 
         if "export" in request.GET and form.is_valid():
-            export_queryset = filter_callback_queryset(form)
+            export_queryset = self._filter_callback_queryset(form)
             return self.export_callback_csv(request, export_queryset)
 
         context = {
@@ -614,7 +619,7 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
 
     @staticmethod
     def export_callback_csv(request, queryset):
-        response = HttpResponse(content_type="text/csv")
+        response = HttpResponse(content_type=CONTENT_TYPE_CSV)
         response["Content-Disposition"] = 'attachment; filename="callback_report.csv"'
         response.write("\ufeff")  # BOM for UTF-8
 
