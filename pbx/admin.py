@@ -5,6 +5,7 @@ import datetime
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.db import transaction
@@ -34,10 +35,12 @@ class ApplyChangesForm(forms.Form):
     )
 
 
-class ApplyChangesView(TemplateView):
+class ApplyChangesView(UserPassesTestMixin, TemplateView):
     template_name = "admin/apply.html"
 
-    # display the form on the page
+    def test_func(self):
+        return self.request.user.is_superuser
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["form"] = ApplyChangesForm()
