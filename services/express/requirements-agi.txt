@@ -1,0 +1,5 @@
+# Requirements for Express AGI (standalone script)
+# Unlike FastAGI version, this doesn't need Twisted or StarPy
+
+requests>=2.25.0
+python-dotenv>=0.19.0
