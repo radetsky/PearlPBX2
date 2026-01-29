@@ -723,3 +723,203 @@ class TestAsteriskPatternSpecificity(TestCase):
         )
         self.assertEqual(sorted_patterns[0], "100")
         self.assertEqual(sorted_patterns[-1], "_X!")
+
+
+class TestImportMusicOnHoldCommand(TestCase):
+    def setUp(self):
+        self.sample_config = """[general]
+cachertclasses=yes
+
+[default]
+mode=files
+directory=moh/default
+sort=random
+
+[sales-queue]
+mode=files
+directory=/var/lib/asterisk/moh/sales
+sort=alpha
+
+[support]
+mode=files
+directory=support-music
+sort=random
+"""
+
+    def test_parse_musiconhold_conf(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+        sections = cmd.parse_musiconhold_conf(self.sample_config)
+
+        self.assertIn("general", sections)
+        self.assertIn("default", sections)
+        self.assertIn("sales-queue", sections)
+        self.assertIn("support", sections)
+
+        self.assertEqual(sections["default"]["mode"], "files")
+        self.assertEqual(sections["default"]["directory"], "moh/default")
+        self.assertEqual(sections["default"]["sort"], "random")
+
+        self.assertEqual(sections["sales-queue"]["sort"], "alpha")
+
+    def test_normalize_directory(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+
+        self.assertEqual(cmd.normalize_directory("moh/default"), "default")
+        self.assertEqual(
+            cmd.normalize_directory("/var/lib/asterisk/moh/sales"), "sales"
+        )
+        self.assertEqual(cmd.normalize_directory("custom-music"), "custom-music")
+        self.assertEqual(cmd.normalize_directory(""), "")
+        self.assertEqual(cmd.normalize_directory("moh/sub/dir"), "sub/dir")
+
+    def test_validate_section_valid(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+        error = cmd.validate_section("test-moh", {"mode": "files", "sort": "random"})
+        self.assertIsNone(error)
+
+    def test_validate_section_name_too_long(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+        long_name = "a" * 33
+        error = cmd.validate_section(long_name, {"mode": "files"})
+        self.assertIn("name too long", error)
+
+    def test_validate_section_unsupported_mode(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+        error = cmd.validate_section("test", {"mode": "quietmp3"})
+        self.assertIn("unsupported mode", error)
+
+    def test_validate_section_unsupported_sort(self):
+        from core.management.commands.import_musiconhold import Command
+
+        cmd = Command()
+        error = cmd.validate_section("test", {"mode": "files", "sort": "none"})
+        self.assertIn("unsupported sort mode", error)
+
+    def test_import_creates_records(self):
+        from io import StringIO
+        from django.core.management import call_command
+
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
+            f.write(self.sample_config)
+            temp_path = f.name
+
+        try:
+            out = StringIO()
+            call_command("import_musiconhold", temp_path, stdout=out)
+
+            self.assertTrue(MusicOnHold.objects.filter(name="default").exists())
+            self.assertTrue(MusicOnHold.objects.filter(name="sales-queue").exists())
+            self.assertTrue(MusicOnHold.objects.filter(name="support").exists())
+
+            default_moh = MusicOnHold.objects.get(name="default")
+            self.assertEqual(default_moh.mode, "files")
+            self.assertEqual(default_moh.directory, "default")
+            self.assertEqual(default_moh.sort, "random")
+
+            sales_moh = MusicOnHold.objects.get(name="sales-queue")
+            self.assertEqual(sales_moh.directory, "sales")
+            self.assertEqual(sales_moh.sort, "alpha")
+
+            output = out.getvalue()
+            self.assertIn("Imported 3", output)
+            self.assertIn("skipped 1", output)
+        finally:
+            os.unlink(temp_path)
+            MusicOnHold.objects.filter(
+                name__in=["default", "sales-queue", "support"]
+            ).delete()
+
+    def test_dry_run_does_not_create_records(self):
+        from io import StringIO
+        from django.core.management import call_command
+
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
+            f.write(self.sample_config)
+            temp_path = f.name
+
+        try:
+            out = StringIO()
+            call_command("import_musiconhold", temp_path, "--dry-run", stdout=out)
+
+            self.assertFalse(MusicOnHold.objects.filter(name="default").exists())
+            self.assertFalse(MusicOnHold.objects.filter(name="sales-queue").exists())
+
+            output = out.getvalue()
+            self.assertIn("DRY RUN", output)
+            self.assertIn("Imported 3", output)
+        finally:
+            os.unlink(temp_path)
+
+    def test_skip_duplicate_entries(self):
+        from io import StringIO
+        from django.core.management import call_command
+
+        import tempfile
+        import os
+
+        MusicOnHold.objects.create(name="default", mode="files", directory="old-dir")
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
+            f.write(self.sample_config)
+            temp_path = f.name
+
+        try:
+            out = StringIO()
+            call_command("import_musiconhold", temp_path, stdout=out)
+
+            output = out.getvalue()
+            self.assertIn("skipped 2", output)
+            self.assertIn("already exists", output)
+
+            default_moh = MusicOnHold.objects.get(name="default")
+            self.assertEqual(default_moh.directory, "old-dir")
+        finally:
+            os.unlink(temp_path)
+            MusicOnHold.objects.filter(
+                name__in=["default", "sales-queue", "support"]
+            ).delete()
+
+    def test_file_not_found_error(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        with self.assertRaises(CommandError) as context:
+            call_command("import_musiconhold", "/nonexistent/file.conf")
+
+        self.assertIn("does not exist", str(context.exception))
+
+    def test_parse_comments_and_empty_lines(self):
+        from core.management.commands.import_musiconhold import Command
+
+        config_with_comments = """
+; This is a comment
+# This is also a comment
+
+[test-section]
+; Comment inside section
+mode=files
+directory=test
+"""
+        cmd = Command()
+        sections = cmd.parse_musiconhold_conf(config_with_comments)
+
+        self.assertEqual(len(sections), 1)
+        self.assertIn("test-section", sections)
+        self.assertEqual(sections["test-section"]["mode"], "files")

@@ -799,6 +799,21 @@ class MusicOnHold(models.Model):
         blank=False,
     )
 
+    def _get_moh_base_path(self):
+        """Returns the base path for MOH files based on DEVMODE setting."""
+        if settings.DEVMODE == settings.DEVMODE_WITHOUT_ASTERISK:
+            return "moh/"
+        return "/var/lib/asterisk/moh/"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.directory:
+            moh_path = os.path.join(self._get_moh_base_path(), self.directory)
+            try:
+                os.makedirs(moh_path, exist_ok=True)
+            except PermissionError:
+                pass  # Skip directory creation if no permissions (e.g., during tests)
+
     def __str__(self):
         return self.name
 
