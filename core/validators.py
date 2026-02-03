@@ -585,6 +585,11 @@ class AsteriskDialplanValidator(BaseValidator):
             self.validate_macro_call(step_content, line_num)
             return
 
+        # Check for AEL-style variable assignment (e.g., VOICE=${RAND(1,2)})
+        if self.is_variable_assignment(step_content):
+            self.validate_variable_assignment(step_content, line_num)
+            return
+
         # Check format application(parameters)
         if "(" in step_content:
             # Find application name
@@ -669,6 +674,63 @@ class AsteriskDialplanValidator(BaseValidator):
                 raise ValidationError(
                     f"Parameter {i+1} in macro '{macro_name}' cannot be empty"
                 )
+
+    def is_variable_assignment(self, step_content: str) -> bool:
+        """Checks if step is an AEL-style variable assignment (e.g., VOICE=${RAND(1,2)})"""
+        if "=" not in step_content:
+            return False
+
+        # Find = position (must be outside brackets and quotes)
+        eq_pos = self._find_assignment_operator(step_content)
+        if eq_pos == -1:
+            return False
+
+        # Left side must be valid variable name
+        left_side = step_content[:eq_pos].strip()
+
+        # Variable names: letters, digits, underscore, can't start with digit
+        return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", left_side))
+
+    def _find_assignment_operator(self, text: str) -> int:
+        """Finds = position outside brackets/quotes, excluding == comparison"""
+        depth = 0
+        in_string = False
+        quote_char = None
+
+        i = 0
+        while i < len(text):
+            char = text[i]
+
+            if in_string:
+                if char == quote_char and (i == 0 or text[i - 1] != "\\"):
+                    in_string = False
+            elif char in "\"'":
+                in_string = True
+                quote_char = char
+            elif char in "({":
+                depth += 1
+            elif char in ")}":
+                depth -= 1
+            elif char == "=" and depth == 0:
+                # Check it's not == (comparison operator)
+                if i + 1 < len(text) and text[i + 1] == "=":
+                    i += 1  # Skip ==
+                elif i > 0 and text[i - 1] in "!<>":
+                    pass  # Part of !=, <=, >= - not assignment
+                else:
+                    return i
+            i += 1
+
+        return -1
+
+    def validate_variable_assignment(self, step_content: str, line_num: int):
+        """Validates AEL-style variable assignment"""
+        eq_pos = self._find_assignment_operator(step_content)
+
+        # Validate right side (the value) has balanced brackets/quotes
+        right_side = step_content[eq_pos + 1 :].strip()
+        if right_side:
+            self.check_balanced_brackets_and_quotes(right_side, line_num)
 
     def validate_parameters(self, params_str: str, app_name: str, line_num: int):
         """Validates application parameters"""
