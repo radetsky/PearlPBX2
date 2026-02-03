@@ -373,6 +373,74 @@ class AsteriskDialplanValidator(BaseValidator):
 
         return False
 
+    def _find_matching_paren(self, text: str, start_pos: int) -> int:
+        """Finds the position of closing ) that matches ( at start_pos"""
+        if text[start_pos] != "(":
+            return -1
+
+        depth = 0
+        in_string = False
+        quote_char = None
+
+        for i in range(start_pos, len(text)):
+            char = text[i]
+
+            # Handle string boundaries
+            if not in_string and char in "\"'":
+                in_string = True
+                quote_char = char
+            elif in_string and char == quote_char:
+                if i > 0 and text[i - 1] != "\\":
+                    in_string = False
+                    quote_char = None
+
+            elif not in_string:
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    depth -= 1
+                    if depth == 0:
+                        return i
+
+        return -1
+
+    def _count_structural_braces(self, text: str) -> int:
+        """Counts structural braces (not inside quotes or ${} variable references)"""
+        count = 0
+        i = 0
+        in_string = False
+        quote_char = None
+        var_depth = 0  # Track ${} nesting
+
+        while i < len(text):
+            char = text[i]
+
+            # Handle string boundaries
+            if not in_string and char in "\"'":
+                in_string = True
+                quote_char = char
+            elif in_string and char == quote_char:
+                # Check for escaped quote
+                if i > 0 and text[i - 1] != "\\":
+                    in_string = False
+                    quote_char = None
+
+            # Handle ${} variable references
+            elif not in_string:
+                if i < len(text) - 1 and text[i : i + 2] == "${":
+                    var_depth += 1
+                    i += 1  # Skip the $
+                elif char == "}" and var_depth > 0:
+                    var_depth -= 1
+                elif char == "{" and var_depth == 0:
+                    count += 1
+                elif char == "}" and var_depth == 0:
+                    count -= 1
+
+            i += 1
+
+        return count
+
     def parse_block(self, lines: List[Tuple[int, str]], start_idx: int) -> int:
         """Parses block construct and returns index after the block"""
         line_num, line = lines[start_idx]
@@ -380,23 +448,26 @@ class AsteriskDialplanValidator(BaseValidator):
         # Validate block header
         self.validate_block_header(line, line_num)
 
-        # Find block body
-        brace_count = line.count("{") - line.count("}")
+        # Find block body - count only structural braces
+        brace_count = self._count_structural_braces(line)
         current_idx = start_idx + 1
 
         while current_idx < len(lines) and brace_count > 0:
             inner_line_num, inner_line = lines[current_idx]
 
-            # Count braces
-            brace_count += inner_line.count("{") - inner_line.count("}")
+            # Check for nested blocks BEFORE counting braces
+            if self.is_block_start(inner_line):
+                # Nested block - parse it completely and skip those lines
+                current_idx = self.parse_block(lines, current_idx)
+                continue
+
+            # Count structural braces only for non-block lines
+            brace_count += self._count_structural_braces(inner_line)
 
             if brace_count > 0:  # Still inside the block
                 if inner_line.strip() == "}":
                     # Just closing brace
                     pass
-                elif self.is_block_start(inner_line):
-                    # Nested block
-                    current_idx = self.parse_block(lines, current_idx) - 1
                 else:
                     # Regular step
                     self.validate_dialplan_step(inner_line, inner_line_num)
@@ -435,11 +506,13 @@ class AsteriskDialplanValidator(BaseValidator):
         if not line.startswith("if"):
             raise ValidationError("IF statement must start with 'if'")
 
-        # Find condition in parentheses
+        # Find condition in parentheses - need to find matching ) for the first (
         paren_start = line.find("(")
-        paren_end = line.rfind(")")
+        if paren_start == -1:
+            raise ValidationError("IF statement must have condition in parentheses")
 
-        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+        paren_end = self._find_matching_paren(line, paren_start)
+        if paren_end == -1:
             raise ValidationError("IF statement must have condition in parentheses")
 
         condition = line[paren_start + 1 : paren_end].strip()
@@ -467,11 +540,13 @@ class AsteriskDialplanValidator(BaseValidator):
         if not line.startswith("while"):
             raise ValidationError("WHILE statement must start with 'while'")
 
-        # Similar to if
+        # Find condition in parentheses - need to find matching ) for the first (
         paren_start = line.find("(")
-        paren_end = line.rfind(")")
+        if paren_start == -1:
+            raise ValidationError("WHILE statement must have condition in parentheses")
 
-        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+        paren_end = self._find_matching_paren(line, paren_start)
+        if paren_end == -1:
             raise ValidationError("WHILE statement must have condition in parentheses")
 
         condition = line[paren_start + 1 : paren_end].strip()
@@ -490,9 +565,11 @@ class AsteriskDialplanValidator(BaseValidator):
 
         # FOR loops in AEL have format: for (init; condition; increment)
         paren_start = line.find("(")
-        paren_end = line.rfind(")")
+        if paren_start == -1:
+            raise ValidationError("FOR statement must have parameters in parentheses")
 
-        if paren_start == -1 or paren_end == -1 or paren_start >= paren_end:
+        paren_end = self._find_matching_paren(line, paren_start)
+        if paren_end == -1:
             raise ValidationError("FOR statement must have parameters in parentheses")
 
         for_params = line[paren_start + 1 : paren_end].strip()
@@ -617,23 +694,36 @@ class AsteriskDialplanValidator(BaseValidator):
 
     def is_macro_call(self, step_content: str) -> bool:
         """Checks if step is a macro call"""
-        # Macro calls can be: MacroName(), MacroName(params), or just MacroName
+        # AEL macro calls use & prefix: &MacroName(), &MacroName(params)
+        # Also support: MacroName(), MacroName(params), or just MacroName
         if not self.allowed_macros:
             return False
 
         # Extract potential macro name
-        if "(" in step_content:
-            macro_name = step_content.split("(")[0].strip()
+        content = step_content.strip()
+
+        # Handle AEL-style & prefix
+        if content.startswith("&"):
+            content = content[1:]
+
+        if "(" in content:
+            macro_name = content.split("(")[0].strip()
         else:
-            macro_name = step_content.strip()
+            macro_name = content.strip()
 
         return macro_name in self.allowed_macros
 
     def validate_macro_call(self, step_content: str, line_num: int):
         """Validates macro call"""
-        if "(" in step_content:
-            paren_pos = step_content.find("(")
-            macro_name = step_content[:paren_pos].strip()
+        content = step_content.strip()
+
+        # Handle AEL-style & prefix
+        if content.startswith("&"):
+            content = content[1:]
+
+        if "(" in content:
+            paren_pos = content.find("(")
+            macro_name = content[:paren_pos].strip()
 
             if macro_name not in self.allowed_macros:
                 raise ValidationError(
@@ -641,15 +731,15 @@ class AsteriskDialplanValidator(BaseValidator):
                 )
 
             # Check correct parentheses
-            if not step_content.endswith(")"):
+            if not content.endswith(")"):
                 raise ValidationError("Macro call must end with parenthesis ')'")
 
             # Extract and validate parameters
-            params_part = step_content[paren_pos + 1 : -1]
+            params_part = content[paren_pos + 1 : -1]
             self.validate_macro_parameters(params_part, macro_name, line_num)
         else:
             # Simple macro call without parameters
-            macro_name = step_content.strip()
+            macro_name = content.strip()
             if macro_name not in self.allowed_macros:
                 raise ValidationError(
                     f"Unknown macro '{macro_name}'. Allowed macros: {', '.join(sorted(self.allowed_macros))}"
