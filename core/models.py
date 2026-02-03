@@ -1615,7 +1615,6 @@ class SoundFile(models.Model):
 
     name = models.CharField(
         max_length=64,
-        unique=True,
         null=False,
         blank=False,
         verbose_name="File name used in dialplans",
@@ -1637,6 +1636,7 @@ class SoundFile(models.Model):
     class Meta:
         db_table = "sound_files"
         verbose_name_plural = "20. Sound files"
+        unique_together = [["name", "language"]]
 
 
 class Monitor(models.Model):
