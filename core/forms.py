@@ -257,9 +257,9 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
     def clean_dialplan(self):
         dialplan = self.cleaned_data["dialplan"]
 
-        allowed_macros = {
-            f"&{name}" for name in DialplanMacro.objects.values_list("name", flat=True)
-        }
+        allowed_macros = set(
+            DialplanMacro.objects.values_list("name", flat=True)
+        )
 
         validator = AsteriskDialplanValidator(allowed_macros=allowed_macros)
         try:
