@@ -2,6 +2,7 @@
 FastAGI server using Twisted and StarPy.
 """
 
+import json
 import os
 import logging
 import random
@@ -9,6 +10,9 @@ import time
 import uuid
 
 from datetime import datetime
+
+import redis
+from asterisk.ami import AMIClient, SimpleAction
 
 from typing import Callable, Generator
 from twisted.internet import reactor
@@ -242,6 +246,94 @@ class Database:
             )
             session.commit()
 
+    def get_queue_status(self, queue_name: str) -> tuple[int, int]:
+        """Get ready members and callers count.
+        Primary: Redis cache. Fallback: Direct AMI query.
+        Returns: (ready_operators, callers_waiting)
+        """
+        try:
+            state_key = f'asterisk:queue:{queue_name}'
+            state = redis_client.get(state_key)
+            if state:
+                data = json.loads(state)
+                members = data.get('members', {})
+                calls = data.get('calls', {})
+
+                ready = sum(1 for m in members.values()
+                            if str(m.get('status')) == '1' and not m.get('paused'))
+
+                logger.info(f"Queue {queue_name} from Redis: ready={ready}, callers={len(calls)}")
+                return (ready, len(calls))
+        except redis.RedisError as e:
+            logger.warning(f"Redis unavailable, falling back to AMI: {e}")
+        except Exception as e:
+            logger.warning(f"Error reading from Redis, falling back to AMI: {e}")
+
+        return self._query_ami_queue_status(queue_name)
+
+    def _query_ami_queue_status(self, queue_name: str) -> tuple[int, int]:
+        """Query Asterisk AMI directly for queue status."""
+        try:
+            ami_host = os.environ.get("AMI_HOST", "127.0.0.1")
+            ami_port = int(os.environ.get("AMI_PORT", 5038))
+            ami_user = os.environ.get("AMI_USER", "admin")
+            ami_pass = os.environ.get("AMI_PASS", "admin")
+
+            client = AMIClient(address=ami_host, port=ami_port, timeout=5)
+            future = client.login(username=ami_user, secret=ami_pass)
+            if future.response.is_error():
+                logger.error("AMI login failed")
+                return (0, 0)
+
+            ready = 0
+            callers = 0
+            events_received = []
+            complete_event = False
+
+            def collect_events(event, **kwargs):
+                nonlocal complete_event
+                events_received.append(event)
+                if event.name == 'QueueStatusComplete':
+                    complete_event = True
+
+            client.add_event_listener(
+                on_event=collect_events,
+                white_list=['QueueMember', 'QueueEntry', 'QueueStatusComplete']
+            )
+
+            client.send_action(SimpleAction('QueueStatus', Queue=queue_name))
+
+            start = time.time()
+            while time.time() - start < 3 and not complete_event:
+                time.sleep(0.1)
+
+            for ev in events_received:
+                if ev.name == 'QueueMember':
+                    if ev.keys.get('Queue') == queue_name:
+                        status = ev.keys.get('Status')
+                        paused = ev.keys.get('Paused', '0')
+                        if status == '1' and paused == '0':
+                            ready += 1
+                elif ev.name == 'QueueEntry':
+                    if ev.keys.get('Queue') == queue_name:
+                        callers += 1
+
+            client.logoff()
+            logger.info(f"Queue {queue_name} from AMI: ready={ready}, callers={callers}")
+            return (ready, callers)
+
+        except Exception as e:
+            logger.error(f"AMI query failed: {e}")
+            return (0, 0)
+
+
+# ---------------- Redis Client ----------------
+redis_client = redis.Redis(
+    host=os.environ.get("REDIS_HOST", "localhost"),
+    port=int(os.environ.get("REDIS_PORT", 6379)),
+    decode_responses=True
+)
+
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -267,6 +359,8 @@ class FastAGIHandler:
             return self.mixmonitor()
         elif network_script == "add-callback":
             return self.add_callback()
+        elif network_script == "queue-status":
+            return self.queue_status()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -294,6 +388,27 @@ class FastAGIHandler:
 
         db.add_callback_record(caller_id, destination, service_name, delay_seconds)
         self.sequence.append(self.agi.setVariable, "CALLBACK_ADDED", "1")
+        self.sequence.append(self.agi.finish)
+        return self.sequence()
+
+    def queue_status(self) -> Deferred:
+        """Check queue status: ready operators and waiting callers.
+        Sets READYTORECEIVE and QUEUECALLERS channel variables.
+        """
+        queue_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+
+        if not queue_name:
+            logger.error("No queue name provided for queue-status")
+            self.sequence.append(self.agi.setVariable, "READYTORECEIVE", "0")
+            self.sequence.append(self.agi.setVariable, "QUEUECALLERS", "0")
+            self.sequence.append(self.agi.finish)
+            return self.sequence()
+
+        ready, callers = db.get_queue_status(queue_name)
+        logger.info(f"Queue {queue_name}: ready={ready}, callers={callers}")
+
+        self.sequence.append(self.agi.setVariable, "READYTORECEIVE", str(ready))
+        self.sequence.append(self.agi.setVariable, "QUEUECALLERS", str(callers))
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
