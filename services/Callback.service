@@ -10,7 +10,7 @@ User=asterisk
 Group=asterisk
 WorkingDirectory=/usr/local/PearlPBX2/services/callback
 Environment="PATH=/usr/local/PearlPBX2/services/callback/.python-venv/bin:/usr/local/bin:/usr/bin:/bin"
-EnvironmentFile=/usr/local/PearlPBX2/services/callback/env
+EnvironmentFile=/usr/local/PearlPBX2/services/callback/.env
 ExecStart=/usr/local/PearlPBX2/services/callback/.python-venv/bin/python /usr/local/PearlPBX2/services/callback/callback.py
 Restart=on-failure
 RestartSec=5

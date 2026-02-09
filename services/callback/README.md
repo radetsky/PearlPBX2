@@ -56,7 +56,6 @@ The service can be configured via **environment variables** or **command-line ar
 | `AMI_USER`        | `ami_user`        | AMI username                                     |
 | `AMI_PASS`        | `ami_pass`        | AMI password                                     |
 | `VA_PROCESS_COUNT`| `1`               | Number of worker processes to spawn              |
-| `LOGLEVEL`        | `20` (INFO)       | Logging level (10=DEBUG, 20=INFO, 30=WARNING)    |
 
 ### Command-Line Arguments
 
@@ -77,7 +76,7 @@ python callback.py --help
 | `--ami_user`      | Asterisk Manager Interface user                  |
 | `--ami_pass`      | Asterisk Manager Interface password              |
 | `--process_count` | Number of processes to spawn                     |
-| `--loglevel`      | Logging level (default: INFO)                    |
+| `--debug`         | Enable debug logging (default: INFO)             |
 | `--dump_config`   | Dump configuration and exit                      |
 
 ## Running
@@ -105,6 +104,14 @@ python callback.py
 
 ```bash
 python callback.py --db_host=localhost --db_name=pearlpbx --ami_user=admin --ami_pass=secret
+```
+
+### Debug Mode
+
+To enable debug logging:
+
+```bash
+python callback.py --debug
 ```
 
 ### Multi-Process Mode
