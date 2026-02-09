@@ -198,7 +198,7 @@ class Callback:
             self.call_dst(id, src, dst, context_outbound, context_inbound)
 
         except ValueError:
-            logging.info("No destinations to call")
+            self.logger.debug("No destinations to call")
 
         finally:
             time.sleep(1)
@@ -237,10 +237,7 @@ def parse_args():
         "--process_count", type=int, required=False, help="Number of processes to spawn"
     )
     parser.add_argument(
-        "--loglevel",
-        type=int,
-        default=logging.INFO,
-        help="Logging level (default: INFO)",
+        "--debug", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
         "--dump_config", action="store_true", help="Dump configuration and exit"
@@ -261,9 +258,6 @@ def read_env_vars(args):
     ami_user = os.getenv("AMI_USER", "ami_user")
     ami_pass = os.getenv("AMI_PASS", "ami_pass")
     process_count = int(os.getenv("VA_PROCESS_COUNT", "1"))
-    loglevel = int(os.getenv("LOGLEVEL", str(logging.INFO)))
-
-    print("LOGLEVEL=", loglevel)
 
     return {
         "db_host": db_host,
@@ -277,7 +271,6 @@ def read_env_vars(args):
         "ami_user": ami_user,
         "ami_pass": ami_pass,
         "process_count": process_count,
-        "loglevel": loglevel,
     }
 
 
@@ -317,6 +310,7 @@ if __name__ == "__main__":
     args = parse_args()
     env_vars = read_env_vars(args)
     params = merge_args_env(args, env_vars)
+    params["loglevel"] = logging.DEBUG if args.debug else logging.INFO
     if args.dump_config:
         print(json.dumps(params, indent=4))
         exit(0)

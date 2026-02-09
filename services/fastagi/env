@@ -1,6 +1,0 @@
-DB_USER=rad
-DB_PASS=rad
-DB_NAME=pearlpbx2
-DB_HOST=127.0.0.1
-DB_PORT=5432
-
