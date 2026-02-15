@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0058_alter_dialplancontext_table'),
+        ("core", "0058_alter_dialplancontext_table"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='sipuser',
-            name='integration',
+            model_name="sipuser",
+            name="integration",
         ),
     ]

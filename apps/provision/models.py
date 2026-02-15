@@ -1,8 +1,8 @@
 from django.db import models
 from core.models import SIPUser, AuditFields
 
-class PhoneDevice(AuditFields):
 
+class PhoneDevice(AuditFields):
     USER_TELEPHONE_TYPE_CHOICES = [
         ("spa502g", "Cisco SPA502G"),
         ("spa504g", "Cisco SPA504G"),
@@ -46,7 +46,7 @@ class PhoneDevice(AuditFields):
     class Meta(AuditFields.Meta):
         verbose_name = "Phone Device"
         verbose_name_plural = "Phone Devices"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         if self.sip_user:

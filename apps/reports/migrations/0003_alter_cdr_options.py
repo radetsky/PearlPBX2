@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('reports', '0002_change_pk'),
+        ("reports", "0002_change_pk"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='cdr',
-            options={'managed': False},
+            name="cdr",
+            options={"managed": False},
         ),
     ]

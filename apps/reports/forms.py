@@ -4,6 +4,7 @@ from django.utils import timezone
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
 
+
 class QueueLogReportForm(forms.Form):
     # Date filters
     date_from = forms.DateTimeField(

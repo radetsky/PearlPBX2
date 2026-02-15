@@ -12,7 +12,11 @@ from apps.callback.models import CallbackNumber
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
-from apps.reports.forms import CDRReportForm, MonitorFilenamesReportForm, CallbackNumberReportForm
+from apps.reports.forms import (
+    CDRReportForm,
+    MonitorFilenamesReportForm,
+    CallbackNumberReportForm,
+)
 
 from core.models import MonitorFilenames
 
@@ -27,14 +31,13 @@ from .models import QueueLog
 CONTENT_TYPE_CSV = "text/csv"
 
 
-
 # AJAX endpoint: return all QueueLog records for a given callid as JSON
 class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
     def get(self, request, callid):
-        records = QueueLog.objects.filter(callid=callid).order_by('time')
+        records = QueueLog.objects.filter(callid=callid).order_by("time")
         data = [
             {
-                "time": r.time.strftime('%Y-%m-%d %H:%M:%S') if r.time else '',
+                "time": r.time.strftime("%Y-%m-%d %H:%M:%S") if r.time else "",
                 "callid": r.callid,
                 "queuename": r.queuename,
                 "agent": r.agent,
@@ -48,6 +51,7 @@ class QueueLogRecordsByCallIdView(ReportViewPermissionMixin, View):
             for r in records
         ]
         return JsonResponse({"records": data})
+
 
 class QueueLogReportView(ReportViewPermissionMixin, FormView):
     template_name = "queue.html"
@@ -72,7 +76,9 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         context.update(
             {
                 "queryset": queryset,
-                "report_data": self.get_report_data(queryset, report_type, self.request),
+                "report_data": self.get_report_data(
+                    queryset, report_type, self.request
+                ),
                 "report_type": report_type,
                 "total_records": queryset.count(),
             }
@@ -132,23 +138,29 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             abandon_time = lost.time
 
             incoming = (
-                CDR.objects.filter(src=callerid, start__gt=abandon_time, disposition="ANSWERED")
+                CDR.objects.filter(
+                    src=callerid, start__gt=abandon_time, disposition="ANSWERED"
+                )
                 .order_by("start")
                 .first()
             )
             outgoing = (
-                CDR.objects.filter(dst=callerid, start__gt=abandon_time, disposition="ANSWERED")
+                CDR.objects.filter(
+                    dst=callerid, start__gt=abandon_time, disposition="ANSWERED"
+                )
                 .order_by("start")
                 .first()
             )
-            results.append({
-                "abandon_time": abandon_time,
-                "callerid": callerid,
-                "incoming_time": incoming.start if incoming else None,
-                "incoming_dstchannel": incoming.dstchannel if incoming else None,
-                "outgoing_time": outgoing.start if outgoing else None,
-                "outgoing_channel": outgoing.channel if outgoing else None,
-            })
+            results.append(
+                {
+                    "abandon_time": abandon_time,
+                    "callerid": callerid,
+                    "incoming_time": incoming.start if incoming else None,
+                    "incoming_dstchannel": incoming.dstchannel if incoming else None,
+                    "outgoing_time": outgoing.start if outgoing else None,
+                    "outgoing_channel": outgoing.channel if outgoing else None,
+                }
+            )
         return {
             "lost_and_found": results,
             "total_lost_calls": lost_calls.count(),
@@ -164,24 +176,24 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
         # Average wait time (from data1 for ABANDON and CONNECT)
         avg_wait_time = (
-            queryset.filter(
-                event__in=["ABANDON", "CONNECT"], data1__isnull=False)
+            queryset.filter(event__in=["ABANDON", "CONNECT"], data1__isnull=False)
             .exclude(data1="")
             .aggregate(
                 avg=Avg(
                     Case(
                         # Only fully numeric strings
                         When(
-                            data1__regex=r'^[0-9]+$',  # avoid backslash issues
+                            data1__regex=r"^[0-9]+$",  # avoid backslash issues
                             # force integer branch
-                            then=Cast(F("data1"), output_field=IntegerField())
+                            then=Cast(F("data1"), output_field=IntegerField()),
                         ),
                         # non-numeric -> NULL (excluded from AVG)
                         default=None,
-                        output_field=IntegerField(),       # expression type for Django ORM
+                        output_field=IntegerField(),  # expression type for Django ORM
                     )
                 )
-            )["avg"] or 0
+            )["avg"]
+            or 0
         )
         # Daily statistics
         daily_stats = (
@@ -190,8 +202,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total=Count("id"),
                 answered=Count(
-                    Case(
-                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 abandoned=Count(Case(When(event="ABANDON", then=1))),
             )
@@ -232,8 +243,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                 .order_by("hour")
             ),
             "events_distribution": list(
-                queryset.values("event").annotate(
-                    count=Count("id")).order_by("-count")
+                queryset.values("event").annotate(count=Count("id")).order_by("-count")
             ),
             "recent_calls": paginated_calls,
         }
@@ -247,8 +257,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total_events=Count("id"),
                 answered=Count(
-                    Case(
-                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 connects=Count(Case(When(event="CONNECT", then=1))),
                 ringnoanswer=Count(Case(When(event="RINGNOANSWER", then=1))),
@@ -271,15 +280,15 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
                     avg=Avg(
                         Case(
                             When(
-                                data2__regex=r'^[0-9]+$',  # only pure digits
-                                then=Cast(
-                                    F("data2"), output_field=IntegerField())
+                                data2__regex=r"^[0-9]+$",  # only pure digits
+                                then=Cast(F("data2"), output_field=IntegerField()),
                             ),
-                            default=None,                  # skip non-numeric rows
-                            output_field=IntegerField(),   # result type for ORM
+                            default=None,  # skip non-numeric rows
+                            output_field=IntegerField(),  # result type for ORM
                         )
                     )
-                )["avg"] or 0
+                )["avg"]
+                or 0
             )
 
             agent_data["avg_talk_time"] = round(talk_time, 2)
@@ -302,8 +311,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             .annotate(
                 total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
                 answered=Count(
-                    Case(
-                        When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
+                    Case(When(event__in=["COMPLETEAGENT", "COMPLETECALLER"], then=1))
                 ),
                 abandoned=Count(Case(When(event="ABANDON", then=1))),
             )
@@ -366,19 +374,14 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
             if report_type == "summary":
                 writer.writerow(["Metric", "Value"])
+                writer.writerow(["Total Calls", report_data.get("total_calls", 0)])
+                writer.writerow(["Answered", report_data.get("answered_calls", 0)])
+                writer.writerow(["Abandoned", report_data.get("abandoned_calls", 0)])
                 writer.writerow(
-                    ["Total Calls", report_data.get("total_calls", 0)])
-                writer.writerow(
-                    ["Answered", report_data.get("answered_calls", 0)])
-                writer.writerow(
-                    ["Abandoned", report_data.get("abandoned_calls", 0)])
-                writer.writerow(
-                    ["Answer Rate %",
-                        f"{report_data.get('answer_rate', 0):.2f}%"]
+                    ["Answer Rate %", f"{report_data.get('answer_rate', 0):.2f}%"]
                 )
                 writer.writerow(
-                    ["Average Wait Time (sec)", report_data.get(
-                        "avg_wait_time", 0)]
+                    ["Average Wait Time (sec)", report_data.get("avg_wait_time", 0)]
                 )
 
         return response
@@ -563,6 +566,7 @@ class CDRReportView(ReportViewPermissionMixin, View):
             )
 
         return response
+
 
 class CallbackNumberReportView(ReportViewPermissionMixin, View):
     def _filter_callback_queryset(self, form):

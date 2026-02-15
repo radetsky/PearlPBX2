@@ -13,7 +13,6 @@ from core.models import (
     ManagerUsers,
     CallQueueGlobalSettings,
     Queue,
-    QueueMember,
     QueueAnnouncements,
     QueueRule,
     PenaltyChange,
@@ -208,7 +207,9 @@ class TestMakePjsipConfUplinks(TestCase):
         result = make_pjsip_conf_uplinks()
         self.assertIn("type=registration", result)
         self.assertIn("server_uri=sip:sip.provider.com:5060;transport=udp", result)
-        self.assertIn("client_uri=sip:myuser@sip.provider.com:5060;transport=udp", result)
+        self.assertIn(
+            "client_uri=sip:myuser@sip.provider.com:5060;transport=udp", result
+        )
         self.assertIn("contact_user=myuser", result)
         self.assertIn("outbound_auth=test-trunk-reg", result)
 
@@ -357,9 +358,7 @@ class TestMakePjsipConfTemplates(TestCase):
         self.assertIn("[user-template](!)", result)
 
     def test_user_template_with_settings(self):
-        Settings.objects.create(
-            user_template="type=endpoint\ndisallow=all\nallow=ulaw"
-        )
+        Settings.objects.create(user_template="type=endpoint\ndisallow=all\nallow=ulaw")
         result = make_pjsip_conf_users_template()
         self.assertIn("type=endpoint", result)
         self.assertIn("disallow=all", result)
@@ -382,7 +381,10 @@ class TestMakePjsipConfTemplates(TestCase):
 class TestMakePjsipWebrtcTemplates(TestCase):
     def test_wss_transport_with_settings(self):
         transport = SIPTransport.objects.create(
-            name="test-wss", protocol="wss", bind="0.0.0.0:8089", description="WebSocket"
+            name="test-wss",
+            protocol="wss",
+            bind="0.0.0.0:8089",
+            description="WebSocket",
         )
         s = Settings.objects.first()
         original_webrtc_template = s.webrtc_template if s else None
@@ -516,9 +518,7 @@ class TestMakeDialplanMacros(TestCase):
 
 class TestMakeRoutingTables(TestCase):
     def setUp(self):
-        self.rt = RoutingTable.objects.get(
-            name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE
-        )
+        self.rt = RoutingTable.objects.get(name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE)
         self.created_contexts = []
         self.created_records = []
 
@@ -651,20 +651,98 @@ class TestMakeQueuerules(TestCase):
     def test_queuerule_with_penalty_changes(self):
         rule = QueueRule.objects.create(name="test-myrule", description="My Test Rule")
         p1 = PenaltyChange.objects.create(
-            rule=rule, seconds=30, max_penalty=5, min_penalty=0, raise_penalty=0, order=1
+            rule=rule,
+            seconds=30,
+            max_penalty="5",
+            min_penalty="0",
+            raise_penalty="0",
+            order=1,
         )
         p2 = PenaltyChange.objects.create(
-            rule=rule, seconds=60, max_penalty=10, min_penalty=0, raise_penalty=0, order=2
+            rule=rule,
+            seconds=60,
+            max_penalty="10",
+            min_penalty="0",
+            raise_penalty="0",
+            order=2,
         )
         try:
             result = make_queuerules_conf()
             self.assertIn("[test-myrule]", result)
             self.assertIn("; My Test Rule", result)
-            self.assertIn("penaltychange =>", result)
+            self.assertIn("penaltychange => 30,5,0,0", result)
+            self.assertIn("penaltychange => 60,10,0,0", result)
         finally:
             p1.delete()
             p2.delete()
             rule.delete()
+
+    def test_relative_penalty_values(self):
+        rule = QueueRule.objects.create(name="test-relative")
+        p = PenaltyChange.objects.create(
+            rule=rule,
+            seconds=20,
+            max_penalty="+3",
+            min_penalty="-1",
+            raise_penalty="+2",
+            order=0,
+        )
+        try:
+            result = make_queuerules_conf()
+            self.assertIn("penaltychange => 20,+3,-1,+2", result)
+        finally:
+            p.delete()
+            rule.delete()
+
+    def test_empty_penalty_values_trimmed(self):
+        rule = QueueRule.objects.create(name="test-empty")
+        p = PenaltyChange.objects.create(
+            rule=rule,
+            seconds=10,
+            max_penalty="5",
+            min_penalty="",
+            raise_penalty="",
+            order=0,
+        )
+        try:
+            result = make_queuerules_conf()
+            self.assertIn("penaltychange => 10,5", result)
+            self.assertNotIn("penaltychange => 10,5,", result)
+        finally:
+            p.delete()
+            rule.delete()
+
+    def test_only_seconds_when_all_empty(self):
+        rule = QueueRule.objects.create(name="test-allempty")
+        p = PenaltyChange.objects.create(
+            rule=rule,
+            seconds=15,
+            max_penalty="",
+            min_penalty="",
+            raise_penalty="",
+            order=0,
+        )
+        try:
+            result = make_queuerules_conf()
+            self.assertIn("penaltychange => 15", result)
+            self.assertNotIn("penaltychange => 15,", result)
+        finally:
+            p.delete()
+            rule.delete()
+
+    def test_penalty_validator_valid_values(self):
+        from core.validators import validate_penalty_value
+
+        for val in ["", "0", "10", "100", "+3", "-2", "+99", "-100"]:
+            validate_penalty_value(val)
+
+    def test_penalty_validator_invalid_values(self):
+        from core.validators import validate_penalty_value
+        from django.core.exceptions import ValidationError
+
+        for val in ["abc", "++3", "10.5", "1000", "+-1"]:
+            with self.assertRaises(ValidationError):
+                validate_penalty_value(val)
 
 
 class TestMakeMusiconholdConf(TestCase):
@@ -896,7 +974,6 @@ sort=random
             ).delete()
 
     def test_file_not_found_error(self):
-        from io import StringIO
         from django.core.management import call_command
         from django.core.management.base import CommandError
 

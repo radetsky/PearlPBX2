@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0057_remove_sipuser_telephone_type'),
+        ("core", "0057_remove_sipuser_telephone_type"),
     ]
 
     operations = [
         migrations.AlterModelTable(
-            name='dialplancontext',
-            table='dialplan_contexts',
+            name="dialplancontext",
+            table="dialplan_contexts",
         ),
     ]

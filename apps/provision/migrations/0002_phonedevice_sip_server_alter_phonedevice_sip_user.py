@@ -5,21 +5,33 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0057_remove_sipuser_telephone_type'),
-        ('provision', '0001_initial'),
+        ("core", "0057_remove_sipuser_telephone_type"),
+        ("provision", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='phonedevice',
-            name='sip_server',
-            field=models.CharField(default='', help_text='SIP server address', max_length=255, verbose_name='SIP Server'),
+            model_name="phonedevice",
+            name="sip_server",
+            field=models.CharField(
+                default="",
+                help_text="SIP server address",
+                max_length=255,
+                verbose_name="SIP Server",
+            ),
         ),
         migrations.AlterField(
-            model_name='phonedevice',
-            name='sip_user',
-            field=models.ForeignKey(blank=True, help_text='SIP user associated with this device', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='devices', to='core.sipuser', verbose_name='SIP User'),
+            model_name="phonedevice",
+            name="sip_user",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="SIP user associated with this device",
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="devices",
+                to="core.sipuser",
+                verbose_name="SIP User",
+            ),
         ),
     ]

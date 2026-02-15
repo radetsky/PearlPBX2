@@ -13,12 +13,14 @@ import redis.asyncio as redis
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime
 
+
 class EventWrapper:
     def __init__(self, event):
         self.event = event
 
     def get(self, key, default=None):
         return self.event.keys.get(key, default)
+
 
 class DashboardAMIListener:
     def __init__(self, **kwargs):
@@ -35,24 +37,23 @@ class DashboardAMIListener:
     def set_event_handlers(self):
         event_handlers = {
             # Події каналів
-            'Newchannel': self.handle_newchannel,
-            'Newstate': self.handle_newstate,
-            'DialBegin': self.handle_dial_begin,
-            'DialEnd': self.handle_dial_end,
-            'BridgeCreate': self.handle_bridge_create,
-            'BridgeEnter': self.handle_bridge_enter,
-            'BridgeLeave': self.handle_bridge_leave,
-            'Hangup': self.handle_hangup,
-            'Newexten': self.handle_newexten,
-            'VarSet': self.handle_varset,
-
+            "Newchannel": self.handle_newchannel,
+            "Newstate": self.handle_newstate,
+            "DialBegin": self.handle_dial_begin,
+            "DialEnd": self.handle_dial_end,
+            "BridgeCreate": self.handle_bridge_create,
+            "BridgeEnter": self.handle_bridge_enter,
+            "BridgeLeave": self.handle_bridge_leave,
+            "Hangup": self.handle_hangup,
+            "Newexten": self.handle_newexten,
+            "VarSet": self.handle_varset,
             # Події черг
-            'QueueMemberStatus': self.handle_queue_member_status,
-            'QueueMember': self.handle_queue_member,
-            'QueueCallerJoin': self.handle_queue_caller_join,
-            'QueueCallerLeave': self.handle_queue_caller_leave,
-            'QueueCallerAbandon': self.handle_queue_caller_leave,
-            'AgentConnect': self.handle_agent_connect,
+            "QueueMemberStatus": self.handle_queue_member_status,
+            "QueueMember": self.handle_queue_member,
+            "QueueCallerJoin": self.handle_queue_caller_join,
+            "QueueCallerLeave": self.handle_queue_caller_leave,
+            "QueueCallerAbandon": self.handle_queue_caller_leave,
+            "AgentConnect": self.handle_agent_connect,
         }
         return event_handlers
 
@@ -86,7 +87,7 @@ class DashboardAMIListener:
         """Підключення до Redis"""
         redis_client = redis.from_url(
             f"redis://{self.params['redis_host']}:{self.params['redis_port']}",
-            decode_responses=True
+            decode_responses=True,
         )
         self.logger.info("Connected to Redis")
         return redis_client
@@ -95,15 +96,12 @@ class DashboardAMIListener:
         """Публікація події в Redis Pub/Sub"""
         try:
             message = {
-                'type': event_type,
-                'data': data,
-                'timestamp': datetime.now().isoformat()
+                "type": event_type,
+                "data": data,
+                "timestamp": datetime.now().isoformat(),
             }
 
-            await self.redis_client.publish(
-                'asterisk:events',
-                json.dumps(message)
-            )
+            await self.redis_client.publish("asterisk:events", json.dumps(message))
 
             self.logger.debug(f"Published event: {event_type} {data}")
         except Exception as e:
@@ -112,11 +110,9 @@ class DashboardAMIListener:
     async def update_queue_state(self, queue_name):
         """Оновлення стану черги в Redis"""
         try:
-            state_key = f'asterisk:queue:{queue_name}'
+            state_key = f"asterisk:queue:{queue_name}"
             await self.redis_client.setex(
-                state_key,
-                3600,
-                json.dumps(self.queue_state.get(queue_name, {}))
+                state_key, 3600, json.dumps(self.queue_state.get(queue_name, {}))
             )
         except Exception as e:
             self.logger.error(f"Error updating queue state: {e}")
@@ -125,9 +121,9 @@ class DashboardAMIListener:
         """Оновлення стану всіх каналів в Redis"""
         try:
             await self.redis_client.setex(
-                'asterisk:channels:all',
+                "asterisk:channels:all",
                 300,  # TTL 5 хвилин
-                json.dumps(self.channels_state)
+                json.dumps(self.channels_state),
             )
         except Exception as e:
             self.logger.error(f"Error updating channels state: {e}")
@@ -136,9 +132,9 @@ class DashboardAMIListener:
         """Оновлення стану конкретного каналу"""
         try:
             await self.redis_client.setex(
-                f'asterisk:channel:{channel_name}',
+                f"asterisk:channel:{channel_name}",
                 300,  # TTL 5 хвилин
-                json.dumps(channel_data)
+                json.dumps(channel_data),
             )
         except Exception as e:
             self.logger.error(f"Error updating channel state: {e}")
@@ -147,200 +143,216 @@ class DashboardAMIListener:
 
     async def handle_newchannel(self, event):
         """Створення нового каналу"""
-        channel = event.get('Channel')
-        channel_state = event.get('ChannelState')
-        channel_state_desc = event.get('ChannelStateDesc')
-        caller_id_num = event.get('CallerIDNum')
-        caller_id_name = event.get('CallerIDName')
-        connected_line_num = event.get('ConnectedLineNum')
-        uniqueid = event.get('Uniqueid')
-        context = event.get('Context')
-        exten = event.get('Exten')
+        channel = event.get("Channel")
+        channel_state = event.get("ChannelState")
+        channel_state_desc = event.get("ChannelStateDesc")
+        caller_id_num = event.get("CallerIDNum")
+        caller_id_name = event.get("CallerIDName")
+        connected_line_num = event.get("ConnectedLineNum")
+        uniqueid = event.get("Uniqueid")
+        context = event.get("Context")
+        exten = event.get("Exten")
 
         # Зберігаємо інформацію про канал
         self.channels_state[channel] = {
-            'channel': channel,
-            'uniqueid': uniqueid,
-            'state': channel_state,
-            'state_desc': channel_state_desc,
-            'caller_id_num': caller_id_num,
-            'caller_id_name': caller_id_name,
-            'connected_line_num': connected_line_num,
-            'context': context,
-            'exten': exten,
-            'created_at': datetime.now().isoformat(),
-            'duration': 0,
-            'bridged_channel': None,
-            'application': None
+            "channel": channel,
+            "uniqueid": uniqueid,
+            "state": channel_state,
+            "state_desc": channel_state_desc,
+            "caller_id_num": caller_id_num,
+            "caller_id_name": caller_id_name,
+            "connected_line_num": connected_line_num,
+            "context": context,
+            "exten": exten,
+            "created_at": datetime.now().isoformat(),
+            "duration": 0,
+            "bridged_channel": None,
+            "application": None,
         }
 
         await self.update_channel_state(channel, self.channels_state[channel])
         await self.update_channels_state()
 
-        await self.publish_event('channel_new', {
-            'channel': channel,
-            'uniqueid': uniqueid,
-            'caller_id_num': caller_id_num,
-            'caller_id_name': caller_id_name,
-            'state': channel_state_desc,
-            'context': context,
-            'exten': exten
-        })
+        await self.publish_event(
+            "channel_new",
+            {
+                "channel": channel,
+                "uniqueid": uniqueid,
+                "caller_id_num": caller_id_num,
+                "caller_id_name": caller_id_name,
+                "state": channel_state_desc,
+                "context": context,
+                "exten": exten,
+            },
+        )
 
         self.logger.info(
-            f"New channel: {channel} ({caller_id_num}) - {channel_state_desc}")
+            f"New channel: {channel} ({caller_id_num}) - {channel_state_desc}"
+        )
 
     async def handle_newstate(self, event):
         """Зміна стану каналу"""
-        channel = event.get('Channel')
-        channel_state = event.get('ChannelState')
-        channel_state_desc = event.get('ChannelStateDesc')
-        uniqueid = event.get('Uniqueid')
+        channel = event.get("Channel")
+        channel_state = event.get("ChannelState")
+        channel_state_desc = event.get("ChannelStateDesc")
+        uniqueid = event.get("Uniqueid")
 
         if channel in self.channels_state:
-            self.channels_state[channel]['state'] = channel_state
-            self.channels_state[channel]['state_desc'] = channel_state_desc
+            self.channels_state[channel]["state"] = channel_state
+            self.channels_state[channel]["state_desc"] = channel_state_desc
 
             await self.update_channel_state(channel, self.channels_state[channel])
             await self.update_channels_state()
 
-        await self.publish_event('channel_state_change', {
-            'channel': channel,
-            'uniqueid': uniqueid,
-            'state': channel_state_desc
-        })
+        await self.publish_event(
+            "channel_state_change",
+            {"channel": channel, "uniqueid": uniqueid, "state": channel_state_desc},
+        )
 
         self.logger.info(f"Channel state change: {channel} -> {channel_state_desc}")
 
     async def handle_dial_begin(self, event):
         """Початок набору номера"""
-        channel = event.get('Channel')
-        destination = event.get('DestChannel')
-        caller_id_num = event.get('CallerIDNum')
-        dest_caller_id_num = event.get('DestCallerIDNum')
-        uniqueid = event.get('Uniqueid')
-        dest_uniqueid = event.get('DestUniqueid')
+        channel = event.get("Channel")
+        destination = event.get("DestChannel")
+        caller_id_num = event.get("CallerIDNum")
+        dest_caller_id_num = event.get("DestCallerIDNum")
+        uniqueid = event.get("Uniqueid")
+        dest_uniqueid = event.get("DestUniqueid")
 
         # Оновлюємо обидва канали
         if channel in self.channels_state:
-            self.channels_state[channel]['dialing_to'] = destination
-            self.channels_state[channel]['dest_uniqueid'] = dest_uniqueid
+            self.channels_state[channel]["dialing_to"] = destination
+            self.channels_state[channel]["dest_uniqueid"] = dest_uniqueid
             await self.update_channel_state(channel, self.channels_state[channel])
 
         if destination in self.channels_state:
-            self.channels_state[destination]['dialed_by'] = channel
-            await self.update_channel_state(destination, self.channels_state[destination])
+            self.channels_state[destination]["dialed_by"] = channel
+            await self.update_channel_state(
+                destination, self.channels_state[destination]
+            )
 
         await self.update_channels_state()
 
-        await self.publish_event('channel_dial_begin', {
-            'channel': channel,
-            'destination': destination,
-            'caller_id_num': caller_id_num,
-            'dest_caller_id_num': dest_caller_id_num,
-            'uniqueid': uniqueid,
-            'dest_uniqueid': dest_uniqueid
-        })
+        await self.publish_event(
+            "channel_dial_begin",
+            {
+                "channel": channel,
+                "destination": destination,
+                "caller_id_num": caller_id_num,
+                "dest_caller_id_num": dest_caller_id_num,
+                "uniqueid": uniqueid,
+                "dest_uniqueid": dest_uniqueid,
+            },
+        )
 
         self.logger.info(
-            f"Dial begin: {channel} -> {destination} ({caller_id_num} -> {dest_caller_id_num})")
+            f"Dial begin: {channel} -> {destination} ({caller_id_num} -> {dest_caller_id_num})"
+        )
 
     async def handle_dial_end(self, event):
         """Кінець набору (з'єднано або відхилено)"""
-        channel = event.get('Channel')
-        destination = event.get('DestChannel')
+        channel = event.get("Channel")
+        destination = event.get("DestChannel")
         # ANSWER, BUSY, NOANSWER, CANCEL, etc.
-        dial_status = event.get('DialStatus')
-        uniqueid = event.get('Uniqueid')
+        dial_status = event.get("DialStatus")
+        uniqueid = event.get("Uniqueid")
 
         if channel in self.channels_state:
-            self.channels_state[channel]['dial_status'] = dial_status
+            self.channels_state[channel]["dial_status"] = dial_status
             await self.update_channel_state(channel, self.channels_state[channel])
 
         await self.update_channels_state()
 
-        await self.publish_event('channel_dial_end', {
-            'channel': channel,
-            'destination': destination,
-            'dial_status': dial_status,
-            'uniqueid': uniqueid
-        })
+        await self.publish_event(
+            "channel_dial_end",
+            {
+                "channel": channel,
+                "destination": destination,
+                "dial_status": dial_status,
+                "uniqueid": uniqueid,
+            },
+        )
 
         self.logger.info(
-            f"Dial end: {channel} -> {destination} (status: {dial_status})")
+            f"Dial end: {channel} -> {destination} (status: {dial_status})"
+        )
 
     async def handle_bridge_create(self, event):
         """Створення bridge (з'єднання двох каналів)"""
-        bridge_uniqueid = event.get('BridgeUniqueid')
-        bridge_type = event.get('BridgeType')
-        bridge_technology = event.get('BridgeTechnology')
+        bridge_uniqueid = event.get("BridgeUniqueid")
+        bridge_type = event.get("BridgeType")
+        bridge_technology = event.get("BridgeTechnology")
 
-        await self.publish_event('bridge_create', {
-            'bridge_id': bridge_uniqueid,
-            'bridge_type': bridge_type,
-            'bridge_technology': bridge_technology
-        })
+        await self.publish_event(
+            "bridge_create",
+            {
+                "bridge_id": bridge_uniqueid,
+                "bridge_type": bridge_type,
+                "bridge_technology": bridge_technology,
+            },
+        )
 
         self.logger.info(f"Bridge created: {bridge_uniqueid} ({bridge_type})")
 
     async def handle_bridge_enter(self, event):
         """Канал входить в bridge"""
-        channel = event.get('Channel')
-        bridge_uniqueid = event.get('BridgeUniqueid')
-        uniqueid = event.get('Uniqueid')
+        channel = event.get("Channel")
+        bridge_uniqueid = event.get("BridgeUniqueid")
+        uniqueid = event.get("Uniqueid")
 
         if channel in self.channels_state:
-            self.channels_state[channel]['bridge_id'] = bridge_uniqueid
-            self.channels_state[channel]['bridged_at'] = datetime.now(
-            ).isoformat()
+            self.channels_state[channel]["bridge_id"] = bridge_uniqueid
+            self.channels_state[channel]["bridged_at"] = datetime.now().isoformat()
             await self.update_channel_state(channel, self.channels_state[channel])
 
         await self.update_channels_state()
 
-        await self.publish_event('channel_bridge_enter', {
-            'channel': channel,
-            'bridge_id': bridge_uniqueid,
-            'uniqueid': uniqueid
-        })
+        await self.publish_event(
+            "channel_bridge_enter",
+            {"channel": channel, "bridge_id": bridge_uniqueid, "uniqueid": uniqueid},
+        )
 
         self.logger.info(f"Channel entered bridge: {channel} -> {bridge_uniqueid}")
 
     async def handle_bridge_leave(self, event):
         """Канал виходить з bridge"""
-        channel = event.get('Channel')
-        bridge_uniqueid = event.get('BridgeUniqueid')
-        uniqueid = event.get('Uniqueid')
+        channel = event.get("Channel")
+        bridge_uniqueid = event.get("BridgeUniqueid")
+        uniqueid = event.get("Uniqueid")
 
         if channel in self.channels_state:
-            self.channels_state[channel]['bridge_id'] = None
+            self.channels_state[channel]["bridge_id"] = None
             await self.update_channel_state(channel, self.channels_state[channel])
 
         await self.update_channels_state()
 
-        await self.publish_event('channel_bridge_leave', {
-            'channel': channel,
-            'bridge_id': bridge_uniqueid,
-            'uniqueid': uniqueid
-        })
+        await self.publish_event(
+            "channel_bridge_leave",
+            {"channel": channel, "bridge_id": bridge_uniqueid, "uniqueid": uniqueid},
+        )
 
         self.logger.info(f"Channel left bridge: {channel} <- {bridge_uniqueid}")
 
     async def handle_hangup(self, event):
         """Канал завершив роботу"""
-        channel = event.get('Channel')
-        uniqueid = event.get('Uniqueid')
-        cause = event.get('Cause')
-        cause_txt = event.get('Cause-txt')
+        channel = event.get("Channel")
+        uniqueid = event.get("Uniqueid")
+        cause = event.get("Cause")
+        cause_txt = event.get("Cause-txt")
 
         channel_data = self.channels_state.get(channel, {})
 
-        await self.publish_event('channel_hangup', {
-            'channel': channel,
-            'uniqueid': uniqueid,
-            'cause': cause,
-            'cause_txt': cause_txt,
-            'duration': channel_data.get('duration', 0)
-        })
+        await self.publish_event(
+            "channel_hangup",
+            {
+                "channel": channel,
+                "uniqueid": uniqueid,
+                "cause": cause,
+                "cause_txt": cause_txt,
+                "duration": channel_data.get("duration", 0),
+            },
+        )
 
         # Видаляємо канал зі стану
         if channel in self.channels_state:
@@ -348,7 +360,7 @@ class DashboardAMIListener:
 
         # Видаляємо з Redis
         try:
-            await self.redis_client.delete(f'asterisk:channel:{channel}')
+            await self.redis_client.delete(f"asterisk:channel:{channel}")
         except Exception as e:
             self.logger.error(f"Error deleting channel from Redis: {e}")
 
@@ -358,56 +370,62 @@ class DashboardAMIListener:
 
     async def handle_newexten(self, event):
         """Виконання діалплану (application/exten)"""
-        channel = event.get('Channel')
-        context = event.get('Context')
-        exten = event.get('Extension')
-        application = event.get('Application')
-        app_data = event.get('AppData')
-        uniqueid = event.get('Uniqueid')
+        channel = event.get("Channel")
+        context = event.get("Context")
+        exten = event.get("Extension")
+        application = event.get("Application")
+        app_data = event.get("AppData")
+        uniqueid = event.get("Uniqueid")
 
         if channel in self.channels_state:
-            self.channels_state[channel]['context'] = context
-            self.channels_state[channel]['exten'] = exten
-            self.channels_state[channel]['application'] = application
-            self.channels_state[channel]['app_data'] = app_data
+            self.channels_state[channel]["context"] = context
+            self.channels_state[channel]["exten"] = exten
+            self.channels_state[channel]["application"] = application
+            self.channels_state[channel]["app_data"] = app_data
             await self.update_channel_state(channel, self.channels_state[channel])
 
-        await self.publish_event('channel_application', {
-            'channel': channel,
-            'uniqueid': uniqueid,
-            'context': context,
-            'exten': exten,
-            'application': application,
-            'app_data': app_data
-        })
+        await self.publish_event(
+            "channel_application",
+            {
+                "channel": channel,
+                "uniqueid": uniqueid,
+                "context": context,
+                "exten": exten,
+                "application": application,
+                "app_data": app_data,
+            },
+        )
 
         self.logger.debug(
-            f"Channel {channel}: {application}({app_data}) in {context},{exten}")
+            f"Channel {channel}: {application}({app_data}) in {context},{exten}"
+        )
 
     async def handle_varset(self, event):
         """Встановлення змінної каналу (можна відстежувати важливі змінні)"""
-        channel = event.get('Channel')
-        variable = event.get('Variable')
-        value = event.get('Value')
-        uniqueid = event.get('Uniqueid')
+        channel = event.get("Channel")
+        variable = event.get("Variable")
+        value = event.get("Value")
+        uniqueid = event.get("Uniqueid")
 
         # Відстежуємо тільки важливі змінні
-        important_vars = ['ANSWEREDTIME', 'DIALEDTIME',
-                          'HANGUPCAUSE', 'CDR(billsec)']
+        important_vars = ["ANSWEREDTIME", "DIALEDTIME", "HANGUPCAUSE", "CDR(billsec)"]
 
         if variable in important_vars:
             if channel in self.channels_state:
-                if 'variables' not in self.channels_state[channel]:
-                    self.channels_state[channel]['variables'] = {}
-                self.channels_state[channel]['variables'][variable] = value
+                if "variables" not in self.channels_state[channel]:
+                    self.channels_state[channel]["variables"] = {}
+                self.channels_state[channel]["variables"][variable] = value
                 await self.update_channel_state(channel, self.channels_state[channel])
 
-            await self.publish_event('channel_variable', {
-                'channel': channel,
-                'uniqueid': uniqueid,
-                'variable': variable,
-                'value': value
-            })
+            await self.publish_event(
+                "channel_variable",
+                {
+                    "channel": channel,
+                    "uniqueid": uniqueid,
+                    "variable": variable,
+                    "value": value,
+                },
+            )
 
     # ============ ОБРОБНИКИ ПОДІЙ ЧЕРГ ============
 
@@ -427,23 +445,26 @@ class DashboardAMIListener:
         # ServicelevelPerf2: 66.7
         # Weight: 0
 
-        queue_name = event.get('Queue')
+        queue_name = event.get("Queue")
         if queue_name not in self.queue_state:
             self.queue_state[queue_name] = {
-                'members': {}, 'calls': {}, 'stats': {'waiting': 0}}
+                "members": {},
+                "calls": {},
+                "stats": {"waiting": 0},
+            }
         # Можна зберегти додаткові параметри черги, якщо потрібно
-        self.queue_state[queue_name]['params'] = {
-            'max': event.get('Max'),
-            'strategy': event.get('Strategy'),
-            'calls': event.get('Calls'),
-            'holdtime': event.get('Holdtime'),
-            'talktime': event.get('TalkTime'),
-            'completed': event.get('Completed'),
-            'abandoned': event.get('Abandoned'),
-            'service_level': event.get('ServiceLevel'),
-            'service_level_perf': event.get('ServicelevelPerf'),
-            'service_level_perf2': event.get('ServicelevelPerf2'),
-            'weight': event.get('Weight')
+        self.queue_state[queue_name]["params"] = {
+            "max": event.get("Max"),
+            "strategy": event.get("Strategy"),
+            "calls": event.get("Calls"),
+            "holdtime": event.get("Holdtime"),
+            "talktime": event.get("TalkTime"),
+            "completed": event.get("Completed"),
+            "abandoned": event.get("Abandoned"),
+            "service_level": event.get("ServiceLevel"),
+            "service_level_perf": event.get("ServicelevelPerf"),
+            "service_level_perf2": event.get("ServicelevelPerf2"),
+            "weight": event.get("Weight"),
         }
         self.logger.debug(f"Queue {queue_name} parameters updated")
 
@@ -470,64 +491,64 @@ class DashboardAMIListener:
             Ringinuse: 0
             Wrapuptime: 0"""
 
-        queue_name = event.get('Queue')
-        member_name = event.get('MemberName')
-        status = event.get('Status')
-        paused = event.get('Paused', '0') == '1'
-        calls_taken = event.get('CallsTaken', '0')
+        queue_name = event.get("Queue")
+        member_name = event.get("MemberName")
+        status = event.get("Status")
+        paused = event.get("Paused", "0") == "1"
+        calls_taken = event.get("CallsTaken", "0")
 
         if queue_name not in self.queue_state:
             self.queue_state[queue_name] = {
-                'members': {},
-                'calls': {},
-                'stats': {
-                    'waiting': 0,
-                    'answered': 0
-                }
+                "members": {},
+                "calls": {},
+                "stats": {"waiting": 0, "answered": 0},
             }
 
-        self.queue_state[queue_name]['members'][member_name] = {
-            'name': member_name,
-            'status': status,
-            'paused': paused,
-            'calls_taken': int(calls_taken),
-            'last_update': datetime.now().isoformat(),
-            'logintime': event.get('LoginTime'),
-            'location': event.get('Location'),
-            'state_interface': event.get('StateInterface'),
-            'membership': event.get('Membership'),
-            'penalty': event.get('Penalty'),
-            'last_call': event.get('LastCall'),
-            'last_pause': event.get('LastPause'),
-            'in_call': event.get('InCall'),
-            'paused_reason': event.get('PausedReason'),
-            'wrapup_time': event.get('Wrapuptime')
+        self.queue_state[queue_name]["members"][member_name] = {
+            "name": member_name,
+            "status": status,
+            "paused": paused,
+            "calls_taken": int(calls_taken),
+            "last_update": datetime.now().isoformat(),
+            "logintime": event.get("LoginTime"),
+            "location": event.get("Location"),
+            "state_interface": event.get("StateInterface"),
+            "membership": event.get("Membership"),
+            "penalty": event.get("Penalty"),
+            "last_call": event.get("LastCall"),
+            "last_pause": event.get("LastPause"),
+            "in_call": event.get("InCall"),
+            "paused_reason": event.get("PausedReason"),
+            "wrapup_time": event.get("Wrapuptime"),
         }
 
         await self.update_queue_state(queue_name)
 
-        await self.publish_event('queue_member_status', {
-            'queue': queue_name,
-            'member': member_name,
-            'status': status,
-            'paused': paused,
-            'calls_taken': int(calls_taken),
-            'last_update': datetime.now().isoformat(),
-            'logintime': event.get('LoginTime'),
-            'location': event.get('Location'),
-            'state_interface': event.get('StateInterface'),
-            'membership': event.get('Membership'),
-            'penalty': event.get('Penalty'),
-            'last_call': event.get('LastCall'),
-            'last_pause': event.get('LastPause'),
-            'in_call': event.get('InCall'),
-            'paused_reason': event.get('PausedReason'),
-            'wrapup_time': event.get('Wrapuptime')
-        })
+        await self.publish_event(
+            "queue_member_status",
+            {
+                "queue": queue_name,
+                "member": member_name,
+                "status": status,
+                "paused": paused,
+                "calls_taken": int(calls_taken),
+                "last_update": datetime.now().isoformat(),
+                "logintime": event.get("LoginTime"),
+                "location": event.get("Location"),
+                "state_interface": event.get("StateInterface"),
+                "membership": event.get("Membership"),
+                "penalty": event.get("Penalty"),
+                "last_call": event.get("LastCall"),
+                "last_pause": event.get("LastPause"),
+                "in_call": event.get("InCall"),
+                "paused_reason": event.get("PausedReason"),
+                "wrapup_time": event.get("Wrapuptime"),
+            },
+        )
 
         self.logger.info(
-            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}")
-
+            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}"
+        )
 
     async def handle_queue_member(self, event):
         """Обробка статусу агента"""
@@ -549,140 +570,154 @@ class DashboardAMIListener:
                 PausedReason:
                 Wrapuptime: 0"""
 
-        queue_name = event.get('Queue')
-        member_name = event.get('Name')
-        status = event.get('Status')
-        paused = event.get('Paused', '0') == '1'
-        calls_taken = event.get('CallsTaken', '0')
+        queue_name = event.get("Queue")
+        member_name = event.get("Name")
+        status = event.get("Status")
+        paused = event.get("Paused", "0") == "1"
+        calls_taken = event.get("CallsTaken", "0")
 
         if queue_name not in self.queue_state:
-                self.queue_state[queue_name] = {
-                    'members': {},
-                    'calls': {},
-                    'stats': {
-                        'waiting': 0,
-                        'answered': 0
-                    }
-                }
+            self.queue_state[queue_name] = {
+                "members": {},
+                "calls": {},
+                "stats": {"waiting": 0, "answered": 0},
+            }
 
-        self.queue_state[queue_name]['members'][member_name] = {
-            'name': member_name,
-            'status': status,
-            'paused': paused,
-            'calls_taken': int(calls_taken),
-            'last_update': datetime.now().isoformat(),
-            'logintime': event.get('LoginTime'),
-            'location': event.get('Location'),
-            'state_interface': event.get('StateInterface'),
-            'membership': event.get('Membership'),
-            'penalty': event.get('Penalty'),
-            'last_call': event.get('LastCall'),
-            'last_pause': event.get('LastPause'),
-            'in_call': event.get('InCall'),
-            'paused_reason': event.get('PausedReason'),
-            'wrapup_time': event.get('Wrapuptime')
+        self.queue_state[queue_name]["members"][member_name] = {
+            "name": member_name,
+            "status": status,
+            "paused": paused,
+            "calls_taken": int(calls_taken),
+            "last_update": datetime.now().isoformat(),
+            "logintime": event.get("LoginTime"),
+            "location": event.get("Location"),
+            "state_interface": event.get("StateInterface"),
+            "membership": event.get("Membership"),
+            "penalty": event.get("Penalty"),
+            "last_call": event.get("LastCall"),
+            "last_pause": event.get("LastPause"),
+            "in_call": event.get("InCall"),
+            "paused_reason": event.get("PausedReason"),
+            "wrapup_time": event.get("Wrapuptime"),
         }
 
         await self.update_queue_state(queue_name)
 
-        await self.publish_event('queue_member_status', {
-            'queue': queue_name,
-            'member': member_name,
-            'status': status,
-            'paused': paused,
-            'calls_taken': int(calls_taken),
-            'last_update': datetime.now().isoformat(),
-            'logintime': event.get('LoginTime'),
-            'location': event.get('Location'),
-            'state_interface': event.get('StateInterface'),
-            'membership': event.get('Membership'),
-            'penalty': event.get('Penalty'),
-            'last_call': event.get('LastCall'),
-            'last_pause': event.get('LastPause'),
-            'in_call': event.get('InCall'),
-            'paused_reason': event.get('PausedReason'),
-            'wrapup_time': event.get('Wrapuptime')
-        })
+        await self.publish_event(
+            "queue_member_status",
+            {
+                "queue": queue_name,
+                "member": member_name,
+                "status": status,
+                "paused": paused,
+                "calls_taken": int(calls_taken),
+                "last_update": datetime.now().isoformat(),
+                "logintime": event.get("LoginTime"),
+                "location": event.get("Location"),
+                "state_interface": event.get("StateInterface"),
+                "membership": event.get("Membership"),
+                "penalty": event.get("Penalty"),
+                "last_call": event.get("LastCall"),
+                "last_pause": event.get("LastPause"),
+                "in_call": event.get("InCall"),
+                "paused_reason": event.get("PausedReason"),
+                "wrapup_time": event.get("Wrapuptime"),
+            },
+        )
 
         self.logger.info(
-            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}")
+            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}"
+        )
 
     async def handle_queue_caller_join(self, event):
         """Дзвінок увійшов у чергу"""
-        queue_name = event.get('Queue')
-        caller_id = event.get('CallerIDNum')
-        position = event.get('Position')
-        uniqueid = event.get('Uniqueid')
-        channel = event.get('Channel')
+        queue_name = event.get("Queue")
+        caller_id = event.get("CallerIDNum")
+        position = event.get("Position")
+        uniqueid = event.get("Uniqueid")
+        channel = event.get("Channel")
 
         if queue_name not in self.queue_state:
             self.queue_state[queue_name] = {
-                'members': {}, 'calls': {}, 'stats': {'waiting': 0}}
+                "members": {},
+                "calls": {},
+                "stats": {"waiting": 0},
+            }
 
-        self.queue_state[queue_name]['calls'][uniqueid] = {
-            'caller_id': caller_id,
-            'channel': channel,
-            'position': position,
-            'join_time': datetime.now().isoformat(),
-            'wait_time': 0
+        self.queue_state[queue_name]["calls"][uniqueid] = {
+            "caller_id": caller_id,
+            "channel": channel,
+            "position": position,
+            "join_time": datetime.now().isoformat(),
+            "wait_time": 0,
         }
 
-        self.queue_state[queue_name]['stats']['waiting'] = len(
-            self.queue_state[queue_name]['calls']
+        self.queue_state[queue_name]["stats"]["waiting"] = len(
+            self.queue_state[queue_name]["calls"]
         )
 
         await self.update_queue_state(queue_name)
 
-        await self.publish_event('queue_caller_join', {
-            'queue': queue_name,
-            'caller_id': caller_id,
-            'channel': channel,
-            'position': position,
-            'unique_id': uniqueid
-        })
+        await self.publish_event(
+            "queue_caller_join",
+            {
+                "queue": queue_name,
+                "caller_id": caller_id,
+                "channel": channel,
+                "position": position,
+                "unique_id": uniqueid,
+            },
+        )
 
         self.logger.info(
-            f"Queue {queue_name}: Caller {caller_id} joined (position {position})")
+            f"Queue {queue_name}: Caller {caller_id} joined (position {position})"
+        )
 
     async def handle_queue_caller_leave(self, event):
         """Дзвінок покинув чергу"""
-        queue_name = event.get('Queue')
-        uniqueid = event.get('Uniqueid')
+        queue_name = event.get("Queue")
+        uniqueid = event.get("Uniqueid")
 
-        if queue_name in self.queue_state and uniqueid in self.queue_state[queue_name]['calls']:
-            del self.queue_state[queue_name]['calls'][uniqueid]
+        if (
+            queue_name in self.queue_state
+            and uniqueid in self.queue_state[queue_name]["calls"]
+        ):
+            del self.queue_state[queue_name]["calls"][uniqueid]
 
-            self.queue_state[queue_name]['stats']['waiting'] = len(
-                self.queue_state[queue_name]['calls']
+            self.queue_state[queue_name]["stats"]["waiting"] = len(
+                self.queue_state[queue_name]["calls"]
             )
 
             await self.update_queue_state(queue_name)
 
-        await self.publish_event('queue_caller_leave', {
-            'queue': queue_name,
-            'unique_id': uniqueid
-        })
+        await self.publish_event(
+            "queue_caller_leave", {"queue": queue_name, "unique_id": uniqueid}
+        )
 
         self.logger.info(f"Queue {queue_name}: Call {uniqueid} left")
 
     async def handle_agent_connect(self, event):
         """Агент з'єднався з дзвінком"""
-        queue_name = event.get('Queue')
-        member_name = event.get('MemberName')
-        uniqueid = event.get('Uniqueid')
-        channel = event.get('Channel')
-        member_channel = event.get('MemberName')
+        queue_name = event.get("Queue")
+        member_name = event.get("MemberName")
+        uniqueid = event.get("Uniqueid")
+        channel = event.get("Channel")
+        member_channel = event.get("MemberName")
 
-        await self.publish_event('agent_connect', {
-            'queue': queue_name,
-            'member': member_name,
-            'unique_id': uniqueid,
-            'channel': channel,
-            'member_channel': member_channel
-        })
+        await self.publish_event(
+            "agent_connect",
+            {
+                "queue": queue_name,
+                "member": member_name,
+                "unique_id": uniqueid,
+                "channel": channel,
+                "member_channel": member_channel,
+            },
+        )
 
         self.logger.info(
-            f"Queue {queue_name}: Agent {member_name} connected to call {uniqueid}")
+            f"Queue {queue_name}: Agent {member_name} connected to call {uniqueid}"
+        )
 
     # ============ ІНІЦІАЛІЗАЦІЯ ============
 
@@ -703,8 +738,7 @@ class DashboardAMIListener:
                 event_wrapper = EventWrapper(event)
                 await self.event_handlers[event.name](event_wrapper)
             except Exception as e:
-                self.logger.error(
-                    f"Error handling {event.name}: {e}", exc_info=True)
+                self.logger.error(f"Error handling {event.name}: {e}", exc_info=True)
 
     async def health_check_loop(self):
         """Періодична перевірка здоров'я з'єднань"""
@@ -712,7 +746,7 @@ class DashboardAMIListener:
             try:
                 await asyncio.sleep(30)
 
-                await self.redis_client.ping() # type: ignore
+                await self.redis_client.ping()  # type: ignore
                 self.ami.send_action(SimpleAction("Ping"))
 
                 self.logger.debug("Health check: OK")
@@ -757,6 +791,7 @@ class DashboardAMIListener:
         finally:
             await self.shutdown()
 
+
 ######################### Main #########################
 def parse_args():
     """Parse command line arguments.
@@ -775,12 +810,8 @@ def parse_args():
     parser.add_argument(
         "--ami_pass", required=False, help="Asterisk Manager Interface password"
     )
-    parser.add_argument(
-        "--redis_host", required=False, help="Redis host"
-    )
-    parser.add_argument(
-        "--redis_port", type=int, required=False, help="Redis port"
-    )
+    parser.add_argument("--redis_host", required=False, help="Redis host")
+    parser.add_argument("--redis_port", type=int, required=False, help="Redis port")
     parser.add_argument(
         "--loglevel",
         type=int,
@@ -820,15 +851,15 @@ def merge_args_env(args, env_vars):
     """
     merged = {}
     for key in env_vars:
-        merged[key] = (
-            env_vars[key] if env_vars[key] is not None else getattr(args, key)
-        )
+        merged[key] = env_vars[key] if env_vars[key] is not None else getattr(args, key)
     return merged
+
 
 def handle_signal(signum, frame):
     """Обробка сигналів для graceful shutdown"""
     print(f"Received signal {signum}")
     sys.exit(0)
+
 
 def main():
     signal.signal(signal.SIGTERM, handle_signal)
@@ -852,5 +883,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

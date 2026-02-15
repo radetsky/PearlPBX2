@@ -5,56 +5,88 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('callback', '0001_initial'),
-        ('core', '0057_remove_sipuser_telephone_type'),
+        ("callback", "0001_initial"),
+        ("core", "0057_remove_sipuser_telephone_type"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CallbackService',
+            name="CallbackService",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=64, unique=True)),
-                ('description', models.TextField(blank=True, default='')),
-                ('is_active', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=64, unique=True)),
+                ("description", models.TextField(blank=True, default="")),
+                ("is_active", models.BooleanField(default=True)),
             ],
             options={
-                'db_table': 'callback_service',
+                "db_table": "callback_service",
             },
         ),
         migrations.RemoveIndex(
-            model_name='callbacknumber',
-            name='callback_nu_service_74f85a_idx',
+            model_name="callbacknumber",
+            name="callback_nu_service_74f85a_idx",
         ),
         migrations.RemoveField(
-            model_name='callbacknumber',
-            name='service_name',
+            model_name="callbacknumber",
+            name="service_name",
         ),
         migrations.AlterField(
-            model_name='callbacknumber',
-            name='dial_status',
-            field=models.CharField(blank=True, choices=[('NEW', 'New'), ('ANSWERED', 'Answered'), ('BUSY', 'Busy')], db_default='NEW', default='NEW', max_length=16),
+            model_name="callbacknumber",
+            name="dial_status",
+            field=models.CharField(
+                blank=True,
+                choices=[("NEW", "New"), ("ANSWERED", "Answered"), ("BUSY", "Busy")],
+                db_default="NEW",
+                default="NEW",
+                max_length=16,
+            ),
         ),
         migrations.AddField(
-            model_name='callbackservice',
-            name='context_inbound',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='callback_services_inbound', to='core.dialplancontext'),
+            model_name="callbackservice",
+            name="context_inbound",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="callback_services_inbound",
+                to="core.dialplancontext",
+            ),
         ),
         migrations.AddField(
-            model_name='callbackservice',
-            name='context_outbound',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='callback_services', to='core.dialplancontext'),
+            model_name="callbackservice",
+            name="context_outbound",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="callback_services",
+                to="core.dialplancontext",
+            ),
         ),
         migrations.AddField(
-            model_name='callbacknumber',
-            name='service',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, related_name='callback_numbers', to='callback.callbackservice'),
+            model_name="callbacknumber",
+            name="service",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="callback_numbers",
+                to="callback.callbackservice",
+            ),
             preserve_default=False,
         ),
         migrations.AddIndex(
-            model_name='callbacknumber',
-            index=models.Index(fields=['service'], name='callback_nu_service_0d17de_idx'),
+            model_name="callbacknumber",
+            index=models.Index(
+                fields=["service"], name="callback_nu_service_0d17de_idx"
+            ),
         ),
     ]

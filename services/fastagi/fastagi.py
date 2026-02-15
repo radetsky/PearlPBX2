@@ -228,10 +228,11 @@ class Database:
 
             return global_monitor
 
-    def add_callback_record(self, src: str, dst: str, service_name: str, delay_seconds: str) -> None:
+    def add_callback_record(
+        self, src: str, dst: str, service_name: str, delay_seconds: str
+    ) -> None:
         """Add a callback record to the database."""
         with self.get_session() as session:
-
             session.execute(
                 text(
                     """INSERT INTO callback_number (src, dst, service_id, schedule_time)
@@ -252,17 +253,22 @@ class Database:
         Returns: (ready_operators, callers_waiting)
         """
         try:
-            state_key = f'asterisk:queue:{queue_name}'
+            state_key = f"asterisk:queue:{queue_name}"
             state = redis_client.get(state_key)
             if state:
                 data = json.loads(state)
-                members = data.get('members', {})
-                calls = data.get('calls', {})
+                members = data.get("members", {})
+                calls = data.get("calls", {})
 
-                ready = sum(1 for m in members.values()
-                            if str(m.get('status')) == '1' and not m.get('paused'))
+                ready = sum(
+                    1
+                    for m in members.values()
+                    if str(m.get("status")) == "1" and not m.get("paused")
+                )
 
-                logger.info(f"Queue {queue_name} from Redis: ready={ready}, callers={len(calls)}")
+                logger.info(
+                    f"Queue {queue_name} from Redis: ready={ready}, callers={len(calls)}"
+                )
                 return (ready, len(calls))
         except redis.RedisError as e:
             logger.warning(f"Redis unavailable, falling back to AMI: {e}")
@@ -293,33 +299,35 @@ class Database:
             def collect_events(event, **kwargs):
                 nonlocal complete_event
                 events_received.append(event)
-                if event.name == 'QueueStatusComplete':
+                if event.name == "QueueStatusComplete":
                     complete_event = True
 
             client.add_event_listener(
                 on_event=collect_events,
-                white_list=['QueueMember', 'QueueEntry', 'QueueStatusComplete']
+                white_list=["QueueMember", "QueueEntry", "QueueStatusComplete"],
             )
 
-            client.send_action(SimpleAction('QueueStatus', Queue=queue_name))
+            client.send_action(SimpleAction("QueueStatus", Queue=queue_name))
 
             start = time.time()
             while time.time() - start < 3 and not complete_event:
                 time.sleep(0.1)
 
             for ev in events_received:
-                if ev.name == 'QueueMember':
-                    if ev.keys.get('Queue') == queue_name:
-                        status = ev.keys.get('Status')
-                        paused = ev.keys.get('Paused', '0')
-                        if status == '1' and paused == '0':
+                if ev.name == "QueueMember":
+                    if ev.keys.get("Queue") == queue_name:
+                        status = ev.keys.get("Status")
+                        paused = ev.keys.get("Paused", "0")
+                        if status == "1" and paused == "0":
                             ready += 1
-                elif ev.name == 'QueueEntry':
-                    if ev.keys.get('Queue') == queue_name:
+                elif ev.name == "QueueEntry":
+                    if ev.keys.get("Queue") == queue_name:
                         callers += 1
 
             client.logoff()
-            logger.info(f"Queue {queue_name} from AMI: ready={ready}, callers={callers}")
+            logger.info(
+                f"Queue {queue_name} from AMI: ready={ready}, callers={callers}"
+            )
             return (ready, callers)
 
         except Exception as e:
@@ -331,7 +339,7 @@ class Database:
 redis_client = redis.Redis(
     host=os.environ.get("REDIS_HOST", "localhost"),
     port=int(os.environ.get("REDIS_PORT", 6379)),
-    decode_responses=True
+    decode_responses=True,
 )
 
 

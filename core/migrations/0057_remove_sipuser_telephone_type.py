@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0056_res_config_pgsql_conf'),
+        ("core", "0056_res_config_pgsql_conf"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='sipuser',
-            name='telephone_type',
+            model_name="sipuser",
+            name="telephone_type",
         ),
     ]

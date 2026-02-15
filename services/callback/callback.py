@@ -46,7 +46,7 @@ class Callback:
             conn = psycopg2.connect(
                 f"dbname={dbname} user={dbuser} password={dbpass} host={dbhost} port={dbport}"
             )
-            conn.autocommit = False # Enable transaction management
+            conn.autocommit = False  # Enable transaction management
         except psycopg2.Error as e:
             self.logger.error(f"Database connection error: {e}")
             raise CallbackException("Database connection error")
@@ -99,7 +99,7 @@ class Callback:
 
         cursor = self.conn.cursor()
 
-        query = ("""SELECT
+        query = """SELECT
                     a.id AS id,
                     a.src AS src,
                     a.dst AS dst,
@@ -121,7 +121,6 @@ class Callback:
                     a.created
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED;"""
-        )
 
         cursor.execute(query)
         result = cursor.fetchone()
@@ -130,11 +129,9 @@ class Callback:
             self.conn.rollback()
             raise ValueError("No available callback entry found.")
 
-        update_query = (
-            """UPDATE callback_number
+        update_query = """UPDATE callback_number
                SET dial_status = 'PENDING'
                WHERE id = %s;"""
-        )
         cursor.execute(update_query, (result[0],))
         self.conn.commit()
         return result
@@ -150,9 +147,9 @@ class Callback:
         self.conn.commit()
 
     def call_dst(
-        self, id: int, src: str, dst: str, context_outbound: str, context_inbound: str):
+        self, id: int, src: str, dst: str, context_outbound: str, context_inbound: str
+    ):
         self.logger.info(f"Calling from {src} to {dst}")
-
 
         kwargs = {
             "ActionID": dst,
@@ -194,7 +191,9 @@ class Callback:
         """
 
         try:
-            (id, src, dst, context_outbound, context_inbound) = self.select_first_available()
+            (id, src, dst, context_outbound, context_inbound) = (
+                self.select_first_available()
+            )
             self.call_dst(id, src, dst, context_outbound, context_inbound)
 
         except ValueError:
@@ -236,9 +235,7 @@ def parse_args():
     parser.add_argument(
         "--process_count", type=int, required=False, help="Number of processes to spawn"
     )
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable debug logging"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument(
         "--dump_config", action="store_true", help="Dump configuration and exit"
     )
@@ -280,9 +277,7 @@ def merge_args_env(args, env_vars):
     """
     merged = {}
     for key in env_vars:
-        merged[key] = (
-            env_vars[key] if env_vars[key] is not None else getattr(args, key)
-        )
+        merged[key] = env_vars[key] if env_vars[key] is not None else getattr(args, key)
     return merged
 
 
@@ -302,6 +297,7 @@ def handle_signal(signum, frame):
     """Обробка сигналів для graceful shutdown"""
     print(f"Received signal {signum}")
     sys.exit(0)
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, handle_signal)

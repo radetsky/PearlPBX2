@@ -5,28 +5,67 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='CallbackNumber',
+            name="CallbackNumber",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(auto_now_add=True, db_default=django.db.models.functions.datetime.Now())),
-                ('src', models.CharField(blank=True, db_default='', default='', max_length=16)),
-                ('dst', models.CharField(max_length=16)),
-                ('updated', models.DateTimeField(blank=True, null=True)),
-                ('dial_status', models.CharField(blank=True, db_default='', default='', max_length=16)),
-                ('service_name', models.CharField(blank=True, db_default='', default='', max_length=64)),
-                ('schedule_time', models.DateTimeField(auto_now_add=True, db_default=django.db.models.functions.datetime.Now())),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        auto_now_add=True,
+                        db_default=django.db.models.functions.datetime.Now(),
+                    ),
+                ),
+                (
+                    "src",
+                    models.CharField(
+                        blank=True, db_default="", default="", max_length=16
+                    ),
+                ),
+                ("dst", models.CharField(max_length=16)),
+                ("updated", models.DateTimeField(blank=True, null=True)),
+                (
+                    "dial_status",
+                    models.CharField(
+                        blank=True, db_default="", default="", max_length=16
+                    ),
+                ),
+                (
+                    "service_name",
+                    models.CharField(
+                        blank=True, db_default="", default="", max_length=64
+                    ),
+                ),
+                (
+                    "schedule_time",
+                    models.DateTimeField(
+                        auto_now_add=True,
+                        db_default=django.db.models.functions.datetime.Now(),
+                    ),
+                ),
             ],
             options={
-                'db_table': 'callback_number',
-                'indexes': [models.Index(fields=['created'], name='callback_nu_created_152c4d_idx'), models.Index(fields=['dst'], name='callback_nu_dst_cc4a56_idx'), models.Index(fields=['updated'], name='callback_nu_updated_f0095e_idx'), models.Index(fields=['service_name'], name='callback_nu_service_74f85a_idx'), models.Index(fields=['schedule_time'], name='callback_nu_schedul_2172b9_idx')],
+                "db_table": "callback_number",
+                "indexes": [
+                    models.Index(
+                        fields=["created"], name="callback_nu_created_152c4d_idx"
+                    ),
+                    models.Index(fields=["dst"], name="callback_nu_dst_cc4a56_idx"),
+                    models.Index(
+                        fields=["updated"], name="callback_nu_updated_f0095e_idx"
+                    ),
+                    models.Index(
+                        fields=["service_name"], name="callback_nu_service_74f85a_idx"
+                    ),
+                    models.Index(
+                        fields=["schedule_time"], name="callback_nu_schedul_2172b9_idx"
+                    ),
+                ],
             },
         ),
     ]
