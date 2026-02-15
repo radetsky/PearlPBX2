@@ -27,6 +27,7 @@ from core.validators import (
     validate_bind_ip,
     validate_asterisk_context,
     validate_asterisk_extension_prefix,
+    validate_penalty_value,
 )
 
 import logging
@@ -1069,12 +1070,13 @@ the queue and sent to that extension.""",
     )
     ringinuse = models.BooleanField(default=False, verbose_name="Ring In Use")
     timeoutrestart = models.BooleanField(default=False, verbose_name="Timeout Restart")
-    defaultrule = models.CharField(
-        max_length=100,
+    defaultrule = models.ForeignKey(
+        "QueueRule",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name="Default Rule",
-        help_text="If you wish to implement a rule defined in queuerules.conf",
+        help_text="Escalation rule from queuerules.conf",
     )
 
     class Meta:
@@ -1184,22 +1186,28 @@ class PenaltyChange(models.Model):
         help_text="After how many seconds in the queue this change is applied"
     )
 
-    max_penalty = models.IntegerField(
+    max_penalty = models.CharField(
+        max_length=10,
         blank=True,
-        validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 10) or relative (e.g. +2) value for QUEUE_MAX_PENALTY",
+        default="",
+        validators=[validate_penalty_value],
+        help_text="Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY",
     )
 
-    min_penalty = models.IntegerField(
+    min_penalty = models.CharField(
+        max_length=10,
         blank=True,
-        validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 0) or relative (e.g. +1) value for QUEUE_MIN_PENALTY",
+        default="",
+        validators=[validate_penalty_value],
+        help_text="Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY",
     )
 
-    raise_penalty = models.IntegerField(
+    raise_penalty = models.CharField(
+        max_length=10,
         blank=True,
-        validators=[MaxValueValidator(100), MinValueValidator(-100)],
-        help_text="Absolute (e.g. 5) or relative (e.g. +1) value for QUEUE_RAISE_PENALTY",
+        default="",
+        validators=[validate_penalty_value],
+        help_text="Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY",
     )
 
     order = models.PositiveIntegerField(
@@ -1671,12 +1679,12 @@ class Monitor(models.Model):
         constraints = [
             # Один із callerid або destination має бути заповнений
             models.CheckConstraint(
-                condition=~Q(callerid="") | ~Q(destination=""), # type: ignore
+                condition=~Q(callerid="") | ~Q(destination=""),  # type: ignore
                 name="callerid_or_destination_required",
             ),
             # force_enable_monitor і force_disable_monitor не можуть бути однаковими
             models.CheckConstraint(
-                condition=~Q(force_enable_monitor=F("force_disable_monitor")), # type: ignore
+                condition=~Q(force_enable_monitor=F("force_disable_monitor")),  # type: ignore
                 name="force_enable_not_equal_disable",
             ),
         ]
@@ -1684,8 +1692,9 @@ class Monitor(models.Model):
     def __str__(self):
         return (
             f'Monitor("{self.callerid}" -> "{self.destination}" = '
-            f'<{self.force_enable_monitor}, {self.force_disable_monitor}>)'
+            f"<{self.force_enable_monitor}, {self.force_disable_monitor}>)"
         )
+
 
 class MonitorFilenames(models.Model):
     """Represent a mapping monitor filenames to CDR UniqueID."""

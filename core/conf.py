@@ -157,7 +157,9 @@ def __build_aor_contact_line(trunk: SIPPeer, transport: SIPTransport) -> str:
         return ""
     username = f"{trunk.username}@" if trunk.username else ""
     sip = "sips" if transport.protocol in ["wss", "tls"] else "sip"
-    return f"contact={sip}:{username}{hosts_and_ports[0]};transport={transport.protocol}\n"
+    return (
+        f"contact={sip}:{username}{hosts_and_ports[0]};transport={transport.protocol}\n"
+    )
 
 
 def __section_trunk_aor(trunk: SIPPeer):
@@ -177,7 +179,9 @@ def __section_trunk_aor(trunk: SIPPeer):
         )
         return "; No transport defined for trunk. Skipping AOR section.\n"
 
-    result = f"; AOR\n[{trunk.name}]\ntype=aor\nqualify_frequency=30\nqualify_timeout=5.0\n"
+    result = (
+        f"; AOR\n[{trunk.name}]\ntype=aor\nqualify_frequency=30\nqualify_timeout=5.0\n"
+    )
 
     if trunk.registrationHere or trunk.registrationThere:
         result += "max_contacts=1\nremove_existing=yes\n"
@@ -481,18 +485,19 @@ def make_queuerules_conf() -> str:
         output.append(f"[{rule.name}]")
         if rule.description:
             output.append(f"; {rule.description}")
-        penalty_changes = PenaltyChange.objects.filter(rule=rule).order_by("seconds", "order")
+        penalty_changes = PenaltyChange.objects.filter(rule=rule).order_by(
+            "seconds", "order"
+        )
 
         for change in penalty_changes:
-            parts = [str(change.seconds)]
-            parts.append(str(change.max_penalty) or "")
-            parts.append(str(change.min_penalty) or "")
-            parts.append(str(change.raise_penalty) or "")
-            parts.append(str(change.order) or "")
-
+            parts = [
+                str(change.seconds),
+                change.max_penalty,
+                change.min_penalty,
+                change.raise_penalty,
+            ]
             while parts and parts[-1] == "":
                 parts.pop()
-
             output.append(f"penaltychange => {','.join(parts)}")
         output.append("")
 
@@ -533,7 +538,9 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     """Generate configuration lines for a single queue."""
     output = [f"[{queue.name}]"]
 
-    output.append(f"musicclass={queue.music_class.name}" if queue.music_class else ";musicclass")
+    output.append(
+        f"musicclass={queue.music_class.name}" if queue.music_class else ";musicclass"
+    )
     output.append(_opt("announce", queue.announce))
     output.append(_opt("queue_announce", queue.queue_announce))
     output.append(f"strategy={queue.strategy}")
@@ -555,12 +562,16 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     output.append(_bool_opt("announce-holdtime", queue.announce_holdtime))
     output.append(f"min-announce-frequency={queue.min_announce_frequency}")
     output.append(f"periodic-announce-frequency={queue.periodic_announce_frequency}")
-    output.append(_bool_opt("relative-periodic-announce", queue.relative_periodic_announce))
+    output.append(
+        _bool_opt("relative-periodic-announce", queue.relative_periodic_announce)
+    )
     output.append(f"announce-position={queue.announce_position}")
     output.append(_bool_opt("announce-to-first-user", queue.announce_to_first_user))
     output.append(f"announce-position-limit={queue.announce_position_limit}")
     output.append(f"announce-round-seconds={queue.announce_round_seconds}")
-    output.append(_bool_opt("announce-position-only-up", queue.announce_position_only_up))
+    output.append(
+        _bool_opt("announce-position-only-up", queue.announce_position_only_up)
+    )
 
     if queue.queue_announcement:
         output.extend(_make_queue_announcement_lines(queue.queue_announcement))
@@ -571,7 +582,9 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     output.append(f"leavewhenempty={queue.leavewhenempty}")
     output.append(f"ringinuse={queue.ringinuse}")
     output.append(f"timeoutrestart={queue.timeoutrestart}")
-    output.append(_opt("defaultrule", queue.defaultrule))
+    output.append(
+        _opt("defaultrule", queue.defaultrule.name if queue.defaultrule else None)
+    )
 
     for member in QueueMember.objects.filter(queue=queue):
         output.append(

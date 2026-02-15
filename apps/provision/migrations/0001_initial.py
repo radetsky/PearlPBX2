@@ -6,32 +6,90 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('core', '0057_remove_sipuser_telephone_type'),
+        ("core", "0057_remove_sipuser_telephone_type"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PhoneDevice',
+            name="PhoneDevice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('modified_at', models.DateTimeField(auto_now=True)),
-                ('telephone_type', models.CharField(choices=[('spa502g', 'Cisco SPA502G'), ('spa504g', 'Cisco SPA504G'), ('gxp1200', 'Grandstream GXP1200'), ('softphone', 'Softphone'), ('webrtc', 'WebRTC'), ('other', 'Other')], default='other', help_text='Type of telephone device', max_length=32, verbose_name='Telephone type')),
-                ('mac_address', models.CharField(help_text='MAC address of the device', max_length=17, unique=True, verbose_name='MAC Address')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_created', to=settings.AUTH_USER_MODEL)),
-                ('modified_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='%(class)s_modified', to=settings.AUTH_USER_MODEL)),
-                ('sip_user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='devices', to='core.sipuser')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("modified_at", models.DateTimeField(auto_now=True)),
+                (
+                    "telephone_type",
+                    models.CharField(
+                        choices=[
+                            ("spa502g", "Cisco SPA502G"),
+                            ("spa504g", "Cisco SPA504G"),
+                            ("gxp1200", "Grandstream GXP1200"),
+                            ("softphone", "Softphone"),
+                            ("webrtc", "WebRTC"),
+                            ("other", "Other"),
+                        ],
+                        default="other",
+                        help_text="Type of telephone device",
+                        max_length=32,
+                        verbose_name="Telephone type",
+                    ),
+                ),
+                (
+                    "mac_address",
+                    models.CharField(
+                        help_text="MAC address of the device",
+                        max_length=17,
+                        unique=True,
+                        verbose_name="MAC Address",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "modified_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="%(class)s_modified",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "sip_user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="devices",
+                        to="core.sipuser",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Phone Device',
-                'verbose_name_plural': 'Phone Devices',
-                'ordering': ['-created_at'],
-                'abstract': False,
+                "verbose_name": "Phone Device",
+                "verbose_name_plural": "Phone Devices",
+                "ordering": ["-created_at"],
+                "abstract": False,
             },
         ),
     ]

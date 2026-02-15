@@ -1,6 +1,7 @@
 import asyncio
 import redis.asyncio as redis
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,9 +22,9 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
 
         # Підключаємось до Redis Pub/Sub
         try:
-            self.redis = await redis.from_url('redis://localhost:6379')
+            self.redis = await redis.from_url(settings.REDIS_URL)
             self.pubsub = self.redis.pubsub()
-            await self.pubsub.subscribe('asterisk:events')
+            await self.pubsub.subscribe("asterisk:events")
 
             # Запускаємо прослуховування в окремому таску
             self.listen_task = asyncio.create_task(self.listen_redis())
@@ -37,13 +38,13 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
         """Слухаємо події з Redis Pub/Sub"""
         try:
             async for message in self.pubsub.listen():
-                if message['type'] == 'message':
+                if message["type"] == "message":
                     # ВАЖЛИВО: Перевіряємо тип даних
-                    data = message['data']
+                    data = message["data"]
 
                     # Якщо data це bytes - декодуємо
                     if isinstance(data, bytes):
-                        data = data.decode('utf-8')
+                        data = data.decode("utf-8")
 
                     # Відправляємо як TEXT, не bytes
                     await self.send(text_data=data)
@@ -58,24 +59,25 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         """Відключення клієнта"""
         logger.info(
-            f"WebSocket disconnected: {self.scope['user']} (code: {close_code})")
+            f"WebSocket disconnected: {self.scope['user']} (code: {close_code})"
+        )
 
         # Відписуємось і закриваємо з'єднання
-        if hasattr(self, 'listen_task'):
+        if hasattr(self, "listen_task"):
             self.listen_task.cancel()
             try:
                 await self.listen_task
             except asyncio.CancelledError:
                 pass
 
-        if hasattr(self, 'pubsub'):
+        if hasattr(self, "pubsub"):
             try:
-                await self.pubsub.unsubscribe('asterisk:events')
+                await self.pubsub.unsubscribe("asterisk:events")
                 await self.pubsub.close()
             except Exception as e:
                 logger.error(f"Error closing pubsub: {e}")
 
-        if hasattr(self, 'redis'):
+        if hasattr(self, "redis"):
             try:
                 await self.redis.close()
             except Exception as e:

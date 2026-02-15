@@ -4,15 +4,25 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('callback', '0002_callbackservice_and_more'),
+        ("callback", "0002_callbackservice_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='callbacknumber',
-            name='dial_status',
-            field=models.CharField(blank=True, choices=[('NEW', 'New'), ('ANSWERED', 'Answered'), ('BUSY', 'Busy'), ('PENDING', 'Pending')], db_default='NEW', default='NEW', max_length=16),
+            model_name="callbacknumber",
+            name="dial_status",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("NEW", "New"),
+                    ("ANSWERED", "Answered"),
+                    ("BUSY", "Busy"),
+                    ("PENDING", "Pending"),
+                ],
+                db_default="NEW",
+                default="NEW",
+                max_length=16,
+            ),
         ),
     ]

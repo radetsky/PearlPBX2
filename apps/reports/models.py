@@ -2,6 +2,7 @@ from django.db import models
 
 from core.models import MonitorFilenames
 
+
 class QueueLog(models.Model):
     id = models.BigAutoField(primary_key=True)
     time = models.DateTimeField(null=True, blank=True)

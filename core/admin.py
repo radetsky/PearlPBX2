@@ -44,6 +44,7 @@ from .forms import (
 # Right here we just can hide fieldsets
 # [ custom_extension, custom_settings, custom_auth_settings,custom_aor_settings ]
 
+
 class SIPUserAdmin(admin.ModelAdmin):
     form = SIPUserForm
     list_display = ("name", "username", "extension")
@@ -182,7 +183,7 @@ class PenaltyChangeInlineAdmin(admin.TabularInline):
     extra: Optional[int] = 0
     model = PenaltyChange
 
-    fields = ["rule", "seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
+    fields = ["seconds", "max_penalty", "min_penalty", "raise_penalty", "order"]
     ordering = ["rule", "seconds"]
     search_fields = [
         "rule__name",

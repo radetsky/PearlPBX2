@@ -76,13 +76,15 @@ class Command(BaseCommand):
 
                 name = name_with_ext.rsplit(".", 1)[0]
 
-                sound_files.append({
-                    "full_path": full_path,
-                    "relative_path": relative_path,
-                    "language": language,
-                    "name": name,
-                    "filename": filename,
-                })
+                sound_files.append(
+                    {
+                        "full_path": full_path,
+                        "relative_path": relative_path,
+                        "language": language,
+                        "name": name,
+                        "filename": filename,
+                    }
+                )
 
         return sound_files
 

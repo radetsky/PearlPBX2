@@ -1,7 +1,7 @@
-
 import os
 import random
 import psycopg2
+
 
 def read_env_vars(args):
     """Read environment variables and return as a dictionary."""
@@ -34,6 +34,7 @@ def db_connect(params):
     )
     return conn
 
+
 def db_insert_callback_number(conn, table, src, dst, service_name):
     """Insert a new callback number into the database."""
     with conn.cursor() as cur:
@@ -44,11 +45,13 @@ def db_insert_callback_number(conn, table, src, dst, service_name):
             (src, dst, service_name),
         )
 
+
 def random_dst_number():
     # Generate a random number. Format: "0[5-9]XXXXXXX"
     prefix = "0" + str(random.randint(5, 9))
     number = prefix + "".join([str(random.randint(0, 9)) for _ in range(7)])
     return number
+
 
 def randomize_dst(count: int) -> list:
     numbers = set()
@@ -66,8 +69,12 @@ def main():
     parser.add_argument(
         "--service-name", type=str, required=True, help="Callback service name"
     )
-    parser.add_argument("--count", type=int, default=1, help="Number of entries to insert")
-    parser.add_argument("--randomize", action="store_true", help="Randomize destination numbers")
+    parser.add_argument(
+        "--count", type=int, default=1, help="Number of entries to insert"
+    )
+    parser.add_argument(
+        "--randomize", action="store_true", help="Randomize destination numbers"
+    )
     args = parser.parse_args()
 
     env_vars = read_env_vars(args)
@@ -90,6 +97,7 @@ def main():
         conn.commit()
         print("Callback number inserted successfully.")
         conn.close()
+
 
 if __name__ == "__main__":
     main()

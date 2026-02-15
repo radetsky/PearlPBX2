@@ -18,7 +18,11 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # Serve MOH files
-MOH_ROOT = "/var/lib/asterisk/moh/" if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK else "moh/"
+MOH_ROOT = (
+    "/var/lib/asterisk/moh/"
+    if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK
+    else "moh/"
+)
 urlpatterns += [
     path("moh/<path:path>", serve, {"document_root": MOH_ROOT}),
 ]

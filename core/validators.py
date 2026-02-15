@@ -11,6 +11,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def validate_penalty_value(value):
+    """Validate penalty value: empty, absolute (10) or relative (+3, -2)."""
+    if value == "":
+        return
+    if not re.match(r"^[+-]?\d{1,3}$", value):
+        raise ValidationError(
+            "Value must be empty, an integer (e.g. 10), or relative (e.g. +3, -2)"
+        )
+
+
 def validate_bind_ip(value):
     items = value.split(":")
     logger.info(value)

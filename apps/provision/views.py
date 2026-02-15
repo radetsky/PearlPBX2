@@ -7,7 +7,7 @@ from .models import PhoneDevice
 @staff_member_required
 def apply_all_configurations(request):
     """Apply configurations to all phone devices"""
-    if request.method == 'POST':
+    if request.method == "POST":
         devices = PhoneDevice.objects.all()
         success_count = 0
 
@@ -16,7 +16,7 @@ def apply_all_configurations(request):
                 # Simulate configuration application
                 success_count += 1
 
-        messages.success(request, f'Applied configurations to {success_count} devices.')
-        return redirect('admin:provision_phonedevice_changelist')
+        messages.success(request, f"Applied configurations to {success_count} devices.")
+        return redirect("admin:provision_phonedevice_changelist")
 
-    return redirect('admin:provision_phonedevice_changelist')
+    return redirect("admin:provision_phonedevice_changelist")

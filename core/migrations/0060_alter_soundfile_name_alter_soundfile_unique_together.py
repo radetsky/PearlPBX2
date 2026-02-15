@@ -4,19 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0059_remove_sipuser_integration'),
+        ("core", "0059_remove_sipuser_integration"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='soundfile',
-            name='name',
-            field=models.CharField(help_text='The file name without extension. You may enter completely different name here.', max_length=64, verbose_name='File name used in dialplans'),
+            model_name="soundfile",
+            name="name",
+            field=models.CharField(
+                help_text="The file name without extension. You may enter completely different name here.",
+                max_length=64,
+                verbose_name="File name used in dialplans",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='soundfile',
-            unique_together={('name', 'language')},
+            name="soundfile",
+            unique_together={("name", "language")},
         ),
     ]

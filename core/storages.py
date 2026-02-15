@@ -40,4 +40,3 @@ class SoundsFileSystemStorage(FileSystemStorage):
             self.location = "sounds/"
         else:
             self.location = "/var/lib/asterisk/sounds/"
-

@@ -69,9 +69,7 @@ class ReportViewPermissionMixin(AccessMixin):
         # Check if user has permission directly or through group
         return self.request.user.has_perm(f"auth.{permission}")
 
-    def dispatch(
-        self, request: HttpRequest, *args: Any, **kwargs: Any
-    ) -> HttpResponse:
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         """
         Check permission before dispatching to view.
         """
@@ -104,4 +102,3 @@ class ReportViewPermissionMixin(AccessMixin):
         return HttpResponseRedirect(
             f"{resolved_login_url}?{self.redirect_field_name}={path}"
         )
-
