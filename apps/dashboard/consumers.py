@@ -1,6 +1,7 @@
 import asyncio
 import redis.asyncio as redis
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
 
         # Підключаємось до Redis Pub/Sub
         try:
-            self.redis = await redis.from_url("redis://localhost:6379")
+            self.redis = await redis.from_url(settings.REDIS_URL)
             self.pubsub = self.redis.pubsub()
             await self.pubsub.subscribe("asterisk:events")
 

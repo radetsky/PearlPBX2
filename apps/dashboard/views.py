@@ -1,10 +1,21 @@
-from django.views.decorators.http import require_http_methods
-import redis
+import re
 import json
-from django.http import JsonResponse
+import logging
 
-from django.shortcuts import render
+import redis
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
+
+logger = logging.getLogger(__name__)
+
+_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/]+$")
+
+
+def _get_redis():
+    return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 @login_required
@@ -16,31 +27,36 @@ def operator_panel(request):
 @login_required
 @require_http_methods(["GET"])
 def get_queue_state(request, queue_name):
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    if not _VALID_NAME_RE.match(queue_name):
+        return JsonResponse({"error": "Invalid queue name"}, status=400)
 
-    state_key = f"asterisk:queue:{queue_name}"
-    state = r.get(state_key)
+    try:
+        r = _get_redis()
+        state = r.get(f"asterisk:queue:{queue_name}")
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_queue_state")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     if state:
         return JsonResponse(json.loads(state))
-    else:
-        return JsonResponse({"members": {}, "calls": {}, "stats": {"waiting": 0}})
+    return JsonResponse({"members": {}, "calls": {}, "stats": {"waiting": 0}})
 
 
 @login_required
 @require_http_methods(["GET"])
 def get_all_queues(request):
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
-
-    # Знаходимо всі ключі черг
-    queue_keys = r.keys("asterisk:queue:*")
-    queues = {}
-
-    for key in queue_keys:
-        queue_name = key.replace("asterisk:queue:", "")
-        state = r.get(key)
-        if state:
-            queues[queue_name] = json.loads(state)
+    try:
+        r = _get_redis()
+        queue_keys = r.keys("asterisk:queue:*")
+        queues = {}
+        for key in queue_keys:
+            queue_name = key.replace("asterisk:queue:", "")
+            state = r.get(key)
+            if state:
+                queues[queue_name] = json.loads(state)
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_all_queues")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     return JsonResponse(queues)
 
@@ -49,44 +65,53 @@ def get_all_queues(request):
 @require_http_methods(["GET"])
 def get_all_channels(request):
     """Отримати всі активні канали"""
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
-
-    channels = r.get("asterisk:channels:all")
+    try:
+        r = _get_redis()
+        channels = r.get("asterisk:channels:all")
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_all_channels")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     if channels:
         return JsonResponse(json.loads(channels))
-    else:
-        return JsonResponse({})
+    return JsonResponse({})
 
 
 @login_required
 @require_http_methods(["GET"])
 def get_channel(request, channel_name):
     """Отримати конкретний канал"""
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    if not _VALID_NAME_RE.match(channel_name):
+        return JsonResponse({"error": "Invalid channel name"}, status=400)
 
-    channel = r.get(f"asterisk:channel:{channel_name}")
+    try:
+        r = _get_redis()
+        channel = r.get(f"asterisk:channel:{channel_name}")
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_channel")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     if channel:
         return JsonResponse(json.loads(channel))
-    else:
-        return JsonResponse({"error": "Channel not found"}, status=404)
+    return JsonResponse({"error": "Channel not found"}, status=404)
 
 
 @login_required
 @require_http_methods(["GET"])
 def get_active_calls(request):
     """Отримати всі активні дзвінки (з bridge)"""
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
-
-    channels_data = r.get("asterisk:channels:all")
+    try:
+        r = _get_redis()
+        channels_data = r.get("asterisk:channels:all")
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_active_calls")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     if not channels_data:
         return JsonResponse({"calls": []})
 
     channels = json.loads(channels_data)
 
-    # Фільтруємо тільки канали в bridge
     active_calls = []
     processed_bridges = set()
 
@@ -94,7 +119,6 @@ def get_active_calls(request):
         bridge_id = channel_data.get("bridge_id")
 
         if bridge_id and bridge_id not in processed_bridges:
-            # Знаходимо всі канали в цьому bridge
             bridged_channels = [
                 ch for ch in channels.values() if ch.get("bridge_id") == bridge_id
             ]
@@ -116,16 +140,21 @@ def get_active_calls(request):
 @require_http_methods(["GET"])
 def get_channels_by_type(request, channel_type):
     """Отримати канали по типу (PJSIP, DAHDI, Local, etc.)"""
-    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    if not _VALID_NAME_RE.match(channel_type):
+        return JsonResponse({"error": "Invalid channel type"}, status=400)
 
-    channels_data = r.get("asterisk:channels:all")
+    try:
+        r = _get_redis()
+        channels_data = r.get("asterisk:channels:all")
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in get_channels_by_type")
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
 
     if not channels_data:
         return JsonResponse({})
 
     channels = json.loads(channels_data)
 
-    # Фільтруємо по типу
     filtered_channels = {
         name: data for name, data in channels.items() if name.startswith(channel_type)
     }

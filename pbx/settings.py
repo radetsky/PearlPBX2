@@ -175,11 +175,13 @@ LOGGING = {
 
 ASGI_APPLICATION = "pbx.asgi.application"
 
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [REDIS_URL],
         },
     },
 }

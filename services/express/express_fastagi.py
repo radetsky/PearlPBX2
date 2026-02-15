@@ -500,7 +500,7 @@ def express_incoming_call_handler(agi):
         logger.error(f"Critical error in handler: {str(e)}", exc_info=True)
         try:
             yield agi.verbose(f"Error: {str(e)}", 1)
-        except:
+        except Exception:
             pass
 
     defer.returnValue(None)
@@ -550,7 +550,7 @@ def express_uline_update_handler(agi):
         logger.error(f"Error in ULINE update handler: {str(e)}", exc_info=True)
         try:
             yield agi.verbose(f"Error: {str(e)}", 1)
-        except:
+        except Exception:
             pass
 
     defer.returnValue(None)
@@ -603,7 +603,7 @@ def express_uline_release_handler(agi):
         logger.error(f"Error in ULINE release handler: {str(e)}", exc_info=True)
         try:
             yield agi.verbose(f"Error: {str(e)}", 1)
-        except:
+        except Exception:
             pass
 
     defer.returnValue(None)
