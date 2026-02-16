@@ -380,13 +380,27 @@ class FastAGIHandler:
         self.agi.finish()
 
     def add_callback(self) -> Deferred:
+        """
+        Add a callback record to the database.
+
+        Parameters expected from AGI variables:
+        - agi_arg_1: caller_id
+        - agi_arg_2: destination
+        - agi_arg_3: service_name
+        - agi_arg_4: delay_seconds (optional, default 5 seconds)
+
+        :param self: The FastAGIHandler instance.
+        :return: A Deferred representing the AGI command sequence.
+        :rtype: Deferred
+        """
+
         caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
         destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
         service_name = self.agi.variables.get(b"agi_arg_3", b"").decode("utf-8")
         delay_seconds = self.agi.variables.get(b"agi_arg_4", b"5").decode("utf-8")
 
         logger.debug(
-            f"Handling ADD CALLBACK Caller ID: {caller_id}, Destination: {destination}, Service Name: {service_name}"
+            f"Handling ADD CALLBACK Caller ID: {caller_id}, Destination: {destination}, Service Name: {service_name}, Delay Seconds: {delay_seconds}"
         )
         if not caller_id or not destination or not service_name:
             logger.error("Missing parameters for add callback")

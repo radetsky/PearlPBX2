@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.functions import Now
 
-from core.models import DialplanContext
+from core.models import DialplanContext, RoutingTable
 
 
 class CallbackService(models.Model):
@@ -9,7 +9,7 @@ class CallbackService(models.Model):
     description = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
     context_outbound = models.ForeignKey(
-        DialplanContext,
+        RoutingTable,
         on_delete=models.PROTECT,
         related_name="callback_services",
         null=True,
