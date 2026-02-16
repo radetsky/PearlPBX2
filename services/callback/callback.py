@@ -110,7 +110,7 @@ class Callback:
                 JOIN
                     callback_service b ON a.service_id = b.id
                 JOIN
-                    dialplan_contexts co_out ON b.context_outbound_id = co_out.id
+                    core_routingtable co_out ON b.context_outbound_id = co_out.id
                 JOIN
                     dialplan_contexts co_in ON b.context_inbound_id = co_in.id
                 WHERE
