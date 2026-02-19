@@ -278,9 +278,7 @@ class TestInputValidation(DashboardAPITestBase):
     def test_invalid_queue_names_rejected(self):
         for name in ["queue name", "q;DROP", "q<script>"]:
             resp = self.client.get(f"/dashboard/api/queues/{name}/")
-            self.assertEqual(
-                resp.status_code, 400, f"Accepted invalid name: {name}"
-            )
+            self.assertEqual(resp.status_code, 400, f"Accepted invalid name: {name}")
 
 
 class TestAuthRequired(TestCase):

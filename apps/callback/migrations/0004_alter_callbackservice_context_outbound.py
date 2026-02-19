@@ -5,16 +5,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('callback', '0003_alter_callbacknumber_dial_status'),
-        ('core', '0061_alter_penaltychange_max_penalty_and_more'),
+        ("callback", "0003_alter_callbacknumber_dial_status"),
+        ("core", "0061_alter_penaltychange_max_penalty_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='callbackservice',
-            name='context_outbound',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='callback_services', to='core.routingtable'),
+            model_name="callbackservice",
+            name="context_outbound",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="callback_services",
+                to="core.routingtable",
+            ),
         ),
     ]
