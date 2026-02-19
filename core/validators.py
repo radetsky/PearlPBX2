@@ -70,6 +70,10 @@ def validate_asterisk_extension_prefix(value):
     if not value:
         return
 
+    # Special Asterisk extension names
+    if value in ("s", "t", "i", "h"):
+        return
+
     # Check if the value contains only digits
     if value.isdigit():
         # If the value is all digits, it is a valid pattern

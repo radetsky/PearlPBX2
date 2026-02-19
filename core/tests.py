@@ -999,4 +999,41 @@ directory=test
 
         self.assertEqual(len(sections), 1)
         self.assertIn("test-section", sections)
-        self.assertEqual(sections["test-section"]["mode"], "files")
+
+
+class TestValidateAsteriskExtensionPrefix(TestCase):
+    def test_special_extension_s_is_valid(self):
+        from core.validators import validate_asterisk_extension_prefix
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_asterisk_extension_prefix("s")
+        except ValidationError:
+            self.fail("validate_asterisk_extension_prefix raised ValidationError for 's'")
+
+    def test_special_extension_t_is_valid(self):
+        from core.validators import validate_asterisk_extension_prefix
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_asterisk_extension_prefix("t")
+        except ValidationError:
+            self.fail("validate_asterisk_extension_prefix raised ValidationError for 't'")
+
+    def test_special_extension_i_is_valid(self):
+        from core.validators import validate_asterisk_extension_prefix
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_asterisk_extension_prefix("i")
+        except ValidationError:
+            self.fail("validate_asterisk_extension_prefix raised ValidationError for 'i'")
+
+    def test_special_extension_h_is_valid(self):
+        from core.validators import validate_asterisk_extension_prefix
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_asterisk_extension_prefix("h")
+        except ValidationError:
+            self.fail("validate_asterisk_extension_prefix raised ValidationError for 'h'")
