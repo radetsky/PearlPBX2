@@ -133,6 +133,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"  # For collectstatic in production
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Allow large admin forms (e.g. routing tables with many inline records)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
 # secure cookies
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 SESSION_COOKIE_SECURE = True
