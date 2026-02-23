@@ -298,6 +298,8 @@ class AsteriskDialplanValidator(BaseValidator):
         "Eval",
         "PauseQueueMember",
         "UnPauseQueueMember",
+        "ChanSpy",
+        "ExtenSpy",
     }
 
     # Block keywords for AEL
