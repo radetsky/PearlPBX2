@@ -297,3 +297,34 @@ class TestAuthRequired(TestCase):
             self.assertEqual(
                 resp.status_code, 302, f"{url} didn't redirect anonymous user"
             )
+
+
+class TestUlineMonitorAccess(DashboardAPITestBase):
+    def setUp(self):
+        super().setUp()
+        self.superuser = User.objects.create_superuser(username="admin", password="pass")
+
+    def _mock_redis_for_uline(self):
+        m = MagicMock()
+        m.exists.return_value = True
+        m.scan_iter.return_value = iter([])
+        m.pipeline.return_value.__enter__ = MagicMock(return_value=MagicMock(execute=MagicMock(return_value=[])))
+        m.pipeline.return_value.__exit__ = MagicMock(return_value=False)
+        m.pipeline.return_value.execute.return_value = []
+        return m
+
+    def test_anonymous_redirected(self):
+        c = Client()
+        resp = c.get("/dashboard/ulines/")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_regular_user_redirected(self):
+        resp = self.client.get("/dashboard/ulines/")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_superuser_allowed(self):
+        self.client.login(username="admin", password="pass")
+        mock_r = self._mock_redis_for_uline()
+        with patch("apps.dashboard.views._get_redis", return_value=mock_r):
+            resp = self.client.get("/dashboard/ulines/")
+        self.assertEqual(resp.status_code, 200)

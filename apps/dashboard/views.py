@@ -4,7 +4,7 @@ import logging
 
 import redis
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
@@ -136,7 +136,7 @@ def get_active_calls(request):
     return JsonResponse({"calls": active_calls})
 
 
-@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def uline_monitor(request):
     """ULINE Monitor — shows active ULINEs and their liveness status."""
     try:
