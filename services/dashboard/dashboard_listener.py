@@ -774,6 +774,9 @@ class DashboardAMIListener:
                 await self.redis_client.ping()  # type: ignore
                 self.ami.send_action(SimpleAction("Ping"))
 
+                # Refresh liveness key so sweep knows dashboard is still running
+                await self.update_channels_state()
+
                 self.logger.debug("Health check: OK")
             except Exception as e:
                 self.logger.error(f"Health check failed: {e}")
@@ -802,6 +805,9 @@ class DashboardAMIListener:
 
         self.initialize_queue_state()
         self.initialize_channels_state()
+
+        # Write liveness key immediately so sweep knows dashboard is running
+        await self.update_channels_state()
 
         asyncio.create_task(self.health_check_loop())
 
