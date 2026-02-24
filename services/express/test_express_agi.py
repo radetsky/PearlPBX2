@@ -64,7 +64,7 @@ class TestAGIProtocol(unittest.TestCase):
         agi = self._create_agi_with_input([""])
 
         with patch("sys.stdin", StringIO("200 result=1 (test_value)\n")):
-            result = agi._send_command("GET VARIABLE TEST")
+            result = agi._send("GET VARIABLE TEST")
 
         self.assertEqual(mock_stdout.getvalue(), "GET VARIABLE TEST\n")
         self.assertEqual(result["code"], 200)
@@ -77,7 +77,7 @@ class TestAGIProtocol(unittest.TestCase):
         agi = self._create_agi_with_input([""])
 
         with patch("sys.stdin", StringIO("510 Invalid command\n")):
-            result = agi._send_command("INVALID COMMAND")
+            result = agi._send("INVALID COMMAND")
 
         self.assertEqual(result["code"], 510)
         self.assertEqual(result["data"], "Invalid command")

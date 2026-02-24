@@ -232,6 +232,12 @@ HEADER_MENU_PAGES = [
         "allowed_roles": ["admin", "superuser"],
     },
     {
+        "title": "ULINE Monitor",
+        "url": "/dashboard/ulines/",
+        "item_icon": "call_split",
+        "allowed_roles": ["admin", "superuser"],
+    },
+    {
         "title": "Reports",
         "url": "/reports/",
         "item_icon": "print",

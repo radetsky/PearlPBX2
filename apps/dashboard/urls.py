@@ -5,6 +5,8 @@ app_name = "dashboard"
 
 urlpatterns = [
     path("", views.operator_panel, name="operator_panel"),
+    path("ulines/", views.uline_monitor, name="uline_monitor"),
+    path("ulines/flush/", views.uline_flush, name="uline_flush"),
     # Черги
     path("api/queues/", views.get_all_queues, name="get_all_queues"),
     path("api/queues/<str:queue_name>/", views.get_queue_state, name="get_queue_state"),
