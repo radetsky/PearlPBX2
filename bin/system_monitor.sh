@@ -30,8 +30,8 @@ SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
 HOSTNAME=$(hostname)
 
 SERVICES=(
-    "asterisk" "postgresql" "gunicorn" "redis"
-    "callback" "dashboard" "express" "fastagi"
+    "asterisk" "postgresql" "redis"
+    "PearlPBX2" "Callback" "Express" "Dashboard" "FastAGI"
 )
 
 WARN_THRESHOLD=80

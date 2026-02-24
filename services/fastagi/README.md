@@ -68,7 +68,7 @@ Server listens on `127.0.0.1:4573` by default.
 
 ### Production (systemd)
 
-Create `/etc/systemd/system/pearlpbx-fastagi.service`:
+Create `/etc/systemd/system/FastAGI.service`:
 
 ```ini
 [Unit]
@@ -103,8 +103,8 @@ Enable and start:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable pearlpbx-fastagi
-sudo systemctl start pearlpbx-fastagi
+sudo systemctl enable FastAGI
+sudo systemctl start FastAGI
 ```
 
 ## AGI Handlers
