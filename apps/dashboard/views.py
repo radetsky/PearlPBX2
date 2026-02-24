@@ -137,6 +137,118 @@ def get_active_calls(request):
 
 
 @login_required
+def uline_monitor(request):
+    """ULINE Monitor — shows active ULINEs and their liveness status."""
+    try:
+        r = _get_redis()
+        from datetime import datetime
+        now = datetime.now()
+
+        dashboard_alive = r.exists("asterisk:channels:all")
+
+        sorted_keys = sorted(
+            r.scan_iter("express:uline:*"),
+            key=lambda k: int(k.split(":")[-1]),
+        )
+
+        # Pipeline pass 1: hgetall + ttl for all ULINE keys
+        pipe1 = r.pipeline()
+        for key in sorted_keys:
+            pipe1.hgetall(key)
+            pipe1.ttl(key)
+        pipe1_results = pipe1.execute()
+
+        # Build intermediate list and collect uniqueids for liveness check
+        raw_ulines = []
+        for i, key in enumerate(sorted_keys):
+            data = pipe1_results[i * 2]
+            ttl = pipe1_results[i * 2 + 1]
+            if not data:
+                continue
+            raw_ulines.append((key, data, ttl))
+
+        uniqueids = [data.get("uniqueid", "") for _, data, _ in raw_ulines]
+
+        # Pipeline pass 2: exists check for each uniqueid
+        pipe2 = r.pipeline()
+        for uid in uniqueids:
+            if uid:
+                pipe2.exists(f"asterisk:uid:{uid}")
+            else:
+                pipe2.exists("__nonexistent__")
+        pipe2_results = pipe2.execute()
+
+        ulines = []
+        for idx, (key, data, ttl) in enumerate(raw_ulines):
+            n = int(key.split(":")[-1])
+            uniqueid = data.get("uniqueid", "")
+            channel_alive = bool(pipe2_results[idx]) if uniqueid else False
+
+            try:
+                allocated_at = datetime.fromisoformat(data.get("allocated_at", ""))
+                age_seconds = int((now - allocated_at).total_seconds())
+            except (ValueError, TypeError):
+                age_seconds = 0
+
+            ulines.append({
+                "n": n,
+                "uniqueid": uniqueid,
+                "channel": data.get("channel", ""),
+                "caller_id": data.get("caller_id", ""),
+                "provider": data.get("provider", ""),
+                "allocated_at": data.get("allocated_at", ""),
+                "age_seconds": age_seconds,
+                "ttl": ttl,
+                "alive": channel_alive,
+            })
+
+        from django.conf import settings
+        uline_min = getattr(settings, "ULINE_MIN", 1)
+        uline_max = getattr(settings, "ULINE_MAX", 199)
+        total = uline_max - uline_min + 1
+        used = len(ulines)
+
+        context = {
+            "ulines": ulines,
+            "stats": {
+                "total": total,
+                "used": used,
+                "free": total - used,
+                "usage_percent": round(used / total * 100, 1) if total else 0,
+            },
+            "dashboard_alive": dashboard_alive,
+        }
+
+    except redis.exceptions.ConnectionError:
+        logger.error("Redis connection failed in uline_monitor")
+        context = {"ulines": [], "stats": {}, "dashboard_alive": False, "redis_error": True}
+
+    return render(request, "dashboard/ulines.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def uline_flush(request):
+    """Flush all ULINEs from Redis (admin only)."""
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Superuser only")
+    try:
+        r = _get_redis()
+        keys = (
+            list(r.scan_iter("express:uline:*"))
+            + list(r.scan_iter("express:uid:*"))
+        )
+        if keys:
+            r.delete(*keys)
+        count = len(keys)
+        logger.warning(f"ULINE flush by {request.user}: {count} keys deleted")
+        return JsonResponse({"deleted": count})
+    except redis.exceptions.ConnectionError:
+        return JsonResponse({"error": "Redis unavailable"}, status=503)
+
+
+@login_required
 @require_http_methods(["GET"])
 def get_channels_by_type(request, channel_type):
     """Отримати канали по типу (PJSIP, DAHDI, Local, etc.)"""

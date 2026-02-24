@@ -31,12 +31,12 @@ class DashboardAMIListener:
         self.manager = None
         self.redis_client = self.connect_redis()
         self.queue_state = {}
-        self.channels_state = {}  # Стан всіх активних каналів
+        self.channels_state = {}  # State of all active channels
         self.event_handlers = self.set_event_handlers()
 
     def set_event_handlers(self):
         event_handlers = {
-            # Події каналів
+            # Channel events
             "Newchannel": self.handle_newchannel,
             "Newstate": self.handle_newstate,
             "DialBegin": self.handle_dial_begin,
@@ -47,7 +47,7 @@ class DashboardAMIListener:
             "Hangup": self.handle_hangup,
             "Newexten": self.handle_newexten,
             "VarSet": self.handle_varset,
-            # Події черг
+            # Queue events
             "QueueMemberStatus": self.handle_queue_member_status,
             "QueueMember": self.handle_queue_member,
             "QueueCallerJoin": self.handle_queue_caller_join,
@@ -84,7 +84,7 @@ class DashboardAMIListener:
         self.ami = self.ami_connect()
 
     def connect_redis(self):
-        """Підключення до Redis"""
+        """Connect to Redis."""
         redis_client = redis.from_url(
             f"redis://{self.params['redis_host']}:{self.params['redis_port']}",
             decode_responses=True,
@@ -93,7 +93,7 @@ class DashboardAMIListener:
         return redis_client
 
     async def publish_event(self, event_type, data):
-        """Публікація події в Redis Pub/Sub"""
+        """Publish event to Redis Pub/Sub."""
         try:
             message = {
                 "type": event_type,
@@ -108,7 +108,7 @@ class DashboardAMIListener:
             self.logger.error(f"Error publishing event: {e}")
 
     async def update_queue_state(self, queue_name):
-        """Оновлення стану черги в Redis"""
+        """Update queue state in Redis."""
         try:
             state_key = f"asterisk:queue:{queue_name}"
             await self.redis_client.setex(
@@ -118,31 +118,49 @@ class DashboardAMIListener:
             self.logger.error(f"Error updating queue state: {e}")
 
     async def update_channels_state(self):
-        """Оновлення стану всіх каналів в Redis"""
+        """Update all channels state in Redis."""
         try:
             await self.redis_client.setex(
                 "asterisk:channels:all",
-                300,  # TTL 5 хвилин
+                3600,
                 json.dumps(self.channels_state),
             )
         except Exception as e:
             self.logger.error(f"Error updating channels state: {e}")
 
     async def update_channel_state(self, channel_name, channel_data):
-        """Оновлення стану конкретного каналу"""
+        """Update individual channel state in Redis."""
         try:
             await self.redis_client.setex(
                 f"asterisk:channel:{channel_name}",
-                300,  # TTL 5 хвилин
+                3600,
                 json.dumps(channel_data),
             )
         except Exception as e:
             self.logger.error(f"Error updating channel state: {e}")
 
-    # ============ ОБРОБНИКИ ПОДІЙ КАНАЛІВ ============
+    async def update_uid_state(self, uniqueid: str, channel_name: str):
+        """Store uniqueid -> channel mapping for ULINE sweep."""
+        try:
+            await self.redis_client.setex(
+                f"asterisk:uid:{uniqueid}",
+                3600,
+                channel_name,
+            )
+        except Exception as e:
+            self.logger.error(f"Error updating uid state: {e}")
+
+    async def delete_uid_state(self, uniqueid: str):
+        """Delete uniqueid mapping on Hangup."""
+        try:
+            await self.redis_client.delete(f"asterisk:uid:{uniqueid}")
+        except Exception as e:
+            self.logger.error(f"Error deleting uid state: {e}")
+
+    # ============ CHANNEL EVENT HANDLERS ============
 
     async def handle_newchannel(self, event):
-        """Створення нового каналу"""
+        """Handle new channel creation."""
         channel = event.get("Channel")
         channel_state = event.get("ChannelState")
         channel_state_desc = event.get("ChannelStateDesc")
@@ -153,7 +171,7 @@ class DashboardAMIListener:
         context = event.get("Context")
         exten = event.get("Exten")
 
-        # Зберігаємо інформацію про канал
+        # Store channel information
         self.channels_state[channel] = {
             "channel": channel,
             "uniqueid": uniqueid,
@@ -171,6 +189,7 @@ class DashboardAMIListener:
         }
 
         await self.update_channel_state(channel, self.channels_state[channel])
+        await self.update_uid_state(uniqueid, channel)
         await self.update_channels_state()
 
         await self.publish_event(
@@ -191,7 +210,7 @@ class DashboardAMIListener:
         )
 
     async def handle_newstate(self, event):
-        """Зміна стану каналу"""
+        """Handle channel state change."""
         channel = event.get("Channel")
         channel_state = event.get("ChannelState")
         channel_state_desc = event.get("ChannelStateDesc")
@@ -204,6 +223,9 @@ class DashboardAMIListener:
             await self.update_channel_state(channel, self.channels_state[channel])
             await self.update_channels_state()
 
+        # Always update uid mapping regardless of in-memory state (restart-safety)
+        await self.update_uid_state(uniqueid, channel)
+
         await self.publish_event(
             "channel_state_change",
             {"channel": channel, "uniqueid": uniqueid, "state": channel_state_desc},
@@ -212,7 +234,7 @@ class DashboardAMIListener:
         self.logger.info(f"Channel state change: {channel} -> {channel_state_desc}")
 
     async def handle_dial_begin(self, event):
-        """Початок набору номера"""
+        """Handle dial begin."""
         channel = event.get("Channel")
         destination = event.get("DestChannel")
         caller_id_num = event.get("CallerIDNum")
@@ -220,7 +242,7 @@ class DashboardAMIListener:
         uniqueid = event.get("Uniqueid")
         dest_uniqueid = event.get("DestUniqueid")
 
-        # Оновлюємо обидва канали
+        # Update both channels
         if channel in self.channels_state:
             self.channels_state[channel]["dialing_to"] = destination
             self.channels_state[channel]["dest_uniqueid"] = dest_uniqueid
@@ -251,7 +273,7 @@ class DashboardAMIListener:
         )
 
     async def handle_dial_end(self, event):
-        """Кінець набору (з'єднано або відхилено)"""
+        """Handle dial end (answered or rejected)."""
         channel = event.get("Channel")
         destination = event.get("DestChannel")
         # ANSWER, BUSY, NOANSWER, CANCEL, etc.
@@ -279,7 +301,7 @@ class DashboardAMIListener:
         )
 
     async def handle_bridge_create(self, event):
-        """Створення bridge (з'єднання двох каналів)"""
+        """Handle bridge creation (two channels joined)."""
         bridge_uniqueid = event.get("BridgeUniqueid")
         bridge_type = event.get("BridgeType")
         bridge_technology = event.get("BridgeTechnology")
@@ -296,7 +318,7 @@ class DashboardAMIListener:
         self.logger.info(f"Bridge created: {bridge_uniqueid} ({bridge_type})")
 
     async def handle_bridge_enter(self, event):
-        """Канал входить в bridge"""
+        """Handle channel entering a bridge."""
         channel = event.get("Channel")
         bridge_uniqueid = event.get("BridgeUniqueid")
         uniqueid = event.get("Uniqueid")
@@ -316,7 +338,7 @@ class DashboardAMIListener:
         self.logger.info(f"Channel entered bridge: {channel} -> {bridge_uniqueid}")
 
     async def handle_bridge_leave(self, event):
-        """Канал виходить з bridge"""
+        """Handle channel leaving a bridge."""
         channel = event.get("Channel")
         bridge_uniqueid = event.get("BridgeUniqueid")
         uniqueid = event.get("Uniqueid")
@@ -335,7 +357,7 @@ class DashboardAMIListener:
         self.logger.info(f"Channel left bridge: {channel} <- {bridge_uniqueid}")
 
     async def handle_hangup(self, event):
-        """Канал завершив роботу"""
+        """Handle channel hangup."""
         channel = event.get("Channel")
         uniqueid = event.get("Uniqueid")
         cause = event.get("Cause")
@@ -354,22 +376,25 @@ class DashboardAMIListener:
             },
         )
 
-        # Видаляємо канал зі стану
+        # Remove channel from in-memory state
         if channel in self.channels_state:
             del self.channels_state[channel]
 
-        # Видаляємо з Redis
+        # Remove from Redis
         try:
             await self.redis_client.delete(f"asterisk:channel:{channel}")
         except Exception as e:
             self.logger.error(f"Error deleting channel from Redis: {e}")
+
+        # Remove uniqueid mapping (used by ULINE sweep)
+        await self.delete_uid_state(uniqueid)
 
         await self.update_channels_state()
 
         self.logger.info(f"Channel hangup: {channel} (cause: {cause_txt})")
 
     async def handle_newexten(self, event):
-        """Виконання діалплану (application/exten)"""
+        """Handle dialplan execution (application/exten)."""
         channel = event.get("Channel")
         context = event.get("Context")
         exten = event.get("Extension")
@@ -401,13 +426,13 @@ class DashboardAMIListener:
         )
 
     async def handle_varset(self, event):
-        """Встановлення змінної каналу (можна відстежувати важливі змінні)"""
+        """Handle channel variable set."""
         channel = event.get("Channel")
         variable = event.get("Variable")
         value = event.get("Value")
         uniqueid = event.get("Uniqueid")
 
-        # Відстежуємо тільки важливі змінні
+        # Track only important variables
         important_vars = ["ANSWEREDTIME", "DIALEDTIME", "HANGUPCAUSE", "CDR(billsec)"]
 
         if variable in important_vars:
@@ -427,10 +452,10 @@ class DashboardAMIListener:
                 },
             )
 
-    # ============ ОБРОБНИКИ ПОДІЙ ЧЕРГ ============
+    # ============ QUEUE EVENT HANDLERS ============
 
     async def handle_queue_params(self, event):
-        """Обробка параметрів черги"""
+        """Handle queue parameters event."""
         # Event: QueueParams
         # Queue: DEFAULT
         # Max: 0
@@ -452,7 +477,7 @@ class DashboardAMIListener:
                 "calls": {},
                 "stats": {"waiting": 0},
             }
-        # Можна зберегти додаткові параметри черги, якщо потрібно
+        # Store additional queue parameters if needed
         self.queue_state[queue_name]["params"] = {
             "max": event.get("Max"),
             "strategy": event.get("Strategy"),
@@ -469,7 +494,7 @@ class DashboardAMIListener:
         self.logger.debug(f"Queue {queue_name} parameters updated")
 
     async def handle_queue_member_status(self, event):
-        """Обробка статусу агента"""
+        """Handle queue member status update."""
 
         """Event: QueueMemberStatus
             Privilege: agent,all
@@ -551,7 +576,7 @@ class DashboardAMIListener:
         )
 
     async def handle_queue_member(self, event):
-        """Обробка статусу агента"""
+        """Handle queue member event."""
 
         """Event: QueueMember
                 Queue: check_local
@@ -630,7 +655,7 @@ class DashboardAMIListener:
         )
 
     async def handle_queue_caller_join(self, event):
-        """Дзвінок увійшов у чергу"""
+        """Handle caller joining a queue."""
         queue_name = event.get("Queue")
         caller_id = event.get("CallerIDNum")
         position = event.get("Position")
@@ -674,7 +699,7 @@ class DashboardAMIListener:
         )
 
     async def handle_queue_caller_leave(self, event):
-        """Дзвінок покинув чергу"""
+        """Handle caller leaving a queue."""
         queue_name = event.get("Queue")
         uniqueid = event.get("Uniqueid")
 
@@ -697,7 +722,7 @@ class DashboardAMIListener:
         self.logger.info(f"Queue {queue_name}: Call {uniqueid} left")
 
     async def handle_agent_connect(self, event):
-        """Агент з'єднався з дзвінком"""
+        """Handle agent connecting to a call."""
         queue_name = event.get("Queue")
         member_name = event.get("MemberName")
         uniqueid = event.get("Uniqueid")
@@ -719,7 +744,7 @@ class DashboardAMIListener:
             f"Queue {queue_name}: Agent {member_name} connected to call {uniqueid}"
         )
 
-    # ============ ІНІЦІАЛІЗАЦІЯ ============
+    # ============ INITIALIZATION ============
 
     def initialize_queue_state(self):
         action = SimpleAction("QueueStatus")
@@ -731,7 +756,7 @@ class DashboardAMIListener:
         self.ami.send_action(action)
         self.logger.info("Loaded initial channels state from Asterisk")
 
-    # ============ ГОЛОВНИЙ ЦИКЛ ============
+    # ============ MAIN LOOP ============
     async def event_listener(self, event, **kwargs):
         if event.name in self.event_handlers:
             try:
@@ -741,7 +766,7 @@ class DashboardAMIListener:
                 self.logger.error(f"Error handling {event.name}: {e}", exc_info=True)
 
     async def health_check_loop(self):
-        """Періодична перевірка здоров'я з'єднань"""
+        """Periodic health check for connections."""
         while self.running:
             try:
                 await asyncio.sleep(30)
@@ -782,7 +807,7 @@ class DashboardAMIListener:
 
         self.logger.info("AMI Listener started successfully")
 
-        # Головний цикл: нічого не блокує, loop працює вільно
+        # Main loop: nothing blocking, the event loop runs freely
         try:
             while True:
                 await asyncio.sleep(0.1)
@@ -856,7 +881,7 @@ def merge_args_env(args, env_vars):
 
 
 def handle_signal(signum, frame):
-    """Обробка сигналів для graceful shutdown"""
+    """Handle OS signals for graceful shutdown."""
     print(f"Received signal {signum}")
     sys.exit(0)
 

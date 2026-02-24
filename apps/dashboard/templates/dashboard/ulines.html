@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .uline-container {
+        padding: 20px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        min-height: 100vh;
+    }
+
+    .stats-bar {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        background: rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 16px 24px;
+        color: #fff;
+        min-width: 120px;
+        text-align: center;
+    }
+
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .stat-card .label {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .stat-card.used   { border-top: 3px solid #f59e0b; }
+    .stat-card.free   { border-top: 3px solid #10b981; }
+    .stat-card.total  { border-top: 3px solid #6366f1; }
+    .stat-card.pct    { border-top: 3px solid #ef4444; }
+
+    .status-badges {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-ok   { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }
+    .badge-warn { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #f59e0b; }
+    .badge-err  { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid #ef4444; }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green  { background: #10b981; animation: pulse-green 2s infinite; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-red    { background: #ef4444; }
+
+    @keyframes pulse-green {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+
+    .table-card {
+        background: rgba(255,255,255,0.05);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        color: #fff;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #e2e8f0;
+        font-size: 0.88rem;
+    }
+
+    thead th {
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255,255,255,0.5);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    tbody tr {
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: rgba(255,255,255,0.04); }
+
+    tbody td {
+        padding: 12px 16px;
+        vertical-align: middle;
+    }
+
+    .row-alive  td:first-child { border-left: 3px solid #10b981; }
+    .row-orphan td:first-child { border-left: 3px solid #f59e0b; }
+
+    .uline-num {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #6366f1;
+    }
+
+    .channel-name {
+        font-family: monospace;
+        font-size: 0.82rem;
+        color: #94a3b8;
+    }
+
+    .age {
+        font-variant-numeric: tabular-nums;
+        color: #94a3b8;
+    }
+
+    .status-pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .pill-alive  { background: rgba(16,185,129,0.15); color: #10b981; }
+    .pill-orphan { background: rgba(245,158,11,0.15); color: #f59e0b; }
+
+    .refresh-counter {
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.4);
+    }
+
+    .btn-flush {
+        background: rgba(239,68,68,0.15);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-flush:hover { background: rgba(239,68,68,0.3); }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: rgba(255,255,255,0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="uline-container">
+
+    <div class="status-badges">
+        {% if redis_error %}
+            <span class="badge badge-err"><span class="dot dot-red"></span>Redis недоступний</span>
+        {% elif dashboard_alive %}
+            <span class="badge badge-ok"><span class="dot dot-green"></span>Dashboard живий</span>
+        {% else %}
+            <span class="badge badge-warn"><span class="dot dot-yellow"></span>Dashboard не запущений — sweep вимкнено</span>
+        {% endif %}
+        <span class="refresh-counter" id="refresh-counter">Оновлення через <span id="countdown">10</span>с</span>
+    </div>
+
+    {% if stats %}
+    <div class="stats-bar">
+        <div class="stat-card total">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">Всього</div>
+        </div>
+        <div class="stat-card used">
+            <div class="value">{{ stats.used }}</div>
+            <div class="label">Зайнято</div>
+        </div>
+        <div class="stat-card free">
+            <div class="value">{{ stats.free }}</div>
+            <div class="label">Вільно</div>
+        </div>
+        <div class="stat-card pct">
+            <div class="value">{{ stats.usage_percent }}%</div>
+            <div class="label">Завантаження</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table-card">
+        <div class="table-header">
+            <span>Активні ULINE ({{ ulines|length }})</span>
+            {% if request.user.is_superuser %}
+            <button class="btn-flush" onclick="flushAll()">Очистити всі ULINE</button>
+            {% endif %}
+        </div>
+
+        {% if ulines %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ULINE</th>
+                    <th>Статус</th>
+                    <th>Канал</th>
+                    <th>UniqueID</th>
+                    <th>CallerID</th>
+                    <th>Provider</th>
+                    <th>Час активності</th>
+                    <th>TTL (Redis)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in ulines %}
+                <tr class="{% if u.alive %}row-alive{% else %}row-orphan{% endif %}">
+                    <td><span class="uline-num">{{ u.n }}</span></td>
+                    <td>
+                        {% if u.alive %}
+                            <span class="status-pill pill-alive">Живий</span>
+                        {% else %}
+                            <span class="status-pill pill-orphan">Orphan?</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="channel-name">{{ u.channel|default:"—" }}</span></td>
+                    <td><span class="channel-name">{{ u.uniqueid|default:"—" }}</span></td>
+                    <td>{{ u.caller_id|default:"—" }}</td>
+                    <td>{{ u.provider|default:"—" }}</td>
+                    <td class="age" data-age="{{ u.age_seconds }}">{{ u.age_seconds }}с</td>
+                    <td class="age">{{ u.ttl }}с</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>Немає активних ULINE</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const REFRESH_INTERVAL = 10;
+    let countdown = REFRESH_INTERVAL;
+
+    function tick() {
+        countdown--;
+        document.getElementById('countdown').textContent = countdown;
+        if (countdown <= 0) {
+            location.reload();
+        }
+    }
+
+    setInterval(tick, 1000);
+
+    function formatAge(seconds) {
+        if (seconds < 60) return seconds + 'с';
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return m + 'хв ' + s + 'с';
+    }
+
+    document.querySelectorAll('[data-age]').forEach(el => {
+        el.textContent = formatAge(parseInt(el.dataset.age));
+    });
+
+    function flushAll() {
+        if (!confirm('Видалити ВСІ активні ULINE з Redis?\n\nЦе призведе до відв\'язки всіх поточних дзвінків від паркувальних слотів!')) return;
+        fetch('{% url "dashboard:uline_flush" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.deleted !== undefined) {
+                alert(`Видалено ${data.deleted} ключів`);
+                location.reload();
+            } else {
+                alert('Помилка: ' + (data.error || 'невідома'));
+            }
+        })
+        .catch(e => alert('Помилка з\'єднання: ' + e));
+    }
+</script>
+{% endblock %}
