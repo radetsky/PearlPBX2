@@ -4,14 +4,43 @@ set -euo pipefail
 # ================================================================
 # Configuration
 # ================================================================
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T.../B.../xxx"
-SLACK_CHANNEL="#alerts-server"
+ENV_FILE="/etc/PearlPBX/monitor/env"
+if [[ ! -f "$ENV_FILE" ]]; then
+    echo "ERROR: config file not found: ${ENV_FILE}" >&2
+    echo "" >&2
+    echo "Create it with the following content:" >&2
+    echo "" >&2
+    echo "  mkdir -p $(dirname "$ENV_FILE")" >&2
+    echo "  cat > ${ENV_FILE} <<EOF" >&2
+    echo "  SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../xxx" >&2
+    echo "  SLACK_CHANNEL=#alerts-server" >&2
+    echo "  EOF" >&2
+    echo "  chmod 600 ${ENV_FILE}" >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+
+if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
+    echo "ERROR: SLACK_WEBHOOK_URL is not set in ${ENV_FILE}" >&2
+    exit 1
+fi
+
+SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
 HOSTNAME=$(hostname)
 
-SERVICES=("asterisk" "postgresql" "gunicorn")
+SERVICES=(
+    "asterisk" "postgresql" "gunicorn" "redis"
+    "callback" "dashboard" "express" "fastagi"
+)
 
 WARN_THRESHOLD=80
 CRIT_THRESHOLD=90
+
+CPU_WARN_THRESHOLD=2      # load average warn: N x CPU cores
+CPU_CRIT_THRESHOLD=4      # load average crit: N x CPU cores
+MEM_WARN_THRESHOLD=80     # memory used %
+MEM_CRIT_THRESHOLD=90     # memory used %
 
 # Filesystems to ignore
 IGNORE_FS="tmpfs|devtmpfs|udev|overlay|squashfs"
@@ -103,8 +132,53 @@ check_disks() {
 }
 
 # ================================================================
+# CPU load
+# ================================================================
+check_cpu() {
+    local cores load1 load_int threshold_warn threshold_crit
+    cores=$(nproc)
+    load1=$(LC_ALL=C uptime | awk -F'load average:' '{print $2}' | awk -F',' '{print $1}' | tr -d ' ')
+    # Convert float to integer * 100 for comparison (e.g. 1.75 -> 175)
+    load_int=$(echo "$load1" | awk '{printf "%d", $1 * 100}')
+    threshold_warn=$(( cores * CPU_WARN_THRESHOLD * 100 ))
+    threshold_crit=$(( cores * CPU_CRIT_THRESHOLD * 100 ))
+
+    if [[ "$load_int" -ge "$threshold_crit" ]]; then
+        slack_critical \
+            "CPU load critical" \
+            "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_CRIT_THRESHOLD}x)\n\`top -bn1 | head -20\`"
+    elif [[ "$load_int" -ge "$threshold_warn" ]]; then
+        slack_warning \
+            "CPU load warning" \
+            "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_WARN_THRESHOLD}x)"
+    fi
+}
+
+# ================================================================
+# Memory
+# ================================================================
+check_memory() {
+    local total used pct
+    total=$(LC_ALL=C free -m | awk '/^Mem:/ {print $2}')
+    used=$(LC_ALL=C free -m  | awk '/^Mem:/ {print $3}')
+    pct=$(( used * 100 / total ))
+
+    if [[ "$pct" -ge "$MEM_CRIT_THRESHOLD" ]]; then
+        slack_critical \
+            "Memory usage critical" \
+            "Memory on \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)\n\`ps aux --sort=-%mem | head -10\`"
+    elif [[ "$pct" -ge "$MEM_WARN_THRESHOLD" ]]; then
+        slack_warning \
+            "Memory usage warning" \
+            "Memory on \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)"
+    fi
+}
+
+# ================================================================
 # Main
 # ================================================================
 check_services
 check_disks
+check_cpu
+check_memory
 
