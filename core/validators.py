@@ -683,6 +683,14 @@ class AsteriskDialplanValidator(BaseValidator):
             self.validate_variable_assignment(step_content, line_num)
             return
 
+        # Check for AEL control flow statements
+        if step_content in ("return", "break", "continue"):
+            return
+
+        if step_content.startswith("goto "):
+            # goto context,extension,priority or goto extension,priority or goto priority
+            return
+
         # Check format application(parameters)
         if "(" in step_content:
             # Find application name
