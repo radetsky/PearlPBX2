@@ -141,8 +141,8 @@ def uline_monitor(request):
     """ULINE Monitor — shows active ULINEs and their liveness status."""
     try:
         r = _get_redis()
-        from datetime import datetime
-        now = datetime.now()
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
 
         dashboard_alive = r.exists("asterisk:channels:all")
 

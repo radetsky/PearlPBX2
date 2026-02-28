@@ -229,7 +229,6 @@
                     <th>Канал</th>
                     <th>UniqueID</th>
                     <th>CallerID</th>
-                    <th>Provider</th>
                     <th>Час активності</th>
                     <th>TTL (Redis)</th>
                 </tr>
@@ -248,7 +247,6 @@
                     <td><span class="channel-name">{{ u.channel|default:"—" }}</span></td>
                     <td><span class="channel-name">{{ u.uniqueid|default:"—" }}</span></td>
                     <td>{{ u.caller_id|default:"—" }}</td>
-                    <td>{{ u.provider|default:"—" }}</td>
                     <td class="age" data-age="{{ u.age_seconds }}">{{ u.age_seconds }}с</td>
                     <td class="age">{{ u.ttl }}с</td>
                 </tr>

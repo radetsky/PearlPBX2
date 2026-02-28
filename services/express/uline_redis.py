@@ -12,7 +12,7 @@ Both keys have TTL = ULINE_TTL seconds (default 3600).
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import redis
@@ -110,7 +110,7 @@ class ULineRedisManager:
         Uses a Lua script for atomic allocation to prevent race conditions and
         WRONGTYPE errors that occurred with the previous SET NX + HSET pattern.
         """
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         # Trigger lazy client init (also registers the script)
         _ = self.client
         result = self._allocate_script(
