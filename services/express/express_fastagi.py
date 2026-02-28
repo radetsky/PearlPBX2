@@ -52,50 +52,62 @@ logger = logging.getLogger("ExpressFastAGI")
 uline_manager = ULineRedisManager(ExpressConfig.REDIS_URL)
 
 
-# ============ AGI HANDLERS ============
+# ============ AGI HANDLER CLASS ============
 
-@defer.inlineCallbacks
-def handle_incoming_call(agi):
-    """Allocate ULINE and set ULINE channel variable."""
-    logger.info("=" * 50)
-    logger.info(f"Incoming call: channel={agi.variables.get('agi_channel', '?')}")
-    logger.info(f"CallerID: {agi.variables.get('agi_callerid', '?')}")
+class ExpressAGIHandler:
+    def __init__(self, agi: fastagi.FastAGIProtocol):
+        self.agi = agi
 
-    cdr_start = yield agi.getVariable("CDR(start)") or "unknown"
-    cdr_uniqueid = yield agi.getVariable("CDR(uniqueid)") or "unknown"
-    channel = agi.variables.get("agi_channel", "")
+    @defer.inlineCallbacks
+    def _get_variable(self, key: str, default: str = "unknown"):
+        value = (yield self.agi.getVariable(key)) or default
+        return value.decode("utf-8") if isinstance(value, bytes) else value
 
-    logger.info(f"CDR uniqueid: {cdr_uniqueid}")
+    @defer.inlineCallbacks
+    def handle_incoming(self):
+        """Allocate ULINE and set ULINE channel variable."""
+        channel = self.agi.variables.get(b"agi_channel", b"?").decode("utf-8")
+        caller_id = self.agi.variables.get(b"agi_callerid", b"?").decode("utf-8")
 
-    uline = uline_manager.allocate(
-        uniqueid=cdr_uniqueid,
-        channel=channel,
-        cdr_start=cdr_start,
-        caller_id=agi.variables.get("agi_callerid", ""),
-        provider="",
-    )
+        logger.info("=" * 50)
+        logger.info(f"Incoming call: channel={channel}")
+        logger.info(f"CallerID: {caller_id}")
 
-    if uline is None:
-        logger.error("No free ULINEs — all slots busy")
-        yield agi.verbose("Express: no free ULINEs", 1)
-    else:
-        existing_uline = yield agi.getVariable("ULINE")
-        if existing_uline and existing_uline == str(uline):
-            logger.info(f"ULINE={uline} already set on channel, no change")
+        cdr_start = yield self._get_variable("CDR(start)")
+        cdr_uniqueid = yield self._get_variable("CDR(uniqueid)")
+
+        logger.info(f"CDR uniqueid: {cdr_uniqueid}")
+
+        uline = uline_manager.allocate(
+            uniqueid=cdr_uniqueid,
+            channel=channel,
+            cdr_start=cdr_start,
+            caller_id=caller_id,
+            provider="",
+        )
+
+        if uline is None:
+            logger.error("No free ULINEs — all slots busy")
+            yield self.agi.verbose("Express: no free ULINEs", 1)
         else:
-            yield agi.setVariable("ULINE", str(uline))
-        yield agi.verbose(f"Express: ULINE={uline}", 2)
-        stats = uline_manager.get_stats()
-        logger.info(f"ULINE stats: {stats['used']}/{stats['total']} ({stats['usage_percent']}%)")
+            yield self.agi.setVariable("ULINE", str(uline))
+            yield self.agi.verbose(f"Express: ULINE={uline}", 2)
+            stats = uline_manager.get_stats()
+            logger.info(f"ULINE stats: {stats['used']}/{stats['total']} ({stats['usage_percent']}%)")
 
-    logger.info("ULINE allocation done")
-    defer.returnValue(None)
+        logger.info("ULINE allocation done")
+        yield self.agi.finish()
+
+    def handle_failure(self, reason) -> None:
+        logger.error("AGI error: %s", reason.getTraceback())
+        return self.agi.finish()
 
 
-def route_handler(agi):
-    """Route to the correct handler based on agi_network_script."""
-    logger.info(f"Routing: script={agi.variables.get('agi_network_script', '')!r}")
-    return handle_incoming_call(agi)
+def agi_entry_function(agi: fastagi.FastAGIProtocol):
+    network_script = agi.variables.get(b"agi_network_script", b"").decode("utf-8")
+    logger.info(f"Routing: script={network_script!r}")
+    handler = ExpressAGIHandler(agi)
+    return handler.handle_incoming().addErrback(handler.handle_failure)
 
 
 # ============ ORPHAN SWEEP ============
@@ -178,7 +190,7 @@ def main():
     logger.info(f"Sweep interval: {ExpressConfig.ULINE_SWEEP_INTERVAL}s")
     logger.info("=" * 50)
 
-    factory = fastagi.FastAGIFactory(route_handler)
+    factory = fastagi.FastAGIFactory(agi_entry_function)
     reactor.listenTCP(ExpressConfig.FASTAGI_PORT, factory, interface=ExpressConfig.FASTAGI_HOST)
 
     # Start orphan sweep after first interval
