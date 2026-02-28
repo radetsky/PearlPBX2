@@ -863,15 +863,16 @@
         }
 
         container.innerHTML = channelList.map(channel => {
-            const stateClass = channel.state ? channel.state.toLowerCase().replace(/\s+/g, '-') : 'unknown';
+            const stateText = getChannelStateText(channel.state);
+            const stateClass = stateText.toLowerCase().replace(/\s+/g, '-');
             const statusClass = getStatusClass(channel.state);
-            const newClass = channel.isNew ? 'new' : '';  // ← Додати це
+            const newClass = channel.isNew ? 'new' : '';
 
             return `
                 <div class="channel-card ${stateClass} ${newClass}">
                     <div class="channel-header">
                         <div class="channel-name">${escapeHtml(channel.channel)}</div>
-                        <span class="channel-status ${statusClass}">${escapeHtml(channel.state || 'Unknown')}</span>
+                        <span class="channel-status ${statusClass}">${escapeHtml(stateText)}</span>
                     </div>
                     <div class="channel-info">
                         <div><strong>Caller:</strong> ${escapeHtml(channel.caller_id_num || 'Unknown')}</div>
@@ -948,11 +949,22 @@
     }
 
     // Допоміжні функції
+    const CHANNEL_STATES = {
+        '0': 'Down', '1': 'Rsrvd', '2': 'OffHook', '3': 'Dialing',
+        '4': 'Ring', '5': 'Ringing', '6': 'Up', '7': 'Busy',
+        '8': 'Dialing Offhook', '9': 'Pre-ring', '10': 'Unknown'
+    };
+
+    function getChannelStateText(state) {
+        if (state === null || state === undefined) return 'Unknown';
+        const key = String(state);
+        return CHANNEL_STATES[key] || String(state);
+    }
+
     function getStatusClass(state) {
-        if (!state) return 'status-down';
-        const stateLower = state.toLowerCase();
-        if (stateLower.includes('ring')) return 'status-ringing';
-        if (stateLower.includes('up')) return 'status-up';
+        const text = getChannelStateText(state).toLowerCase();
+        if (text.includes('ring')) return 'status-ringing';
+        if (text.includes('up')) return 'status-up';
         return 'status-down';
     }
 
