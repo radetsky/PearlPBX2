@@ -411,6 +411,18 @@ class DashboardAMIListener:
         # Remove uniqueid mapping (used by ULINE sweep)
         await self.delete_uid_state(uniqueid)
 
+        # Release ULINE if one was allocated for this call
+        try:
+            n_str = await self.redis_client.get(f"express:uid:{uniqueid}")
+            if n_str:
+                await self.redis_client.delete(
+                    f"express:uline:{n_str}",
+                    f"express:uid:{uniqueid}",
+                )
+                self.logger.info(f"Released ULINE {n_str} for {channel} (uniqueid={uniqueid})")
+        except Exception as e:
+            self.logger.error(f"Error releasing ULINE for {uniqueid}: {e}")
+
         await self.update_channels_state()
 
         self.logger.info(f"Channel hangup: {channel} (cause: {cause_txt})")
