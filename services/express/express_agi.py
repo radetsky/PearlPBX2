@@ -127,24 +127,9 @@ def normalize_phone(callerid: str) -> str:
     return digits[-10:] if len(digits) >= 10 else digits
 
 
-def get_peer_ip(agi: AGI, member_interface: str) -> str:
-    if not member_interface:
-        return "unknown"
-    try:
-        if "PJSIP" in member_interface.upper():
-            result = agi.get_variable("CHANNEL(pjsip,remote_addr)")
-            if result:
-                return result.split(":")[0]
-        elif "SIP" in member_interface.upper():
-            result = agi.get_variable("CHANNEL(recvip)")
-            if result:
-                return result.split(":")[0]
-        result = agi.get_variable("SIPCHANINFO(recvip)")
-        if result:
-            return result.split(":")[0]
-    except Exception as e:
-        logger.warning(f"Error getting peer IP: {e}")
-    return "unknown"
+def extract_member_number(member_interface: str) -> str:
+    match = re.match(r'^(?:SIP|PJSIP)/(.+)$', member_interface, re.IGNORECASE)
+    return match.group(1) if match else member_interface
 
 
 # ============ HTTP CLIENT ============
@@ -153,7 +138,7 @@ def send_to_express(
     server_url: str,
     provider: str,
     caller_id: str,
-    member_ip: str,
+    member: str,
     uline: int,
     car_class: str,
 ) -> Dict:
@@ -162,7 +147,7 @@ def send_to_express(
     params = {
         "provider": provider,
         "from": caller_id,
-        "to": member_ip,
+        "to": member,
         "line": str(uline),
         "carClass": car_class,
     }
@@ -209,6 +194,15 @@ def handle_incoming_call(agi: AGI):
         agi.verbose("Express: no ULINE, skipping", 1)
         return
 
+    member_interface = agi.get_variable("MEMBERINTERFACE")
+    if not member_interface:
+        logger.error("MEMBERINTERFACE not set — skipping Express notification")
+        agi.verbose("Express: no MEMBERINTERFACE", 1)
+        return
+
+    member_number = extract_member_number(member_interface)
+    logger.info(f"Member interface: {member_interface}, number: {member_number}")
+
     callerid_raw = agi.get_variable("CALLERID(num)") or agi.variables.get("agi_callerid", "")
     caller_id = normalize_phone(callerid_raw)
 
@@ -224,17 +218,14 @@ def handle_incoming_call(agi: AGI):
     )
     express_url = agi.get_variable("EXPRESS_URL") or ExpressConfig.DEFAULT_EXPRESS_URL
 
-    member_interface = agi.get_variable("MEMBERINTERFACE") or ""
-    member_ip = get_peer_ip(agi, member_interface)
-
-    logger.info(f"ULINE={uline} caller_id={caller_id} provider={express_provider} class={express_class}")
+    logger.info(f"ULINE={uline} caller_id={caller_id} member={member_number} provider={express_provider} class={express_class}")
 
     if not express_url:
         logger.error("EXPRESS_URL not set")
         agi.verbose("Express: no URL configured", 1)
         return
 
-    result = send_to_express(express_url, express_provider, caller_id, member_ip, uline, express_class)
+    result = send_to_express(express_url, express_provider, caller_id, member_number, uline, express_class)
     if result.get("success"):
         agi.verbose("Express: OK", 2)
     else:
