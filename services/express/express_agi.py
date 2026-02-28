@@ -24,7 +24,8 @@ import requests
 from dotenv import load_dotenv
 
 script_dir = Path(__file__).parent
-for candidate in (script_dir / ".env", script_dir / "env"):
+_system_env = Path("/etc/PearlPBX/express/env")
+for candidate in (_system_env, script_dir / ".env", script_dir / "env"):
     if candidate.exists():
         load_dotenv(candidate)
         break
