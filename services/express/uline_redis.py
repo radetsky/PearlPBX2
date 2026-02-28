@@ -38,11 +38,11 @@ ULINE_TTL = int(os.getenv("ULINE_TTL", 3600))
 # ARGV[7]  = caller_id
 # ARGV[8]  = provider
 # ARGV[9]  = allocated_at (ISO string)
-# Returns: allocated ULINE number (int) or -1 if no free slots
+# Returns: {n, is_new} where is_new=1 for new allocation, 0 for existing; n=-1 if no free slots
 ALLOCATE_SCRIPT = """
 local existing = redis.call('GET', KEYS[1])
 if existing then
-    return tonumber(existing)
+    return {tonumber(existing), 0}
 end
 
 local ttl = tonumber(ARGV[3])
@@ -59,11 +59,11 @@ for n = tonumber(ARGV[1]), tonumber(ARGV[2]) do
         )
         redis.call('EXPIRE', uline_key, ttl)
         redis.call('SET', KEYS[1], tostring(n), 'EX', ttl)
-        return n
+        return {n, 1}
     end
 end
 
-return -1
+return {-1, 0}
 """
 
 
@@ -127,11 +127,14 @@ class ULineRedisManager:
                 now,
             ],
         )
-        n = int(result)
+        n, is_new = int(result[0]), bool(result[1])
         if n == -1:
             logger.error(f"No free ULINEs in range {ULINE_MIN}-{ULINE_MAX}")
             return None
-        logger.info(f"Allocated ULINE {n} for uniqueid={uniqueid} channel={channel}")
+        if is_new:
+            logger.info(f"Allocated new ULINE {n} for uniqueid={uniqueid} channel={channel}")
+        else:
+            logger.info(f"Reusing existing ULINE {n} for uniqueid={uniqueid} channel={channel}")
         return n
 
     def release(self, uniqueid: str) -> bool:

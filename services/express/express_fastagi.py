@@ -79,7 +79,11 @@ def handle_incoming_call(agi):
         logger.error("No free ULINEs — all slots busy")
         yield agi.verbose("Express: no free ULINEs", 1)
     else:
-        yield agi.setVariable("ULINE", str(uline))
+        existing_uline = yield agi.getVariable("ULINE")
+        if existing_uline and existing_uline == str(uline):
+            logger.info(f"ULINE={uline} already set on channel, no change")
+        else:
+            yield agi.setVariable("ULINE", str(uline))
         yield agi.verbose(f"Express: ULINE={uline}", 2)
         stats = uline_manager.get_stats()
         logger.info(f"ULINE stats: {stats['used']}/{stats['total']} ({stats['usage_percent']}%)")
