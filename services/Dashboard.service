@@ -1,7 +1,7 @@
 [Unit]
 Description=Dashboard Listener Service for PearlPBX2
-After=network.target redis.service asterisk.service
-Wants=asterisk.service redis.service
+After=network.target redis.service asterisk.service PearlPBX2.service
+Wants=asterisk.service redis.service PearlPBX2.service
 
 [Service]
 Type=simple
