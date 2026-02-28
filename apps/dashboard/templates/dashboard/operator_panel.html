@@ -960,7 +960,9 @@
         if (member.paused) return 'paused';
         if (member.status === '1') return 'available';
         if (member.status === '2') return 'busy';
-        if (member.status === '3') return 'ringing';
+        if (member.status === '3') return 'busy';
+        if (member.status === '6') return 'ringing';
+        if (member.status === '7') return 'ringing';
         return '';
     }
 
@@ -968,7 +970,12 @@
         if (member.paused) return 'Paused';
         if (member.status === '1') return 'Available';
         if (member.status === '2') return 'In call';
-        if (member.status === '3') return 'Ringing';
+        if (member.status === '3') return 'Busy';
+        if (member.status === '4') return 'Invalid';
+        if (member.status === '5') return 'Unavailable';
+        if (member.status === '6') return 'Ringing';
+        if (member.status === '7') return 'Ringing (In use)';
+        if (member.status === '8') return 'On hold';
         return 'Unknown';
     }
 
