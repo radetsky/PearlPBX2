@@ -742,6 +742,14 @@
             case 'queue_caller_leave':
                 handleQueueCallerLeave(data);
                 break;
+            case 'system_reset':
+                channels = {};
+                queues = {};
+                renderChannels();
+                renderQueues();
+                updateStats();
+                loadInitialState();
+                break;
             default:
                 console.log('Unhandled event type:', eventType);
         }

@@ -80,8 +80,30 @@ class DashboardAMIListener:
         return client
 
     def on_disconnect(self):
-        time.sleep(5)
-        self.ami = self.ami_connect()
+        self.logger.warning("AMI disconnected, attempting to reconnect...")
+        while self.running:
+            time.sleep(5)
+            try:
+                self.ami = self.ami_connect()
+                # Re-register event listener on the new connection
+                if hasattr(self, "loop") and not self.loop.is_closed():
+                    self.ami.add_event_listener(on_event=self.event_listener_sync)
+                    asyncio.run_coroutine_threadsafe(self._on_reconnected(), self.loop)
+                self.logger.info("AMI reconnected successfully")
+                break
+            except Exception as e:
+                self.logger.error(f"Reconnect attempt failed: {e}, retrying in 5s...")
+
+    async def _on_reconnected(self):
+        """Clear stale state and reinitialize after AMI reconnect."""
+        self.logger.info("Clearing stale state after AMI reconnect...")
+        self.channels_state.clear()
+        self.queue_state.clear()
+        await self.update_channels_state()
+        await self.publish_event("system_reset", {})
+        self.initialize_queue_state()
+        self.initialize_channels_state()
+        self.logger.info("State reinitialized after AMI reconnect")
 
     def connect_redis(self):
         """Connect to Redis."""
