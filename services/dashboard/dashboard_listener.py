@@ -47,7 +47,11 @@ class DashboardAMIListener:
             "Hangup": self.handle_hangup,
             "Newexten": self.handle_newexten,
             "VarSet": self.handle_varset,
+            # CoreShowChannels response (used for state restore after reconnect)
+            "CoreShowChannel": self.handle_core_show_channel,
+            "CoreShowChannelsComplete": self.handle_core_show_channels_complete,
             # Queue events
+            "QueueParams": self.handle_queue_params,
             "QueueMemberStatus": self.handle_queue_member_status,
             "QueueMember": self.handle_queue_member,
             "QueueCallerJoin": self.handle_queue_caller_join,
@@ -58,7 +62,7 @@ class DashboardAMIListener:
         return event_handlers
 
     def setup_logging(self):
-        logger = logging.getLogger("callback")
+        logger = logging.getLogger("dashboard")
         loglevel = self.params.get("loglevel", logging.DEBUG)
         logging.basicConfig(
             level=loglevel, format="%(asctime)s %(process)d %(levelname)s %(message)s"
@@ -179,36 +183,44 @@ class DashboardAMIListener:
         except Exception as e:
             self.logger.error(f"Error deleting uid state: {e}")
 
+    def _build_channel_state(self, event):
+        return {
+            "channel": event.get("Channel"),
+            "uniqueid": event.get("Uniqueid"),
+            "state": event.get("ChannelState"),
+            "state_desc": event.get("ChannelStateDesc"),
+            "caller_id_num": event.get("CallerIDNum"),
+            "caller_id_name": event.get("CallerIDName"),
+            "connected_line_num": event.get("ConnectedLineNum"),
+            "context": event.get("Context"),
+            "exten": event.get("Exten"),
+            "created_at": datetime.now().isoformat(),
+            "duration": 0,
+            "bridged_channel": None,
+            "application": event.get("Application"),
+        }
+
+    def _ensure_queue_state(self, queue_name):
+        if queue_name not in self.queue_state:
+            self.queue_state[queue_name] = {
+                "members": {},
+                "calls": {},
+                "stats": {"waiting": 0, "answered": 0},
+            }
+
     # ============ CHANNEL EVENT HANDLERS ============
 
     async def handle_newchannel(self, event):
         """Handle new channel creation."""
         channel = event.get("Channel")
-        channel_state = event.get("ChannelState")
-        channel_state_desc = event.get("ChannelStateDesc")
+        uniqueid = event.get("Uniqueid")
         caller_id_num = event.get("CallerIDNum")
         caller_id_name = event.get("CallerIDName")
-        connected_line_num = event.get("ConnectedLineNum")
-        uniqueid = event.get("Uniqueid")
+        channel_state_desc = event.get("ChannelStateDesc")
         context = event.get("Context")
         exten = event.get("Exten")
 
-        # Store channel information
-        self.channels_state[channel] = {
-            "channel": channel,
-            "uniqueid": uniqueid,
-            "state": channel_state,
-            "state_desc": channel_state_desc,
-            "caller_id_num": caller_id_num,
-            "caller_id_name": caller_id_name,
-            "connected_line_num": connected_line_num,
-            "context": context,
-            "exten": exten,
-            "created_at": datetime.now().isoformat(),
-            "duration": 0,
-            "bridged_channel": None,
-            "application": None,
-        }
+        self.channels_state[channel] = self._build_channel_state(event)
 
         await self.update_channel_state(channel, self.channels_state[channel])
         await self.update_uid_state(uniqueid, channel)
@@ -486,6 +498,26 @@ class DashboardAMIListener:
                 },
             )
 
+    async def handle_core_show_channel(self, event):
+        """Handle CoreShowChannel event — restores channel state after reconnect."""
+        channel = event.get("Channel")
+        uniqueid = event.get("Uniqueid")
+        if not channel or channel in self.channels_state:
+            return
+
+        self.channels_state[channel] = self._build_channel_state(event)
+
+        await asyncio.gather(
+            self.update_channel_state(channel, self.channels_state[channel]),
+            self.update_uid_state(uniqueid, channel),
+        )
+        self.logger.debug(f"Restored channel from CoreShowChannels: {channel}")
+
+    async def handle_core_show_channels_complete(self, event):
+        """Flush aggregate channel state to Redis once CoreShowChannels bulk is done."""
+        await self.update_channels_state()
+        self.logger.debug("CoreShowChannels complete, aggregate state updated")
+
     # ============ QUEUE EVENT HANDLERS ============
 
     async def handle_queue_params(self, event):
@@ -505,12 +537,7 @@ class DashboardAMIListener:
         # Weight: 0
 
         queue_name = event.get("Queue")
-        if queue_name not in self.queue_state:
-            self.queue_state[queue_name] = {
-                "members": {},
-                "calls": {},
-                "stats": {"waiting": 0},
-            }
+        self._ensure_queue_state(queue_name)
         # Store additional queue parameters if needed
         self.queue_state[queue_name]["params"] = {
             "max": event.get("Max"),
@@ -527,48 +554,19 @@ class DashboardAMIListener:
         }
         self.logger.debug(f"Queue {queue_name} parameters updated")
 
-    async def handle_queue_member_status(self, event):
-        """Handle queue member status update."""
-
-        """Event: QueueMemberStatus
-            Privilege: agent,all
-            Timestamp: 1765742326.994064
-            Queue: DEFAULT
-            MemberName: 201
-            Interface: PJSIP/ppbxuser201
-            StateInterface: PJSIP/ppbxuser201
-            Membership: static
-            Penalty: 0
-            CallsTaken: 0
-            LastCall: 0
-            LastPause: 0
-            LoginTime: 1765220918
-            InCall: 0
-            Status: 1
-            Paused: 0
-            PausedReason:
-            Ringinuse: 0
-            Wrapuptime: 0"""
-
-        queue_name = event.get("Queue")
-        member_name = event.get("MemberName")
+    async def _upsert_queue_member(self, queue_name, member_name, event):
+        self._ensure_queue_state(queue_name)
         status = event.get("Status")
         paused = event.get("Paused", "0") == "1"
-        calls_taken = event.get("CallsTaken", "0")
+        calls_taken = int(event.get("CallsTaken", "0"))
+        last_update = datetime.now().isoformat()
 
-        if queue_name not in self.queue_state:
-            self.queue_state[queue_name] = {
-                "members": {},
-                "calls": {},
-                "stats": {"waiting": 0, "answered": 0},
-            }
-
-        self.queue_state[queue_name]["members"][member_name] = {
+        member = {
             "name": member_name,
             "status": status,
             "paused": paused,
-            "calls_taken": int(calls_taken),
-            "last_update": datetime.now().isoformat(),
+            "calls_taken": calls_taken,
+            "last_update": last_update,
             "logintime": event.get("LoginTime"),
             "location": event.get("Location"),
             "state_interface": event.get("StateInterface"),
@@ -580,112 +578,25 @@ class DashboardAMIListener:
             "paused_reason": event.get("PausedReason"),
             "wrapup_time": event.get("Wrapuptime"),
         }
+        self.queue_state[queue_name]["members"][member_name] = member
 
         await self.update_queue_state(queue_name)
-
-        await self.publish_event(
-            "queue_member_status",
-            {
-                "queue": queue_name,
-                "member": member_name,
-                "status": status,
-                "paused": paused,
-                "calls_taken": int(calls_taken),
-                "last_update": datetime.now().isoformat(),
-                "logintime": event.get("LoginTime"),
-                "location": event.get("Location"),
-                "state_interface": event.get("StateInterface"),
-                "membership": event.get("Membership"),
-                "penalty": event.get("Penalty"),
-                "last_call": event.get("LastCall"),
-                "last_pause": event.get("LastPause"),
-                "in_call": event.get("InCall"),
-                "paused_reason": event.get("PausedReason"),
-                "wrapup_time": event.get("Wrapuptime"),
-            },
-        )
+        await self.publish_event("queue_member_status", {"queue": queue_name, **member})
 
         self.logger.info(
             f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}"
+        )
+
+    async def handle_queue_member_status(self, event):
+        """Handle queue member status update (live event)."""
+        await self._upsert_queue_member(
+            event.get("Queue"), event.get("MemberName"), event
         )
 
     async def handle_queue_member(self, event):
-        """Handle queue member event."""
-
-        """Event: QueueMember
-                Queue: check_local
-                Name: rad
-                Location: Local/0504139380@mobile-out
-                StateInterface: Local/0504139380@mobile-out
-                Membership: static
-                Penalty: 0
-                CallsTaken: 0
-                LastCall: 0
-                LastPause: 0
-                LoginTime: 1765220918
-                InCall: 0
-                Status: 1
-                Paused: 0
-                PausedReason:
-                Wrapuptime: 0"""
-
-        queue_name = event.get("Queue")
-        member_name = event.get("Name")
-        status = event.get("Status")
-        paused = event.get("Paused", "0") == "1"
-        calls_taken = event.get("CallsTaken", "0")
-
-        if queue_name not in self.queue_state:
-            self.queue_state[queue_name] = {
-                "members": {},
-                "calls": {},
-                "stats": {"waiting": 0, "answered": 0},
-            }
-
-        self.queue_state[queue_name]["members"][member_name] = {
-            "name": member_name,
-            "status": status,
-            "paused": paused,
-            "calls_taken": int(calls_taken),
-            "last_update": datetime.now().isoformat(),
-            "logintime": event.get("LoginTime"),
-            "location": event.get("Location"),
-            "state_interface": event.get("StateInterface"),
-            "membership": event.get("Membership"),
-            "penalty": event.get("Penalty"),
-            "last_call": event.get("LastCall"),
-            "last_pause": event.get("LastPause"),
-            "in_call": event.get("InCall"),
-            "paused_reason": event.get("PausedReason"),
-            "wrapup_time": event.get("Wrapuptime"),
-        }
-
-        await self.update_queue_state(queue_name)
-
-        await self.publish_event(
-            "queue_member_status",
-            {
-                "queue": queue_name,
-                "member": member_name,
-                "status": status,
-                "paused": paused,
-                "calls_taken": int(calls_taken),
-                "last_update": datetime.now().isoformat(),
-                "logintime": event.get("LoginTime"),
-                "location": event.get("Location"),
-                "state_interface": event.get("StateInterface"),
-                "membership": event.get("Membership"),
-                "penalty": event.get("Penalty"),
-                "last_call": event.get("LastCall"),
-                "last_pause": event.get("LastPause"),
-                "in_call": event.get("InCall"),
-                "paused_reason": event.get("PausedReason"),
-                "wrapup_time": event.get("Wrapuptime"),
-            },
-        )
-
-        self.logger.info(
-            f"Queue {queue_name}: Member {member_name} status={status}, paused={paused}"
+        """Handle queue member event (bulk QueueStatus response)."""
+        await self._upsert_queue_member(
+            event.get("Queue"), event.get("Name"), event
         )
 
     async def handle_queue_caller_join(self, event):
@@ -696,12 +607,7 @@ class DashboardAMIListener:
         uniqueid = event.get("Uniqueid")
         channel = event.get("Channel")
 
-        if queue_name not in self.queue_state:
-            self.queue_state[queue_name] = {
-                "members": {},
-                "calls": {},
-                "stats": {"waiting": 0},
-            }
+        self._ensure_queue_state(queue_name)
 
         self.queue_state[queue_name]["calls"][uniqueid] = {
             "caller_id": caller_id,
@@ -761,7 +667,7 @@ class DashboardAMIListener:
         member_name = event.get("MemberName")
         uniqueid = event.get("Uniqueid")
         channel = event.get("Channel")
-        member_channel = event.get("MemberName")
+        member_channel = event.get("DestChannel")
 
         await self.publish_event(
             "agent_connect",
@@ -806,14 +712,15 @@ class DashboardAMIListener:
                 await asyncio.sleep(30)
 
                 await self.redis_client.ping()  # type: ignore
-                self.ami.send_action(SimpleAction("Ping"))
-
-                # Refresh liveness key so sweep knows dashboard is still running
                 await self.update_channels_state()
-
                 self.logger.debug("Health check: OK")
             except Exception as e:
                 self.logger.error(f"Health check failed: {e}")
+
+            try:
+                self.ami.send_action(SimpleAction("Ping"))
+            except Exception:
+                pass  # Expected during AMI reconnect
 
     async def shutdown(self):
         """Graceful shutdown"""
@@ -828,10 +735,11 @@ class DashboardAMIListener:
 
         self.logger.info("Shutdown complete")
 
-    # Sync wrapper expected by AMI client
+    # Sync wrapper expected by AMI client (called from AMI's background thread)
     def event_listener_sync(self, event, **kwargs):
-        print("Received event:", event.name)
-        self.loop.create_task(self.event_listener(event, **kwargs))
+        asyncio.run_coroutine_threadsafe(
+            self.event_listener(event, **kwargs), self.loop
+        )
 
     async def process(self):
         self.loop = asyncio.get_running_loop()
