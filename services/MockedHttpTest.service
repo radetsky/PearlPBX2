@@ -1,0 +1,26 @@
+[Unit]
+Description=Mocked HTTP Test Service for PearlPBX2
+After=network.target
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+WorkingDirectory=/usr/local/PearlPBX2/services/mocked-http-test
+Environment="PATH=/usr/bin:/bin"
+EnvironmentFile=/usr/local/PearlPBX2/services/mocked-http-test/env
+ExecStart=/usr/local/PearlPBX2/services/mocked-http-test/.python-venv/bin/python /usr/local/PearlPBX2/services/mocked-http-test/server.py
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pearlpbx-mocked-http
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
