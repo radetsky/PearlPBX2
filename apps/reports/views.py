@@ -400,15 +400,17 @@ class AudioFileView(ReportViewPermissionMixin, View):
         if content_type is None:
             content_type = "audio/wav"
 
+        as_attachment = bool(request.GET.get("download"))
         response = FileResponse(
             open(file_path, "rb"),
             content_type=content_type,
-            as_attachment=False,
+            as_attachment=as_attachment,
         )
         response["Cache-Control"] = "private, max-age=3600"
-        response["Content-Disposition"] = (
-            f'inline; filename="{os.path.basename(file_path)}"'
-        )
+        if not as_attachment:
+            response["Content-Disposition"] = (
+                f'inline; filename="{os.path.basename(file_path)}"'
+            )
         return response
 
 
@@ -478,12 +480,21 @@ class CDRReportView(ReportViewPermissionMixin, View):
             qs = qs.filter(duration__lte=data["max_duration"])
         return qs.order_by("-start")
 
+    @staticmethod
+    def _fmt_dt(dt):
+        if not dt:
+            return None
+        try:
+            return timezone.localtime(dt).strftime("%d.%m.%Y %H:%M:%S")
+        except Exception:
+            return str(dt)
+
     def _cdr_to_dict(self, cdr):
         """Convert CDR object to dictionary for JSON serialization."""
         return {
-            "start": cdr.start,
-            "end": cdr.end,
-            "answer": cdr.answer,
+            "start": self._fmt_dt(cdr.start),
+            "end": self._fmt_dt(cdr.end),
+            "answer": self._fmt_dt(cdr.answer),
             "src": cdr.src,
             "dst": cdr.dst,
             "channel": cdr.channel,
