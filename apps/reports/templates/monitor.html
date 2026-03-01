@@ -76,12 +76,8 @@
                                 <th class="uk-text-nowrap">
                                     <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
                                 </th>
-                                <th class="uk-text-nowrap">
-                                    <span uk-icon="phone" class="uk-margin-small-right"></span>Source
-                                </th>
-                                <th class="uk-text-nowrap">
-                                    <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
-                                </th>
+                                <th class="uk-text-nowrap">Source</th>
+                                <th class="uk-text-nowrap">Destination</th>
                                 <th class="uk-text-center">
                                     <span uk-icon="file-audio" class="uk-margin-small-right"></span>Filename
                                 </th>
@@ -101,7 +97,7 @@
                                 </td>
                                 <td class="uk-text-bold">{{ rec.src|default:"-" }}</td>
                                 <td class="uk-text-bold">{{ rec.dst|default:"-" }}</td>
-                                <td class="uk-text-center uk-text-small" style="overflow: hidden;">
+                                <td class="uk-text-small" style="overflow: hidden;">
                                     {% if rec.get_audio_url %}
                                         <a href="{{ rec.get_audio_url }}" target="_blank" class="uk-link-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                             <span uk-icon="file-audio" class="uk-margin-small-right"></span>{{ rec.filename|default:"[audio]" }}
@@ -123,7 +119,7 @@
                                 <td class="uk-text-right">
                                     {% if rec.get_audio_url %}
                                         <a href="{{ rec.get_audio_url }}?download=1" class="uk-button uk-button-small uk-button-default uk-border-rounded">
-                                            <span uk-icon="icon: download; ratio: 0.8" class="uk-margin-small-right"></span>Download
+                                            <span uk-icon="icon: download; ratio: 0.8"></span>
                                         </a>
                                     {% else %}
                                         <span class="uk-text-muted">—</span>
