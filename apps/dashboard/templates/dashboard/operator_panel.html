@@ -796,6 +796,7 @@
         if (channels[data.channel]) {
             channels[data.channel].bridge_id = data.bridge_id;
             renderChannels();
+            updateStats();
         }
     }
 
@@ -803,6 +804,7 @@
         if (channels[data.channel]) {
             channels[data.channel].bridge_id = null;
             renderChannels();
+            updateStats();
         }
     }
 
