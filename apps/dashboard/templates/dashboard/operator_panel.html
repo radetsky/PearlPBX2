@@ -812,8 +812,8 @@
             queues[data.queue] = { members: {}, calls: {}, stats: { waiting: 0 } };
         }
 
-        queues[data.queue].members[data.member] = {
-            name: data.member,
+        queues[data.queue].members[data.name] = {
+            name: data.name,
             status: data.status,
             paused: data.paused,
             calls_taken: data.calls_taken,
