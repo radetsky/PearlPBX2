@@ -210,7 +210,7 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
 **Channel variables set:**
 - `MIXMONITOR` - "1" if recording started, "0" otherwise
 
-**Recording path:** `/var/spool/asterisk/monitor/YYYY/MM/DD/{src}_{dst}_{uuid}.wav`
+**Recording path:** `/var/spool/asterisk/monitor/YYYY/MM/DD/HH_MM_SS_{src}_{dst}.wav`
 
 ---
 

@@ -1752,12 +1752,7 @@ class MonitorFilenames(models.Model):
         ]
 
     def monitor_filename(self) -> str:
-        """
-        Returns the monitor filename in the format:
-        <YYYY>/<MM>/<DD>/<src>_<dst>_<id>
-        Example: "2023/10/01/1234567890_0987654321_123e4567-e89b-12d3-a456-426614174000"
-        """
-        return f"{self.created.strftime('%Y/%m/%d')}/{self.src}_{self.dst}_{self.id}"
+        return self.filename
 
     def get_audio_file_path(self, ext: Optional[str] = None) -> str:
         """Return the full path to the audio file, optionally for a given extension."""

@@ -7,6 +7,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
+from django.utils import timezone
 
 from apps.callback.models import CallbackNumber
 
@@ -426,9 +427,15 @@ class MonitorReportView(ReportViewPermissionMixin, View):
             if data.get("dst"):
                 qs = qs.filter(dst__icontains=data["dst"])
             if data.get("created_start"):
-                qs = qs.filter(created__gte=data["created_start"])
+                dt = data["created_start"]
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt)
+                qs = qs.filter(created__gte=dt)
             if data.get("created_end"):
-                qs = qs.filter(created__lte=data["created_end"])
+                dt = data["created_end"]
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt)
+                qs = qs.filter(created__lte=dt)
             return qs.order_by("-created")
 
         if form.is_valid():

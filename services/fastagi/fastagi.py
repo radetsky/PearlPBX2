@@ -142,7 +142,8 @@ class Database:
         now = datetime.now()
         date_path = now.strftime("%Y/%m/%d")
         uuid_str = str(uuid.uuid4())
-        filename = f"{date_path}/{src}_{dst}_{uuid_str}"
+        time_str = now.strftime("%H_%M_%S")
+        filename = f"{date_path}/{time_str}_{src}_{dst}"
         with self.get_session() as session:
             # Check if the filename already exists in the database
             existing_filename = session.execute(
