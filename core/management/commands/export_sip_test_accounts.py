@@ -4,6 +4,17 @@ from django.core.management.base import BaseCommand
 from core.models import Settings, SIPPeer, SIPUser
 
 
+class _QuotedStr(str):
+    pass
+
+
+def _quoted_str_representer(dumper, data):
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="'")
+
+
+yaml.add_representer(_QuotedStr, _quoted_str_representer)
+
+
 class Command(BaseCommand):
     help = "Export SIP accounts to YAML format for SIP Test Agent"
 
@@ -69,15 +80,16 @@ class Command(BaseCommand):
             local_port += port_step
 
         for user in SIPUser.objects.select_related("routing_table").order_by("username"):
+            caller_id = user.extension or user.username
             account = {
-                "id": user.username,
+                "id": _QuotedStr(user.username),
                 "type": "telephone",
-                "username": user.username,
+                "username": _QuotedStr(user.username),
                 "password": user.secret,
                 "domain": domain,
                 "port": pbx_port,
                 "local_port": local_port,
-                "caller_id": user.extension or user.username,
+                "caller_id": _QuotedStr(caller_id),
             }
 
             dest_numbers = self._get_dest_numbers(user.routing_table)
@@ -102,9 +114,9 @@ class Command(BaseCommand):
             self.stderr.write(self.style.SUCCESS(f"Exported {len(accounts)} accounts to {output}"))
 
     def _build_gsm_gateway(self, peer, domain, pbx_port, local_port):
-        account = {"id": peer.name, "type": "gsm_gateway"}
+        account = {"id": _QuotedStr(peer.name), "type": "gsm_gateway"}
         if peer.username:
-            account["username"] = peer.username
+            account["username"] = _QuotedStr(peer.username)
         if peer.secret:
             account["password"] = peer.secret
         account["domain"] = domain
@@ -114,7 +126,7 @@ class Command(BaseCommand):
         return account
 
     def _build_voip_provider(self, peer, domain, pbx_port, local_port):
-        account = {"id": peer.name, "type": "voip_provider"}
+        account = {"id": _QuotedStr(peer.name), "type": "voip_provider"}
 
         if peer.host_port:
             parts = peer.host_port.strip().split(":")
@@ -135,7 +147,7 @@ class Command(BaseCommand):
         if not routing_table:
             return []
         return [
-            record.prefix
+            _QuotedStr(record.prefix)
             for record in routing_table.routing_records.all()
             if not record.prefix.startswith("_")
         ]
