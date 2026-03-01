@@ -553,7 +553,7 @@ class FastAGIHandler:
             peer_index = (attempt - 1) % len(peers)
             peer = peers[peer_index]
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "Tt")
+            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "rT")
             try:
                 status = yield self.agi.getVariable("DIALSTATUS")
             except AGICommandFailure as err:
