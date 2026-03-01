@@ -1,5 +1,6 @@
 from django import forms
 from django.utils import timezone
+from django.utils.timezone import localtime
 
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
@@ -16,7 +17,7 @@ class QueueLogReportForm(forms.Form):
                 "class": "uk-input",
             }
         ),
-        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
+        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     date_to = forms.DateTimeField(
@@ -28,7 +29,7 @@ class QueueLogReportForm(forms.Form):
                 "class": "uk-input",
             }
         ),
-        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
+        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
     # Queue filter
@@ -151,7 +152,7 @@ class MonitorFilenamesReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
+        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
     created_end = forms.DateTimeField(
         label="Created to",
@@ -159,7 +160,7 @@ class MonitorFilenamesReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
+        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
 
@@ -177,7 +178,7 @@ class CDRReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
+        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     end_date = forms.DateTimeField(
@@ -185,7 +186,7 @@ class CDRReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
+        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
     src_number = forms.CharField(
@@ -254,7 +255,7 @@ class CallbackNumberReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=0, minute=0, second=0),
+        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     end_date = forms.DateTimeField(
@@ -262,7 +263,7 @@ class CallbackNumberReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
-        initial=lambda: timezone.now().replace(hour=23, minute=59, second=59),
+        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
     src = forms.CharField(
