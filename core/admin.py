@@ -274,9 +274,20 @@ admin.site.register(QueueRule, QueueRuleAdmin)
 admin.site.register(Queue, QueueAdmin)
 admin.site.register(QueueMember, QueueMemberAdmin)
 
+class TrunkGroupAdmin(admin.ModelAdmin):
+    list_display = ["name", "peer_count"]
+    search_fields = ["name"]
+    ordering = ["name"]
+    filter_horizontal = ["sip_peers"]
+
+    @admin.display(description="SIP Peers")
+    def peer_count(self, obj):
+        return obj.sip_peers.count()
+
+
 admin.site.register(QueueAnnouncements)
 admin.site.register(CallQueueGlobalSettings)
-admin.site.register(TrunkGroup)
+admin.site.register(TrunkGroup, TrunkGroupAdmin)
 admin.site.register(BinaryFile)
 admin.site.register(SystemConfiguration)
 admin.site.register(Blacklist)
