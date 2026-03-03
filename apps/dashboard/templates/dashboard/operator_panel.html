@@ -878,6 +878,24 @@
             const statusClass = getStatusClass(channel.state);
             const newClass = channel.isNew ? 'new' : '';
 
+            const partner = channel.bridge_id
+                ? Object.values(channels).find(ch => ch.bridge_id === channel.bridge_id && ch.channel !== channel.channel)
+                : null;
+
+            const isUnknown = v => !v || v === '<unknown>';
+
+            const callerNum = isUnknown(channel.caller_id_num)
+                ? (partner && !isUnknown(partner.caller_id_num) ? partner.caller_id_num : 'Unknown')
+                : channel.caller_id_num;
+
+            const callerName = isUnknown(channel.caller_id_name)
+                ? (partner && !isUnknown(partner.caller_id_name) ? partner.caller_id_name : '')
+                : channel.caller_id_name;
+
+            const exten = (!channel.exten || channel.exten === 's')
+                ? (partner && partner.exten && partner.exten !== 's' ? partner.exten : channel.exten)
+                : channel.exten;
+
             return `
                 <div class="channel-card ${stateClass} ${newClass}">
                     <div class="channel-header">
@@ -885,10 +903,10 @@
                         <span class="channel-status ${statusClass}">${escapeHtml(stateText)}</span>
                     </div>
                     <div class="channel-info">
-                        <div><strong>Caller:</strong> ${escapeHtml(channel.caller_id_num || 'Unknown')}</div>
-                        ${channel.caller_id_name ? `<div><strong>Name:</strong> ${escapeHtml(channel.caller_id_name)}</div>` : ''}
+                        <div><strong>Caller:</strong> ${escapeHtml(callerNum)}</div>
+                        ${callerName ? `<div><strong>Name:</strong> ${escapeHtml(callerName)}</div>` : ''}
                         ${channel.context ? `<div><strong>Context:</strong> ${escapeHtml(channel.context)}</div>` : ''}
-                        ${channel.exten ? `<div><strong>Extension:</strong> ${escapeHtml(channel.exten)}</div>` : ''}
+                        ${exten ? `<div><strong>Extension:</strong> ${escapeHtml(exten)}</div>` : ''}
                         ${channel.bridge_id ? `<div><strong>Bridged:</strong> Yes</div>` : ''}
                     </div>
                 </div>
