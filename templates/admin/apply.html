@@ -17,7 +17,9 @@
 <div id="content-main">
   <h1>Apply changes</h1>
   <p>
-    Review the configuration files below and click "Apply changes" to write them to Asterisk.
+    Review the generated configuration files below, then choose how to apply them:<br>
+    <strong>Soft Reload</strong> — reloads only the affected modules, active calls are not interrupted.<br>
+    <strong>Hard Restart Now</strong> — fully restarts Asterisk. All active calls will be dropped.
   </p>
 
   <h2>Configuration files to be generated ({{ cfgfiles|length }})</h2>
