@@ -81,7 +81,10 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
                 self.apply_changes(cfgfiles)
                 if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
                     ami = AsteriskManagementInterface()
-                    ami.restart()
+                    if request.POST.get("reload_type") == "soft":
+                        ami.soft_reload()
+                    else:
+                        ami.restart()
                 messages.success(request, "Configurations files saved successfully.")
 
                 return redirect("admin:index")

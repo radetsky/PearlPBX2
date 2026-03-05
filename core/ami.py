@@ -29,6 +29,17 @@ class AsteriskManagementInterface:
     def reload(self):
         self.client.send_action(SimpleAction("Reload"))
 
+    def soft_reload(self):
+        commands = [
+            "module reload res_pjsip.so",
+            "ael reload",
+            "module reload app_queue.so",
+            "module reload manager",
+            "module reload res_musiconhold.so",
+        ]
+        for cmd in commands:
+            self.client.send_action(SimpleAction(name="Command", Command=cmd))
+
     def restart(self):
         command_action = SimpleAction(name="Command", Command="core restart now")
         logger.debug(command_action)

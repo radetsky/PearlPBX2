@@ -31,8 +31,12 @@
 
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" name="commit_changes" value="Apply changes" class="deletelink">
+    <input type="hidden" name="commit_changes" value="true">
+    <input type="submit" name="reload_type" value="soft" class="default"
+           title="Reload modules without restarting Asterisk (no dropped calls)">
+    &nbsp;
+    <input type="submit" name="reload_type" value="hard" class="deletelink"
+           title="Full restart — drops all active calls">
   </form>
 </div>
 {% endblock %}
