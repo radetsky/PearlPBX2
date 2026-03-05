@@ -8,6 +8,8 @@ import signal
 import sys
 import time
 
+import threading
+
 import redis.asyncio as redis
 
 from asterisk.ami import AMIClient, SimpleAction
@@ -29,6 +31,8 @@ class DashboardAMIListener:
         self.ami = self.ami_connect()
         self.running = True
         self.manager = None
+        self._reconnecting = False
+        self._reconnect_lock = threading.Lock()
         self.redis_client = self.connect_redis()
         self.queue_state = {}
         self.channels_state = {}  # State of all active channels
@@ -84,19 +88,32 @@ class DashboardAMIListener:
         return client
 
     def on_disconnect(self):
-        self.logger.warning("AMI disconnected, attempting to reconnect...")
+        self.logger.warning("AMI disconnected (callback triggered)")
+        self._start_reconnect()
+
+    def _start_reconnect(self):
+        with self._reconnect_lock:
+            if self._reconnecting:
+                return
+            self._reconnecting = True
+        t = threading.Thread(target=self._reconnect_loop, daemon=True, name="ami-reconnect")
+        t.start()
+
+    def _reconnect_loop(self):
+        self.logger.warning("AMI reconnect loop started, retrying every 5s...")
         while self.running:
-            time.sleep(5)
             try:
                 self.ami = self.ami_connect()
-                # Re-register event listener on the new connection
-                if hasattr(self, "loop") and not self.loop.is_closed():
+                if not self.loop.is_closed():
                     self.ami.add_event_listener(on_event=self.event_listener_sync)
                     asyncio.run_coroutine_threadsafe(self._on_reconnected(), self.loop)
                 self.logger.info("AMI reconnected successfully")
                 break
             except Exception as e:
                 self.logger.error(f"Reconnect attempt failed: {e}, retrying in 5s...")
+                time.sleep(5)
+        with self._reconnect_lock:
+            self._reconnecting = False
 
     async def _on_reconnected(self):
         """Clear stale state and reinitialize after AMI reconnect."""
@@ -720,7 +737,8 @@ class DashboardAMIListener:
             try:
                 self.ami.send_action(SimpleAction("Ping"))
             except Exception:
-                pass  # Expected during AMI reconnect
+                self.logger.warning("AMI Ping failed, triggering reconnect")
+                self._start_reconnect()
 
     async def shutdown(self):
         """Graceful shutdown"""
