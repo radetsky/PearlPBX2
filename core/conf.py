@@ -264,8 +264,7 @@ def __section_trunk_identify(trunk: SIPPeer) -> str:
     if host_port:
         hosts_and_ports = [hp.strip() for hp in host_port.split(",") if hp.strip()]
         for hp in hosts_and_ports:
-            host = hp.split(":")[0] if ":" in hp else hp
-            result.append(f"match={host}")
+            result.append(f"match={hp}")
 
     result.append("")  # Add a blank line at the end
     return "\n".join(result)
