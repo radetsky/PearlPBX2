@@ -32,11 +32,11 @@
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="commit_changes" value="true">
-    <input type="submit" name="reload_type" value="soft" class="default"
-           title="Reload modules without restarting Asterisk (no dropped calls)">
+    <button type="submit" name="reload_type" value="soft" class="default"
+            title="Reload modules without restarting Asterisk (no dropped calls)">Soft Reload</button>
     &nbsp;
-    <input type="submit" name="reload_type" value="hard" class="deletelink"
-           title="Full restart — drops all active calls">
+    <button type="submit" name="reload_type" value="hard" class="deletelink"
+            title="Full restart — drops all active calls">Hard Restart Now</button>
   </form>
 </div>
 {% endblock %}
