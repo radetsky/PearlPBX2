@@ -7,10 +7,10 @@ urlpatterns = [
     path("", views.operator_panel, name="operator_panel"),
     path("ulines/", views.uline_monitor, name="uline_monitor"),
     path("ulines/flush/", views.uline_flush, name="uline_flush"),
-    # Черги
+    # Queues
     path("api/queues/", views.get_all_queues, name="get_all_queues"),
     path("api/queues/<str:queue_name>/", views.get_queue_state, name="get_queue_state"),
-    # Канали
+    # Channels
     path("api/channels/", views.get_all_channels, name="get_all_channels"),
     path(
         "api/channels/type/<str:channel_type>/",

@@ -182,41 +182,41 @@
 
     <div class="status-badges">
         {% if redis_error %}
-            <span class="badge badge-err"><span class="dot dot-red"></span>Redis недоступний</span>
+            <span class="badge badge-err"><span class="dot dot-red"></span>Redis unavailable</span>
         {% elif dashboard_alive %}
-            <span class="badge badge-ok"><span class="dot dot-green"></span>Dashboard живий</span>
+            <span class="badge badge-ok"><span class="dot dot-green"></span>Dashboard online</span>
         {% else %}
-            <span class="badge badge-warn"><span class="dot dot-yellow"></span>Dashboard не запущений — sweep вимкнено</span>
+            <span class="badge badge-warn"><span class="dot dot-yellow"></span>Dashboard not running — sweep disabled</span>
         {% endif %}
-        <span class="refresh-counter" id="refresh-counter">Оновлення через <span id="countdown">10</span>с</span>
+        <span class="refresh-counter" id="refresh-counter">Refreshing in <span id="countdown">10</span>s</span>
     </div>
 
     {% if stats %}
     <div class="stats-bar">
         <div class="stat-card total">
             <div class="value">{{ stats.total }}</div>
-            <div class="label">Всього</div>
+            <div class="label">Total</div>
         </div>
         <div class="stat-card used">
             <div class="value">{{ stats.used }}</div>
-            <div class="label">Зайнято</div>
+            <div class="label">Used</div>
         </div>
         <div class="stat-card free">
             <div class="value">{{ stats.free }}</div>
-            <div class="label">Вільно</div>
+            <div class="label">Free</div>
         </div>
         <div class="stat-card pct">
             <div class="value">{{ stats.usage_percent }}%</div>
-            <div class="label">Завантаження</div>
+            <div class="label">Load</div>
         </div>
     </div>
     {% endif %}
 
     <div class="table-card">
         <div class="table-header">
-            <span>Активні ULINE ({{ ulines|length }})</span>
+            <span>Active ULINEs ({{ ulines|length }})</span>
             {% if request.user.is_superuser %}
-            <button class="btn-flush" onclick="flushAll()">Очистити всі ULINE</button>
+            <button class="btn-flush" onclick="flushAll()">Flush all ULINEs</button>
             {% endif %}
         </div>
 
@@ -225,11 +225,11 @@
             <thead>
                 <tr>
                     <th>ULINE</th>
-                    <th>Статус</th>
-                    <th>Канал</th>
+                    <th>Status</th>
+                    <th>Channel</th>
                     <th>UniqueID</th>
                     <th>CallerID</th>
-                    <th>Час активності</th>
+                    <th>Age</th>
                     <th>TTL (Redis)</th>
                 </tr>
             </thead>
@@ -239,7 +239,7 @@
                     <td><span class="uline-num">{{ u.n }}</span></td>
                     <td>
                         {% if u.alive %}
-                            <span class="status-pill pill-alive">Живий</span>
+                            <span class="status-pill pill-alive">Alive</span>
                         {% else %}
                             <span class="status-pill pill-orphan">Orphan?</span>
                         {% endif %}
@@ -247,15 +247,15 @@
                     <td><span class="channel-name">{{ u.channel|default:"—" }}</span></td>
                     <td><span class="channel-name">{{ u.uniqueid|default:"—" }}</span></td>
                     <td>{{ u.caller_id|default:"—" }}</td>
-                    <td class="age" data-age="{{ u.age_seconds }}">{{ u.age_seconds }}с</td>
-                    <td class="age">{{ u.ttl }}с</td>
+                    <td class="age" data-age="{{ u.age_seconds }}">{{ u.age_seconds }}s</td>
+                    <td class="age">{{ u.ttl }}s</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
         <div class="empty-state">
-            <p>Немає активних ULINE</p>
+            <p>No active ULINEs</p>
         </div>
         {% endif %}
     </div>
@@ -279,10 +279,10 @@
     setInterval(tick, 1000);
 
     function formatAge(seconds) {
-        if (seconds < 60) return seconds + 'с';
+        if (seconds < 60) return seconds + 's';
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
-        return m + 'хв ' + s + 'с';
+        return m + 'm ' + s + 's';
     }
 
     document.querySelectorAll('[data-age]').forEach(el => {
@@ -290,7 +290,7 @@
     });
 
     function flushAll() {
-        if (!confirm('Видалити ВСІ активні ULINE з Redis?\n\nЦе призведе до відв\'язки всіх поточних дзвінків від паркувальних слотів!')) return;
+        if (!confirm('Delete ALL active ULINEs from Redis?\n\nThis will detach all current calls from parking slots!')) return;
         fetch('{% url "dashboard:uline_flush" %}', {
             method: 'POST',
             headers: {
@@ -301,13 +301,13 @@
         .then(r => r.json())
         .then(data => {
             if (data.deleted !== undefined) {
-                alert(`Видалено ${data.deleted} ключів`);
+                alert(`Deleted ${data.deleted} keys`);
                 location.reload();
             } else {
-                alert('Помилка: ' + (data.error || 'невідома'));
+                alert('Error: ' + (data.error || 'unknown'));
             }
         })
-        .catch(e => alert('Помилка з\'єднання: ' + e));
+        .catch(e => alert('Connection error: ' + e));
     }
 </script>
 {% endblock %}

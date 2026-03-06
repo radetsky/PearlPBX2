@@ -8,11 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class AsteriskEventsConsumer(AsyncWebsocketConsumer):
-    """WebSocket consumer для реалтайм подій Asterisk"""
+    """WebSocket consumer for real-time Asterisk events"""
 
     async def connect(self):
-        """Підключення клієнта"""
-        # Перевірка аутентифікації (опціонально)
+        """Client connection"""
+        # Authentication check (optional)
         if not self.scope["user"].is_authenticated:
             await self.close()
             return
@@ -20,13 +20,13 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
         await self.accept()
         logger.info(f"WebSocket connected: {self.scope['user']}")
 
-        # Підключаємось до Redis Pub/Sub
+        # Connect to Redis Pub/Sub
         try:
             self.redis = await redis.from_url(settings.REDIS_URL)
             self.pubsub = self.redis.pubsub()
             await self.pubsub.subscribe("asterisk:events")
 
-            # Запускаємо прослуховування в окремому таску
+            # Start listening in a separate task
             self.listen_task = asyncio.create_task(self.listen_redis())
 
             logger.info("Subscribed to Redis Pub/Sub")
@@ -35,20 +35,20 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
             await self.close()
 
     async def listen_redis(self):
-        """Слухаємо події з Redis Pub/Sub"""
+        """Listen for events from Redis Pub/Sub"""
         try:
             async for message in self.pubsub.listen():
                 if message["type"] == "message":
-                    # ВАЖЛИВО: Перевіряємо тип даних
+                    # Check data type
                     data = message["data"]
 
-                    # Якщо data це bytes - декодуємо
+                    # If data is bytes - decode it
                     if isinstance(data, bytes):
                         data = data.decode("utf-8")
 
-                    # Відправляємо як TEXT, не bytes
+                    # Send as TEXT, not bytes
                     await self.send(text_data=data)
-                    # Перші 100 символів
+                    # First 100 characters
                     logger.debug(f"Sent event: {data[:100]}...")
 
         except asyncio.CancelledError:
@@ -57,12 +57,12 @@ class AsteriskEventsConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error in Redis listener: {e}", exc_info=True)
 
     async def disconnect(self, close_code):
-        """Відключення клієнта"""
+        """Client disconnection"""
         logger.info(
             f"WebSocket disconnected: {self.scope['user']} (code: {close_code})"
         )
 
-        # Відписуємось і закриваємо з'єднання
+        # Unsubscribe and close connection
         if hasattr(self, "listen_task"):
             self.listen_task.cancel()
             try:

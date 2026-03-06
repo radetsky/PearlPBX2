@@ -20,7 +20,7 @@ def _get_redis():
 
 @login_required
 def operator_panel(request):
-    """Operator Dashboard - головна сторінка"""
+    """Operator Dashboard - main page"""
     return render(request, "dashboard/operator_panel.html")
 
 
@@ -64,7 +64,7 @@ def get_all_queues(request):
 @login_required
 @require_http_methods(["GET"])
 def get_all_channels(request):
-    """Отримати всі активні канали"""
+    """Get all active channels"""
     try:
         r = _get_redis()
         channels = r.get("asterisk:channels:all")
@@ -80,7 +80,7 @@ def get_all_channels(request):
 @login_required
 @require_http_methods(["GET"])
 def get_channel(request, channel_name):
-    """Отримати конкретний канал"""
+    """Get a specific channel"""
     if not _VALID_NAME_RE.match(channel_name):
         return JsonResponse({"error": "Invalid channel name"}, status=400)
 
@@ -99,7 +99,7 @@ def get_channel(request, channel_name):
 @login_required
 @require_http_methods(["GET"])
 def get_active_calls(request):
-    """Отримати всі активні дзвінки (з bridge)"""
+    """Get all active calls (with bridge)"""
     try:
         r = _get_redis()
         channels_data = r.get("asterisk:channels:all")
@@ -251,7 +251,7 @@ def uline_flush(request):
 @login_required
 @require_http_methods(["GET"])
 def get_channels_by_type(request, channel_type):
-    """Отримати канали по типу (PJSIP, DAHDI, Local, etc.)"""
+    """Get channels by type (PJSIP, DAHDI, Local, etc.)"""
     if not _VALID_NAME_RE.match(channel_type):
         return JsonResponse({"error": "Invalid channel type"}, status=400)
 
