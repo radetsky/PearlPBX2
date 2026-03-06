@@ -21,7 +21,7 @@ class ReportViewPermissionMixin(AccessMixin):
         "AudioFileView": "view_call_recordings",
         "QueueLogReportView": "view_queue_reports",
         "QueueLogRecordsByCallIdView": "view_queue_reports",
-        "CallbackNumberReportView": "view_callback_numbers",
+        "CallbackNumberReportView": "view_callback_statistics",
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
