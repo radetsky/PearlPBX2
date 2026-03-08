@@ -427,6 +427,9 @@ class SIPUser(models.Model):
             update_fields=update_fields,
         )
 
+    def __str__(self):
+        return f"{self.username} ({self.name})"
+
     class Meta:
         verbose_name_plural = "02. SIP Users"
 

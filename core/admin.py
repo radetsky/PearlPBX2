@@ -40,6 +40,8 @@ from .forms import (
     DialplanExtensionForm,
     DialplanContextAdminForm,
     ConfigurationFileForm,
+    QueueAdminForm,
+    DEFAULT_QUEUE_MEMBER_PENALTY,
 )
 
 # TODO: Use some template, edit and use UIKIT accordion to make admin forms better readable
@@ -252,14 +254,25 @@ class QueueMemberInlineAdmin(admin.TabularInline):
 
 
 class QueueAdmin(admin.ModelAdmin):
+    form = QueueAdminForm
     list_display = ["name", "defaultrule", "strategy"]
     search_fields = ["name"]
     ordering = ["name"]
     readonly_fields = ["rule_link"]
     inlines = [QueueMemberInlineAdmin]
-
     fieldsets = [
         (None, {"fields": ["name", "strategy", "music_class"]}),
+        (
+            "Add Members",
+            {
+                "fields": ["add_sip_users"],
+                "description": (
+                    f"Select SIP users to bulk-add as queue members "
+                    f"(penalty={DEFAULT_QUEUE_MEMBER_PENALTY}). "
+                    f"Existing members are not changed. Use the inline below to adjust details."
+                ),
+            },
+        ),
         (
             "Queue Rules",
             {
@@ -280,6 +293,21 @@ class QueueAdmin(admin.ModelAdmin):
             {"fields": ["context", "service_level", "weight", "autofill", "ringinuse", "joinempty", "leavewhenempty", "monitor_format", "timeoutpriority", "timeoutrestart", "reportholdtime", "setinterfacevar", "setqueueentryvar", "setqueuevar", "min_announce_frequency", "periodic_announce_frequency", "periodic_announce", "random_periodic_announce", "relative_periodic_announce", "announce_to_first_user", "announce_position_limit", "announce_round_seconds", "announce_position_only_up"], "classes": ["collapse"]},
         ),
     ]
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        queue = form.instance
+        for sip_user in form.cleaned_data.get("add_sip_users", []):
+            interface = f"PJSIP/{sip_user.username}"
+            QueueMember.objects.get_or_create(
+                queue=queue,
+                interface=interface,
+                defaults={
+                    "member_name": sip_user.username,
+                    "state_interface": interface,
+                    "penalty": DEFAULT_QUEUE_MEMBER_PENALTY,
+                },
+            )
 
     @admin.display(description="Edit Rule")
     def rule_link(self, obj):

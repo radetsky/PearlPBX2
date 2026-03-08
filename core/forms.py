@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
@@ -11,6 +12,7 @@ from core.models import (
     DialplanExtension,
     RoutingTable,
     ConfigurationFile,
+    Queue,
 )
 
 from core.validators import AsteriskDialplanValidator
@@ -318,3 +320,24 @@ class DialplanContextAdminForm(forms.ModelForm):
                 "Please choose a different name."
             )
         return name
+
+
+DEFAULT_QUEUE_MEMBER_PENALTY = 100
+
+
+class QueueAdminForm(forms.ModelForm):
+    add_sip_users = forms.ModelMultipleChoiceField(
+        queryset=SIPUser.objects.all().order_by("username"),
+        required=False,
+        label="Add SIP Users",
+        help_text=(
+            f"Select users to add as queue members. "
+            f"Each user will get INTERFACE=PJSIP/username, penalty={DEFAULT_QUEUE_MEMBER_PENALTY}. "
+            f"Already existing members are not duplicated."
+        ),
+        widget=FilteredSelectMultiple("SIP Users", is_stacked=False),
+    )
+
+    class Meta:
+        model = Queue
+        fields = "__all__"
