@@ -19,8 +19,9 @@ from apps.reports.forms import (
     CallbackNumberReportForm,
 )
 
-from core.models import MonitorFilenames
+from core.models import MonitorFilenames, RoutingTable, RoutingRecord
 
+from django.db.models import Prefetch
 from django.views.generic import FormView
 from django.db.models import Count, Avg, F, Case, When, IntegerField
 from django.db.models.functions import Cast
@@ -584,6 +585,29 @@ class CDRReportView(ReportViewPermissionMixin, View):
             )
 
         return response
+
+
+class RoutingTableReportView(ReportViewPermissionMixin, View):
+    def get(self, request):
+        prefix_filter = request.GET.get("prefix", "").strip()
+        context_filter = request.GET.get("context", "").strip()
+
+        records_qs = RoutingRecord.objects.select_related("context").order_by("prefix")
+        if prefix_filter:
+            records_qs = records_qs.filter(prefix__icontains=prefix_filter)
+        if context_filter:
+            records_qs = records_qs.filter(context__name__icontains=context_filter)
+
+        tables = RoutingTable.objects.prefetch_related(
+            Prefetch("routing_records", queryset=records_qs)
+        ).order_by("name")
+
+        context = {
+            "results": [{"table": t, "records": t.routing_records.all()} for t in tables],
+            "prefix_filter": prefix_filter,
+            "context_filter": context_filter,
+        }
+        return render(request, "routing_report.html", context)
 
 
 class CallbackNumberReportView(ReportViewPermissionMixin, View):

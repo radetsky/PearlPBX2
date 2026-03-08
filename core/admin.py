@@ -1,7 +1,9 @@
 from typing import Optional
 
 from django.contrib import admin
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 
 from .models import (
     SIPTransport,
@@ -250,11 +252,48 @@ class QueueMemberInlineAdmin(admin.TabularInline):
 
 
 class QueueAdmin(admin.ModelAdmin):
-    list_display = ["name"]
+    list_display = ["name", "defaultrule", "strategy"]
     search_fields = ["name"]
     ordering = ["name"]
-
+    readonly_fields = ["rule_link"]
     inlines = [QueueMemberInlineAdmin]
+
+    fieldsets = [
+        (None, {"fields": ["name", "strategy", "music_class"]}),
+        (
+            "Queue Rules",
+            {
+                "fields": ["defaultrule", "rule_link"],
+                "description": "Select a rule and click the link to edit its penalty changes.",
+            },
+        ),
+        (
+            "Timeouts",
+            {"fields": ["timeout", "retry", "maxlen", "wrapuptime", "autopause", "autopausedelay"], "classes": ["collapse"]},
+        ),
+        (
+            "Announcements",
+            {"fields": ["announce", "queue_announce", "queue_announcement", "announce_frequency", "announce_holdtime", "announce_position"], "classes": ["collapse"]},
+        ),
+        (
+            "Advanced",
+            {"fields": ["context", "service_level", "weight", "autofill", "ringinuse", "joinempty", "leavewhenempty", "monitor_format", "timeoutpriority", "timeoutrestart", "reportholdtime", "setinterfacevar", "setqueueentryvar", "setqueuevar", "min_announce_frequency", "periodic_announce_frequency", "periodic_announce", "random_periodic_announce", "relative_periodic_announce", "announce_to_first_user", "announce_position_limit", "announce_round_seconds", "announce_position_only_up"], "classes": ["collapse"]},
+        ),
+    ]
+
+    @admin.display(description="Edit Rule")
+    def rule_link(self, obj):
+        if not obj.defaultrule:
+            add_url = reverse("admin:core_queuerule_add")
+            return format_html('<a href="{}" target="_blank">+ Create new rule</a>', add_url)
+        edit_url = reverse("admin:core_queuerule_change", args=[obj.defaultrule.pk])
+        list_url = reverse("admin:core_queuerule_changelist")
+        return format_html(
+            '<a href="{}" target="_blank">Edit "{}"</a> &nbsp;|&nbsp; <a href="{}" target="_blank">All rules</a>',
+            edit_url,
+            obj.defaultrule.name,
+            list_url,
+        )
 
 
 admin.site.register(SIPUser, SIPUserAdmin)

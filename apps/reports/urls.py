@@ -6,6 +6,7 @@ from apps.reports.views import (
     QueueLogReportView,
     QueueLogRecordsByCallIdView,
     CallbackNumberReportView,
+    RoutingTableReportView,
 )
 
 urlpatterns = [
@@ -19,4 +20,5 @@ urlpatterns = [
         name="queuelog_records_by_callid",
     ),
     path("callback/", CallbackNumberReportView.as_view(), name="callback_report"),
+    path("routing/", RoutingTableReportView.as_view(), name="routing_report"),
 ]
