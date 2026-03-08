@@ -53,6 +53,19 @@ class Callback:
 
         return conn
 
+    def ensure_db_connected(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT 1")
+            self.conn.rollback()
+        except (psycopg2.OperationalError, psycopg2.InterfaceError):
+            self.logger.warning("DB connection lost, reconnecting...")
+            try:
+                self.conn.close()
+            except Exception:
+                pass
+            self.conn = self.db_connect()
+
     def ami_connect(self):
         self.logger.debug("Connecting to the asterisk manager interface")
         ami_host = self.params.get("ami_host", "127.0.0.1")
@@ -97,6 +110,7 @@ class Callback:
             ValueError: If no available entry is found.
         """
 
+        self.ensure_db_connected()
         cursor = self.conn.cursor()
 
         query = """SELECT
@@ -115,7 +129,10 @@ class Callback:
                     dialplan_contexts co_in ON b.context_inbound_id = co_in.id
                 WHERE
                     b.is_active = TRUE
-                    AND a.dial_status = 'NEW'
+                    AND (
+                        a.dial_status = 'NEW'
+                        OR (a.dial_status = 'PENDING' AND a.updated < NOW() - INTERVAL '10 minutes')
+                    )
                     AND a.schedule_time <= NOW()
                 ORDER BY
                     a.created
@@ -137,6 +154,7 @@ class Callback:
         return result
 
     def update_call_status(self, id: int, dst: str, status: str):
+        self.ensure_db_connected()
         dt = datetime.now(timezone.utc)
         cursor = self.conn.cursor()
 
@@ -165,22 +183,23 @@ class Callback:
 
         self.active_calls[dst] = id
 
-        action = SimpleAction("Originate", **kwargs)
-        self.logger.debug(action)
         try:
-            resp = self.ami.send_action(action)
-        except Exception as e:
-            self.logger.error(f"AMI connection error: {e}")
-            self.ami = self.ami_connect()
-            resp = self.ami.send_action(action)
+            action = SimpleAction("Originate", **kwargs)
+            self.logger.debug(action)
+            try:
+                resp = self.ami.send_action(action)
+            except Exception as e:
+                self.logger.error(f"AMI connection error: {e}")
+                self.ami = self.ami_connect()
+                resp = self.ami.send_action(action)
 
-        self.logger.info(resp.response)
-        if resp.response.status == "Success":
-            self.update_call_status(id, dst, "ANSWERED")
-        if resp.response.status == "Error":
-            self.update_call_status(id, dst, "BUSY")
-
-        del self.active_calls[dst]
+            self.logger.info(resp.response)
+            if resp.response.status == "Success":
+                self.update_call_status(id, dst, "ANSWERED")
+            if resp.response.status == "Error":
+                self.update_call_status(id, dst, "BUSY")
+        finally:
+            del self.active_calls[dst]
 
     def process(self):
         """
@@ -198,6 +217,9 @@ class Callback:
 
         except ValueError:
             self.logger.debug("No destinations to call")
+
+        except Exception as e:
+            self.logger.error(f"Unexpected error in process loop: {e}")
 
         finally:
             time.sleep(1)
@@ -294,7 +316,7 @@ def setup_processes(count: int):
 
 
 def handle_signal(signum, frame):
-    """Обробка сигналів для graceful shutdown"""
+    """Handle signals for graceful shutdown"""
     print(f"Received signal {signum}")
     sys.exit(0)
 
