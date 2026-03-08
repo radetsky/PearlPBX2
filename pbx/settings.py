@@ -7,6 +7,8 @@ env = environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+VERSION = (BASE_DIR / "VERSION").read_text().strip()
+
 DEVMODE_WITHOUT_ASTERISK = "without_asterisk_on_localhost"
 DEVMODE_DEVELOPMENT = "Development"  # Ubuntu on VPS
 DEVMODE_PRODUCTION = "Production"  # Production server
