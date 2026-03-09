@@ -7,7 +7,7 @@ import psycopg2
 import sys
 import time
 
-from asterisk.ami import AMIClient, SimpleAction
+from asterisk.ami import AMIClient, AutoReconnect, SimpleAction
 from datetime import datetime, timezone
 
 
@@ -73,18 +73,19 @@ class Callback:
         ami_user = self.params.get("ami_user")
         ami_pass = self.params.get("ami_pass")
 
-        client = AMIClient(address=ami_host, port=ami_port, timeout=3600)
+        client = AMIClient(address=ami_host, port=ami_port, timeout=30)
+        self._auto_reconnect = AutoReconnect(
+            client,
+            delay=5,
+            on_disconnect=lambda *a: self.logger.warning("AMI disconnected, reconnecting..."),
+            on_reconnect=lambda *a: self.logger.info("AMI reconnected"),
+        )
         client.login(username=ami_user, secret=ami_pass)
         client.add_event_listener(
             on_event=self.event_listener,
-            on_disconnect=self.on_disconnect,
             white_list=["DialBegin", "DialState", "DialEnd"],
         )
         return client
-
-    def on_disconnect(self):
-        time.sleep(5)
-        self.ami = self.ami_connect()
 
     def event_listener(self, event, **kwargs):
         if event.name == "DialEnd" and (
@@ -187,16 +188,22 @@ class Callback:
             action = SimpleAction("Originate", **kwargs)
             self.logger.debug(action)
             try:
-                resp = self.ami.send_action(action)
+                future = self.ami.send_action(action)
+                response = future.response
             except Exception as e:
-                self.logger.error(f"AMI connection error: {e}")
-                self.ami = self.ami_connect()
-                resp = self.ami.send_action(action)
+                self.logger.error(f"AMI send error: {e}")
+                self.update_call_status(id, dst, "BUSY")
+                return
 
-            self.logger.info(resp.response)
-            if resp.response.status == "Success":
+            if response is None:
+                self.logger.error("AMI Originate timeout: no response received")
+                self.update_call_status(id, dst, "BUSY")
+                return
+
+            self.logger.info(response)
+            if response.status == "Success":
                 self.update_call_status(id, dst, "ANSWERED")
-            if resp.response.status == "Error":
+            elif response.status == "Error":
                 self.update_call_status(id, dst, "BUSY")
         finally:
             del self.active_calls[dst]
