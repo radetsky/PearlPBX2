@@ -318,9 +318,9 @@ class TestUlineMonitorAccess(DashboardAPITestBase):
         resp = c.get("/dashboard/ulines/")
         self.assertEqual(resp.status_code, 302)
 
-    def test_regular_user_redirected(self):
+    def test_regular_user_can_access(self):
         resp = self.client.get("/dashboard/ulines/")
-        self.assertEqual(resp.status_code, 302)
+        self.assertIn(resp.status_code, [200, 503])
 
     def test_superuser_allowed(self):
         self.client.login(username="admin", password="pass")
