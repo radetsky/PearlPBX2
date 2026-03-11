@@ -655,10 +655,20 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
             export_queryset = self._filter_callback_queryset(form)
             return self.export_callback_csv(request, export_queryset)
 
+        cdr_audio_urls = {}
+        if callbacks:
+            uniqueids = [cb.uniqueid for cb in callbacks if cb.uniqueid]
+            if uniqueids:
+                for cdr in CDR.objects.filter(uniqueid__in=uniqueids):
+                    url = cdr.get_audio_url()
+                    if url:
+                        cdr_audio_urls[cdr.uniqueid] = url
+
         context = {
             "form": form,
             "callbacks": callbacks,
             "statistics": statistics,
+            "cdr_audio_urls": cdr_audio_urls,
         }
 
         return render(request, "callback_report.html", context)
