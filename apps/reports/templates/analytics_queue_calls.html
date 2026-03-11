@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Кількість дзвінків по групах{% endblock %}
+
+{% block content %}
+<div class="uk-container uk-container-expand uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>Кількість дзвінків по групах</span></h1>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+        <form method="get" class="uk-form-stacked">
+            <div class="uk-grid-match uk-child-width-1-2@s" uk-grid>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_from.id_for_label }}">
+                        {{ form.date_from.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_from }}
+                    </div>
+                    {% if form.date_from.errors %}
+                        <span class="uk-text-danger">{{ form.date_from.errors }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_to.id_for_label }}">
+                        {{ form.date_to.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_to }}
+                    </div>
+                    {% if form.date_to.errors %}
+                        <span class="uk-text-danger">{{ form.date_to.errors }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="uk-margin-top">
+                <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
+                    <span uk-icon="search"></span> Пошук
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if table_data is not None %}
+        {% if table_data %}
+            <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                        <h3 class="uk-card-title">Таблиця</h3>
+                        <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
+                            <thead>
+                                <tr>
+                                    <th>Черга</th>
+                                    <th class="uk-text-right">Кількість дзвінків</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in table_data %}
+                                <tr>
+                                    <td>{{ row.queuename }}</td>
+                                    <td class="uk-text-right">{{ row.total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                        <h3 class="uk-card-title">Графік</h3>
+                        <canvas id="queueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            {{ chart_data|json_script:"chart-data" }}
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            <script>
+            (function () {
+                const raw = document.getElementById('chart-data').textContent;
+                const data = JSON.parse(raw);
+                new Chart(document.getElementById('queueChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Answered calls',
+                            data: data.values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ' ' + ctx.parsed.y + ' дзвінків'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 }
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+        {% else %}
+            <div class="uk-alert uk-alert-warning" uk-alert>
+                <p>За вказаний період даних не знайдено.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock content %}
