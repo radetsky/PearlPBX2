@@ -63,6 +63,7 @@ class CallbackNumber(models.Model):
         on_delete=models.PROTECT,
         related_name="callback_numbers",
     )
+    uniqueid = models.CharField(max_length=150, blank=True, default="", db_default="")
 
     def __str__(self):
         return f"{self.src} -> {self.dst} ({self.dial_status})"

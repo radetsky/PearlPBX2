@@ -108,6 +108,9 @@
                                     <th>
                                         <span uk-icon="server" class="uk-margin-small-right"></span>Service
                                     </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="file-audio" class="uk-margin-small-right"></span>Recording
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,10 +151,22 @@
                                     <td class="uk-text-truncate uk-text-small" style="max-width: 150px;">
                                         {{ cb.service.name|default:"-" }}
                                     </td>
+                                    <td class="uk-text-shrink">
+                                        {% with audio_url=cdr_audio_urls|get_item:cb.uniqueid %}
+                                            {% if audio_url %}
+                                                <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ audio_url }}">
+                                                    <button class="compact-btn">▶</button>
+                                                    <span>Play</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="uk-text-muted">-</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="uk-text-center uk-text-muted uk-padding">
+                                    <td colspan="9" class="uk-text-center uk-text-muted uk-padding">
                                         <div uk-icon="icon: info; ratio: 2"></div>
                                         <p class="uk-margin-small-top">No data found</p>
                                     </td>

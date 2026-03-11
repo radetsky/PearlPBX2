@@ -95,9 +95,16 @@ class Callback:
             status = event.keys["DialStatus"]
             src = event.keys["DestCallerIDNum"]
             dst = event.keys["DestExten"]
+            dest_uniqueid = event.keys.get("DestUniqueid", "")
 
-            if dst in self.active_calls:
+            call_id = self.active_calls.get(dst)
+            if call_id is not None:
                 self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
+                if dest_uniqueid:
+                    try:
+                        self.update_uniqueid(call_id, dest_uniqueid)
+                    except Exception as e:
+                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
 
     def select_first_available(self) -> tuple:
         """
@@ -162,6 +169,15 @@ class Callback:
         cursor.execute(
             f"update {self.dbtable} set updated=%s, dial_status=%s where dst=%s and id=%s",
             (dt, status, dst, id),
+        )
+        self.conn.commit()
+
+    def update_uniqueid(self, id: int, uniqueid: str):
+        self.ensure_db_connected()
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"update {self.dbtable} set uniqueid=%s where id=%s",
+            (uniqueid, id),
         )
         self.conn.commit()
 
