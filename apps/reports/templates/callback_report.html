@@ -154,7 +154,7 @@
                                     <td class="uk-text-shrink">
                                         {% with audio_url=cdr_audio_urls|get_item:cb.uniqueid %}
                                             {% if audio_url %}
-                                                <div class="compact-player" data-audio="{{ audio_url }}">
+                                                <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ audio_url }}">
                                                     <button class="compact-btn">▶</button>
                                                     <span>Play</span>
                                                 </div>
