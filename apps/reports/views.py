@@ -16,6 +16,8 @@ from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
 from apps.reports.forms import (
+    ASTERISK_NONE,
+    AnalyticsAgentCallsForm,
     AnalyticsDateRangeForm,
     CDRReportForm,
     MonitorFilenamesReportForm,
@@ -255,7 +257,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         """Agent performance"""
         # Agent statistics
         agents_data = (
-            queryset.exclude(agent="NONE")
+            queryset.exclude(agent=ASTERISK_NONE)
             .values("agent")
             .annotate(
                 total_events=Count("id"),
@@ -309,7 +311,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
     def get_queue_performance_data(self, queryset):
         """Queue performance"""
         queues_data = (
-            queryset.exclude(queuename="NONE")
+            queryset.exclude(queuename=ASTERISK_NONE)
             .values("queuename")
             .annotate(
                 total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
@@ -599,12 +601,12 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
         if form.is_valid():
             date_from = form.cleaned_data["date_from"]
             date_to = form.cleaned_data["date_to"]
-            exclude_contacts = form.cleaned_data.get("exclude_contacts", False)
+            exclude_contacts = form.cleaned_data["exclude_contacts"]
 
             qs = QueueLog.objects.filter(
                 time__range=(date_from, date_to),
                 event__in=["COMPLETECALLER", "COMPLETEAGENT"],
-            ).exclude(queuename="NONE")
+            ).exclude(queuename=ASTERISK_NONE)
 
             if exclude_contacts:
                 known_callids = QueueLog.objects.filter(
@@ -624,6 +626,58 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
                 labels.append(r["queuename"])
                 values.append(r["total"])
             table_data = rows
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+def _clean_agent_name(agent):
+    """Extract short agent label from Asterisk channel string.
+
+    Examples: 'Local/223@agents' -> '223', 'PJSIP/223' -> '223', '223' -> '223'
+    """
+    name = agent.split("/")[-1]
+    return name.split("@")[0]
+
+
+class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_agent_calls.html"
+
+    def get(self, request):
+        form = AnalyticsAgentCallsForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(agent=ASTERISK_NONE)
+
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            rows = list(
+                qs.values("agent")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+
+            labels, values, table_data = [], [], []
+            for r in rows:
+                agent = _clean_agent_name(r["agent"])
+                labels.append(agent)
+                values.append(r["total"])
+                table_data.append({"agent": agent, "total": r["total"]})
             chart_data = json.dumps({"labels": labels, "values": values})
 
         context = {

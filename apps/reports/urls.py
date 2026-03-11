@@ -1,5 +1,6 @@
 from django.urls import path
 from apps.reports.views import (
+    AnalyticsAgentCallsView,
     AnalyticsQueueCallsView,
     CDRReportView,
     MonitorReportView,
@@ -23,4 +24,5 @@ urlpatterns = [
     path("callback/", CallbackNumberReportView.as_view(), name="callback_report"),
     path("routing/", RoutingTableReportView.as_view(), name="routing_report"),
     path("analytics/queue-calls/", AnalyticsQueueCallsView.as_view(), name="analytics_queue_calls"),
+    path("analytics/agent-calls/", AnalyticsAgentCallsView.as_view(), name="analytics_agent_calls"),
 ]

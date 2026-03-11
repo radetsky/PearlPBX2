@@ -5,6 +5,18 @@ from django.utils.timezone import localtime
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
 
+ASTERISK_NONE = "NONE"
+
+
+def _get_queue_choices(empty_label="All Queues"):
+    queues = (
+        QueueLog.objects.values_list("queuename", flat=True)
+        .distinct()
+        .exclude(queuename=ASTERISK_NONE)
+        .order_by("queuename")
+    )
+    return [("", empty_label)] + [(q, q) for q in queues]
+
 
 class QueueLogReportForm(forms.Form):
     # Date filters
@@ -85,23 +97,15 @@ class QueueLogReportForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Dynamically populate queue list
-        queues = (
-            QueueLog.objects.values_list("queuename", flat=True)
-            .distinct()
-            .exclude(queuename="NONE")
-        )
-        queue_choices = [("", "All Queues")] + [(q, q) for q in sorted(queues)]
-        self.fields["queuename"].choices = queue_choices
+        self.fields["queuename"].choices = _get_queue_choices("All Queues")
 
-        # Dynamically populate agent list
         agents = (
             QueueLog.objects.values_list("agent", flat=True)
             .distinct()
-            .exclude(agent="NONE")
+            .exclude(agent=ASTERISK_NONE)
+            .order_by("agent")
         )
-        agent_choices = [("", "All Agents")] + [(a, a) for a in sorted(agents)]
-        self.fields["agent"].choices = agent_choices
+        self.fields["agent"].choices = [("", "All Agents")] + [(a, a) for a in agents]
 
     def get_queryset(self):
         """Returns filtered data based on form"""
@@ -241,7 +245,7 @@ class CDRReportForm(forms.Form):
     )
 
 
-class AnalyticsDateRangeForm(forms.Form):
+class _AnalyticsBaseForm(forms.Form):
     date_from = forms.DateTimeField(
         label="Date From",
         required=True,
@@ -260,11 +264,25 @@ class AnalyticsDateRangeForm(forms.Form):
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
+
+class AnalyticsDateRangeForm(_AnalyticsBaseForm):
     exclude_contacts = forms.BooleanField(
         label="Exclude known numbers (Contacts)",
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
     )
+
+
+class AnalyticsAgentCallsForm(_AnalyticsBaseForm):
+    queuename = forms.ChoiceField(
+        label="Queue",
+        required=False,
+        widget=forms.Select(attrs={"class": "uk-select"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["queuename"].choices = _get_queue_choices("All queues")
 
 
 class CallbackNumberReportForm(forms.Form):

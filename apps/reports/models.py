@@ -24,6 +24,7 @@ class QueueLog(models.Model):
             models.Index(fields=["callid"], name="idx_ql_callid"),
             models.Index(fields=["queuename"], name="idx_ql_queuename"),
             models.Index(fields=["agent"], name="idx_ql_agent"),
+            models.Index(fields=["event"], name="idx_ql_event"),
         ]
 
     def __str__(self):
