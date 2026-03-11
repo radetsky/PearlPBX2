@@ -2,8 +2,12 @@ import csv
 import os
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from core.models import Contact
+
+_CALLERID_MAX = Contact._meta.get_field("callerid").max_length
+_NAME_MAX = Contact._meta.get_field("name").max_length
 
 
 class Command(BaseCommand):
@@ -46,37 +50,45 @@ class Command(BaseCommand):
                     f"Found: {reader.fieldnames}"
                 )
 
-            for line_num, row in enumerate(reader, start=2):
-                callerid = row.get("callerid", "").strip()
-                name = row.get("name", "").strip()
+            rows = list(reader)
 
-                if not callerid:
-                    errors.append((line_num, "empty callerid"))
-                    continue
-                if not name:
-                    errors.append((line_num, f"{callerid!r}: empty name"))
-                    continue
-                if len(callerid) > 64:
-                    errors.append((line_num, f"{callerid!r}: callerid exceeds 64 chars"))
-                    continue
-                if len(name) > 64:
-                    errors.append((line_num, f"{callerid!r}: name exceeds 64 chars"))
-                    continue
+        for line_num, row in enumerate(rows, start=2):
+            callerid = row.get("callerid", "").strip()
+            name = row.get("name", "").strip()
 
-                existing = Contact.objects.filter(callerid=callerid).first()
+            if not callerid:
+                errors.append((line_num, "empty callerid"))
+                continue
+            if not name:
+                errors.append((line_num, f"{callerid!r}: empty name"))
+                continue
+            if len(callerid) > _CALLERID_MAX:
+                errors.append((line_num, f"{callerid!r}: callerid exceeds {_CALLERID_MAX} chars"))
+                continue
+            if len(name) > _NAME_MAX:
+                errors.append((line_num, f"{callerid!r}: name exceeds {_NAME_MAX} chars"))
+                continue
 
-                if existing:
-                    if update:
-                        if not dry_run:
-                            existing.name = name
-                            existing.save()
-                        updated += 1
-                    else:
-                        skipped += 1
+            if dry_run:
+                exists = Contact.objects.filter(callerid=callerid).exists()
+                if exists:
+                    updated += 1 if update else 0
+                    skipped += 0 if update else 1
                 else:
-                    if not dry_run:
-                        Contact.objects.create(callerid=callerid, name=name)
                     created += 1
+                continue
+
+            with transaction.atomic():
+                _, was_created = Contact.objects.update_or_create(
+                    callerid=callerid,
+                    defaults={"name": name} if update else {},
+                )
+            if was_created:
+                created += 1
+            elif update:
+                updated += 1
+            else:
+                skipped += 1
 
         if dry_run:
             self.stdout.write(self.style.WARNING("\n=== DRY RUN — no changes made ===\n"))

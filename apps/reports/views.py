@@ -1,4 +1,5 @@
 import csv
+import json
 import mimetypes
 import os
 
@@ -10,16 +11,16 @@ from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 
 from apps.callback.models import CallbackNumber
+from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
 from apps.reports.forms import (
+    AnalyticsDateRangeForm,
     CDRReportForm,
     MonitorFilenamesReportForm,
     CallbackNumberReportForm,
 )
-
-from core.models import MonitorFilenames, RoutingTable, RoutingRecord
 
 from django.db.models import Prefetch
 from django.views.generic import FormView
@@ -86,7 +87,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             }
         )
 
-        # Якщо запит на експорт
+        # Handle CSV export request
         if self.request.GET.get("export") == "csv":
             return self.export_csv(queryset, report_type)
 
@@ -585,6 +586,52 @@ class CDRReportView(ReportViewPermissionMixin, View):
             )
 
         return response
+
+
+class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_queue_calls.html"
+
+    def get(self, request):
+        form = AnalyticsDateRangeForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            exclude_contacts = form.cleaned_data.get("exclude_contacts", False)
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(queuename="NONE")
+
+            if exclude_contacts:
+                known_callids = QueueLog.objects.filter(
+                    event="ENTERQUEUE",
+                    time__range=(date_from, date_to),
+                    data2__in=Contact.objects.values_list("callerid", flat=True),
+                ).values_list("callid", flat=True)
+                qs = qs.exclude(callid__in=known_callids)
+
+            rows = list(
+                qs.values("queuename")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+            labels, values = [], []
+            for r in rows:
+                labels.append(r["queuename"])
+                values.append(r["total"])
+            table_data = rows
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
 
 
 class RoutingTableReportView(ReportViewPermissionMixin, View):

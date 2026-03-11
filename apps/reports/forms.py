@@ -241,6 +241,32 @@ class CDRReportForm(forms.Form):
     )
 
 
+class AnalyticsDateRangeForm(forms.Form):
+    date_from = forms.DateTimeField(
+        label="Date From",
+        required=True,
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "uk-input"}
+        ),
+        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+    )
+
+    date_to = forms.DateTimeField(
+        label="Date To",
+        required=True,
+        widget=forms.DateTimeInput(
+            attrs={"type": "datetime-local", "class": "uk-input"}
+        ),
+        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+    )
+
+    exclude_contacts = forms.BooleanField(
+        label="Exclude known numbers (Contacts)",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
+    )
+
+
 class CallbackNumberReportForm(forms.Form):
     DIAL_STATUS_CHOICES = [
         ("", "All"),

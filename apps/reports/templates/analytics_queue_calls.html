@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Кількість дзвінків по групах{% endblock %}
+{% block title %}Calls by Queue{% endblock %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Кількість дзвінків по групах</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>Calls by Queue</span></h1>
 
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
@@ -34,8 +34,14 @@
                 </div>
             </div>
             <div class="uk-margin-top">
+                <label>
+                    {{ form.exclude_contacts }}
+                    {{ form.exclude_contacts.label }}
+                </label>
+            </div>
+            <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
-                    <span uk-icon="search"></span> Пошук
+                    <span uk-icon="search"></span> Search
                 </button>
             </div>
         </form>
@@ -46,12 +52,12 @@
             <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Таблиця</h3>
+                        <h3 class="uk-card-title">Table</h3>
                         <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
                             <thead>
                                 <tr>
-                                    <th>Черга</th>
-                                    <th class="uk-text-right">Кількість дзвінків</th>
+                                    <th>Queue</th>
+                                    <th class="uk-text-right">Answered calls</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -67,7 +73,7 @@
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Графік</h3>
+                        <h3 class="uk-card-title">Chart</h3>
                         <canvas id="queueChart"></canvas>
                     </div>
                 </div>
@@ -98,7 +104,7 @@
                             legend: { display: false },
                             tooltip: {
                                 callbacks: {
-                                    label: ctx => ' ' + ctx.parsed.y + ' дзвінків'
+                                    label: ctx => ' ' + ctx.parsed.y + ' calls'
                                 }
                             }
                         },
@@ -114,7 +120,7 @@
             </script>
         {% else %}
             <div class="uk-alert uk-alert-warning" uk-alert>
-                <p>За вказаний період даних не знайдено.</p>
+                <p>No data found for the selected period.</p>
             </div>
         {% endif %}
     {% endif %}

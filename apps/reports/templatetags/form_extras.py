@@ -1,4 +1,4 @@
-# templatetags/form_extras.py - розширена версія
+# templatetags/form_extras.py
 from django import template
 
 register = template.Library()
@@ -6,7 +6,7 @@ register = template.Library()
 
 @register.filter
 def add_class(field, css_class):
-    """Додає CSS клас до поля форми"""
+    """Add a CSS class to a form field widget."""
     if hasattr(field, "as_widget"):
         return field.as_widget(attrs={"class": css_class})
     return field
@@ -15,10 +15,9 @@ def add_class(field, css_class):
 @register.filter
 def channel_name(channel):
     """
-    Витягує назву каналу без номера
-    Обробляє різні формати каналів Asterisk
+    Extract channel name without the unique suffix.
 
-    Приклади:
+    Examples:
     'SIP/1001-00000123' -> 'SIP/1001'
     'PJSIP/1001-00000123' -> 'PJSIP/1001'
     'IAX2/provider-00000123' -> 'IAX2/provider'
@@ -28,10 +27,9 @@ def channel_name(channel):
     if not channel:
         return ""
 
-    # Основне розділення по дефісу
     base_channel = channel.split("-")[0]
 
-    # Для Local каналів також прибираємо ;1 або ;2 в кінці
+    # Strip ;1 / ;2 suffix from Local channels
     if base_channel.startswith("Local/"):
         base_channel = base_channel.split(";")[0]
 
@@ -41,35 +39,35 @@ def channel_name(channel):
 @register.filter
 def channel_type(channel):
     """
-    Витягує тільки тип каналу (SIP, PJSIP, IAX2, тощо)
+    Extract channel technology (SIP, PJSIP, IAX2, etc.).
 
-    Приклади:
+    Examples:
     'SIP/1001-00000123' -> 'SIP'
     'PJSIP/1001-00000123' -> 'PJSIP'
     """
     if not channel:
         return ""
 
-    channel_name = channel.split("-")[0]  # Прибираємо номер
-    return channel_name.split("/")[0]  # Беремо тільки тип
+    channel_name = channel.split("-")[0]  # strip unique suffix
+    return channel_name.split("/")[0]  # keep only the technology part
 
 
 @register.filter
 def channel_endpoint(channel):
     """
-    Витягує кінцеву точку каналу (номер, trunk, тощо)
+    Extract the channel endpoint (extension, trunk name, etc.).
 
-    Приклади:
+    Examples:
     'SIP/1001-00000123' -> '1001'
     'PJSIP/trunk_provider-00000123' -> 'trunk_provider'
     """
     if not channel:
         return ""
 
-    channel_name = channel.split("-")[0]  # Прибираємо номер
+    channel_name = channel.split("-")[0]  # strip unique suffix
     if "/" in channel_name:
-        endpoint = channel_name.split("/", 1)[1]  # Беремо все після першого /
-        # Для Local каналів прибираємо @context та ;1/;2
+        endpoint = channel_name.split("/", 1)[1]  # everything after the first /
+        # Strip @context and ;1/;2 from Local channels
         if "@" in endpoint:
             endpoint = endpoint.split("@")[0]
         if ";" in endpoint:
@@ -81,9 +79,9 @@ def channel_endpoint(channel):
 @register.filter
 def format_channel(channel):
     """
-    Форматує канал для красивого відображення
+    Format a channel string for display.
 
-    Приклади:
+    Examples:
     'SIP/1001-00000123' -> 'SIP: 1001'
     'PJSIP/trunk_provider-00000123' -> 'PJSIP: trunk_provider'
     """
@@ -101,9 +99,7 @@ def format_channel(channel):
 
 @register.filter
 def duration_format(seconds):
-    """
-    Конвертує секунди в формат mm:ss
-    """
+    """Convert seconds to mm:ss format."""
     try:
         total_seconds = int(seconds or 0)
         minutes = total_seconds // 60
@@ -116,9 +112,9 @@ def duration_format(seconds):
 @register.filter
 def duration_hms(seconds):
     """
-    Конвертує секунди в формат hh:mm:ss (для довгих дзвінків)
+    Convert seconds to hh:mm:ss format.
 
-    Приклади:
+    Examples:
     65 -> "00:01:05"
     3661 -> "01:01:01"
     """
@@ -135,9 +131,9 @@ def duration_hms(seconds):
 @register.filter
 def duration_smart(seconds):
     """
-    Розумний формат - показує години тільки якщо вони є
+    Smart format — show hours only when present.
 
-    Приклади:
+    Examples:
     65 -> "01:05"
     3661 -> "1:01:01"
     """
@@ -158,18 +154,18 @@ def duration_smart(seconds):
 @register.filter
 def duration_human(seconds):
     """
-    Людський формат тривалості
+    Human-readable duration format.
 
-    Приклади:
-    65 -> "1 хв 5 с"
-    3661 -> "1 год 1 хв 1 с"
-    120 -> "2 хв"
+    Examples:
+    65 -> "1m 5s"
+    3661 -> "1h 1m 1s"
+    120 -> "2m"
     """
     try:
         total_seconds = int(seconds or 0)
 
         if total_seconds == 0:
-            return "0 с"
+            return "0s"
 
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
@@ -177,34 +173,31 @@ def duration_human(seconds):
 
         parts = []
         if hours > 0:
-            parts.append(f"{hours} год")
+            parts.append(f"{hours}h")
         if minutes > 0:
-            parts.append(f"{minutes} хв")
-        if secs > 0 or not parts:  # показуємо секунди якщо це єдина одиниця
-            parts.append(f"{secs} с")
+            parts.append(f"{minutes}m")
+        if secs > 0 or not parts:
+            parts.append(f"{secs}s")
 
         return " ".join(parts)
     except (ValueError, TypeError):
-        return "0 с"
+        return "0s"
 
 
 @register.filter
 def duration_class(seconds):
-    """
-    Повертає CSS клас базуючись на тривалості дзвінка
-    Корисно для кольорового кодування
-    """
+    """Return a CSS class based on call duration for color-coding."""
     try:
         total_seconds = int(seconds or 0)
 
         if total_seconds == 0:
             return "duration-zero"
         elif total_seconds < 30:
-            return "duration-short"  # червоний - короткі дзвінки
-        elif total_seconds < 300:  # 5 хвилин
-            return "duration-medium"  # жовтий - середні дзвінки
+            return "duration-short"
+        elif total_seconds < 300:
+            return "duration-medium"
         else:
-            return "duration-long"  # зелений - довгі дзвінки
+            return "duration-long"
     except (ValueError, TypeError):
         return "duration-zero"
 
