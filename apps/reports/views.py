@@ -26,10 +26,8 @@ from apps.reports.forms import (
 
 from django.db.models import Prefetch
 from django.views.generic import FormView
-from django.db.models import Count, Avg, F, Case, When, IntegerField
-from django.db.models.functions import Cast
-
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value
+from django.db.models.functions import Cast, StrIndex, Substr, TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
 
@@ -678,6 +676,62 @@ class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
                 labels.append(agent)
                 values.append(r["total"])
                 table_data.append({"agent": agent, "total": r["total"]})
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_outbound_calls.html"
+
+    def get(self, request):
+        form = AnalyticsAgentCallsForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            # Collect queue members active in the period (lazy queryset, used as subquery)
+            agent_qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+            ).exclude(agent=ASTERISK_NONE)
+            if queuename:
+                agent_qs = agent_qs.filter(queuename=queuename)
+            agent_channels = agent_qs.values_list("agent", flat=True).distinct()
+
+            # Match CDR channel against agent channels by stripping the unique suffix
+            # CDR channel format: "SIP/237-00001234" -> base "SIP/237"
+            rows = list(
+                CDR.objects.filter(start__range=(date_from, date_to))
+                .annotate(
+                    base_channel=Case(
+                        When(
+                            channel__contains="-",
+                            then=Substr("channel", 1, StrIndex("channel", Value("-")) - 1),
+                        ),
+                        default=F("channel"),
+                        output_field=CharField(),
+                    )
+                )
+                .filter(base_channel__in=agent_channels)
+                .values("base_channel")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+
+            labels, values, table_data = [], [], []
+            for r in rows:
+                labels.append(r["base_channel"])
+                values.append(r["total"])
+                table_data.append({"agent": r["base_channel"], "total": r["total"]})
             chart_data = json.dumps({"labels": labels, "values": values})
 
         context = {

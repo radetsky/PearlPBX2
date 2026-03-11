@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Calls by Agent in Queue{% endblock %}
+{% block title %}Outbound Calls by Agent{% endblock %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Calls by Agent in Queue</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>Outbound Calls by Agent</span></h1>
 
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
@@ -35,7 +35,7 @@
     </div>
 
     {% if table_data is not None %}
-        {% include "_analytics_chart_panel.html" with chart_id="agentChart" count_label="Answered calls" %}
+        {% include "_analytics_chart_panel.html" with chart_id="outboundChart" count_label="Outbound calls" %}
     {% endif %}
 </div>
 {% endblock content %}

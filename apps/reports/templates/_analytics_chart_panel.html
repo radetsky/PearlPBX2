@@ -1,0 +1,77 @@
+{% load static %}
+{% if table_data %}
+    <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                <h3 class="uk-card-title">Table</h3>
+                <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
+                    <thead>
+                        <tr>
+                            <th>Agent</th>
+                            <th class="uk-text-right">{{ count_label }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table_data %}
+                        <tr>
+                            <td>{{ row.agent }}</td>
+                            <td class="uk-text-right">{{ row.total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                <h3 class="uk-card-title">Chart</h3>
+                <canvas id="{{ chart_id }}"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {{ chart_data|json_script:"chart-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    (function () {
+        const raw = document.getElementById('chart-data').textContent;
+        const data = JSON.parse(raw);
+        const colors = data.labels.map((_, i) => `hsl(${(i * 47) % 360}, 60%, 55%)`);
+        new Chart(document.getElementById('{{ chart_id }}'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: '{{ count_label }}',
+                    data: data.values,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ' ' + ctx.parsed.y + ' calls'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    })();
+    </script>
+{% else %}
+    <div class="uk-alert uk-alert-warning" uk-alert>
+        <p>No data found for the selected period.</p>
+    </div>
+{% endif %}
