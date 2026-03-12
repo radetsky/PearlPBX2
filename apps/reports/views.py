@@ -600,10 +600,12 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
         chart_data = None
         table_data = None
 
+        show_unique = False
         if form.is_valid():
             date_from = form.cleaned_data["date_from"]
             date_to = form.cleaned_data["date_to"]
             exclude_contacts = form.cleaned_data["exclude_contacts"]
+            show_unique = form.cleaned_data["show_unique"]
 
             qs = QueueLog.objects.filter(
                 time__range=(date_from, date_to),
@@ -623,17 +625,34 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
                 .annotate(total=Count("id"))
                 .order_by("-total")
             )
-            labels, values = [], []
-            for r in rows:
-                labels.append(r["queuename"])
-                values.append(r["total"])
-            table_data = rows
+
+            if show_unique:
+                callids = list(qs.values_list("callid", flat=True))
+                unique_by_queue = {}
+                if callids:
+                    unique_by_queue = {
+                        r["queuename"]: r["unique_callers"]
+                        for r in QueueLog.objects.filter(
+                            event="ENTERQUEUE",
+                            time__range=(date_from, date_to),
+                            callid__in=callids,
+                        )
+                        .values("queuename")
+                        .annotate(unique_callers=Count("data2", distinct=True))
+                    }
+                table_data = [{**r, "unique_callers": unique_by_queue.get(r["queuename"], 0)} for r in rows]
+            else:
+                table_data = rows
+
+            labels = [r["queuename"] for r in rows]
+            values = [r["total"] for r in rows]
             chart_data = json.dumps({"labels": labels, "values": values})
 
         context = {
             "form": form,
             "table_data": table_data,
             "chart_data": chart_data,
+            "show_unique": show_unique,
         }
         return render(request, self.template_name, context)
 

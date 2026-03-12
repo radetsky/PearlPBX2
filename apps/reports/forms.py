@@ -271,6 +271,11 @@ class AnalyticsDateRangeForm(_AnalyticsBaseForm):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
     )
+    show_unique = forms.BooleanField(
+        label="Show unique callers",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
+    )
 
 
 class _AnalyticsQueueFilterForm(_AnalyticsBaseForm):
