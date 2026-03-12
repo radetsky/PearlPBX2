@@ -21,6 +21,7 @@ from apps.reports.forms import (
     AnalyticsAgentCallsForm,
     AnalyticsCallDurationForm,
     AnalyticsDateRangeForm,
+    AnalyticsQueueActivityForm,
     AnalyticsMissedByHourForm,
     CDRReportForm,
     MonitorFilenamesReportForm,
@@ -29,7 +30,7 @@ from apps.reports.forms import (
 
 from django.db.models import Prefetch
 from django.views.generic import FormView
-from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value
+from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value, Q
 from django.db.models.functions import Cast, StrIndex, Substr, TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
@@ -980,6 +981,102 @@ class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
             "chart_data": chart_data,
             "overall_avg_fmt": overall_avg_fmt,
             "overall_total_fmt": overall_total_fmt,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
+    template_name = "analytics_queue_activity.html"
+
+    def get(self, request):
+        form = AnalyticsQueueActivityForm(request.GET or None)
+        table_data = None
+        chart_data = None
+        totals = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            is_hourly = date_from.date() == date_to.date()
+            local_tz = timezone.get_current_timezone()
+            trunc_fn = TruncHour if is_hourly else TruncDate
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT", "ABANDON"],
+            ).exclude(queuename=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            period_data = {
+                row["period"]: row
+                for row in qs.annotate(period=trunc_fn("time", tzinfo=local_tz))
+                .values("period")
+                .annotate(
+                    answered=Count("id", filter=Q(event__in=["COMPLETECALLER", "COMPLETEAGENT"])),
+                    missed=Count("id", filter=Q(event="ABANDON")),
+                )
+            }
+
+            # Build full period range filled with zeros
+            # period_data keys are datetime.datetime (hourly) or datetime.date (daily)
+            # to match current variable type in each branch
+            if is_hourly:
+                start = date_from.replace(minute=0, second=0, microsecond=0)
+                end = date_to.replace(minute=0, second=0, microsecond=0)
+                step = timedelta(hours=1)
+                period_fmt = lambda dt: (
+                    f"{dt.strftime('%Y-%m-%d %H:%M:%S')} - "
+                    f"{(dt + timedelta(hours=1) - timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                chart_fmt = "%H"
+            else:
+                start = date_from.date()
+                end = date_to.date()
+                step = timedelta(days=1)
+                period_fmt = str
+                chart_fmt = "%Y-%m-%d"
+
+            labels, table_data = [], []
+            total_answered = total_missed = 0
+            current = start
+            while current <= end:
+                row = period_data.get(current, {})
+                answered = row.get("answered", 0)
+                missed = row.get("missed", 0)
+                total = answered + missed
+                pct = f"{missed / total * 100:.2f}" if total else "0.00"
+                total_answered += answered
+                total_missed += missed
+                labels.append(current.strftime(chart_fmt))
+                table_data.append({
+                    "period": period_fmt(current),
+                    "answered": answered,
+                    "missed": missed,
+                    "total": total,
+                    "pct": pct,
+                })
+                current += step
+
+            totals = {
+                "answered": total_answered,
+                "missed": total_missed,
+                "total": total_answered + total_missed,
+            }
+            chart_data = json.dumps({
+                "labels": labels,
+                "answered": [r["answered"] for r in table_data],
+                "missed": [r["missed"] for r in table_data],
+                "total": [r["total"] for r in table_data],
+            })
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "totals": totals,
         }
         return render(request, self.template_name, context)
 

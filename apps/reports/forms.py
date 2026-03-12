@@ -297,6 +297,10 @@ class AnalyticsCallDurationForm(_AnalyticsQueueFilterForm):
     pass
 
 
+class AnalyticsQueueActivityForm(_AnalyticsQueueFilterForm):
+    pass
+
+
 class CallbackNumberReportForm(forms.Form):
     DIAL_STATUS_CHOICES = [
         ("", "All"),

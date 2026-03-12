@@ -2,6 +2,7 @@ from django.urls import path
 from apps.reports.views import (
     AnalyticsAgentCallsView,
     AnalyticsCallDurationView,
+    AnalyticsQueueActivityView,
     AnalyticsMissedByHourView,
     AnalyticsMissedCallsView,
     AnalyticsOutboundCallsView,
@@ -33,4 +34,5 @@ urlpatterns = [
     path("analytics/missed-calls/", AnalyticsMissedCallsView.as_view(), name="analytics_missed_calls"),
     path("analytics/missed-by-hour/", AnalyticsMissedByHourView.as_view(), name="analytics_missed_by_hour"),
     path("analytics/call-duration/", AnalyticsCallDurationView.as_view(), name="analytics_call_duration"),
+    path("analytics/queue-activity/", AnalyticsQueueActivityView.as_view(), name="analytics_queue_activity"),
 ]

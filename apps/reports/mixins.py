@@ -29,6 +29,7 @@ class ReportViewPermissionMixin(AccessMixin):
         "AnalyticsMissedCallsView": "view_analytics_reports",
         "AnalyticsMissedByHourView": "view_analytics_reports",
         "AnalyticsCallDurationView": "view_analytics_reports",
+        "AnalyticsQueueActivityView": "view_analytics_reports",
     }
 
     # Optional: explicitly set permission (overrides auto-detection)
