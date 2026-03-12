@@ -8,6 +8,25 @@ All notable changes to PearlPBX2 are documented here.
 
 ### Added
 
+**Lists section** — new `/lists/` section accessible to the "Report Viewer" group (no admin rights required):
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Hub | `/lists/` | Overview with links to all three lists |
+| Blocklist | `/lists/blocklist/` | CRUD for blocked caller IDs |
+| Allowlist | `/lists/allowlist/` | CRUD for allowed caller IDs |
+| Contacts | `/lists/contacts/` | CRUD for caller ID → name mappings |
+
+Each list page includes:
+- Inline Add/Edit via UIKit modal (no page reload)
+- Delete with confirmation
+- Search by number (blocklist/allowlist: callerid, destination, reason; contacts: callerid and name)
+- Sorted by `callerid` ascending
+
+New permissions added to the "Report Viewer" group: `edit_blocklist`, `edit_allowlist`, `edit_contacts`.
+
+---
+
 **Analytics reports** — new section on the Reports page with 7 interactive reports (table + Chart.js bar chart):
 
 | Report | URL | Description |

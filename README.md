@@ -13,7 +13,8 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Analytics reports** — queue calls, agent calls, outbound calls, missed calls, missed by hour, call duration, queue activity (hourly/daily) with Chart.js charts
 - **Callback queue** — automated outbound callback system
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones
-- **REST API** — blacklist/whitelist management
+- **Lists** — web CRUD UI for Blocklist, Allowlist, and Contacts; accessible to Report Viewer group without admin access
+- **REST API** — blacklist/whitelist management via HTTP API
 - **Apply Changes** — one-click config regeneration and Asterisk reload
 
 ## Architecture
@@ -32,6 +33,7 @@ Callback daemon ─────────────► Asterisk AMI (outboun
 - `core/` — Django models, config generator (`conf.py`), validators, admin interface
 - `apps/dashboard/` — WebSocket operator panel (real-time call events)
 - `apps/reports/` — CDR, recordings, queue log, routing reports
+- `apps/lists/` — web CRUD UI for blocklist, allowlist, contacts
 - `apps/callback/` — callback queue models and views
 - `apps/provision/` — phone provisioning via TFTP
 - `apps/api/` — REST API for blacklist/whitelist
@@ -116,6 +118,7 @@ Each service has its own `env.sample` and README with setup instructions.
 | `/dashboard/` | Real-time operator panel |
 | `/reports/` | CDR, recordings, queue logs, callback reports |
 | `/reports/analytics/` | Analytics reports with charts (queues, agents, missed calls, etc.) |
+| `/lists/` | Blocklist, Allowlist, Contacts — CRUD UI for Report Viewer group |
 | `/api/v1/` | REST API |
 
 ## Contributing
