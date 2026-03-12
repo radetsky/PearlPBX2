@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 {% load form_extras %}
+{% load i18n %}
 {% load static %}
 
 {% block content %}
     <div class="uk-container uk-container-expand uk-margin-top">
-        <h1 class="uk-heading-line uk-text-center"><span>Call Detail Report (CDR)</span></h1>
+        <h1 class="uk-heading-line uk-text-center"><span>{% trans "Call Detail Report (CDR)" %}</span></h1>
         <!-- Filter form -->
         <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
             <div class="uk-card-header uk-padding-small">
                 <h3 class="uk-card-title uk-margin-remove-bottom">
-                    <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+                    <span uk-icon="settings" class="uk-margin-small-right"></span>{% trans "Filters" %}
                 </h3>
             </div>
 
@@ -67,14 +68,14 @@
 
                 <div class="uk-margin-top">
                     <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
-                        <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                        <span uk-icon="search" class="uk-margin-small-right"></span>{% trans "Show report" %}
                     </button>
                     <a href="{% url 'cdr_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
-                        <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                        <span uk-icon="refresh" class="uk-margin-small-right"></span>{% trans "Clear" %}
                     </a>
                     {% if cdrs %}
                         <button type="submit" name="export" value="csv" class="uk-button uk-border-rounded uk-button-secondary">
-                            <span uk-icon="download" class="uk-margin-small-right"></span>Export CSV
+                            <span uk-icon="download" class="uk-margin-small-right"></span>{% trans "Export CSV" %}
                         </button>
                     {% endif %}
                 </div>
@@ -88,7 +89,7 @@
                 <div class="uk-card-header">
                     <h3 class="uk-card-title uk-margin-remove-bottom">
                         <span uk-icon="table" class="uk-margin-small-right"></span>
-                        Results ({{ cdrs.paginator.count }} records)
+                        {% blocktrans with count=cdrs.paginator.count %}Results ({{ count }} records){% endblocktrans %}
                     </h3>
                 </div>
                 <div class="uk-card-body uk-padding-remove">
@@ -97,28 +98,28 @@
                             <thead>
                                 <tr>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
+                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>{% trans "Date/Time" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Source
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>{% trans "Source" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>{% trans "Destination" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Duration
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Duration" %}
                                     </th>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="info" class="uk-margin-small-right"></span>Status
+                                        <span uk-icon="info" class="uk-margin-small-right"></span>{% trans "Status" %}
                                     </th>
                                     <th>
-                                        <span uk-icon="link" class="uk-margin-small-right"></span>Channel
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>{% trans "Channel" %}
                                     </th>
                                     <th>
-                                        <span uk-icon="link" class="uk-margin-small-right"></span>Dst. Channel
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>{% trans "Dst. Channel" %}
                                     </th>
                                     <th>
-                                        <span uk-icon="link" class="uk-margin-small-right"></span>URL
+                                        <span uk-icon="link" class="uk-margin-small-right"></span>{% trans "URL" %}
                                     </th>
                                 </tr>
                             </thead>
@@ -155,10 +156,10 @@
                                         {% if cdr.get_audio_url %}
                                             <div class="compact-player" onclick="toggleCompactPlay(this); event.stopPropagation();" data-audio="{{ cdr.get_audio_url }}">
                                                 <button class="compact-btn">▶</button>
-                                                <span>Play</span>
+                                                <span>{% trans "Play" %}</span>
                                             </div>
                                         {% else %}
-                                            <span class="uk-text-muted">No audio</span>
+                                            <span class="uk-text-muted">{% trans "No audio" %}</span>
                                         {% endif %}
                                         <!-- <a href="#" class="cdr-details-link" data-cdr-id="cdr-{{ forloop.counter }}">Details</a> -->
                                         <div id="cdr-{{ forloop.counter }}" style="display:none;">
@@ -170,7 +171,7 @@
                                 <tr>
                                     <td colspan="6" class="uk-text-center uk-text-muted uk-padding">
                                         <div uk-icon="icon: info; ratio: 2"></div>
-                                        <p class="uk-margin-small-top">No data found</p>
+                                        <p class="uk-margin-small-top">{% trans "No data found" %}</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -192,7 +193,7 @@
                         {% endif %}
 
                         <li class="uk-active">
-                            <span>{{ cdrs.number }} of {{ cdrs.paginator.num_pages }}</span>
+                            <span>{% blocktrans with current=cdrs.number total=cdrs.paginator.num_pages %}{{ current }} of {{ total }}{% endblocktrans %}</span>
                         </li>
 
                         {% if cdrs.has_next %}
@@ -212,34 +213,34 @@
         {% if statistics %}
     <!-- Statistics -->
         <div class="uk-margin-large-top">
-            <h3 class="uk-heading-divider">Statistics</h3>
+            <h3 class="uk-heading-divider">{% trans "Statistics" %}</h3>
             <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-text-center" uk-grid>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
                         <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_calls }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Total calls</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Total calls" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
                         <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_calls }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Answered</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Answered" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
                         <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.total_duration|duration_smart }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Total duration</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Total duration" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: credit-card; ratio: 2" class="uk-text-danger"></span>
                         <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.total_billsec|duration_smart }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Billed duration</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Billed duration" %}</p>
                     </div>
                 </div>
             </div>
@@ -251,7 +252,7 @@
         <div class="uk-position-top-right uk-margin-top" uk-notification>
             <div class="uk-alert-success" uk-alert>
                 <a class="uk-alert-close" uk-close></a>
-                <p><span uk-icon="check"></span> File exported successfully!</p>
+                <p><span uk-icon="check"></span> {% trans "File exported successfully!" %}</p>
             </div>
         </div>
         {% endif %}
@@ -262,7 +263,7 @@
     <div id="cdr-details-modal" class="uk-modal" uk-modal>
         <div class="uk-modal-dialog uk-modal-body uk-border-rounded">
             <button class="uk-modal-close-default" type="button" uk-close></button>
-            <h3 class="uk-modal-title">CDR Details</h3>
+            <h3 class="uk-modal-title">{% trans "CDR Details" %}</h3>
             <table class="uk-table uk-table-small uk-table-divider cdr-details-mini-table" style="font-size: 13px; line-height: 1.1;">
                 <tbody id="cdr-details-table">
                 </tbody>
@@ -287,19 +288,18 @@
     </div>
 
     <script>
-        // Анімація для статистичних карток
+        // Animation for statistics cards
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.stats-card');
             cards.forEach((card, index) => {
                 card.style.animationDelay = (index * 0.1) + 's';
             });
 
-            // Додаткова анімація для рядків CDR
+            // Animation for CDR rows
             const rows = document.querySelectorAll('.cdr-row');
             rows.forEach((row, index) => {
                 row.style.animationDelay = (index * 0.05) + 's';
 
-                // Додати звуковий ефект при hover (опціонально)
                 row.addEventListener('mouseenter', function() {
                     this.style.transform = 'translateY(-1px)';
                 });
@@ -310,25 +310,25 @@
             });
         });
 
-        // Закрити модальне вікно при натисканні Escape
+        // Close modal on Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 UIkit.modal('.uk-modal.uk-open').hide();
             }
         });
 
-        // Додати функцію копіювання для ID та каналів
+        // Copy to clipboard helper
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(function() {
                 UIkit.notification({
-                    message: 'Скопійовано в буфер обміну!',
+                    message: '{% trans "Copied to clipboard!" %}',
                     status: 'success',
                     timeout: 2000
                 });
             });
         }
 
-        // Показати модальне вікно з деталями CDR
+        // Show CDR details modal
         function showCdrModal(cdr) {
             const table = document.getElementById('cdr-details-table');
             table.innerHTML = '';
@@ -376,7 +376,7 @@
                                     </div>
                                 </div>
                                 <a href="${value}?download=1" class="uk-button uk-button-small uk-button-default uk-border-rounded uk-margin-small-top" style="font-size:12px;">
-                                    <span uk-icon="icon: download; ratio: 0.8" class="uk-margin-small-right"></span>Download
+                                    <span uk-icon="icon: download; ratio: 0.8" class="uk-margin-small-right"></span>{% trans "Download" %}
                                 </a>
                             </td>`;
                     table.appendChild(row);
@@ -388,12 +388,11 @@
             UIkit.modal('#cdr-details-modal').show();
         }
 
-        // Додаємо обробник на всі рядки та лінки
+        // Attach click handler to all CDR rows and links
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.cdr-row, .cdr-details-link').forEach(function(el) {
                 el.style.cursor = 'pointer';
                 el.addEventListener('click', function(e) {
-                    // Якщо клік по лінці або по рядку
                     let cdrId = this.getAttribute('data-cdr-id');
                     if (cdrId) {
                         const script = document.getElementById(cdrId);

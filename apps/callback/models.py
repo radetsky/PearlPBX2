@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models.functions import Now
+from django.utils.translation import gettext_lazy as _
 
 from core.models import DialplanContext, RoutingTable
 
@@ -32,10 +33,10 @@ class CallbackService(models.Model):
 
 class CallbackNumber(models.Model):
     DIAL_STATUS_CHOICES = [
-        ("NEW", "New"),
-        ("ANSWERED", "Answered"),
-        ("BUSY", "Busy"),
-        ("PENDING", "Pending"),
+        ("NEW", _("New")),
+        ("ANSWERED", _("Answered")),
+        ("BUSY", _("Busy")),
+        ("PENDING", _("Pending")),
     ]
 
     id = models.BigAutoField(primary_key=True)

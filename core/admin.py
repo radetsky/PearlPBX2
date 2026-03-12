@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
 from .models import (
     SIPTransport,
@@ -65,9 +66,9 @@ class SIPPeerAdmin(admin.ModelAdmin):
 
 class SIPTransportAdmin(admin.ModelAdmin):
     fieldsets = [
-        ("Generic", {"fields": ["description", "name"]}),
+        (_("Generic"), {"fields": ["description", "name"]}),
         (
-            "Network settings",
+            _("Network settings"),
             {
                 "fields": [
                     "protocol",
@@ -79,7 +80,7 @@ class SIPTransportAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "TLS Settings (only if TLS protocol is used)",
+            _("TLS Settings (only if TLS protocol is used)"),
             {"fields": ["method", "cert_file", "priv_key_file", "ca_list_file"]},
         ),
     ]
@@ -170,8 +171,8 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
 
     autocomplete_fields = ["context"]
 
-    verbose_name = "Routing Record"
-    verbose_name_plural = "Routing Records"
+    verbose_name = _("Routing Record")
+    verbose_name_plural = _("Routing Records")
 
 
 class RoutingTableAdmin(admin.ModelAdmin):
@@ -263,33 +264,32 @@ class QueueAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {"fields": ["name", "strategy", "music_class"]}),
         (
-            "Add Members",
+            _("Add Members"),
             {
                 "fields": ["add_sip_users"],
-                "description": (
-                    f"Select SIP users to bulk-add as queue members "
-                    f"(penalty={DEFAULT_QUEUE_MEMBER_PENALTY}). "
-                    f"Existing members are not changed. Use the inline below to adjust details."
+                "description": _(
+                    "Select SIP users to bulk-add as queue members. "
+                    "Existing members are not changed. Use the inline below to adjust details."
                 ),
             },
         ),
         (
-            "Queue Rules",
+            _("Queue Rules"),
             {
                 "fields": ["defaultrule", "rule_link"],
-                "description": "Select a rule and click the link to edit its penalty changes.",
+                "description": _("Select a rule and click the link to edit its penalty changes."),
             },
         ),
         (
-            "Timeouts",
+            _("Timeouts"),
             {"fields": ["timeout", "retry", "maxlen", "wrapuptime", "autopause", "autopausedelay"], "classes": ["collapse"]},
         ),
         (
-            "Announcements",
+            _("Announcements"),
             {"fields": ["announce", "queue_announce", "queue_announcement", "announce_frequency", "announce_holdtime", "announce_position"], "classes": ["collapse"]},
         ),
         (
-            "Advanced",
+            _("Advanced"),
             {"fields": ["context", "service_level", "weight", "autofill", "ringinuse", "joinempty", "leavewhenempty", "monitor_format", "timeoutpriority", "timeoutrestart", "reportholdtime", "setinterfacevar", "setqueueentryvar", "setqueuevar", "min_announce_frequency", "periodic_announce_frequency", "periodic_announce", "random_periodic_announce", "relative_periodic_announce", "announce_to_first_user", "announce_position_limit", "announce_round_seconds", "announce_position_only_up"], "classes": ["collapse"]},
         ),
     ]
@@ -309,7 +309,7 @@ class QueueAdmin(admin.ModelAdmin):
                 },
             )
 
-    @admin.display(description="Edit Rule")
+    @admin.display(description=_("Edit Rule"))
     def rule_link(self, obj):
         if not obj.defaultrule:
             add_url = reverse("admin:core_queuerule_add")

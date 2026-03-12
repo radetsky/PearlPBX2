@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Call Duration by Operator{% endblock %}
+{% block title %}{% trans "Call Duration by Operator" %}{% endblock %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Call Duration by Operator</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Call Duration by Operator" %}</span></h1>
 
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
@@ -27,7 +28,7 @@
             </div>
             <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
-                    <span uk-icon="search"></span> Search
+                    <span uk-icon="search"></span> {% trans "Search" %}
                 </button>
             </div>
         </form>
@@ -37,24 +38,24 @@
         {% if table_data %}
             <div class="uk-margin-bottom">
                 <span class="uk-text-lead">
-                    Average call duration: <strong>{{ overall_avg_fmt }}</strong>
+                    {% blocktrans with val=overall_avg_fmt %}Average call duration: <strong>{{ val }}</strong>{% endblocktrans %}
                     &nbsp;&nbsp;|&nbsp;&nbsp;
-                    Total talk time: <strong>{{ overall_total_fmt }}</strong>
+                    {% blocktrans with val=overall_total_fmt %}Total talk time: <strong>{{ val }}</strong>{% endblocktrans %}
                 </span>
             </div>
 
             <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Table</h3>
+                        <h3 class="uk-card-title">{% trans "Table" %}</h3>
                         <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Operator</th>
-                                    <th class="uk-text-right">Total (min:sec)</th>
-                                    <th class="uk-text-right">Avg (min:sec)</th>
-                                    <th class="uk-text-right">Calls</th>
+                                    <th>{% trans "Operator" %}</th>
+                                    <th class="uk-text-right">{% trans "Total (min:sec)" %}</th>
+                                    <th class="uk-text-right">{% trans "Avg (min:sec)" %}</th>
+                                    <th class="uk-text-right">{% trans "Calls" %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -73,7 +74,7 @@
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Chart</h3>
+                        <h3 class="uk-card-title">{% trans "Chart" %}</h3>
                         <canvas id="durationChart"></canvas>
                     </div>
                 </div>
@@ -127,7 +128,7 @@
             </script>
         {% else %}
             <div class="uk-alert uk-alert-warning" uk-alert>
-                <p>No completed calls found for the selected period.</p>
+                <p>{% trans "No completed calls found for the selected period." %}</p>
             </div>
         {% endif %}
     {% endif %}

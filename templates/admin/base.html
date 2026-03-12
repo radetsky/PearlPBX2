@@ -44,7 +44,19 @@
                 <strong>{% firstof user.get_short_name user.get_username %}</strong>.
             {% endblock %}
             {% block userlinks %}
-                || <a style="color: red" href="{{ '/admin/apply' }}">Apply changes</a> ||
+                || <a style="color: red" href="{{ '/admin/apply' }}">{% trans "Apply changes" %}</a> ||
+                {% get_current_language as CURRENT_LANGUAGE %}
+                {% get_available_languages as LANGUAGES_LIST %}
+                {% for lang_code, lang_name in LANGUAGES_LIST %}
+                    {% if lang_code != CURRENT_LANGUAGE %}
+                        <form method="post" action="{% url 'set_language' %}" style="display:inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="language" value="{{ lang_code }}">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" style="background:none; border:none; cursor:pointer; color: var(--link-fg); text-decoration: underline; padding: 0;">{{ lang_name }}</button>
+                        </form> |
+                    {% endif %}
+                {% endfor %}
                 {% if site_url %}
                     <a href="{{ site_url }}">{% translate 'View site' %}</a> /
                 {% endif %}

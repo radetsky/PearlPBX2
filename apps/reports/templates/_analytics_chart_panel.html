@@ -1,13 +1,13 @@
-{% load static %}
+{% load static i18n %}
 {% if table_data %}
     <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
         <div>
             <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                <h3 class="uk-card-title">Table</h3>
+                <h3 class="uk-card-title">{% trans "Table" %}</h3>
                 <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
                     <thead>
                         <tr>
-                            <th>Agent</th>
+                            <th>{% trans "Agent" %}</th>
                             <th class="uk-text-right">{{ count_label }}</th>
                         </tr>
                     </thead>
@@ -24,7 +24,7 @@
         </div>
         <div>
             <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                <h3 class="uk-card-title">Chart</h3>
+                <h3 class="uk-card-title">{% trans "Chart" %}</h3>
                 <canvas id="{{ chart_id }}"></canvas>
             </div>
         </div>
@@ -72,6 +72,6 @@
     </script>
 {% else %}
     <div class="uk-alert uk-alert-warning" uk-alert>
-        <p>No data found for the selected period.</p>
+        <p>{% trans "No data found for the selected period." %}</p>
     </div>
 {% endif %}

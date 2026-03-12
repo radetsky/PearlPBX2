@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import render, redirect
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 from django.db import transaction
 from django.db.models import Max, OuterRef, Subquery
@@ -25,8 +26,8 @@ from core.models import ConfigurationFile, SystemConfiguration
 
 
 class MyAdminSite(admin.AdminSite):
-    site_header = "PBX Setup"
-    index_title = "PBX Administration"
+    site_header = _("PBX Setup")
+    index_title = _("PBX Administration")
 
 
 class ApplyChangesForm(forms.Form):
@@ -85,11 +86,11 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
                         ami.soft_reload()
                     else:
                         ami.restart()
-                messages.success(request, "Configurations files saved successfully.")
+                messages.success(request, _("Configurations files saved successfully."))
 
                 return redirect("admin:index")
             except Exception as e:
-                messages.error(request, f"An error occurred: {str(e)}")
+                messages.error(request, _("An error occurred: %(error)s") % {"error": str(e)})
 
         context = self.get_context_data(**kwargs)
         context["cfgfiles"] = cfgfiles

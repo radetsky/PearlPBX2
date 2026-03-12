@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
 
 {% block extra_css %}
@@ -570,11 +571,11 @@
 <div class="dashboard-container">
     <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom">
         <div>
-            <h2>Operator Dashboard</h2>
-            <p class="uk-text-muted uk-margin-remove">Real-time Asterisk monitoring</p>
+            <h2>{% trans "Operator Dashboard" %}</h2>
+            <p class="uk-text-muted uk-margin-remove">{% trans "Real-time Asterisk monitoring" %}</p>
         </div>
         <div id="connectionStatus" class="connection-status connecting">
-            Connecting...
+            {% trans "Connecting..." %}
         </div>
     </div>
 
@@ -582,35 +583,35 @@
     <div class="stats-overview">
         <div class="stat-box">
             <div class="stat-value" id="totalChannels">0</div>
-            <div class="stat-label">Active Channels</div>
+            <div class="stat-label">{% trans "Active Channels" %}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value" id="totalCalls">0</div>
-            <div class="stat-label">Active Calls</div>
+            <div class="stat-label">{% trans "Active Calls" %}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value" id="totalQueues">0</div>
-            <div class="stat-label">Queues</div>
+            <div class="stat-label">{% trans "Queues" %}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value" id="waitingCalls">0</div>
-            <div class="stat-label">Waiting Calls</div>
+            <div class="stat-label">{% trans "Waiting Calls" %}</div>
         </div>
     </div>
 
     <!-- Active channels -->
     <div class="status-card">
-        <h3>Active Channels</h3>
+        <h3>{% trans "Active Channels" %}</h3>
         <div id="channelsContainer" class="channels-grid">
-            <div class="empty-state">No active channels</div>
+            <div class="empty-state">{% trans "No active channels" %}</div>
         </div>
     </div>
 
     <!-- Queues -->
     <div class="queue-section">
-        <h3>Call Queues</h3>
+        <h3>{% trans "Call Queues" %}</h3>
         <div id="queuesContainer">
-            <div class="empty-state">No queues configured</div>
+            <div class="empty-state">{% trans "No queues configured" %}</div>
         </div>
     </div>
 </div>
@@ -625,6 +626,34 @@
     // State
     let channels = {};
     let queues = {};
+
+    // Translated UI strings
+    const I18N = {
+        connected:         "{% trans 'Connected' %}",
+        disconnected:      "{% trans 'Disconnected' %}",
+        connecting:        "{% trans 'Connecting...' %}",
+        noActiveChannels:  "{% trans 'No active channels' %}",
+        noQueuesConfigured:"{% trans 'No queues configured' %}",
+        noAgents:          "{% trans 'No agents' %}",
+        caller:            "{% trans 'Caller' %}",
+        name:              "{% trans 'Name' %}",
+        context:           "{% trans 'Context' %}",
+        extension:         "{% trans 'Extension' %}",
+        bridged:           "{% trans 'Bridged' %}",
+        yes:               "{% trans 'Yes' %}",
+        agents:            "{% trans 'Agents' %}",
+        waiting:           "{% trans 'Waiting' %}",
+        statusPaused:      "{% trans 'Paused' %}",
+        statusAvailable:   "{% trans 'Available' %}",
+        statusInCall:      "{% trans 'In call' %}",
+        statusBusy:        "{% trans 'Busy' %}",
+        statusInvalid:     "{% trans 'Invalid' %}",
+        statusUnavailable: "{% trans 'Unavailable' %}",
+        statusRinging:     "{% trans 'Ringing' %}",
+        statusRingingInUse:"{% trans 'Ringing (In use)' %}",
+        statusOnHold:      "{% trans 'On hold' %}",
+        statusUnknown:     "{% trans 'Unknown' %}",
+    };
 
     // Connect to WebSocket
     function connectWebSocket() {
@@ -681,9 +710,9 @@
         statusEl.className = `connection-status ${status}`;
 
         const statusText = {
-            'connected': '● Connected',
-            'disconnected': '● Disconnected',
-            'connecting': '● Connecting...'
+            'connected': '● ' + I18N.connected,
+            'disconnected': '● ' + I18N.disconnected,
+            'connecting': '● ' + I18N.connecting
         };
 
         statusEl.textContent = statusText[status] || status;
@@ -868,7 +897,7 @@
         const channelList = Object.values(channels);
 
         if (channelList.length === 0) {
-            container.innerHTML = '<div class="empty-state">No active channels</div>';
+            container.innerHTML = `<div class="empty-state">${I18N.noActiveChannels}</div>`;
             return;
         }
 
@@ -903,11 +932,11 @@
                         <span class="channel-status ${statusClass}">${escapeHtml(stateText)}</span>
                     </div>
                     <div class="channel-info">
-                        <div><strong>Caller:</strong> ${escapeHtml(callerNum)}</div>
-                        ${callerName ? `<div><strong>Name:</strong> ${escapeHtml(callerName)}</div>` : ''}
-                        ${channel.context ? `<div><strong>Context:</strong> ${escapeHtml(channel.context)}</div>` : ''}
-                        ${exten ? `<div><strong>Extension:</strong> ${escapeHtml(exten)}</div>` : ''}
-                        ${channel.bridge_id ? `<div><strong>Bridged:</strong> Yes</div>` : ''}
+                        <div><strong>${I18N.caller}:</strong> ${escapeHtml(callerNum)}</div>
+                        ${callerName ? `<div><strong>${I18N.name}:</strong> ${escapeHtml(callerName)}</div>` : ''}
+                        ${channel.context ? `<div><strong>${I18N.context}:</strong> ${escapeHtml(channel.context)}</div>` : ''}
+                        ${exten ? `<div><strong>${I18N.extension}:</strong> ${escapeHtml(exten)}</div>` : ''}
+                        ${channel.bridge_id ? `<div><strong>${I18N.bridged}:</strong> ${I18N.yes}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -920,7 +949,7 @@
         const queueList = Object.entries(queues);
 
         if (queueList.length === 0) {
-            container.innerHTML = '<div class="empty-state">No queues configured</div>';
+            container.innerHTML = `<div class="empty-state">${I18N.noQueuesConfigured}</div>`;
             return;
         }
 
@@ -935,11 +964,11 @@
                         <div class="queue-stats">
                             <div class="queue-stat">
                                 <div class="queue-stat-value">${members.length}</div>
-                                <div class="queue-stat-label">Agents</div>
+                                <div class="queue-stat-label">${I18N.agents}</div>
                             </div>
                             <div class="queue-stat">
                                 <div class="queue-stat-value">${waiting}</div>
-                                <div class="queue-stat-label">Waiting</div>
+                                <div class="queue-stat-label">${I18N.waiting}</div>
                             </div>
                         </div>
                     </div>
@@ -956,7 +985,7 @@
                                 `;
                             }).join('')}
                         </div>
-                    ` : '<div class="empty-state">No agents</div>'}
+                    ` : `<div class="empty-state">${I18N.noAgents}</div>`}
                 </div>
             `;
         }).join('');
@@ -1007,16 +1036,16 @@
     }
 
     function getMemberStatusText(member) {
-        if (member.paused) return 'Paused';
-        if (member.status === '1') return 'Available';
-        if (member.status === '2') return 'In call';
-        if (member.status === '3') return 'Busy';
-        if (member.status === '4') return 'Invalid';
-        if (member.status === '5') return 'Unavailable';
-        if (member.status === '6') return 'Ringing';
-        if (member.status === '7') return 'Ringing (In use)';
-        if (member.status === '8') return 'On hold';
-        return 'Unknown';
+        if (member.paused) return I18N.statusPaused;
+        if (member.status === '1') return I18N.statusAvailable;
+        if (member.status === '2') return I18N.statusInCall;
+        if (member.status === '3') return I18N.statusBusy;
+        if (member.status === '4') return I18N.statusInvalid;
+        if (member.status === '5') return I18N.statusUnavailable;
+        if (member.status === '6') return I18N.statusRinging;
+        if (member.status === '7') return I18N.statusRingingInUse;
+        if (member.status === '8') return I18N.statusOnHold;
+        return I18N.statusUnknown;
     }
 
     function escapeHtml(text) {

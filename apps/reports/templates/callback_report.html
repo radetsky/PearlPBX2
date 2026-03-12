@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 {% load form_extras %}
+{% load i18n %}
 {% load static %}
 
 {% block content %}
     <div class="uk-container uk-container-expand uk-margin-top">
-        <h1 class="uk-heading-line uk-text-center"><span>Callback Report</span></h1>
+        <h1 class="uk-heading-line uk-text-center"><span>{% trans "Callback Report" %}</span></h1>
         <!-- Filter form -->
         <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
             <div class="uk-card-header uk-padding-small">
                 <h3 class="uk-card-title uk-margin-remove-bottom">
-                    <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+                    <span uk-icon="settings" class="uk-margin-small-right"></span>{% trans "Filters" %}
                 </h3>
             </div>
 
@@ -55,14 +56,14 @@
 
                 <div class="uk-margin-top">
                     <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
-                        <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                        <span uk-icon="search" class="uk-margin-small-right"></span>{% trans "Show report" %}
                     </button>
                     <a href="{% url 'callback_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
-                        <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                        <span uk-icon="refresh" class="uk-margin-small-right"></span>{% trans "Clear" %}
                     </a>
                     {% if callbacks %}
                         <button type="submit" name="export" value="csv" class="uk-button uk-border-rounded uk-button-secondary">
-                            <span uk-icon="download" class="uk-margin-small-right"></span>Export CSV
+                            <span uk-icon="download" class="uk-margin-small-right"></span>{% trans "Export CSV" %}
                         </button>
                     {% endif %}
                 </div>
@@ -76,7 +77,7 @@
                 <div class="uk-card-header">
                     <h3 class="uk-card-title uk-margin-remove-bottom">
                         <span uk-icon="table" class="uk-margin-small-right"></span>
-                        Results ({{ callbacks.paginator.count }} records)
+                        {% blocktrans with count=callbacks.paginator.count %}Results ({{ count }} records){% endblocktrans %}
                     </h3>
                 </div>
                 <div class="uk-card-body uk-padding-remove">
@@ -85,31 +86,31 @@
                             <thead>
                                 <tr>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="hashtag" class="uk-margin-small-right"></span>ID
+                                        <span uk-icon="hashtag" class="uk-margin-small-right"></span>{% trans "ID" %}
                                     </th>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>Created
+                                        <span uk-icon="calendar" class="uk-margin-small-right"></span>{% trans "Created" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Source
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>{% trans "Source" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="phone" class="uk-margin-small-right"></span>Destination
+                                        <span uk-icon="phone" class="uk-margin-small-right"></span>{% trans "Destination" %}
                                     </th>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="info" class="uk-margin-small-right"></span>Status
+                                        <span uk-icon="info" class="uk-margin-small-right"></span>{% trans "Status" %}
                                     </th>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Updated
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Updated" %}
                                     </th>
                                     <th class="uk-table-shrink uk-width-small">
-                                        <span uk-icon="clock" class="uk-margin-small-right"></span>Schedule
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Schedule" %}
                                     </th>
                                     <th>
-                                        <span uk-icon="server" class="uk-margin-small-right"></span>Service
+                                        <span uk-icon="server" class="uk-margin-small-right"></span>{% trans "Service" %}
                                     </th>
                                     <th class="uk-table-shrink">
-                                        <span uk-icon="file-audio" class="uk-margin-small-right"></span>Recording
+                                        <span uk-icon="file-audio" class="uk-margin-small-right"></span>{% trans "Recording" %}
                                     </th>
                                 </tr>
                             </thead>
@@ -156,7 +157,7 @@
                                             {% if audio_url %}
                                                 <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ audio_url }}">
                                                     <button class="compact-btn">▶</button>
-                                                    <span>Play</span>
+                                                    <span>{% trans "Play" %}</span>
                                                 </div>
                                             {% else %}
                                                 <span class="uk-text-muted">-</span>
@@ -168,7 +169,7 @@
                                 <tr>
                                     <td colspan="9" class="uk-text-center uk-text-muted uk-padding">
                                         <div uk-icon="icon: info; ratio: 2"></div>
-                                        <p class="uk-margin-small-top">No data found</p>
+                                        <p class="uk-margin-small-top">{% trans "No data found" %}</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -190,7 +191,7 @@
                         {% endif %}
 
                         <li class="uk-active">
-                            <span>{{ callbacks.number }} of {{ callbacks.paginator.num_pages }}</span>
+                            <span>{% blocktrans with current=callbacks.number total=callbacks.paginator.num_pages %}{{ current }} of {{ total }}{% endblocktrans %}</span>
                         </li>
 
                         {% if callbacks.has_next %}
@@ -210,41 +211,41 @@
         {% if statistics %}
         <!-- Statistics -->
         <div class="uk-margin-large-top">
-            <h3 class="uk-heading-divider">Statistics</h3>
+            <h3 class="uk-heading-divider">{% trans "Statistics" %}</h3>
             <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-5@m uk-text-center" uk-grid>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: receiver; ratio: 2" class="uk-text-primary"></span>
                         <h3 class="uk-card-title uk-text-primary uk-margin-small-top">{{ statistics.total_callbacks }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Total callbacks</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Total callbacks" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: plus-circle; ratio: 2" style="color: #1e87f0;"></span>
                         <h3 class="uk-card-title uk-margin-small-top" style="color: #1e87f0;">{{ statistics.new_callbacks }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">New</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "New" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: check; ratio: 2" class="uk-text-success"></span>
                         <h3 class="uk-card-title uk-text-success uk-margin-small-top">{{ statistics.answered_callbacks }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Answered</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Answered" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: ban; ratio: 2" class="uk-text-danger"></span>
                         <h3 class="uk-card-title uk-text-danger uk-margin-small-top">{{ statistics.busy_callbacks }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Busy</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Busy" %}</p>
                     </div>
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body stats-card uk-animation-slide-bottom-small uk-border-rounded">
                         <span uk-icon="icon: clock; ratio: 2" class="uk-text-warning"></span>
                         <h3 class="uk-card-title uk-text-warning uk-margin-small-top">{{ statistics.pending_callbacks }}</h3>
-                        <p class="uk-text-meta uk-margin-remove">Pending</p>
+                        <p class="uk-text-meta uk-margin-remove">{% trans "Pending" %}</p>
                     </div>
                 </div>
             </div>

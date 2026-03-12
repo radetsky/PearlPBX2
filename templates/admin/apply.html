@@ -15,14 +15,14 @@
 
 {% block content %}
 <div id="content-main">
-  <h1>Apply changes</h1>
+  <h1>{% trans "Apply changes" %}</h1>
   <p>
-    Review the generated configuration files below, then choose how to apply them:<br>
-    <strong>Soft Reload</strong> — reloads only the affected modules, active calls are not interrupted.<br>
-    <strong>Hard Restart Now</strong> — fully restarts Asterisk. All active calls will be dropped.
+    {% trans "Review the generated configuration files below, then choose how to apply them:" %}<br>
+    <strong>{% trans "Soft Reload" %}</strong> — {% trans "reloads only the affected modules, active calls are not interrupted." %}<br>
+    <strong>{% trans "Hard Restart Now" %}</strong> — {% trans "fully restarts Asterisk. All active calls will be dropped." %}
   </p>
 
-  <h2>Configuration files to be generated ({{ cfgfiles|length }})</h2>
+  <h2>{% blocktrans with count=cfgfiles|length %}Configuration files to be generated ({{ count }}){% endblocktrans %}</h2>
 
   {% for cfgfile in cfgfiles %}
     <details>
@@ -36,10 +36,10 @@
     <input type="hidden" name="commit_changes" value="true">
     <button type="submit" name="reload_type" value="soft"
             style="padding: 10px 20px; font-size: 13px; font-weight: bold; border-radius: 4px; border: 1px solid #417690; background: #417690; color: #fff; cursor: pointer; margin-right: 8px;"
-            title="Reload modules without restarting Asterisk (no dropped calls)">Soft Reload</button>
+            title="{% trans 'Reload modules without restarting Asterisk (no dropped calls)' %}">{% trans "Soft Reload" %}</button>
     <button type="submit" name="reload_type" value="hard"
             style="padding: 10px 20px; font-size: 13px; font-weight: bold; border-radius: 4px; border: 1px solid #ba2121; background: #ba2121; color: #fff; cursor: pointer;"
-            title="Full restart — drops all active calls">Hard Restart Now</button>
+            title="{% trans 'Full restart — drops all active calls' %}">{% trans "Hard Restart Now" %}</button>
   </form>
 </div>
 {% endblock %}

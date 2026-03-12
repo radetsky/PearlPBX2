@@ -31,6 +31,7 @@ from core.validators import (
 )
 
 import logging
+from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
@@ -59,27 +60,27 @@ class AuditFields(models.Model):
 
 class SIPTransport(models.Model):
     PROTOCOL_CHOICES = [
-        ("udp", "UDP"),
-        ("tcp", "TCP"),
-        ("tls", "TLS"),
-        ("wss", "WSS"),
+        ("udp", _("UDP")),
+        ("tcp", _("TCP")),
+        ("tls", _("TLS")),
+        ("wss", _("WSS")),
     ]
 
     METHOD_CHOICES = [
-        ("default", "The default as defined by PJSIP. This is currently TLSv1"),
-        ("tlsv1", "TLSv1"),
-        ("tlsv1_1", "TLSv1.1"),
-        ("tlsv1_2", "TLSv1.2"),
-        ("sslv2", "SSLv2"),
-        ("sslv3", "SSLv3"),
-        ("sslv23", "SSLv2.3"),
+        ("default", _("The default as defined by PJSIP. This is currently TLSv1")),
+        ("tlsv1", _("TLSv1")),
+        ("tlsv1_1", _("TLSv1.1")),
+        ("tlsv1_2", _("TLSv1.2")),
+        ("sslv2", _("SSLv2")),
+        ("sslv3", _("SSLv3")),
+        ("sslv23", _("SSLv2.3")),
     ]
 
     description = models.CharField(
         default="",
         max_length=64,
-        help_text="Example: UDP + NAT for remote users",
-        verbose_name="Description",
+        help_text=_("Example: UDP + NAT for remote users"),
+        verbose_name=_("Description"),
         blank=True,
     )
     name = models.CharField(
@@ -88,8 +89,8 @@ class SIPTransport(models.Model):
         null=False,
         blank=False,
         default="",
-        help_text="Example: transport-udp-nat",
-        verbose_name="Name",
+        help_text=_("Example: transport-udp-nat"),
+        verbose_name=_("Name"),
     )
     protocol = models.CharField(
         max_length=3, null=False, choices=PROTOCOL_CHOICES, default="udp", blank=False
@@ -106,20 +107,20 @@ class SIPTransport(models.Model):
         null=True,
         blank=True,
         max_length=256,
-        verbose_name="local_net",
-        help_text="List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24",
+        verbose_name=_("local_net"),
+        help_text=_("List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24"),
     )
     external_media_address = models.GenericIPAddressField(
         null=True,
         blank=True,
-        help_text="This is the external IP address to use in RTP handling",
-        verbose_name="External RTP IP address",
+        help_text=_("This is the external IP address to use in RTP handling"),
+        verbose_name=_("External RTP IP address"),
     )
     external_signaling_address = models.GenericIPAddressField(
         null=True,
         blank=True,
-        help_text="This is much like the external_media_address setting, but for SIP signaling instead of RTP media.",
-        verbose_name="External SIP IP address",
+        help_text=_("This is much like the external_media_address setting, but for SIP signaling instead of RTP media."),
+        verbose_name=_("External SIP IP address"),
     )
     method = models.CharField(
         max_length=10,
@@ -139,7 +140,7 @@ class SIPTransport(models.Model):
     # cipher - do not use in UI "until it sleeps". Too many values. Users usually do not know it.
 
     class Meta:
-        verbose_name_plural = "01. SIP Transports"
+        verbose_name_plural = _("01. SIP Transports")
 
 
 class DialplanContext(models.Model):
@@ -148,8 +149,8 @@ class DialplanContext(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="Context name",
-        help_text="Unique name for the context or routing tables, use latin symbols, digits and underscores",
+        verbose_name=_("Context name"),
+        help_text=_("Unique name for the context or routing tables, use latin symbols, digits and underscores"),
         validators=[validate_asterisk_context],
     )
     description = models.CharField(
@@ -157,13 +158,13 @@ class DialplanContext(models.Model):
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Context description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("Context description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
 
     class Meta:
         db_table = "dialplan_contexts"
-        verbose_name_plural = "04. Dialplan contexts"
+        verbose_name_plural = _("04. Dialplan contexts")
 
     def __str__(self):
         return self.name
@@ -199,13 +200,13 @@ class RoutingTable(models.Model):
     name = models.CharField(
         max_length=80,
         unique=True,
-        verbose_name="Routing table name",
-        help_text="Unique name for the routing table and dialplan context, use latin symbols, digits and underscores",
+        verbose_name=_("Routing table name"),
+        help_text=_("Unique name for the routing table and dialplan context, use latin symbols, digits and underscores"),
         validators=[validate_asterisk_context],
     )
 
     class Meta:
-        verbose_name_plural = "15. Routing Tables"
+        verbose_name_plural = _("15. Routing Tables")
 
     def __str__(self):
         return self.name
@@ -238,32 +239,32 @@ class RoutingTable(models.Model):
 
 class SIPUser(models.Model):
     AUTHTYPE_CHOICES = [
-        ("userpass", "Plaintext"),
-        ("md5", "MD5"),
+        ("userpass", _("Plaintext")),
+        ("md5", _("MD5")),
     ]
 
     name = models.CharField(
         default="",
         max_length=64,
         blank=False,
-        help_text="Full name of user, description of connection",
-        verbose_name="Name",
+        help_text=_("Full name of user, description of connection"),
+        verbose_name=_("Name"),
     )
     username = models.CharField(
         max_length=32,
         unique=True,
         null=False,
         blank=False,
-        help_text="Username: 3-32 characters",
-        verbose_name="Username",
+        help_text=_("Username: 3-32 characters"),
+        verbose_name=_("Username"),
     )
     secret = models.CharField(
         max_length=32,
         unique=True,
         null=False,
         blank=False,
-        help_text="Password for the connection",
-        verbose_name="Password",
+        help_text=_("Password for the connection"),
+        verbose_name=_("Password"),
     )
     transport = models.ForeignKey(
         SIPTransport,
@@ -274,16 +275,16 @@ class SIPUser(models.Model):
     )
     nat = models.BooleanField(
         default=False,
-        help_text="Enable NAT traversal for this peer",
-        verbose_name="NAT",
+        help_text=_("Enable NAT traversal for this peer"),
+        verbose_name=_("NAT"),
     )
     extension = models.CharField(
         max_length=32,
         unique=True,
         null=True,
         blank=False,
-        help_text="Easy way to setup internal extension for the user",
-        verbose_name="Extension",
+        help_text=_("Easy way to setup internal extension for the user"),
+        verbose_name=_("Extension"),
     )
     routing_table = models.ForeignKey(
         RoutingTable,
@@ -299,8 +300,8 @@ class SIPUser(models.Model):
         blank=True,
         choices=AUTHTYPE_CHOICES,
         default="userpass",
-        help_text="Type of authentication",
-        verbose_name="Auth type",
+        help_text=_("Type of authentication"),
+        verbose_name=_("Auth type"),
     )
     allowed_extension = models.CharField(
         max_length=32,
@@ -308,36 +309,36 @@ class SIPUser(models.Model):
         null=True,
         blank=True,
         default="",
-        help_text="Only one allowed extension for the user",
-        verbose_name="Allowed extension",
+        help_text=_("Only one allowed extension for the user"),
+        verbose_name=_("Allowed extension"),
     )
     custom_settings = models.TextField(
         null=True,
         blank=False,
         default="",
-        help_text="Custom user settings",
-        verbose_name="Settings",
+        help_text=_("Custom user settings"),
+        verbose_name=_("Settings"),
     )
     custom_auth_settings = models.TextField(
         null=True,
         blank=False,
         default="",
-        help_text="Custom user [auth] section",
-        verbose_name="Auth Settings",
+        help_text=_("Custom user [auth] section"),
+        verbose_name=_("Auth Settings"),
     )
     custom_aor_settings = models.TextField(
         null=True,
         blank=False,
         default="",
-        help_text="Custom user [aor] section",
-        verbose_name="AOR Settings",
+        help_text=_("Custom user [aor] section"),
+        verbose_name=_("AOR Settings"),
     )
     custom_extension = models.TextField(
         null=True,
         blank=False,
         default="",
-        help_text="Custom user extension section for incoming calls",
-        verbose_name="Extension Settings",
+        help_text=_("Custom user extension section for incoming calls"),
+        verbose_name=_("Extension Settings"),
     )
     # Here we are linking SIP Users to Django Users. Many SIP Users to Django one.
     django_user = models.ForeignKey(
@@ -431,65 +432,65 @@ class SIPUser(models.Model):
         return f"{self.username} ({self.name})"
 
     class Meta:
-        verbose_name_plural = "02. SIP Users"
+        verbose_name_plural = _("02. SIP Users")
 
 
 class SIPPeer(models.Model):
     description = models.CharField(
         default="",
         max_length=64,
-        help_text="Describe a peer",
-        verbose_name="Description",
+        help_text=_("Describe a peer"),
+        verbose_name=_("Description"),
     )
     name = models.CharField(
         max_length=32,
         unique=True,
         null=False,
         default="",
-        help_text="Name of the channel",
-        verbose_name="Channel name",
+        help_text=_("Name of the channel"),
+        verbose_name=_("Channel name"),
     )
     username = models.CharField(
         max_length=32,
         unique=False,
         null=True,
         blank=True,
-        help_text="Username for the connection used for remote side",
-        verbose_name="Username",
+        help_text=_("Username for the connection used for remote side"),
+        verbose_name=_("Username"),
     )
     secret = models.CharField(
         max_length=32,
         unique=False,
         null=False,
         blank=True,
-        help_text="Clear text password for the connection used for remote side",
-        verbose_name="Password",
+        help_text=_("Clear text password for the connection used for remote side"),
+        verbose_name=_("Password"),
     )
     host_port = models.CharField(
         max_length=256,
         null=True,
         blank=True,
         default="",
-        help_text="Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere.",
-        verbose_name="The list of host[:port] separated by commas",
+        help_text=_("Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere."),
+        verbose_name=_("The list of host[:port] separated by commas"),
     )
     registrationHere = models.BooleanField(
         default=False,
-        help_text="Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. ",
-        verbose_name="Registration here",
+        help_text=_("Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. "),
+        verbose_name=_("Registration here"),
     )
     registrationThere = models.BooleanField(
         default=False,
-        help_text="Should we register on remote service? Typically used for providers",
-        verbose_name="Outbound registration",
+        help_text=_("Should we register on remote service? Typically used for providers"),
+        verbose_name=_("Outbound registration"),
     )
     nat = models.BooleanField(
         default=False,
-        help_text="Enable NAT traversal for this peer",
-        verbose_name="NAT",
+        help_text=_("Enable NAT traversal for this peer"),
+        verbose_name=_("NAT"),
     )
     callLimit = models.SmallIntegerField(
-        default=0, help_text="Maximum calls on the trunk", verbose_name="Call Limit"
+        default=0, help_text=_("Maximum calls on the trunk"), verbose_name=_("Call Limit")
     )
     transport = models.ForeignKey(
         SIPTransport,
@@ -509,19 +510,19 @@ class SIPPeer(models.Model):
         null=True,
         blank=False,
         default="",
-        help_text="Custom peer [auth] section",
-        verbose_name="Auth Settings",
+        help_text=_("Custom peer [auth] section"),
+        verbose_name=_("Auth Settings"),
     )
     custom_aor_settings = models.TextField(
         null=True,
         blank=False,
         default="",
-        help_text="Custom peer [aor] section",
-        verbose_name="AOR Settings",
+        help_text=_("Custom peer [aor] section"),
+        verbose_name=_("AOR Settings"),
     )
 
     class Meta:
-        verbose_name_plural = "03. SIP Uplinks and Peers"
+        verbose_name_plural = _("03. SIP Uplinks and Peers")
 
     def __str__(self) -> str:
         return self.name
@@ -533,22 +534,22 @@ class DialplanMacro(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="Macro name",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("Macro name"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     description = models.CharField(
         max_length=64,
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Macro description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("Macro description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
-    macro = models.TextField(verbose_name="Macro scenario")
+    macro = models.TextField(verbose_name=_("Macro scenario"))
 
     class Meta:
         db_table = "dialplan_macros"
-        verbose_name_plural = "06. Dialplan macros"
+        verbose_name_plural = _("06. Dialplan macros")
 
 
 class DialplanExtension(models.Model):
@@ -565,21 +566,21 @@ class DialplanExtension(models.Model):
         null=False,
         blank=False,
         default="_X!",
-        verbose_name="Extension",
-        help_text="Asterisk extension",
+        verbose_name=_("Extension"),
+        help_text=_("Asterisk extension"),
         validators=[validate_asterisk_extension_prefix],
     )
     dialplan = models.TextField(
-        verbose_name="Extension scenario",
-        help_text="Use Asterisk AEL syntax to define the dialplan.",
+        verbose_name=_("Extension scenario"),
+        help_text=_("Use Asterisk AEL syntax to define the dialplan."),
     )
     description = models.CharField(
         max_length=64,
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Extension description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("Extension description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
 
     @property
@@ -588,7 +589,7 @@ class DialplanExtension(models.Model):
 
     class Meta:
         db_table = "dialplan_extensions"
-        verbose_name_plural = "05. Dialplan extensions"
+        verbose_name_plural = _("05. Dialplan extensions")
 
         constraints = [
             models.UniqueConstraint(
@@ -603,8 +604,8 @@ class ManagerUsers(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="Manager user name",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("Manager user name"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     secret = models.CharField(
         max_length=128,
@@ -612,8 +613,8 @@ class ManagerUsers(models.Model):
         null=False,
         blank=False,
         default=generate_64_char_password,
-        verbose_name="Manager user secret",
-        help_text="Password for manager user",
+        verbose_name=_("Manager user secret"),
+        help_text=_("Password for manager user"),
     )
     read = models.CharField(
         max_length=64,
@@ -643,15 +644,15 @@ class ManagerUsers(models.Model):
 
     class Meta:
         db_table = "manager_users"
-        verbose_name_plural = "95. Manager users"
+        verbose_name_plural = _("95. Manager users")
 
 
 class Settings(models.Model):
     ip_addr_for_provisioning = models.GenericIPAddressField(
         null=True,
         blank=True,
-        verbose_name="IP address for provisioning",
-        help_text="IP address for provisioning",
+        verbose_name=_("IP address for provisioning"),
+        help_text=_("IP address for provisioning"),
     )
 
     domain = models.CharField(
@@ -660,21 +661,21 @@ class Settings(models.Model):
         null=False,
         blank=False,
         default="127.0.0.1",
-        verbose_name="Hostname of the server",
-        help_text="Hostname of the server",
+        verbose_name=_("Hostname of the server"),
+        help_text=_("Hostname of the server"),
     )
 
     wss_port = models.SmallIntegerField(
         default=8089,
         null=False,
         blank=False,
-        verbose_name="WSS port of the server",
-        help_text="WSS port of the server",
+        verbose_name=_("WSS port of the server"),
+        help_text=_("WSS port of the server"),
     )
     allow_monitor = models.BooleanField(
         default=False,
-        verbose_name="Allow global monitor",
-        help_text="Allow to monitor calls of whole system",
+        verbose_name=_("Allow global monitor"),
+        help_text=_("Allow to monitor calls of whole system"),
     )
 
     @property
@@ -694,8 +695,8 @@ rtp_symmetric=yes
 force_rport=yes
 rewrite_contact=yes
 """,
-        verbose_name="User basic template",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("User basic template"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     user_aor_template = models.TextField(
@@ -703,16 +704,16 @@ rewrite_contact=yes
 max_contacts=1
 remove_existing=yes
 """,
-        verbose_name="User AOR template",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("User AOR template"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     user_auth_template = models.TextField(
         default="""type=auth
 auth_type=md5
 """,
-        verbose_name="User auth template",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("User auth template"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     webrtc_template = models.TextField(
@@ -725,8 +726,8 @@ max_video_streams=15
 disallow=all
 allow=opus,g722,ulaw,vp9,vp8,h264
 """,
-        verbose_name="WebRTC template for endpoint",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("WebRTC template for endpoint"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     webrtc_aor_template = models.TextField(
@@ -734,16 +735,16 @@ allow=opus,g722,ulaw,vp9,vp8,h264
 max_contacts=15
 remove_existing=yes
 """,
-        verbose_name="WebRTC AOR template",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("WebRTC AOR template"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     webrtc_auth_template = models.TextField(
         default="""type=auth
 auth_type=md5
 """,
-        verbose_name="WebRTC auth template",
-        help_text="You may override it by custom settings in user form",
+        verbose_name=_("WebRTC auth template"),
+        help_text=_("You may override it by custom settings in user form"),
     )
 
     def save(self, *args, **kwargs):
@@ -754,18 +755,18 @@ auth_type=md5
         return "Settings single instance"
 
     class Meta:
-        verbose_name_plural = "96. General Settings"
+        verbose_name_plural = _("96. General Settings")
 
 
 class MusicOnHoldModes(models.TextChoices):
-    FILES = "files", "Files"
-    PLAYLIST = "playlist", "Playlist"
-    CUSTOM = "custom", "Custom"
+    FILES = "files", _("Files")
+    PLAYLIST = "playlist", _("Playlist")
+    CUSTOM = "custom", _("Custom")
 
 
 class MusicOnHoldSortModes(models.TextChoices):
-    RANDOM = "random", "Random"
-    ALPHA = "alpha", "Alpha"
+    RANDOM = "random", _("Random")
+    ALPHA = "alpha", _("Alpha")
 
 
 class MusicOnHold(models.Model):
@@ -774,8 +775,8 @@ class MusicOnHold(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="Music on hold name",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("Music on hold name"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
 
     mode = models.CharField(
@@ -791,8 +792,8 @@ class MusicOnHold(models.Model):
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Directory",
-        help_text="Directory with music files",
+        verbose_name=_("Directory"),
+        help_text=_("Directory with music files"),
     )
 
     sort = models.CharField(
@@ -823,7 +824,7 @@ class MusicOnHold(models.Model):
 
     class Meta:
         db_table = "music_on_hold"
-        verbose_name_plural = "08. Music on hold classes"
+        verbose_name_plural = _("08. Music on hold classes")
 
 
 def moh_file_upload_path(instance, filename):
@@ -854,7 +855,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
     file = models.FileField(
         storage=MOHFileSystemStorage(),
         upload_to=moh_file_upload_path,
-        verbose_name="Playlist entry file",
+        verbose_name=_("Playlist entry file"),
         blank=True,
         null=True,
         validators=[
@@ -864,7 +865,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
         ],
     )
 
-    url = models.URLField(verbose_name="Playlist entry url", blank=True, null=True)
+    url = models.URLField(verbose_name=_("Playlist entry url"), blank=True, null=True)
     moh_class = models.ForeignKey(
         MusicOnHold, related_name="moh_class", on_delete=deletion.PROTECT, blank=True
     )
@@ -889,136 +890,136 @@ class MusicOnHoldPlaylistEntry(models.Model):
 
     class Meta:
         db_table = "moh_playlist_entry"
-        verbose_name_plural = "07. Music on hold playlist entries"
+        verbose_name_plural = _("07. Music on hold playlist entries")
 
 
 class Queue(models.Model):
     STRATEGY_CHOICES = [
-        ("ringall", "Ring All"),
-        ("leastrecent", "Least Recent"),
-        ("fewestcalls", "Fewest Calls"),
-        ("random", "Random"),
-        ("rrmemory", "Round Robin Memory"),
-        ("rrordered", "Round Robin Ordered"),
-        ("linear", "Linear as configured"),
-        ("wrandom", "Weighted Random"),
+        ("ringall", _("Ring All")),
+        ("leastrecent", _("Least Recent")),
+        ("fewestcalls", _("Fewest Calls")),
+        ("random", _("Random")),
+        ("rrmemory", _("Round Robin Memory")),
+        ("rrordered", _("Round Robin Ordered")),
+        ("linear", _("Linear as configured")),
+        ("wrandom", _("Weighted Random")),
     ]
 
     name = models.CharField(
-        max_length=64, unique=True, null=False, blank=False, verbose_name="Queue Name"
+        max_length=64, unique=True, null=False, blank=False, verbose_name=_("Queue Name")
     )
     music_class = models.ForeignKey(
         MusicOnHold,
         on_delete=models.PROTECT,
         related_name="queues",
-        verbose_name="Music on hold",
+        verbose_name=_("Music on hold"),
     )
     announce = models.CharField(
         max_length=64,
         null=True,
         blank=True,
-        verbose_name="Announcement to the member",
-        help_text="""An announcement may be specified which is played for the member as
+        verbose_name=_("Announcement to the member"),
+        help_text=_("""An announcement may be specified which is played for the member as
 soon as they answer a call, typically to indicate to them which queue
 this call should be answered as, so that agents or members who are
 listening to more than one queue can differentiated how they should
-engage the customer""",
+engage the customer"""),
     )
     queue_announce = models.CharField(
         max_length=64,
         null=True,
         blank=True,
-        verbose_name="Queue announcement to the caller",
-        help_text="""An announcement may be specified which is played to the caller just
-before they are bridged with an agent.""",
+        verbose_name=_("Queue announcement to the caller"),
+        help_text=_("""An announcement may be specified which is played to the caller just
+before they are bridged with an agent."""),
     )
     strategy = models.CharField(
         max_length=32,
         null=True,
         blank=True,
         choices=STRATEGY_CHOICES,
-        verbose_name="Strategy",
+        verbose_name=_("Strategy"),
     )
-    service_level = models.IntegerField(default=0, verbose_name="Service Level")
+    service_level = models.IntegerField(default=0, verbose_name=_("Service Level"))
     context = models.CharField(
         max_length=64,
         null=True,
         blank=True,
-        verbose_name="Context",
-        help_text="""If a 'context' is specified, and a caller enters an extension that
+        verbose_name=_("Context"),
+        help_text=_("""If a 'context' is specified, and a caller enters an extension that
 matches an extension within that context, they will be taken out of
-the queue and sent to that extension.""",
+the queue and sent to that extension."""),
     )
 
-    maxlen = models.PositiveIntegerField(default=0, verbose_name="Maximum Queue Length")
-    timeout = models.PositiveIntegerField(default=15, verbose_name="Timeout")
-    retry = models.PositiveIntegerField(default=5, verbose_name="Retry")
+    maxlen = models.PositiveIntegerField(default=0, verbose_name=_("Maximum Queue Length"))
+    timeout = models.PositiveIntegerField(default=15, verbose_name=_("Timeout"))
+    retry = models.PositiveIntegerField(default=5, verbose_name=_("Retry"))
     timeoutpriority = models.CharField(
         max_length=4,
         default="app",
-        choices=[("app", "Application"), ("conf", "Configuration")],
-        verbose_name="Timeout Priority",
+        choices=[("app", _("Application")), ("conf", _("Configuration"))],
+        verbose_name=_("Timeout Priority"),
     )
-    weight = models.PositiveIntegerField(default=0, verbose_name="Queue Weight")
-    wrapuptime = models.PositiveIntegerField(default=0, verbose_name="Wrap-Up Time")
-    autofill = models.BooleanField(default=True, verbose_name="Autofill")
+    weight = models.PositiveIntegerField(default=0, verbose_name=_("Queue Weight"))
+    wrapuptime = models.PositiveIntegerField(default=0, verbose_name=_("Wrap-Up Time"))
+    autofill = models.BooleanField(default=True, verbose_name=_("Autofill"))
     autopause = models.CharField(
         max_length=3,
         default="yes",
-        choices=[("yes", "Yes"), ("no", "No"), ("all", "All")],
-        verbose_name="Autopause",
+        choices=[("yes", _("Yes")), ("no", _("No")), ("all", _("All"))],
+        verbose_name=_("Autopause"),
     )
     autopausedelay = models.PositiveIntegerField(
-        default=60, verbose_name="Autopause Delay"
+        default=60, verbose_name=_("Autopause Delay")
     )
-    reportholdtime = models.BooleanField(default=False, verbose_name="Report Hold Time")
+    reportholdtime = models.BooleanField(default=False, verbose_name=_("Report Hold Time"))
     setinterfacevar = models.BooleanField(
-        default=False, verbose_name="Set Interface Variable"
+        default=False, verbose_name=_("Set Interface Variable")
     )
     setqueueentryvar = models.BooleanField(
-        default=False, verbose_name="Set Queue Entry Variable"
+        default=False, verbose_name=_("Set Queue Entry Variable")
     )
-    setqueuevar = models.BooleanField(default=False, verbose_name="Set Queue Variable")
+    setqueuevar = models.BooleanField(default=False, verbose_name=_("Set Queue Variable"))
     announce_frequency = models.PositiveIntegerField(
-        default=0, verbose_name="Announce Frequency"
+        default=0, verbose_name=_("Announce Frequency")
     )
     announce_holdtime = models.BooleanField(
-        default=False, verbose_name="Announce Hold Time"
+        default=False, verbose_name=_("Announce Hold Time")
     )
     min_announce_frequency = models.PositiveIntegerField(
-        default=0, verbose_name="Minimum Announce Frequency"
+        default=0, verbose_name=_("Minimum Announce Frequency")
     )
     periodic_announce_frequency = models.PositiveIntegerField(
-        default=0, verbose_name="Periodic Announce Frequency"
+        default=0, verbose_name=_("Periodic Announce Frequency")
     )
     random_periodic_announce = models.BooleanField(
-        default=False, verbose_name="Random Periodic Announce"
+        default=False, verbose_name=_("Random Periodic Announce")
     )
     relative_periodic_announce = models.BooleanField(
-        default=False, verbose_name="Relative Periodic Announce"
+        default=False, verbose_name=_("Relative Periodic Announce")
     )
     announce_holdtime = models.CharField(
         max_length=4,
         default="no",
-        choices=[("yes", "Yes"), ("no", "No"), ("once", "Once")],
-        verbose_name="Announce Hold Time",
-        help_text="Should we include estimated hold time in position announcements?",
+        choices=[("yes", _("Yes")), ("no", _("No")), ("once", _("Once"))],
+        verbose_name=_("Announce Hold Time"),
+        help_text=_("Should we include estimated hold time in position announcements?"),
     )
 
     announce_position = models.CharField(
         max_length=5,
         default="no",
-        choices=[("yes", "Yes"), ("no", "No"), ("more", "More"), ("limit", "Limit")],
-        verbose_name="Announce Position",
+        choices=[("yes", _("Yes")), ("no", _("No")), ("more", _("More")), ("limit", _("Limit"))],
+        verbose_name=_("Announce Position"),
     )
 
     announce_to_first_user = models.BooleanField(
-        default=False, verbose_name="Announce to first user"
+        default=False, verbose_name=_("Announce to first user")
     )
     announce_position_limit = models.PositiveIntegerField(
         default=0,
         validators=[MaxValueValidator(100)],
-        verbose_name="Announce Position Limit",
+        verbose_name=_("Announce Position Limit"),
     )
     announce_round_seconds = models.PositiveIntegerField(
         default=0,
@@ -1031,60 +1032,60 @@ the queue and sent to that extension.""",
             (25, "25"),
             (30, "30"),
         ],
-        verbose_name="Announce Round Seconds",
+        verbose_name=_("Announce Round Seconds"),
     )
     announce_position_only_up = models.BooleanField(
         default=False,
-        verbose_name="Announce position only up",
-        help_text="Only announce the caller's position if it has improved since the last announcement.",
+        verbose_name=_("Announce position only up"),
+        help_text=_("Only announce the caller's position if it has improved since the last announcement."),
     )
 
     queue_announcement = models.ForeignKey(
         "QueueAnnouncements",
         on_delete=models.CASCADE,
         related_name="queues",
-        verbose_name="Queue Announcement",
+        verbose_name=_("Queue Announcement"),
     )
     periodic_announce = models.CharField(
         max_length=255,
         null=True,
         blank=True,
-        verbose_name="Periodic Announce",
-        help_text="The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait",
+        verbose_name=_("Periodic Announce"),
+        help_text=_("The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait"),
     )
     monitor_format = models.CharField(
         max_length=5,
         null=True,
         blank=True,
-        choices=[("wav", "WAV"), ("gsm", "GSM"), ("wav49", "WAV49")],
-        verbose_name="Monitor Format",
+        choices=[("wav", _("WAV")), ("gsm", _("GSM")), ("wav49", _("WAV49"))],
+        verbose_name=_("Monitor Format"),
     )
     joinempty = models.CharField(
         max_length=100,
         default="paused,inuse,invalid",
-        verbose_name="Join Empty",
-        help_text="What to do when a caller joins a queue with no members in it?",
+        verbose_name=_("Join Empty"),
+        help_text=_("What to do when a caller joins a queue with no members in it?"),
     )
     leavewhenempty = models.CharField(
         max_length=100,
         default="inuse,ringing",
-        verbose_name="Leave When Empty",
-        help_text="When to leave empty queue?",
+        verbose_name=_("Leave When Empty"),
+        help_text=_("When to leave empty queue?"),
     )
-    ringinuse = models.BooleanField(default=False, verbose_name="Ring In Use")
-    timeoutrestart = models.BooleanField(default=False, verbose_name="Timeout Restart")
+    ringinuse = models.BooleanField(default=False, verbose_name=_("Ring In Use"))
+    timeoutrestart = models.BooleanField(default=False, verbose_name=_("Timeout Restart"))
     defaultrule = models.ForeignKey(
         "QueueRule",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Default Rule",
-        help_text="Escalation rule from queuerules.conf",
+        verbose_name=_("Default Rule"),
+        help_text=_("Escalation rule from queuerules.conf"),
     )
 
     class Meta:
         db_table = "queues"
-        verbose_name_plural = "09. Queues"
+        verbose_name_plural = _("09. Queues")
 
     def __str__(self):
         return self.name
@@ -1092,22 +1093,22 @@ the queue and sent to that extension.""",
 
 class QueueMember(models.Model):
     queue = models.ForeignKey(
-        Queue, on_delete=models.CASCADE, related_name="members", verbose_name="Queue"
+        Queue, on_delete=models.CASCADE, related_name="members", verbose_name=_("Queue")
     )
-    interface = models.CharField(max_length=64, verbose_name="Interface")
-    penalty = models.PositiveIntegerField(default=0, verbose_name="Penalty")
+    interface = models.CharField(max_length=64, verbose_name=_("Interface"))
+    penalty = models.PositiveIntegerField(default=0, verbose_name=_("Penalty"))
     member_name = models.CharField(
-        max_length=64, null=True, blank=True, verbose_name="Member Name"
+        max_length=64, null=True, blank=True, verbose_name=_("Member Name")
     )
     state_interface = models.CharField(
-        max_length=64, null=True, blank=True, verbose_name="State Interface"
+        max_length=64, null=True, blank=True, verbose_name=_("State Interface")
     )
-    ringinuse = models.BooleanField(default=False, verbose_name="Ring In Use")
-    wrapuptime = models.PositiveIntegerField(default=0, verbose_name="Wrap-Up Time")
+    ringinuse = models.BooleanField(default=False, verbose_name=_("Ring In Use"))
+    wrapuptime = models.PositiveIntegerField(default=0, verbose_name=_("Wrap-Up Time"))
 
     class Meta:
         db_table = "queue_members"
-        verbose_name_plural = "10. Queue Members"
+        verbose_name_plural = _("10. Queue Members")
 
     def __str__(self):
         return f"{self.member_name} ({self.interface})"
@@ -1125,7 +1126,7 @@ class QueueAnnouncements(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="Announcement name",
+        verbose_name=_("Announcement name"),
         default="default",
     )
     queue_youarenext = models.CharField(max_length=255, blank=True, null=True)
@@ -1145,7 +1146,7 @@ class QueueAnnouncements(models.Model):
 
     class Meta:
         db_table = "queue_announcements"
-        verbose_name_plural = "11. Queue Announcements"
+        verbose_name_plural = _("11. Queue Announcements")
 
 
 class QueueRule(models.Model):
@@ -1157,11 +1158,11 @@ class QueueRule(models.Model):
     name = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Unique rule name (used in Queue(...,,,rule_name))",
+        help_text=_("Unique rule name (used in Queue(...,,,rule_name))"),
     )
 
     description = models.TextField(
-        blank=True, help_text="Description or notes for the rule"
+        blank=True, help_text=_("Description or notes for the rule")
     )
 
     def __str__(self):
@@ -1169,8 +1170,8 @@ class QueueRule(models.Model):
 
     class Meta:
         db_table = "queue_rules"
-        verbose_name = "Queue Rule"
-        verbose_name_plural = "13. Queue Rules"
+        verbose_name = _("Queue Rule")
+        verbose_name_plural = _("13. Queue Rules")
 
 
 class PenaltyChange(models.Model):
@@ -1182,11 +1183,11 @@ class PenaltyChange(models.Model):
         QueueRule,
         on_delete=models.CASCADE,
         related_name="penalty_changes",
-        help_text="Related queue rule",
+        help_text=_("Related queue rule"),
     )
 
     seconds = models.PositiveIntegerField(
-        help_text="After how many seconds in the queue this change is applied"
+        help_text=_("After how many seconds in the queue this change is applied")
     )
 
     max_penalty = models.CharField(
@@ -1194,7 +1195,7 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text="Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY",
+        help_text=_("Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY"),
     )
 
     min_penalty = models.CharField(
@@ -1202,7 +1203,7 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text="Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY",
+        help_text=_("Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY"),
     )
 
     raise_penalty = models.CharField(
@@ -1210,13 +1211,13 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text="Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY",
+        help_text=_("Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY"),
     )
 
     order = models.PositiveIntegerField(
         default=0,
         validators=[MaxValueValidator(100), MinValueValidator(0)],
-        help_text="Execution order if there are rules with the same time",
+        help_text=_("Execution order if there are rules with the same time"),
     )
 
     def __str__(self):
@@ -1224,8 +1225,8 @@ class PenaltyChange(models.Model):
 
     class Meta:
         db_table = "penalty_changes"
-        verbose_name = "Penalty Change"
-        verbose_name_plural = "Penalty Changes"
+        verbose_name = _("Penalty Change")
+        verbose_name_plural = _("Penalty Changes")
         ordering = ["rule", "seconds", "order"]
 
 
@@ -1234,32 +1235,32 @@ class ConfigurationFile(models.Model):
         max_length=32,
         null=False,
         blank=False,
-        verbose_name="File name",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("File name"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     description = models.CharField(
         max_length=64,
         unique=False,
         null=False,
         blank=True,
-        verbose_name="File description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("File description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
-    content = models.TextField(verbose_name="File content")
+    content = models.TextField(verbose_name=_("File content"))
     path = models.CharField(
         max_length=256,
         unique=False,
         null=False,
         blank=False,
-        verbose_name="File path",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("File path"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     version = models.SmallIntegerField(
         default=1,
         null=False,
         blank=False,
-        verbose_name="File version",
-        help_text="File version",
+        verbose_name=_("File version"),
+        help_text=_("File version"),
     )
     created = models.DateTimeField(auto_now_add=True)
 
@@ -1268,7 +1269,7 @@ class ConfigurationFile(models.Model):
 
     class Meta:
         db_table = "configuration_files"
-        verbose_name_plural = "97. Configuration files"
+        verbose_name_plural = _("97. Configuration files")
         unique_together = ("name", "version")
 
 
@@ -1278,37 +1279,37 @@ class BinaryFile(models.Model):
         unique=True,
         null=False,
         blank=False,
-        verbose_name="File name",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("File name"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     description = models.CharField(
         max_length=64,
         unique=False,
         null=False,
         blank=True,
-        verbose_name="File description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("File description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
-    content = models.BinaryField(verbose_name="File content")
+    content = models.BinaryField(verbose_name=_("File content"))
     path = models.CharField(
         max_length=256,
         unique=False,
         null=False,
         blank=False,
-        verbose_name="File path",
-        help_text="Use latin symbols, digits and undercore",
+        verbose_name=_("File path"),
+        help_text=_("Use latin symbols, digits and undercore"),
     )
     version = models.SmallIntegerField(
         default=1,
         null=False,
         blank=False,
-        verbose_name="File version",
-        help_text="File version",
+        verbose_name=_("File version"),
+        help_text=_("File version"),
     )
 
     class Meta:
         db_table = "binary_files"
-        verbose_name_plural = "98. Binary files"
+        verbose_name_plural = _("98. Binary files")
         unique_together = ("name", "version")
 
 
@@ -1319,27 +1320,27 @@ class SystemConfiguration(models.Model):
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Configuration description",
-        help_text="Use latin symbols, digits and undercore to describe",
+        verbose_name=_("Configuration description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
     )
 
     configuration_files = models.ManyToManyField(
         ConfigurationFile,
-        verbose_name="Configuration Files",
+        verbose_name=_("Configuration Files"),
         related_name="system_configurations",
         blank=True,
     )
 
     binary_files = models.ManyToManyField(
         BinaryFile,
-        verbose_name="Binary Files",
+        verbose_name=_("Binary Files"),
         related_name="system_configurations",
         blank=True,
     )
 
     class Meta:
         db_table = "system_configurations"
-        verbose_name_plural = "99. System Configurations"
+        verbose_name_plural = _("99. System Configurations")
 
     def __str__(self):
         return self.created.strftime("%Y-%m-%d %H:%M:%S")
@@ -1349,51 +1350,51 @@ class CallQueueGlobalSettings(models.Model):
     # Persistent Members
     persistent_members = models.BooleanField(
         default=True,
-        verbose_name="Persistent Members",
-        help_text="Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues.",
+        verbose_name=_("Persistent Members"),
+        help_text=_("Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues."),
     )
 
     # AutoFill Behavior
     autofill = models.BooleanField(
         default=False,
-        verbose_name="AutoFill Behavior",
-        help_text="The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no.",
+        verbose_name=_("AutoFill Behavior"),
+        help_text=_("The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no."),
     )
 
     # Monitor Type
     monitor_type = models.CharField(
         max_length=50,
         default="MixMonitor",
-        verbose_name="Monitor Type",
-        help_text="By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility.",
+        verbose_name=_("Monitor Type"),
+        help_text=_("By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility."),
     )
 
     # Shared Lastcall
     shared_lastcall = models.BooleanField(
         default=False,
-        verbose_name="Shared Lastcall",
-        help_text="shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no.",
+        verbose_name=_("Shared Lastcall"),
+        help_text=_("shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no."),
     )
 
     # Negative Penalty Invalid
     negative_penalty_invalid = models.BooleanField(
         default=False,
-        verbose_name="Negative Penalty Invalid",
-        help_text="negative_penalty_invalid = no",
+        verbose_name=_("Negative Penalty Invalid"),
+        help_text=_("negative_penalty_invalid = no"),
     )
 
     # Log Membername as Agent
     log_membername_as_agent = models.BooleanField(
         default=False,
-        verbose_name="Log Membername as Agent",
-        help_text="log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility.",
+        verbose_name=_("Log Membername as Agent"),
+        help_text=_("log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility."),
     )
 
     # Force Longest Waiting Caller
     force_longest_waiting_caller = models.BooleanField(
         default=False,
-        verbose_name="Force Longest Waiting Caller",
-        help_text="force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'.",
+        verbose_name=_("Force Longest Waiting Caller"),
+        help_text=_("force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'."),
     )
 
     def save(self, *args, **kwargs):
@@ -1405,26 +1406,26 @@ class CallQueueGlobalSettings(models.Model):
 
     class Meta:
         db_table = "call_queue_global_settings"
-        verbose_name_plural = "12. Queue Global Settings"
+        verbose_name_plural = _("12. Queue Global Settings")
 
 
 class TrunkGroup(models.Model):
     name = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Name of the trunk group",
-        verbose_name="Trunk Group Name",
+        help_text=_("Name of the trunk group"),
+        verbose_name=_("Trunk Group Name"),
     )
     sip_peers = models.ManyToManyField(
         SIPPeer,
         related_name="trunk_groups",
         blank=True,
-        help_text="SIP Peers in the trunk group",
-        verbose_name="SIP Peers",
+        help_text=_("SIP Peers in the trunk group"),
+        verbose_name=_("SIP Peers"),
     )
 
     class Meta:
-        verbose_name_plural = "14. Trunk Groups"
+        verbose_name_plural = _("14. Trunk Groups")
 
     def __str__(self):
         return self.name
@@ -1434,14 +1435,14 @@ class RoutingRecord(models.Model):
     name = models.CharField(
         max_length=64,
         unique=False,
-        help_text="Name of the routing record",
-        verbose_name="Routing Record Name",
+        help_text=_("Name of the routing record"),
+        verbose_name=_("Routing Record Name"),
     )
     prefix = models.CharField(
         max_length=64,
         unique=False,
-        help_text="Prefix of the routing record",
-        verbose_name="Routing Record Prefix",
+        help_text=_("Prefix of the routing record"),
+        verbose_name=_("Routing Record Prefix"),
         validators=[validate_asterisk_extension_prefix],
     )
     context = models.ForeignKey(
@@ -1450,8 +1451,8 @@ class RoutingRecord(models.Model):
         on_delete=deletion.PROTECT,
         blank=True,
         null=True,
-        help_text="Context for the routing record",
-        verbose_name="Routing Record Context",
+        help_text=_("Context for the routing record"),
+        verbose_name=_("Routing Record Context"),
     )
     routing_table = models.ForeignKey(
         RoutingTable,
@@ -1459,8 +1460,8 @@ class RoutingRecord(models.Model):
         on_delete=deletion.PROTECT,
         blank=True,
         null=True,
-        help_text="Routing table for the routing record",
-        verbose_name="Routing Table",
+        help_text=_("Routing table for the routing record"),
+        verbose_name=_("Routing Table"),
     )
 
     @staticmethod
@@ -1488,7 +1489,7 @@ class RoutingRecord(models.Model):
         return self.name
 
     class Meta:
-        verbose_name_plural = "16. Routing Records"
+        verbose_name_plural = _("16. Routing Records")
 
 
 class Blacklist(AuditFields):
@@ -1496,34 +1497,34 @@ class Blacklist(AuditFields):
     callerid = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Caller ID to block",
-        verbose_name="Caller ID",
+        help_text=_("Caller ID to block"),
+        verbose_name=_("Caller ID"),
     )
     destination = models.CharField(
         max_length=64,
-        help_text="Destination number where calls must be blocked. Default="
-        " for whole system blocking.",
-        verbose_name="Destination",
+        help_text=_("Destination number where calls must be blocked. Default="
+        " for whole system blocking."),
+        verbose_name=_("Destination"),
         default="",
         blank=True,
         null=False,
     )
     reason = models.CharField(
         max_length=64,
-        help_text="Reason for blocking the caller ID",
-        verbose_name="Reason",
+        help_text=_("Reason for blocking the caller ID"),
+        verbose_name=_("Reason"),
         default="",
     )
     expiration_date = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Expiration date for the blacklist entry. If not set, the entry is permanent.",
-        verbose_name="Expiration Date",
+        help_text=_("Expiration date for the blacklist entry. If not set, the entry is permanent."),
+        verbose_name=_("Expiration Date"),
     )
 
     class Meta:
         db_table = "blacklist"
-        verbose_name_plural = "17. Blacklist"
+        verbose_name_plural = _("17. Blacklist")
 
     def __str__(self):
         return f"{self.callerid} - {self.reason}"
@@ -1534,34 +1535,34 @@ class Whitelist(models.Model):
     callerid = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Caller ID to allow",
-        verbose_name="Caller ID",
+        help_text=_("Caller ID to allow"),
+        verbose_name=_("Caller ID"),
     )
     destination = models.CharField(
         max_length=64,
-        help_text="Destination number where calls must be allowed. Default="
-        " for whole system allowing.",
-        verbose_name="Destination",
+        help_text=_("Destination number where calls must be allowed. Default="
+        " for whole system allowing."),
+        verbose_name=_("Destination"),
         default="",
         blank=True,
         null=False,
     )
     reason = models.CharField(
         max_length=64,
-        help_text="Reason for allowing the caller ID",
-        verbose_name="Reason",
+        help_text=_("Reason for allowing the caller ID"),
+        verbose_name=_("Reason"),
         default="",
     )
     expiration_date = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Expiration date for the whitelist entry. If not set, the entry is permanent.",
-        verbose_name="Expiration Date",
+        help_text=_("Expiration date for the whitelist entry. If not set, the entry is permanent."),
+        verbose_name=_("Expiration Date"),
     )
 
     class Meta:
         db_table = "whitelist"
-        verbose_name_plural = "18. Whitelist"
+        verbose_name_plural = _("18. Whitelist")
 
     def __str__(self):
         return f"{self.callerid} - {self.reason}"
@@ -1572,16 +1573,16 @@ class Contact(AuditFields):
     callerid = models.CharField(
         max_length=64,
         unique=True,
-        help_text="Caller ID to recognize",
-        verbose_name="Caller ID",
+        help_text=_("Caller ID to recognize"),
+        verbose_name=_("Caller ID"),
     )
     name = models.CharField(
-        max_length=64, help_text="Name of the caller ID", verbose_name="Name"
+        max_length=64, help_text=_("Name of the caller ID"), verbose_name=_("Name")
     )
 
     class Meta:
         db_table = "contacts"
-        verbose_name_plural = "19. Contacts"
+        verbose_name_plural = _("19. Contacts")
 
     def __str__(self):
         return f"{self.name} <{self.callerid}>"
@@ -1614,7 +1615,7 @@ class SoundFile(models.Model):
     file = models.FileField(
         storage=SoundsFileSystemStorage(),
         upload_to=sound_file_upload_path,
-        verbose_name="Sound file",
+        verbose_name=_("Sound file"),
         blank=True,
         null=True,
         validators=[
@@ -1628,8 +1629,8 @@ class SoundFile(models.Model):
         max_length=64,
         null=False,
         blank=False,
-        verbose_name="File name used in dialplans",
-        help_text="The file name without extension. You may enter completely different name here.",
+        verbose_name=_("File name used in dialplans"),
+        help_text=_("The file name without extension. You may enter completely different name here."),
     )
 
     language = models.CharField(
@@ -1637,8 +1638,8 @@ class SoundFile(models.Model):
         unique=False,
         null=False,
         blank=True,
-        verbose_name="Language",
-        help_text="Language of the sound file",
+        verbose_name=_("Language"),
+        help_text=_("Language of the sound file"),
     )
 
     def __str__(self) -> str:
@@ -1646,7 +1647,7 @@ class SoundFile(models.Model):
 
     class Meta:
         db_table = "sound_files"
-        verbose_name_plural = "20. Sound files"
+        verbose_name_plural = _("20. Sound files")
         unique_together = [["name", "language"]]
 
 
@@ -1655,28 +1656,28 @@ class Monitor(models.Model):
         max_length=64,
         blank=True,
         null=False,
-        help_text="Caller ID to monitor. Blank for all calls.",
-        verbose_name="Caller ID",
+        help_text=_("Caller ID to monitor. Blank for all calls."),
+        verbose_name=_("Caller ID"),
     )
     destination = models.CharField(
         max_length=64,
         blank=True,
         null=False,
-        help_text="Destination to monitor. Blank for all destinations.",
-        verbose_name="Destination",
+        help_text=_("Destination to monitor. Blank for all destinations."),
+        verbose_name=_("Destination"),
     )
     force_enable_monitor = models.BooleanField(
         default=False,
-        help_text="Force enable monitor for this caller ID and destination",
-        verbose_name="Force Enable Monitor",
+        help_text=_("Force enable monitor for this caller ID and destination"),
+        verbose_name=_("Force Enable Monitor"),
     )
     force_disable_monitor = models.BooleanField(
         default=False,
-        help_text="Force disable monitor for this caller ID and destination",
-        verbose_name="Force Disable Monitor",
+        help_text=_("Force disable monitor for this caller ID and destination"),
+        verbose_name=_("Force Disable Monitor"),
     )
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Created")
-    modified = models.DateTimeField(auto_now=True, verbose_name="Modified")
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    modified = models.DateTimeField(auto_now=True, verbose_name=_("Modified"))
 
     class Meta:
         constraints = [
@@ -1708,42 +1709,42 @@ class MonitorFilenames(models.Model):
         unique=False,
         null=False,
         blank=False,
-        help_text="The caller ID associated with the monitor recording",
+        help_text=_("The caller ID associated with the monitor recording"),
     )
     dst = models.CharField(
         max_length=64,
         unique=False,
         null=False,
         blank=False,
-        help_text="The destination number associated with the monitor recording",
+        help_text=_("The destination number associated with the monitor recording"),
     )
     filename = models.CharField(
         max_length=255,
         unique=True,
-        help_text="The filename of the monitor recording",
-        verbose_name="Monitor Filename",
+        help_text=_("The filename of the monitor recording"),
+        verbose_name=_("Monitor Filename"),
     )
     cdr_uniqueid = models.CharField(
         max_length=64,
         unique=True,
         null=True,
         blank=True,
-        help_text="The unique ID of the CDR associated with this monitor recording",
-        verbose_name="CDR UniqueID",
+        help_text=_("The unique ID of the CDR associated with this monitor recording"),
+        verbose_name=_("CDR UniqueID"),
     )
-    created = models.DateTimeField(auto_now_add=True, verbose_name="Created")
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
     requested_by_api = models.BooleanField(
         default=False,
-        help_text="Indicates if the filename is requested by API usage",
-        verbose_name="Requested by API",
+        help_text=_("Indicates if the filename is requested by API usage"),
+        verbose_name=_("Requested by API"),
     )
     used_by_system = models.BooleanField(
         default=False,
-        help_text="Indicates if the filename is used by the system",
-        verbose_name="Used by System",
+        help_text=_("Indicates if the filename is used by the system"),
+        verbose_name=_("Used by System"),
     )
     # Automatically update the modified timestamp on save
-    modified = models.DateTimeField(auto_now=True, verbose_name="Modified")
+    modified = models.DateTimeField(auto_now=True, verbose_name=_("Modified"))
 
     class Meta:
         db_table = "core_monitor_filenames"

@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.urls import path
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
 from apps.provision.models import PhoneDevice
 from apps.provision.forms import PhoneDeviceForm
@@ -26,11 +27,11 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (
-            "Device Information",
+            _("Device Information"),
             {"fields": ("telephone_type", "mac_address", "sip_user", "sip_server")},
         ),
         (
-            "Audit Information",
+            _("Audit Information"),
             {
                 "fields": ("created_at", "created_by", "modified_at", "modified_by"),
                 "classes": ("collapse",),
@@ -38,14 +39,14 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="SIP User", ordering="sip_user__username")
+    @admin.display(description=_("SIP User"), ordering="sip_user__username")
     def get_sip_user_username(self, obj):
         """Display SIP user username instead of object representation"""
         if obj.sip_user:
             return obj.sip_user.username
         return "-"
 
-    @admin.display(description="Config Status")
+    @admin.display(description=_("Config Status"))
     def get_configuration_status(self, obj):
         """Display configuration status of the device"""
         # TODO: Implement actual status checking logic
@@ -83,7 +84,7 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
 
         return redirect("admin:provision_phonedevice_changelist")
 
-    @admin.action(description="Apply configurations to selected phones")
+    @admin.action(description=_("Apply configurations to selected phones"))
     def apply_configurations_to_phones(self, request, queryset):
         """Apply configurations to selected phone devices"""
         manager = PhoneProvisioningManager(settings.TFTP_DIR)
@@ -102,7 +103,10 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
             successful_devices = [r["device_mac"] for r in results["successful"]]
             messages.success(
                 request,
-                f'Successfully generated configurations for {success_count} device(s): {", ".join(successful_devices)}',
+                _("Successfully generated configurations for %(count)d device(s): %(devices)s") % {
+                    "count": success_count,
+                    "devices": ", ".join(successful_devices),
+                },
             )
 
         if results["failed"]:
@@ -111,7 +115,7 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
             ]
             messages.error(
                 request,
-                f'Failed to generate configurations: {"; ".join(failed_messages)}',
+                _("Failed to generate configurations: %(errors)s") % {"errors": "; ".join(failed_messages)},
             )
 
     def save_model(self, request, obj, form, change):

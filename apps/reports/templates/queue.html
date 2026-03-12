@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% load form_extras %}
 {% load math_extras %}
-
+{% load i18n %}
 {% load static %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>QueueLog Asterisk Report</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "QueueLog Asterisk Report" %}</span></h1>
     <!-- Filter Form -->
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="post" class="uk-form-stacked">
@@ -83,12 +83,12 @@
 
             <div class="uk-margin">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
-                    <span uk-icon="search"></span> Generate Report
+                    <span uk-icon="search"></span> {% trans "Generate Report" %}
                 </button>
 
                 {% if total_records > 0 %}
                     <a href="?export=csv&{{ request.GET.urlencode }}" class="uk-button uk-button-secondary uk-border-rounded uk-margin-small-left">
-                        <span uk-icon="download"></span> Export CSV
+                        <span uk-icon="download"></span> {% trans "Export CSV" %}
                     </a>
                 {% endif %}
             </div>
@@ -102,35 +102,35 @@
                 <div>
                     <div class="metric-card">
                         <div class="metric-number">{{ report_data.total_calls }}</div>
-                        <div class="metric-label">Total Calls</div>
+                        <div class="metric-label">{% trans "Total Calls" %}</div>
                     </div>
                 </div>
 
                 <div>
                     <div class="metric-card performance-good">
                         <div class="metric-number">{{ report_data.answered_calls }}</div>
-                        <div class="metric-label">Answered</div>
+                        <div class="metric-label">{% trans "Answered" %}</div>
                     </div>
                 </div>
 
                 <div>
                     <div class="metric-card performance-danger">
                         <div class="metric-number">{{ report_data.abandoned_calls }}</div>
-                        <div class="metric-label">Abandoned</div>
+                        <div class="metric-label">{% trans "Abandoned" %}</div>
                     </div>
                 </div>
 
                 <div>
                     <div class="metric-card {% if report_data.answer_rate >= 80 %}performance-good{% elif report_data.answer_rate >= 60 %}performance-warning{% else %}performance-danger{% endif %}">
                         <div class="metric-number">{{ report_data.answer_rate|floatformat:1 }}%</div>
-                        <div class="metric-label">Answer Rate</div>
+                        <div class="metric-label">{% trans "Answer Rate" %}</div>
                     </div>
                 </div>
 
                 <div>
                     <div class="metric-card">
                         <div class="metric-number">{{ report_data.avg_wait_time }}</div>
-                        <div class="metric-label">Avg Wait Time (sec)</div>
+                        <div class="metric-label">{% trans "Avg Wait Time (sec)" %}</div>
                     </div>
                 </div>
             </div>
@@ -139,18 +139,18 @@
             {% if report_data.daily_stats %}
                 <div class="chart-container">
                     <h3 class="uk-card-title">
-                        <span uk-icon="calendar"></span> Daily Statistics
+                        <span uk-icon="calendar"></span> {% trans "Daily Statistics" %}
                     </h3>
 
                     <div class="uk-overflow-auto">
                         <table class="uk-table uk-table-striped uk-table-hover">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Total Log Entries</th>
-                                    <th>Answered</th>
-                                    <th>Abandoned</th>
-                                    <th>Answer Rate</th>
+                                    <th>{% trans "Date" %}</th>
+                                    <th>{% trans "Total Log Entries" %}</th>
+                                    <th>{% trans "Answered" %}</th>
+                                    <th>{% trans "Abandoned" %}</th>
+                                    <th>{% trans "Answer Rate" %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -181,20 +181,20 @@
         {% elif report_type == 'agent_performance' %}
             <div class="chart-container">
                 <h3 class="uk-card-title">
-                    <span uk-icon="users"></span> Agent Performance
+                    <span uk-icon="users"></span> {% trans "Agent Performance" %}
                 </h3>
 
                 <div class="uk-overflow-auto">
                     <table class="uk-table uk-table-striped uk-table-hover">
                         <thead>
                             <tr>
-                                <th>Agent</th>
-                                <th>Total Events</th>
-                                <th>Answered</th>
-                                <th>Connects</th>
-                                <th>Ring No Answer</th>
-                                <th>Answer Rate</th>
-                                <th>Avg Talk Time (sec)</th>
+                                <th>{% trans "Agent" %}</th>
+                                <th>{% trans "Total Events" %}</th>
+                                <th>{% trans "Answered" %}</th>
+                                <th>{% trans "Connects" %}</th>
+                                <th>{% trans "Ring No Answer" %}</th>
+                                <th>{% trans "Answer Rate" %}</th>
+                                <th>{% trans "Avg Talk Time (sec)" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -229,19 +229,19 @@
         {% elif report_type == 'queue_performance' %}
             <div class="chart-container">
                 <h3 class="uk-card-title">
-                    <span uk-icon="list"></span> Queue Performance
+                    <span uk-icon="list"></span> {% trans "Queue Performance" %}
                 </h3>
 
                 <div class="uk-overflow-auto">
                     <table class="uk-table uk-table-striped uk-table-hover">
                         <thead>
                             <tr>
-                                <th>Queue</th>
-                                <th>Total Calls</th>
-                                <th>Answered</th>
-                                <th>Abandoned</th>
-                                <th>Answer Rate</th>
-                                <th>Abandon Rate</th>
+                                <th>{% trans "Queue" %}</th>
+                                <th>{% trans "Total Calls" %}</th>
+                                <th>{% trans "Answered" %}</th>
+                                <th>{% trans "Abandoned" %}</th>
+                                <th>{% trans "Answer Rate" %}</th>
+                                <th>{% trans "Abandon Rate" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -273,7 +273,7 @@
             <!-- Event Distribution -->
             <div class="chart-container">
                 <h3 class="uk-card-title">
-                    <span uk-icon="pie-chart"></span> Event Distribution
+                    <span uk-icon="pie-chart"></span> {% trans "Event Distribution" %}
                 </h3>
 
                 <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
@@ -291,20 +291,20 @@
             <!-- Recent Calls -->
             <div class="chart-container">
                 <h3 class="uk-card-title">
-                    <span uk-icon="clock"></span> Recent Calls
+                    <span uk-icon="clock"></span> {% trans "Recent Calls" %}
                 </h3>
 
                 <div class="uk-overflow-auto">
                     <table class="uk-table uk-table-striped uk-table-small">
                         <thead>
                             <tr>
-                                <th>Time</th>
-                                <th>Call ID</th>
-                                <th>Queue</th>
-                                <th>Agent</th>
-                                <th>Event</th>
-                                <th>Data1</th>
-                                <th>Data2</th>
+                                <th>{% trans "Time" %}</th>
+                                <th>{% trans "Call ID" %}</th>
+                                <th>{% trans "Queue" %}</th>
+                                <th>{% trans "Agent" %}</th>
+                                <th>{% trans "Event" %}</th>
+                                <th>{% trans "Data1" %}</th>
+                                <th>{% trans "Data2" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -355,8 +355,7 @@
                             {% endif %}
                         </ul>
                         <p class="uk-text-small uk-text-muted uk-margin-small-top">
-                            Page {{ report_data.recent_calls.number }} of {{ report_data.recent_calls.paginator.num_pages }}
-                            ({{ report_data.recent_calls.paginator.count }} records total)
+                            {% blocktrans with current=report_data.recent_calls.number total=report_data.recent_calls.paginator.num_pages count=report_data.recent_calls.paginator.count %}Page {{ current }} of {{ total }} ({{ count }} records total){% endblocktrans %}
                         </p>
                     </div>
                 {% endif %}
@@ -365,19 +364,19 @@
             <!-- Lost and Found Report -->
             <div class="chart-container">
                 <h3 class="uk-card-title">
-                    <span uk-icon="search"></span> Lost and Found Report
+                    <span uk-icon="search"></span> {% trans "Lost and Found Report" %}
                 </h3>
 
                 <div class="uk-overflow-auto">
                     <table class="uk-table uk-table-striped uk-table-small">
                         <thead>
                             <tr>
-                                <th>Abandon Time</th>
-                                <th>Caller ID</th>
-                                <th>Incoming Call (from this number)</th>
-                                <th>Incoming: Operator (dstchannel)</th>
-                                <th>Outgoing Call (to this number)</th>
-                                <th>Outgoing: With Whom (channel)</th>
+                                <th>{% trans "Abandon Time" %}</th>
+                                <th>{% trans "Caller ID" %}</th>
+                                <th>{% trans "Incoming Call (from this number)" %}</th>
+                                <th>{% trans "Incoming: Operator (dstchannel)" %}</th>
+                                <th>{% trans "Outgoing Call (to this number)" %}</th>
+                                <th>{% trans "Outgoing: With Whom (channel)" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -401,8 +400,8 @@
         <!-- No Data Message -->
         <div class="uk-card uk-card-default uk-card-body uk-text-center">
             <span uk-icon="icon: info; ratio: 3" class="uk-text-muted"></span>
-            <h3 class="uk-card-title">No Data Found</h3>
-            <p>No records match the selected filters. Please adjust your search criteria and try again.</p>
+            <h3 class="uk-card-title">{% trans "No Data Found" %}</h3>
+            <p>{% trans "No records match the selected filters. Please adjust your search criteria and try again." %}</p>
         </div>
     {% endif %}
 </div>
@@ -411,30 +410,30 @@
 <div id="queue-log-modal" class="uk-modal-container" uk-modal>
     <div class="uk-modal-dialog uk-modal-body uk-border-rounded">
         <button class="uk-modal-close-default" type="button" uk-close></button>
-        <h3 class="uk-modal-title">Queue Log Details</h3>
+        <h3 class="uk-modal-title">{% trans "Queue Log Details" %}</h3>
         <div id="queue-log-modal-table-container">
             <div class="uk-text-center uk-margin" id="queue-log-modal-loading" style="display:none;">
-                <span uk-spinner></span> Loading...
+                <span uk-spinner></span> {% trans "Loading..." %}
             </div>
             <table class="uk-table uk-table-striped uk-table-small uk-margin-remove" id="queue-log-modal-table" style="display:none;">
                 <thead>
                     <tr>
-                        <th>Time</th>
-                        <th>Queue</th>
-                        <th>Agent</th>
-                        <th>Event</th>
-                        <th>Data1</th>
-                        <th>Data2</th>
-                        <th>Data3</th>
-                        <th>Data4</th>
-                        <th>Data5</th>
+                        <th>{% trans "Time" %}</th>
+                        <th>{% trans "Queue" %}</th>
+                        <th>{% trans "Agent" %}</th>
+                        <th>{% trans "Event" %}</th>
+                        <th>{% trans "Data1" %}</th>
+                        <th>{% trans "Data2" %}</th>
+                        <th>{% trans "Data3" %}</th>
+                        <th>{% trans "Data4" %}</th>
+                        <th>{% trans "Data5" %}</th>
                     </tr>
                 </thead>
                 <tbody id="queue-log-modal-table-body">
                 </tbody>
             </table>
             <div class="uk-text-center uk-margin" id="queue-log-modal-empty" style="display:none;">
-                <span class="uk-text-muted">No records found for this Call ID.</span>
+                <span class="uk-text-muted">{% trans "No records found for this Call ID." %}</span>
             </div>
         </div>
     </div>

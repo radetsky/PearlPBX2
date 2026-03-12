@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Calls by Queue{% endblock %}
+{% block title %}{% trans "Calls by Queue" %}{% endblock %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Calls by Queue</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Calls by Queue" %}</span></h1>
 
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
@@ -49,7 +50,7 @@
             </div>
             <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
-                    <span uk-icon="search"></span> Search
+                    <span uk-icon="search"></span> {% trans "Search" %}
                 </button>
             </div>
         </form>
@@ -60,13 +61,13 @@
             <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Table</h3>
+                        <h3 class="uk-card-title">{% trans "Table" %}</h3>
                         <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
                             <thead>
                                 <tr>
-                                    <th>Queue</th>
-                                    <th class="uk-text-right">Answered calls</th>
-                                    {% if show_unique %}<th class="uk-text-right">Unique callers</th>{% endif %}
+                                    <th>{% trans "Queue" %}</th>
+                                    <th class="uk-text-right">{% trans "Answered calls" %}</th>
+                                    {% if show_unique %}<th class="uk-text-right">{% trans "Unique callers" %}</th>{% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,7 +84,7 @@
                 </div>
                 <div>
                     <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                        <h3 class="uk-card-title">Chart</h3>
+                        <h3 class="uk-card-title">{% trans "Chart" %}</h3>
                         <canvas id="queueChart"></canvas>
                     </div>
                 </div>
@@ -130,7 +131,7 @@
             </script>
         {% else %}
             <div class="uk-alert uk-alert-warning" uk-alert>
-                <p>No data found for the selected period.</p>
+                <p>{% trans "No data found for the selected period." %}</p>
             </div>
         {% endif %}
     {% endif %}

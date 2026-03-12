@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -182,41 +183,41 @@
 
     <div class="status-badges">
         {% if redis_error %}
-            <span class="badge badge-err"><span class="dot dot-red"></span>Redis unavailable</span>
+            <span class="badge badge-err"><span class="dot dot-red"></span>{% trans "Redis unavailable" %}</span>
         {% elif dashboard_alive %}
-            <span class="badge badge-ok"><span class="dot dot-green"></span>Dashboard online</span>
+            <span class="badge badge-ok"><span class="dot dot-green"></span>{% trans "Dashboard online" %}</span>
         {% else %}
-            <span class="badge badge-warn"><span class="dot dot-yellow"></span>Dashboard not running — sweep disabled</span>
+            <span class="badge badge-warn"><span class="dot dot-yellow"></span>{% trans "Dashboard not running — sweep disabled" %}</span>
         {% endif %}
-        <span class="refresh-counter" id="refresh-counter">Refreshing in <span id="countdown">10</span>s</span>
+        <span class="refresh-counter" id="refresh-counter">{% blocktrans with count='<span id="countdown">10</span>' %}Refreshing in {{ count }}s{% endblocktrans %}</span>
     </div>
 
     {% if stats %}
     <div class="stats-bar">
         <div class="stat-card total">
             <div class="value">{{ stats.total }}</div>
-            <div class="label">Total</div>
+            <div class="label">{% trans "Total" %}</div>
         </div>
         <div class="stat-card used">
             <div class="value">{{ stats.used }}</div>
-            <div class="label">Used</div>
+            <div class="label">{% trans "Used" %}</div>
         </div>
         <div class="stat-card free">
             <div class="value">{{ stats.free }}</div>
-            <div class="label">Free</div>
+            <div class="label">{% trans "Free" %}</div>
         </div>
         <div class="stat-card pct">
             <div class="value">{{ stats.usage_percent }}%</div>
-            <div class="label">Load</div>
+            <div class="label">{% trans "Load" %}</div>
         </div>
     </div>
     {% endif %}
 
     <div class="table-card">
         <div class="table-header">
-            <span>Active ULINEs ({{ ulines|length }})</span>
+            <span>{% blocktrans with count=ulines|length %}Active ULINEs ({{ count }}){% endblocktrans %}</span>
             {% if request.user.is_superuser %}
-            <button class="btn-flush" onclick="flushAll()">Flush all ULINEs</button>
+            <button class="btn-flush" onclick="flushAll()">{% trans "Flush all ULINEs" %}</button>
             {% endif %}
         </div>
 
@@ -224,13 +225,13 @@
         <table>
             <thead>
                 <tr>
-                    <th>ULINE</th>
-                    <th>Status</th>
-                    <th>Channel</th>
-                    <th>UniqueID</th>
-                    <th>CallerID</th>
-                    <th>Age</th>
-                    <th>TTL (Redis)</th>
+                    <th>{% trans "ULINE" %}</th>
+                    <th>{% trans "Status" %}</th>
+                    <th>{% trans "Channel" %}</th>
+                    <th>{% trans "UniqueID" %}</th>
+                    <th>{% trans "CallerID" %}</th>
+                    <th>{% trans "Age" %}</th>
+                    <th>{% trans "TTL (Redis)" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -239,9 +240,9 @@
                     <td><span class="uline-num">{{ u.n }}</span></td>
                     <td>
                         {% if u.alive %}
-                            <span class="status-pill pill-alive">Alive</span>
+                            <span class="status-pill pill-alive">{% trans "Alive" %}</span>
                         {% else %}
-                            <span class="status-pill pill-orphan">Orphan?</span>
+                            <span class="status-pill pill-orphan">{% trans "Orphan?" %}</span>
                         {% endif %}
                     </td>
                     <td><span class="channel-name">{{ u.channel|default:"—" }}</span></td>
@@ -255,7 +256,7 @@
         </table>
         {% else %}
         <div class="empty-state">
-            <p>No active ULINEs</p>
+            <p>{% trans "No active ULINEs" %}</p>
         </div>
         {% endif %}
     </div>
@@ -290,7 +291,7 @@
     });
 
     function flushAll() {
-        if (!confirm('Delete ALL active ULINEs from Redis?\n\nThis will detach all current calls from parking slots!')) return;
+        if (!confirm('{% trans "Delete ALL active ULINEs from Redis?\n\nThis will detach all current calls from parking slots!" %}')) return;
         fetch('{% url "dashboard:uline_flush" %}', {
             method: 'POST',
             headers: {
