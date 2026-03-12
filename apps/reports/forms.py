@@ -26,7 +26,7 @@ class QueueLogReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={
                 "type": "datetime-local",
-                "class": "uk-input",
+                "class": "uk-input uk-border-rounded",
             }
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -38,7 +38,7 @@ class QueueLogReportForm(forms.Form):
         widget=forms.DateTimeInput(
             attrs={
                 "type": "datetime-local",
-                "class": "uk-input",
+                "class": "uk-input uk-border-rounded",
             }
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -48,7 +48,7 @@ class QueueLogReportForm(forms.Form):
     queuename = forms.ChoiceField(
         label="Queue",
         required=False,
-        widget=forms.Select(attrs={"class": "uk-select"}),
+        widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
         choices=[("", "All Queues")],
     )
 
@@ -56,7 +56,7 @@ class QueueLogReportForm(forms.Form):
     agent = forms.ChoiceField(
         label="Agent",
         required=False,
-        widget=forms.Select(attrs={"class": "uk-select"}),
+        widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
         choices=[("", "All Agents")],
     )
 
@@ -250,7 +250,7 @@ class _AnalyticsBaseForm(forms.Form):
         label="Date From",
         required=True,
         widget=forms.DateTimeInput(
-            attrs={"type": "datetime-local", "class": "uk-input"}
+            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
@@ -259,7 +259,7 @@ class _AnalyticsBaseForm(forms.Form):
         label="Date To",
         required=True,
         widget=forms.DateTimeInput(
-            attrs={"type": "datetime-local", "class": "uk-input"}
+            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
@@ -273,16 +273,24 @@ class AnalyticsDateRangeForm(_AnalyticsBaseForm):
     )
 
 
-class AnalyticsAgentCallsForm(_AnalyticsBaseForm):
+class _AnalyticsQueueFilterForm(_AnalyticsBaseForm):
     queuename = forms.ChoiceField(
         label="Queue",
         required=False,
-        widget=forms.Select(attrs={"class": "uk-select"}),
+        widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["queuename"].choices = _get_queue_choices("All queues")
+
+
+class AnalyticsAgentCallsForm(_AnalyticsQueueFilterForm):
+    pass
+
+
+class AnalyticsMissedByHourForm(_AnalyticsQueueFilterForm):
+    pass
 
 
 class CallbackNumberReportForm(forms.Form):

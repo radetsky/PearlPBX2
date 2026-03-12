@@ -2,6 +2,7 @@ import csv
 import json
 import mimetypes
 import os
+from datetime import timedelta
 
 from django.views import View
 from django.shortcuts import render, get_object_or_404
@@ -19,6 +20,7 @@ from apps.reports.forms import (
     ASTERISK_NONE,
     AnalyticsAgentCallsForm,
     AnalyticsDateRangeForm,
+    AnalyticsMissedByHourForm,
     CDRReportForm,
     MonitorFilenamesReportForm,
     CallbackNumberReportForm,
@@ -848,6 +850,56 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                 })
 
             chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
+    template_name = "analytics_missed_by_hour.html"
+
+    def get(self, request):
+        form = AnalyticsMissedByHourForm(request.GET or None)
+        table_data = None
+        chart_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            local_tz = timezone.get_current_timezone()
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event="ABANDON",
+            ).exclude(queuename=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+            hour_counts = {
+                row["hour"]: row["count"]
+                for row in qs.annotate(hour=TruncHour("time", tzinfo=local_tz))
+                .values("hour")
+                .annotate(count=Count("id"))
+            }
+
+            # Fill all hours in range with zeros
+            start = date_from.replace(minute=0, second=0, microsecond=0)
+            end = date_to.replace(minute=0, second=0, microsecond=0)
+            table_data = []
+            current = start
+            while current <= end:
+                table_data.append({"hour": current, "count": hour_counts.get(current, 0)})
+                current += timedelta(hours=1)
+
+            label_fmt = "%m-%d %H:%M" if date_from.date() != date_to.date() else "%H:%M"
+            chart_data = json.dumps({
+                "labels": [row["hour"].strftime(label_fmt) for row in table_data],
+                "values": [row["count"] for row in table_data],
+            })
 
         context = {
             "form": form,
