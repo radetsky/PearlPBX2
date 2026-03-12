@@ -1,30 +1,31 @@
 {% extends 'base.html' %}
+{% load i18n %}
 {% load static %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Routing Tables</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Routing Tables" %}</span></h1>
 
     <!-- Filters -->
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
             <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
                 <div>
-                    <label class="uk-form-label">Prefix</label>
+                    <label class="uk-form-label">{% trans "Prefix" %}</label>
                     <div class="uk-form-controls">
-                        <input class="uk-input uk-border-rounded" type="text" name="prefix" value="{{ prefix_filter }}" placeholder="e.g. 380">
+                        <input class="uk-input uk-border-rounded" type="text" name="prefix" value="{{ prefix_filter }}" placeholder="{% trans "e.g. 380" %}">
                     </div>
                 </div>
                 <div>
-                    <label class="uk-form-label">Context</label>
+                    <label class="uk-form-label">{% trans "Context" %}</label>
                     <div class="uk-form-controls">
-                        <input class="uk-input uk-border-rounded" type="text" name="context" value="{{ context_filter }}" placeholder="e.g. from-internal">
+                        <input class="uk-input uk-border-rounded" type="text" name="context" value="{{ context_filter }}" placeholder="{% trans "e.g. from-internal" %}">
                     </div>
                 </div>
                 <div class="uk-flex uk-flex-bottom">
-                    <button class="uk-button uk-button-primary uk-border-rounded" type="submit">Filter</button>
+                    <button class="uk-button uk-button-primary uk-border-rounded" type="submit">{% trans "Filter" %}</button>
                     {% if prefix_filter or context_filter %}
-                    <a href="{% url 'routing_report' %}" class="uk-button uk-button-default uk-border-rounded uk-margin-small-left">Reset</a>
+                    <a href="{% url 'routing_report' %}" class="uk-button uk-button-default uk-border-rounded uk-margin-small-left">{% trans "Reset" %}</a>
                     {% endif %}
                 </div>
             </div>
@@ -44,9 +45,9 @@
             <table class="uk-table uk-table-striped uk-table-hover uk-table-small uk-margin-remove-bottom">
                 <thead>
                     <tr>
-                        <th>Prefix</th>
-                        <th>Name</th>
-                        <th>Target Context</th>
+                        <th>{% trans "Prefix" %}</th>
+                        <th>{% trans "Name" %}</th>
+                        <th>{% trans "Target Context" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,13 +64,13 @@
     </div>
     {% endif %}
     {% empty %}
-    <div class="uk-alert uk-alert-warning">No routing tables found.</div>
+    <div class="uk-alert uk-alert-warning">{% trans "No routing tables found." %}</div>
     {% endfor %}
 
     {% if prefix_filter or context_filter %}
     {% with total=results|length %}
     {% if total == 0 %}
-    <div class="uk-alert uk-alert-warning">No records match the filter.</div>
+    <div class="uk-alert uk-alert-warning">{% trans "No records match the filter." %}</div>
     {% endif %}
     {% endwith %}
     {% endif %}

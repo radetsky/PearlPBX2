@@ -2,10 +2,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.i18n import set_language
 from django.views.static import serve
 from .admin import ApplyChangesView
 
 urlpatterns = [
+    path("i18n/set-language/", set_language, name="set_language"),
     path("admin/apply", ApplyChangesView.as_view(), name="apply_changes"),
     path("admin/", admin.site.urls),
     path("dashboard/", include("apps.dashboard.urls")),

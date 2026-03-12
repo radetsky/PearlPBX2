@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Queue Activity{% endblock %}
+{% block title %}{% trans "Queue Activity" %}{% endblock %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Queue Activity</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Queue Activity" %}</span></h1>
 
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <form method="get" class="uk-form-stacked">
@@ -27,7 +28,7 @@
             </div>
             <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
-                    <span uk-icon="search"></span> Search
+                    <span uk-icon="search"></span> {% trans "Search" %}
                 </button>
             </div>
         </form>
@@ -37,15 +38,15 @@
         {% if table_data %}
             <div class="uk-margin-bottom">
                 <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                    <h3 class="uk-card-title">Table</h3>
+                    <h3 class="uk-card-title">{% trans "Table" %}</h3>
                     <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
                         <thead>
                             <tr>
-                                <th>Period</th>
-                                <th class="uk-text-right">Answered</th>
-                                <th class="uk-text-right">Missed</th>
-                                <th class="uk-text-right">Total</th>
-                                <th class="uk-text-right">% Missed</th>
+                                <th>{% trans "Period" %}</th>
+                                <th class="uk-text-right">{% trans "Answered" %}</th>
+                                <th class="uk-text-right">{% trans "Missed" %}</th>
+                                <th class="uk-text-right">{% trans "Total" %}</th>
+                                <th class="uk-text-right">{% trans "% Missed" %}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -61,7 +62,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="uk-text-bold">
-                                <td>Total</td>
+                                <td>{% trans "Total" %}</td>
                                 <td class="uk-text-right">{{ totals.answered }}</td>
                                 <td class="uk-text-right">{{ totals.missed }}</td>
                                 <td class="uk-text-right">{{ totals.total }}</td>
@@ -73,7 +74,7 @@
             </div>
 
             <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
-                <h3 class="uk-card-title">Chart</h3>
+                <h3 class="uk-card-title">{% trans "Chart" %}</h3>
                 <canvas id="activityChart"></canvas>
             </div>
 
@@ -132,7 +133,7 @@
             </script>
         {% else %}
             <div class="uk-alert uk-alert-warning" uk-alert>
-                <p>No calls found for the selected period.</p>
+                <p>{% trans "No calls found for the selected period." %}</p>
             </div>
         {% endif %}
     {% endif %}

@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 from django.utils.timezone import localtime
+from django.utils.translation import gettext_lazy as _
 
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
@@ -8,7 +9,9 @@ from apps.callback.models import CallbackService
 ASTERISK_NONE = "NONE"
 
 
-def _get_queue_choices(empty_label="All Queues"):
+def _get_queue_choices(empty_label=None):
+    if empty_label is None:
+        empty_label = _("All Queues")
     queues = (
         QueueLog.objects.values_list("queuename", flat=True)
         .distinct()
@@ -21,9 +24,10 @@ def _get_queue_choices(empty_label="All Queues"):
 class QueueLogReportForm(forms.Form):
     # Date filters
     date_from = forms.DateTimeField(
-        label="Date From",
+        label=_("Date From"),
         required=False,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
@@ -33,9 +37,10 @@ class QueueLogReportForm(forms.Form):
     )
 
     date_to = forms.DateTimeField(
-        label="Date To",
+        label=_("Date To"),
         required=False,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
@@ -46,48 +51,48 @@ class QueueLogReportForm(forms.Form):
 
     # Queue filter
     queuename = forms.ChoiceField(
-        label="Queue",
+        label=_("Queue"),
         required=False,
         widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
-        choices=[("", "All Queues")],
+        choices=[("", _("All Queues"))],
     )
 
     # Agent filter
     agent = forms.ChoiceField(
-        label="Agent",
+        label=_("Agent"),
         required=False,
         widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
-        choices=[("", "All Agents")],
+        choices=[("", _("All Agents"))],
     )
 
     # Event filter
     event = forms.MultipleChoiceField(
-        label="Events",
+        label=_("Events"),
         required=False,
         widget=forms.CheckboxSelectMultiple(attrs={"class": "uk-checkbox"}),
         choices=[
-            ("ABANDON", "Abandoned"),
-            ("COMPLETEAGENT", "Completed by Agent"),
-            ("COMPLETECALLER", "Completed by Caller"),
-            ("CONNECT", "Connected"),
-            ("ENTERQUEUE", "Enter Queue"),
-            ("EXITWITHKEY", "Exit with Key"),
-            ("EXITWITHTIMEOUT", "Exit with Timeout"),
-            ("RINGNOANSWER", "Ring No Answer"),
+            ("ABANDON", _("Abandoned")),
+            ("COMPLETEAGENT", _("Completed by Agent")),
+            ("COMPLETECALLER", _("Completed by Caller")),
+            ("CONNECT", _("Connected")),
+            ("ENTERQUEUE", _("Enter Queue")),
+            ("EXITWITHKEY", _("Exit with Key")),
+            ("EXITWITHTIMEOUT", _("Exit with Timeout")),
+            ("RINGNOANSWER", _("Ring No Answer")),
         ],
     )
 
     # Report type
     REPORT_TYPES = [
-        ("summary", "Summary Statistics"),
-        ("detailed", "Detailed Report"),
-        ("agent_performance", "Agent Performance"),
-        ("queue_performance", "Queue Performance"),
-        ("lost_and_found", "Lost and Found"),
+        ("summary", _("Summary Statistics")),
+        ("detailed", _("Detailed Report")),
+        ("agent_performance", _("Agent Performance")),
+        ("queue_performance", _("Queue Performance")),
+        ("lost_and_found", _("Lost and Found")),
     ]
 
     report_type = forms.ChoiceField(
-        label="Report Type",
+        label=_("Report Type"),
         choices=REPORT_TYPES,
         initial="summary",
         widget=forms.RadioSelect(attrs={"class": "uk-radio"}),
@@ -97,7 +102,7 @@ class QueueLogReportForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["queuename"].choices = _get_queue_choices("All Queues")
+        self.fields["queuename"].choices = _get_queue_choices()
 
         agents = (
             QueueLog.objects.values_list("agent", flat=True)
@@ -105,7 +110,7 @@ class QueueLogReportForm(forms.Form):
             .exclude(agent=ASTERISK_NONE)
             .order_by("agent")
         )
-        self.fields["agent"].choices = [("", "All Agents")] + [(a, a) for a in agents]
+        self.fields["agent"].choices = [("", _("All Agents"))] + [(a, a) for a in agents]
 
     def get_queryset(self):
         """Returns filtered data based on form"""
@@ -135,33 +140,35 @@ class QueueLogReportForm(forms.Form):
 # Form for searching MonitorFilenames (call recordings)
 class MonitorFilenamesReportForm(forms.Form):
     src = forms.CharField(
-        label="Source number",
+        label=_("Source number"),
         max_length=64,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter source number"}
+            attrs={"class": "form-control", "placeholder": _("Enter source number")}
         ),
     )
     dst = forms.CharField(
-        label="Destination number",
+        label=_("Destination number"),
         max_length=64,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter destination number"}
+            attrs={"class": "form-control", "placeholder": _("Enter destination number")}
         ),
     )
     created_start = forms.DateTimeField(
-        label="Created from",
+        label=_("Created from"),
         required=False,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
     created_end = forms.DateTimeField(
-        label="Created to",
+        label=_("Created to"),
         required=False,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -170,76 +177,78 @@ class MonitorFilenamesReportForm(forms.Form):
 
 class CDRReportForm(forms.Form):
     DISPOSITION_CHOICES = [
-        ("", "All"),
-        ("ANSWERED", "Answered"),
-        ("BUSY", "Busy"),
-        ("NO ANSWER", "No answer"),
-        ("FAILED", "Failed"),
+        ("", _("All")),
+        ("ANSWERED", _("Answered")),
+        ("BUSY", _("Busy")),
+        ("NO ANSWER", _("No answer")),
+        ("FAILED", _("Failed")),
     ]
 
     start_date = forms.DateTimeField(
-        label="Start date",
+        label=_("Start date"),
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     end_date = forms.DateTimeField(
-        label="End date",
+        label=_("End date"),
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
     src_number = forms.CharField(
-        label="Source number",
+        label=_("Source number"),
         max_length=80,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter number"}
+            attrs={"class": "form-control", "placeholder": _("Enter number")}
         ),
     )
 
     dst_number = forms.CharField(
-        label="Destination number",
+        label=_("Destination number"),
         max_length=80,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter number"}
+            attrs={"class": "form-control", "placeholder": _("Enter number")}
         ),
     )
     src_channel = forms.CharField(
-        label="Source channel",
+        label=_("Source channel"),
         max_length=80,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter channel"}
+            attrs={"class": "form-control", "placeholder": _("Enter channel")}
         ),
     )
     dst_channel = forms.CharField(
-        label="Destination channel",
+        label=_("Destination channel"),
         max_length=80,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter channel"}
+            attrs={"class": "form-control", "placeholder": _("Enter channel")}
         ),
     )
     disposition = forms.ChoiceField(
-        label="Call status",
+        label=_("Call status"),
         choices=DISPOSITION_CHOICES,
         required=False,
         widget=forms.Select(attrs={"class": "form-control"}),
     )
 
     min_duration = forms.IntegerField(
-        label="Min. duration (sec)",
+        label=_("Min. duration (sec)"),
         required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
     )
     max_duration = forms.IntegerField(
-        label="Max. duration (sec)",
+        label=_("Max. duration (sec)"),
         required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
     )
@@ -247,18 +256,20 @@ class CDRReportForm(forms.Form):
 
 class _AnalyticsBaseForm(forms.Form):
     date_from = forms.DateTimeField(
-        label="Date From",
+        label=_("Date From"),
         required=True,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     date_to = forms.DateTimeField(
-        label="Date To",
+        label=_("Date To"),
         required=True,
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -267,12 +278,12 @@ class _AnalyticsBaseForm(forms.Form):
 
 class AnalyticsDateRangeForm(_AnalyticsBaseForm):
     exclude_contacts = forms.BooleanField(
-        label="Exclude known numbers (Contacts)",
+        label=_("Exclude known numbers (Contacts)"),
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
     )
     show_unique = forms.BooleanField(
-        label="Show unique callers",
+        label=_("Show unique callers"),
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
     )
@@ -280,14 +291,14 @@ class AnalyticsDateRangeForm(_AnalyticsBaseForm):
 
 class _AnalyticsQueueFilterForm(_AnalyticsBaseForm):
     queuename = forms.ChoiceField(
-        label="Queue",
+        label=_("Queue"),
         required=False,
         widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["queuename"].choices = _get_queue_choices("All queues")
+        self.fields["queuename"].choices = _get_queue_choices(_("All queues"))
 
 
 class AnalyticsAgentCallsForm(_AnalyticsQueueFilterForm):
@@ -308,64 +319,66 @@ class AnalyticsQueueActivityForm(_AnalyticsQueueFilterForm):
 
 class CallbackNumberReportForm(forms.Form):
     DIAL_STATUS_CHOICES = [
-        ("", "All"),
-        ("NEW", "New"),
-        ("ANSWERED", "Answered"),
-        ("BUSY", "Busy"),
-        ("PENDING", "Pending"),
+        ("", _("All")),
+        ("NEW", _("New")),
+        ("ANSWERED", _("Answered")),
+        ("BUSY", _("Busy")),
+        ("PENDING", _("Pending")),
     ]
 
     start_date = forms.DateTimeField(
-        label="Created from",
+        label=_("Created from"),
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
     )
 
     end_date = forms.DateTimeField(
-        label="Created to",
+        label=_("Created to"),
         widget=forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M',
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
     )
 
     src = forms.CharField(
-        label="Source number",
+        label=_("Source number"),
         max_length=16,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter source number"}
+            attrs={"class": "form-control", "placeholder": _("Enter source number")}
         ),
     )
 
     dst = forms.CharField(
-        label="Destination number",
+        label=_("Destination number"),
         max_length=16,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "Enter destination number"}
+            attrs={"class": "form-control", "placeholder": _("Enter destination number")}
         ),
     )
 
     dial_status = forms.ChoiceField(
-        label="Dial status",
+        label=_("Dial status"),
         choices=DIAL_STATUS_CHOICES,
         required=False,
         widget=forms.Select(attrs={"class": "form-control"}),
     )
 
     service = forms.ChoiceField(
-        label="Service",
+        label=_("Service"),
         required=False,
         widget=forms.Select(attrs={"class": "form-control"}),
-        choices=[("", "All")],
+        choices=[("", _("All"))],
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Dynamically populate service list
         services = CallbackService.objects.filter(is_active=True)
-        service_choices = [("", "All")] + [(s.id, s.name) for s in services]
+        service_choices = [("", _("All"))] + [(s.id, s.name) for s in services]
         self.fields["service"].choices = service_choices

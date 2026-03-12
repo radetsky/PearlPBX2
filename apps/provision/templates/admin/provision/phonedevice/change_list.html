@@ -5,7 +5,7 @@
     {{ block.super }}
     <li>
         <a href="javascript:void(0)" onclick="applyToAllPhones()" class="default">
-            Apply configurations to all phones
+            {% trans "Apply configurations to all phones" %}
         </a>
     </li>
 {% endblock %}
@@ -14,7 +14,7 @@
     {{ block.super }}
     <script>
         function applyToAllPhones() {
-            if (confirm('Are you sure you want to apply configurations to ALL phone devices?')) {
+            if (confirm('{% trans "Are you sure you want to apply configurations to ALL phone devices?" %}')) {
                 // Select all checkboxes
                 var checkboxes = document.querySelectorAll('input[name="_selected_action"]');
                 checkboxes.forEach(function(checkbox) {

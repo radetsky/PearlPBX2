@@ -1,0 +1,2503 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-12 14:50+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
+
+#: apps/callback/models.py:36 apps/reports/forms.py:323
+#: apps/reports/templates/callback_report.html:227
+msgid "New"
+msgstr "Новий"
+
+#: apps/callback/models.py:37 apps/reports/forms.py:181
+#: apps/reports/forms.py:324
+#: apps/reports/templates/analytics_queue_activity.html:46
+#: apps/reports/templates/callback_report.html:234
+#: apps/reports/templates/cdr.html:229 apps/reports/templates/queue.html:112
+#: apps/reports/templates/queue.html:151 apps/reports/templates/queue.html:193
+#: apps/reports/templates/queue.html:241
+msgid "Answered"
+msgstr "Відповіді"
+
+#: apps/callback/models.py:38
+#: apps/dashboard/templates/dashboard/operator_panel.html:649
+#: apps/reports/forms.py:182 apps/reports/forms.py:325
+#: apps/reports/templates/callback_report.html:241
+msgid "Busy"
+msgstr "Зайнятий"
+
+#: apps/callback/models.py:39 apps/reports/forms.py:326
+#: apps/reports/templates/callback_report.html:248
+msgid "Pending"
+msgstr "Очікує"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:574
+msgid "Operator Dashboard"
+msgstr "Панель оператора"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:575
+msgid "Real-time Asterisk monitoring"
+msgstr "Моніторинг Asterisk у реальному часі"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:578
+#: apps/dashboard/templates/dashboard/operator_panel.html:634
+msgid "Connecting..."
+msgstr "Підключення..."
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:586
+#: apps/dashboard/templates/dashboard/operator_panel.html:604
+msgid "Active Channels"
+msgstr "Активні канали"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:590
+msgid "Active Calls"
+msgstr "Активні дзвінки"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:594
+msgid "Queues"
+msgstr "Черги"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:598
+msgid "Waiting Calls"
+msgstr "Дзвінки в очікуванні"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:606
+#: apps/dashboard/templates/dashboard/operator_panel.html:635
+msgid "No active channels"
+msgstr "Немає активних каналів"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:612
+msgid "Call Queues"
+msgstr "Черги дзвінків"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:614
+#: apps/dashboard/templates/dashboard/operator_panel.html:636
+msgid "No queues configured"
+msgstr "Черги не налаштовані"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:632
+#: apps/reports/forms.py:77
+msgid "Connected"
+msgstr "Підключено"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:633
+msgid "Disconnected"
+msgstr "Відключено"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:637
+msgid "No agents"
+msgstr "Немає агентів"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:638
+msgid "Caller"
+msgstr "Абонент"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:639
+#: apps/reports/templates/routing_report.html:49 core/models.py:93
+#: core/models.py:251 core/models.py:1580
+msgid "Name"
+msgstr "Назва"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:640
+#: apps/reports/templates/routing_report.html:20 core/forms.py:232
+#: core/models.py:948
+msgid "Context"
+msgstr "Контекст"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:641 core/forms.py:239
+#: core/models.py:287 core/models.py:569
+msgid "Extension"
+msgstr "Внутрішній номер"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:642
+msgid "Bridged"
+msgstr "З'єднаний"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:643
+#: core/models.py:969 core/models.py:1004 core/models.py:1012
+msgid "Yes"
+msgstr "Так"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:644
+msgid "Agents"
+msgstr "Агенти"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:645
+msgid "Waiting"
+msgstr "Очікування"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:646
+msgid "Paused"
+msgstr "На паузі"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:647
+msgid "Available"
+msgstr "Доступний"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:648
+msgid "In call"
+msgstr "В розмові"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:650
+msgid "Invalid"
+msgstr "Недійсний"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:651
+msgid "Unavailable"
+msgstr "Недоступний"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:652
+msgid "Ringing"
+msgstr "Дзвінок"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:653
+msgid "Ringing (In use)"
+msgstr "Дзвінок (зайнятий)"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:654
+msgid "On hold"
+msgstr "На утриманні"
+
+#: apps/dashboard/templates/dashboard/operator_panel.html:655
+msgid "Unknown"
+msgstr "Невідомо"
+
+#: apps/dashboard/templates/dashboard/ulines.html:186
+msgid "Redis unavailable"
+msgstr "Redis недоступний"
+
+#: apps/dashboard/templates/dashboard/ulines.html:188
+msgid "Dashboard online"
+msgstr "Панель моніторингу онлайн"
+
+#: apps/dashboard/templates/dashboard/ulines.html:190
+msgid "Dashboard not running — sweep disabled"
+msgstr "Панель моніторингу не запущена — очищення вимкнено"
+
+#: apps/dashboard/templates/dashboard/ulines.html:192
+#, python-format
+msgid "Refreshing in %(count)ss"
+msgstr "Оновлення через %(count)s с"
+
+#: apps/dashboard/templates/dashboard/ulines.html:199
+#: apps/reports/templates/analytics_queue_activity.html:48
+#: apps/reports/templates/analytics_queue_activity.html:65
+msgid "Total"
+msgstr "Всього"
+
+#: apps/dashboard/templates/dashboard/ulines.html:203
+msgid "Used"
+msgstr "Використовується"
+
+#: apps/dashboard/templates/dashboard/ulines.html:207
+msgid "Free"
+msgstr "Вільно"
+
+#: apps/dashboard/templates/dashboard/ulines.html:211
+msgid "Load"
+msgstr "Навантаження"
+
+#: apps/dashboard/templates/dashboard/ulines.html:218
+#, python-format
+msgid "Active ULINEs (%(count)s)"
+msgstr "Активні ULINE (%(count)s)"
+
+#: apps/dashboard/templates/dashboard/ulines.html:220
+msgid "Flush all ULINEs"
+msgstr "Очистити всі ULINE"
+
+#: apps/dashboard/templates/dashboard/ulines.html:228
+msgid "ULINE"
+msgstr "ULINE"
+
+#: apps/dashboard/templates/dashboard/ulines.html:229
+#: apps/reports/templates/callback_report.html:101
+#: apps/reports/templates/cdr.html:113
+msgid "Status"
+msgstr "Статус"
+
+#: apps/dashboard/templates/dashboard/ulines.html:230
+#: apps/reports/templates/cdr.html:116
+msgid "Channel"
+msgstr "Канал"
+
+#: apps/dashboard/templates/dashboard/ulines.html:231
+msgid "UniqueID"
+msgstr "UniqueID"
+
+#: apps/dashboard/templates/dashboard/ulines.html:232
+msgid "CallerID"
+msgstr "CallerID"
+
+#: apps/dashboard/templates/dashboard/ulines.html:233
+msgid "Age"
+msgstr "Вік"
+
+#: apps/dashboard/templates/dashboard/ulines.html:234
+msgid "TTL (Redis)"
+msgstr "TTL (Redis)"
+
+#: apps/dashboard/templates/dashboard/ulines.html:243
+msgid "Alive"
+msgstr "Активний"
+
+#: apps/dashboard/templates/dashboard/ulines.html:245
+msgid "Orphan?"
+msgstr "Осиротілий?"
+
+#: apps/dashboard/templates/dashboard/ulines.html:259
+msgid "No active ULINEs"
+msgstr "Немає активних ULINE"
+
+#: apps/dashboard/templates/dashboard/ulines.html:294
+msgid "Delete ALL active ULINEs from Redis?\\n\\nThis will detach all current calls from parking slots!"
+msgstr "Видалити ВСІ активні ULINE з Redis?\\n\\nЦе відключить усі поточні дзвінки від слотів паркування!"
+
+#: apps/provision/admin.py:30
+msgid "Device Information"
+msgstr "Інформація про пристрій"
+
+#: apps/provision/admin.py:34
+msgid "Audit Information"
+msgstr "Інформація аудиту"
+
+#: apps/provision/admin.py:42 apps/provision/models.py:36
+msgid "SIP User"
+msgstr "SIP користувач"
+
+#: apps/provision/admin.py:49
+msgid "Config Status"
+msgstr "Статус конфігурації"
+
+#: apps/provision/admin.py:87
+msgid "Apply configurations to selected phones"
+msgstr "Застосувати конфігурації до обраних телефонів"
+
+#: apps/provision/admin.py:106
+#, python-format
+msgid "Successfully generated configurations for %(count)d device(s): %(devices)s"
+msgstr "Конфігурації успішно згенеровані для %(count)d пристрою(ів): %(devices)s"
+
+#: apps/provision/admin.py:118
+#, python-format
+msgid "Failed to generate configurations: %(errors)s"
+msgstr "Не вдалося згенерувати конфігурації: %(errors)s"
+
+#: apps/provision/models.py:20
+msgid "Type of telephone device"
+msgstr "Тип телефонного пристрою"
+
+#: apps/provision/models.py:21
+msgid "Telephone type"
+msgstr "Тип телефону"
+
+#: apps/provision/models.py:26
+msgid "MAC address of the device"
+msgstr "MAC-адреса пристрою"
+
+#: apps/provision/models.py:27
+msgid "MAC Address"
+msgstr "MAC-адреса"
+
+#: apps/provision/models.py:35
+msgid "SIP user associated with this device"
+msgstr "SIP користувач, пов'язаний з цим пристроєм"
+
+#: apps/provision/models.py:40
+msgid "SIP server address"
+msgstr "Адреса SIP сервера"
+
+#: apps/provision/models.py:41
+msgid "SIP Server"
+msgstr "SIP сервер"
+
+#: apps/provision/models.py:48
+msgid "Phone Device"
+msgstr "Телефонний пристрій"
+
+#: apps/provision/models.py:49
+msgid "Phone Devices"
+msgstr "Телефонні пристрої"
+
+#: apps/provision/templates/admin/provision/phonedevice/change_list.html:8
+msgid "Apply configurations to all phones"
+msgstr "Застосувати конфігурації до всіх телефонів"
+
+#: apps/provision/templates/admin/provision/phonedevice/change_list.html:17
+msgid "Are you sure you want to apply configurations to ALL phone devices?"
+msgstr "Ви впевнені, що хочете застосувати конфігурації до ВСІХ телефонних пристроїв?"
+
+#: apps/reports/forms.py:14 apps/reports/forms.py:57
+msgid "All Queues"
+msgstr "Всі черги"
+
+#: apps/reports/forms.py:27 apps/reports/forms.py:259
+msgid "Date From"
+msgstr "З дати"
+
+#: apps/reports/forms.py:40 apps/reports/forms.py:269
+msgid "Date To"
+msgstr "По дату"
+
+#: apps/reports/forms.py:54 apps/reports/forms.py:294
+#: apps/reports/templates/analytics_missed_calls.html:48
+#: apps/reports/templates/analytics_queue_calls.html:68
+#: apps/reports/templates/queue.html:239 apps/reports/templates/queue.html:303
+#: apps/reports/templates/queue.html:422 core/models.py:1096
+msgid "Queue"
+msgstr "Черга"
+
+#: apps/reports/forms.py:62
+#: apps/reports/templates/_analytics_chart_panel.html:10
+#: apps/reports/templates/queue.html:191 apps/reports/templates/queue.html:304
+#: apps/reports/templates/queue.html:423
+msgid "Agent"
+msgstr "Агент"
+
+#: apps/reports/forms.py:65 apps/reports/forms.py:113
+msgid "All Agents"
+msgstr "Всі агенти"
+
+#: apps/reports/forms.py:70
+msgid "Events"
+msgstr "Події"
+
+#: apps/reports/forms.py:74 apps/reports/templates/queue.html:119
+#: apps/reports/templates/queue.html:152 apps/reports/templates/queue.html:242
+msgid "Abandoned"
+msgstr "Покинуті"
+
+#: apps/reports/forms.py:75
+msgid "Completed by Agent"
+msgstr "Завершено агентом"
+
+#: apps/reports/forms.py:76
+msgid "Completed by Caller"
+msgstr "Завершено абонентом"
+
+#: apps/reports/forms.py:78
+msgid "Enter Queue"
+msgstr "Вхід у чергу"
+
+#: apps/reports/forms.py:79
+msgid "Exit with Key"
+msgstr "Вихід клавішею"
+
+#: apps/reports/forms.py:80
+msgid "Exit with Timeout"
+msgstr "Вихід за таймаутом"
+
+#: apps/reports/forms.py:81 apps/reports/templates/queue.html:195
+msgid "Ring No Answer"
+msgstr "Дзвінок без відповіді"
+
+#: apps/reports/forms.py:87
+msgid "Summary Statistics"
+msgstr "Зведена статистика"
+
+#: apps/reports/forms.py:88
+msgid "Detailed Report"
+msgstr "Детальний звіт"
+
+#: apps/reports/forms.py:89 apps/reports/templates/queue.html:184
+msgid "Agent Performance"
+msgstr "Ефективність агентів"
+
+#: apps/reports/forms.py:90 apps/reports/templates/queue.html:232
+msgid "Queue Performance"
+msgstr "Ефективність черги"
+
+#: apps/reports/forms.py:91
+msgid "Lost and Found"
+msgstr "Пропущені та передзвони"
+
+#: apps/reports/forms.py:95
+msgid "Report Type"
+msgstr "Тип звіту"
+
+#: apps/reports/forms.py:143 apps/reports/forms.py:206
+#: apps/reports/forms.py:348
+msgid "Source number"
+msgstr "Номер джерела"
+
+#: apps/reports/forms.py:147 apps/reports/forms.py:352
+msgid "Enter source number"
+msgstr "Введіть номер джерела"
+
+#: apps/reports/forms.py:151 apps/reports/forms.py:215
+#: apps/reports/forms.py:357
+msgid "Destination number"
+msgstr "Номер призначення"
+
+#: apps/reports/forms.py:155 apps/reports/forms.py:361
+msgid "Enter destination number"
+msgstr "Введіть номер призначення"
+
+#: apps/reports/forms.py:159 apps/reports/forms.py:330
+msgid "Created from"
+msgstr "Створено з"
+
+#: apps/reports/forms.py:168 apps/reports/forms.py:339
+msgid "Created to"
+msgstr "Створено по"
+
+#: apps/reports/forms.py:180 apps/reports/forms.py:322
+#: apps/reports/forms.py:376 apps/reports/forms.py:383 core/models.py:969
+msgid "All"
+msgstr "Всі"
+
+#: apps/reports/forms.py:183
+msgid "No answer"
+msgstr "Немає відповіді"
+
+#: apps/reports/forms.py:184
+msgid "Failed"
+msgstr "Помилка"
+
+#: apps/reports/forms.py:188
+msgid "Start date"
+msgstr "Дата початку"
+
+#: apps/reports/forms.py:197
+msgid "End date"
+msgstr "Дата завершення"
+
+#: apps/reports/forms.py:210 apps/reports/forms.py:219
+msgid "Enter number"
+msgstr "Введіть номер"
+
+#: apps/reports/forms.py:223
+msgid "Source channel"
+msgstr "Канал джерела"
+
+#: apps/reports/forms.py:227 apps/reports/forms.py:235
+msgid "Enter channel"
+msgstr "Введіть канал"
+
+#: apps/reports/forms.py:231
+msgid "Destination channel"
+msgstr "Канал призначення"
+
+#: apps/reports/forms.py:239
+msgid "Call status"
+msgstr "Статус дзвінка"
+
+#: apps/reports/forms.py:246
+msgid "Min. duration (sec)"
+msgstr "Мін. тривалість (сек)"
+
+#: apps/reports/forms.py:251
+msgid "Max. duration (sec)"
+msgstr "Макс. тривалість (сек)"
+
+#: apps/reports/forms.py:281
+msgid "Exclude known numbers (Contacts)"
+msgstr "Виключити відомі номери (Контакти)"
+
+#: apps/reports/forms.py:286
+msgid "Show unique callers"
+msgstr "Показати унікальних абонентів"
+
+#: apps/reports/forms.py:301
+msgid "All queues"
+msgstr "Всі черги"
+
+#: apps/reports/forms.py:366
+msgid "Dial status"
+msgstr "Статус набору"
+
+#: apps/reports/forms.py:373 apps/reports/templates/callback_report.html:110
+msgid "Service"
+msgstr "Сервіс"
+
+#: apps/reports/templates/_analytics_chart_panel.html:6
+#: apps/reports/templates/analytics_call_duration.html:50
+#: apps/reports/templates/analytics_missed_by_hour.html:43
+#: apps/reports/templates/analytics_missed_calls.html:44
+#: apps/reports/templates/analytics_queue_activity.html:41
+#: apps/reports/templates/analytics_queue_calls.html:64
+msgid "Table"
+msgstr "Таблиця"
+
+#: apps/reports/templates/_analytics_chart_panel.html:27
+#: apps/reports/templates/analytics_call_duration.html:77
+#: apps/reports/templates/analytics_missed_by_hour.html:66
+#: apps/reports/templates/analytics_missed_calls.html:71
+#: apps/reports/templates/analytics_queue_activity.html:77
+#: apps/reports/templates/analytics_queue_calls.html:87
+msgid "Chart"
+msgstr "Графік"
+
+#: apps/reports/templates/_analytics_chart_panel.html:75
+#: apps/reports/templates/analytics_queue_calls.html:134
+msgid "No data found for the selected period."
+msgstr "Даних за обраний період не знайдено."
+
+#: apps/reports/templates/analytics_agent_calls.html:5
+#: apps/reports/templates/analytics_agent_calls.html:9
+#: core/templates/reports.html:26
+msgid "Calls by Agent in Queue"
+msgstr "Дзвінки агентів у черзі"
+
+#: apps/reports/templates/analytics_agent_calls.html:32
+#: apps/reports/templates/analytics_call_duration.html:31
+#: apps/reports/templates/analytics_missed_by_hour.html:32
+#: apps/reports/templates/analytics_missed_calls.html:33
+#: apps/reports/templates/analytics_outbound_calls.html:32
+#: apps/reports/templates/analytics_queue_activity.html:31
+#: apps/reports/templates/analytics_queue_calls.html:53
+msgid "Search"
+msgstr "Пошук"
+
+#: apps/reports/templates/analytics_call_duration.html:5
+#: apps/reports/templates/analytics_call_duration.html:9
+#: core/templates/reports.html:30
+msgid "Call Duration by Operator"
+msgstr "Тривалість дзвінків за оператором"
+
+#: apps/reports/templates/analytics_call_duration.html:41
+#, python-format
+msgid "Average call duration: <strong>%(val)s</strong>"
+msgstr "Середня тривалість дзвінка: <strong>%(val)s</strong>"
+
+#: apps/reports/templates/analytics_call_duration.html:43
+#, python-format
+msgid "Total talk time: <strong>%(val)s</strong>"
+msgstr "Загальний час розмов: <strong>%(val)s</strong>"
+
+#: apps/reports/templates/analytics_call_duration.html:55
+msgid "Operator"
+msgstr "Оператор"
+
+#: apps/reports/templates/analytics_call_duration.html:56
+msgid "Total (min:sec)"
+msgstr "Всього (хв:сек)"
+
+#: apps/reports/templates/analytics_call_duration.html:57
+msgid "Avg (min:sec)"
+msgstr "Середнє (хв:сек)"
+
+#: apps/reports/templates/analytics_call_duration.html:58
+msgid "Calls"
+msgstr "Дзвінки"
+
+#: apps/reports/templates/analytics_call_duration.html:131
+msgid "No completed calls found for the selected period."
+msgstr "Завершених дзвінків за обраний період не знайдено."
+
+#: apps/reports/templates/analytics_missed_by_hour.html:5
+#: apps/reports/templates/analytics_missed_by_hour.html:9
+#: core/templates/reports.html:29
+msgid "Missed Calls by Hour"
+msgstr "Пропущені дзвінки по годинах"
+
+#: apps/reports/templates/analytics_missed_by_hour.html:48
+msgid "Hour"
+msgstr "Година"
+
+#: apps/reports/templates/analytics_missed_by_hour.html:49
+#: apps/reports/templates/analytics_missed_calls.html:49
+#: apps/reports/templates/analytics_queue_activity.html:47
+msgid "Missed"
+msgstr "Пропущені"
+
+#: apps/reports/templates/analytics_missed_by_hour.html:113
+#: apps/reports/templates/analytics_missed_calls.html:119
+msgid "No missed calls found for the selected period."
+msgstr "Пропущених дзвінків за обраний період не знайдено."
+
+#: apps/reports/templates/analytics_missed_calls.html:5
+#: apps/reports/templates/analytics_missed_calls.html:9
+#: core/templates/reports.html:28
+msgid "Missed Calls by Queue"
+msgstr "Пропущені дзвінки по чергах"
+
+#: apps/reports/templates/analytics_missed_calls.html:50
+msgid "Called back"
+msgstr "Передзвонено"
+
+#: apps/reports/templates/analytics_missed_calls.html:51
+msgid "Operators"
+msgstr "Оператори"
+
+#: apps/reports/templates/analytics_missed_calls.html:52
+msgid "Remaining"
+msgstr "Залишилось"
+
+#: apps/reports/templates/analytics_outbound_calls.html:5
+#: apps/reports/templates/analytics_outbound_calls.html:9
+#: core/templates/reports.html:27
+msgid "Outbound Calls by Agent"
+msgstr "Вихідні дзвінки за агентом"
+
+#: apps/reports/templates/analytics_queue_activity.html:5
+#: apps/reports/templates/analytics_queue_activity.html:9
+msgid "Queue Activity"
+msgstr "Активність черги"
+
+#: apps/reports/templates/analytics_queue_activity.html:45
+msgid "Period"
+msgstr "Період"
+
+#: apps/reports/templates/analytics_queue_activity.html:49
+#, python-format
+msgid "%% Missed"
+msgstr "%% Пропущено"
+
+#: apps/reports/templates/analytics_queue_activity.html:136
+msgid "No calls found for the selected period."
+msgstr "Дзвінків за обраний період не знайдено."
+
+#: apps/reports/templates/analytics_queue_calls.html:5
+#: apps/reports/templates/analytics_queue_calls.html:9
+#: core/templates/reports.html:25
+msgid "Calls by Queue"
+msgstr "Дзвінки по чергах"
+
+#: apps/reports/templates/analytics_queue_calls.html:69
+msgid "Answered calls"
+msgstr "Відповіді на дзвінки"
+
+#: apps/reports/templates/analytics_queue_calls.html:70
+msgid "Unique callers"
+msgstr "Унікальні абоненти"
+
+#: apps/reports/templates/callback_report.html:8
+msgid "Callback Report"
+msgstr "Звіт передзвонів"
+
+#: apps/reports/templates/callback_report.html:13
+#: apps/reports/templates/cdr.html:13 apps/reports/templates/monitor.html:13
+msgid "Filters"
+msgstr "Фільтри"
+
+#: apps/reports/templates/callback_report.html:59
+#: apps/reports/templates/cdr.html:71 apps/reports/templates/monitor.html:45
+msgid "Show report"
+msgstr "Показати звіт"
+
+#: apps/reports/templates/callback_report.html:62
+#: apps/reports/templates/cdr.html:74 apps/reports/templates/monitor.html:48
+msgid "Clear"
+msgstr "Очистити"
+
+#: apps/reports/templates/callback_report.html:66
+#: apps/reports/templates/cdr.html:78 apps/reports/templates/queue.html:91
+msgid "Export CSV"
+msgstr "Експорт CSV"
+
+#: apps/reports/templates/callback_report.html:80
+#: apps/reports/templates/cdr.html:92 apps/reports/templates/monitor.html:61
+#, python-format
+msgid "Results (%(count)s records)"
+msgstr "Результати (%(count)s записів)"
+
+#: apps/reports/templates/callback_report.html:89
+msgid "ID"
+msgstr "ID"
+
+#: apps/reports/templates/callback_report.html:92 core/models.py:1679
+#: core/models.py:1735
+msgid "Created"
+msgstr "Створено"
+
+#: apps/reports/templates/callback_report.html:95
+#: apps/reports/templates/cdr.html:104 apps/reports/templates/monitor.html:80
+msgid "Source"
+msgstr "Джерело"
+
+#: apps/reports/templates/callback_report.html:98
+#: apps/reports/templates/cdr.html:107 apps/reports/templates/monitor.html:81
+#: core/models.py:1507 core/models.py:1545 core/models.py:1667
+msgid "Destination"
+msgstr "Призначення"
+
+#: apps/reports/templates/callback_report.html:104
+msgid "Updated"
+msgstr "Оновлено"
+
+#: apps/reports/templates/callback_report.html:107
+msgid "Schedule"
+msgstr "Розклад"
+
+#: apps/reports/templates/callback_report.html:113
+msgid "Recording"
+msgstr "Запис"
+
+#: apps/reports/templates/callback_report.html:160
+#: apps/reports/templates/cdr.html:159 apps/reports/templates/monitor.html:114
+msgid "Play"
+msgstr "Відтворити"
+
+#: apps/reports/templates/callback_report.html:172
+#: apps/reports/templates/cdr.html:174 apps/reports/templates/monitor.html:134
+msgid "No data found"
+msgstr "Даних не знайдено"
+
+#: apps/reports/templates/callback_report.html:194
+#: apps/reports/templates/cdr.html:196 apps/reports/templates/monitor.html:154
+#, python-format
+msgid "%(current)s of %(total)s"
+msgstr "%(current)s з %(total)s"
+
+#: apps/reports/templates/callback_report.html:214
+#: apps/reports/templates/cdr.html:216
+msgid "Statistics"
+msgstr "Статистика"
+
+#: apps/reports/templates/callback_report.html:220
+msgid "Total callbacks"
+msgstr "Всього передзвонів"
+
+#: apps/reports/templates/cdr.html:8
+msgid "Call Detail Report (CDR)"
+msgstr "Детальний звіт дзвінків (CDR)"
+
+#: apps/reports/templates/cdr.html:101 apps/reports/templates/monitor.html:78
+msgid "Date/Time"
+msgstr "Дата/Час"
+
+#: apps/reports/templates/cdr.html:110
+msgid "Duration"
+msgstr "Тривалість"
+
+#: apps/reports/templates/cdr.html:119
+msgid "Dst. Channel"
+msgstr "Канал призначення"
+
+#: apps/reports/templates/cdr.html:122
+msgid "URL"
+msgstr "URL"
+
+#: apps/reports/templates/cdr.html:162 apps/reports/templates/monitor.html:117
+msgid "No audio"
+msgstr "Немає аудіо"
+
+#: apps/reports/templates/cdr.html:222
+msgid "Total calls"
+msgstr "Всього дзвінків"
+
+#: apps/reports/templates/cdr.html:236
+msgid "Total duration"
+msgstr "Загальна тривалість"
+
+#: apps/reports/templates/cdr.html:243
+msgid "Billed duration"
+msgstr "Тарифікована тривалість"
+
+#: apps/reports/templates/cdr.html:255
+msgid "File exported successfully!"
+msgstr "Файл успішно експортовано!"
+
+#: apps/reports/templates/cdr.html:266
+msgid "CDR Details"
+msgstr "Деталі CDR"
+
+#: apps/reports/templates/cdr.html:324
+msgid "Copied to clipboard!"
+msgstr "Скопійовано до буфера обміну!"
+
+#: apps/reports/templates/cdr.html:379 apps/reports/templates/monitor.html:89
+msgid "Download"
+msgstr "Завантажити"
+
+#: apps/reports/templates/monitor.html:8
+msgid "Call Recordings Report"
+msgstr "Звіт записів дзвінків"
+
+#: apps/reports/templates/monitor.html:83
+msgid "Filename"
+msgstr "Ім'я файлу"
+
+#: apps/reports/templates/monitor.html:86
+msgid "Audio"
+msgstr "Аудіо"
+
+#: apps/reports/templates/queue.html:9
+msgid "QueueLog Asterisk Report"
+msgstr "Звіт черги Asterisk"
+
+#: apps/reports/templates/queue.html:86
+msgid "Generate Report"
+msgstr "Сформувати звіт"
+
+#: apps/reports/templates/queue.html:105 apps/reports/templates/queue.html:240
+msgid "Total Calls"
+msgstr "Всього дзвінків"
+
+#: apps/reports/templates/queue.html:126 apps/reports/templates/queue.html:153
+#: apps/reports/templates/queue.html:196 apps/reports/templates/queue.html:243
+msgid "Answer Rate"
+msgstr "Відсоток відповідей"
+
+#: apps/reports/templates/queue.html:133
+msgid "Avg Wait Time (sec)"
+msgstr "Середній час очікування (сек)"
+
+#: apps/reports/templates/queue.html:142
+msgid "Daily Statistics"
+msgstr "Денна статистика"
+
+#: apps/reports/templates/queue.html:149
+msgid "Date"
+msgstr "Дата"
+
+#: apps/reports/templates/queue.html:150
+msgid "Total Log Entries"
+msgstr "Всього записів у журналі"
+
+#: apps/reports/templates/queue.html:192
+msgid "Total Events"
+msgstr "Всього подій"
+
+#: apps/reports/templates/queue.html:194
+msgid "Connects"
+msgstr "З'єднань"
+
+#: apps/reports/templates/queue.html:197
+msgid "Avg Talk Time (sec)"
+msgstr "Середній час розмови (сек)"
+
+#: apps/reports/templates/queue.html:244
+msgid "Abandon Rate"
+msgstr "Відсоток покинутих"
+
+#: apps/reports/templates/queue.html:276
+msgid "Event Distribution"
+msgstr "Розподіл подій"
+
+#: apps/reports/templates/queue.html:294
+msgid "Recent Calls"
+msgstr "Останні дзвінки"
+
+#: apps/reports/templates/queue.html:301 apps/reports/templates/queue.html:421
+msgid "Time"
+msgstr "Час"
+
+#: apps/reports/templates/queue.html:302
+msgid "Call ID"
+msgstr "ID дзвінка"
+
+#: apps/reports/templates/queue.html:305 apps/reports/templates/queue.html:424
+msgid "Event"
+msgstr "Подія"
+
+#: apps/reports/templates/queue.html:306 apps/reports/templates/queue.html:425
+msgid "Data1"
+msgstr "Дані1"
+
+#: apps/reports/templates/queue.html:307 apps/reports/templates/queue.html:426
+msgid "Data2"
+msgstr "Дані2"
+
+#: apps/reports/templates/queue.html:358
+#, python-format
+msgid "Page %(current)s of %(total)s (%(count)s records total)"
+msgstr "Сторінка %(current)s з %(total)s (всього %(count)s записів)"
+
+#: apps/reports/templates/queue.html:367
+msgid "Lost and Found Report"
+msgstr "Звіт пропущених та передзвонів"
+
+#: apps/reports/templates/queue.html:374
+msgid "Abandon Time"
+msgstr "Час відмови"
+
+#: apps/reports/templates/queue.html:375 core/models.py:1501
+#: core/models.py:1539 core/models.py:1577 core/models.py:1660
+msgid "Caller ID"
+msgstr "Ідентифікатор абонента"
+
+#: apps/reports/templates/queue.html:376
+msgid "Incoming Call (from this number)"
+msgstr "Вхідний дзвінок (з цього номера)"
+
+#: apps/reports/templates/queue.html:377
+msgid "Incoming: Operator (dstchannel)"
+msgstr "Вхідний: оператор (dstchannel)"
+
+#: apps/reports/templates/queue.html:378
+msgid "Outgoing Call (to this number)"
+msgstr "Вихідний дзвінок (на цей номер)"
+
+#: apps/reports/templates/queue.html:379
+msgid "Outgoing: With Whom (channel)"
+msgstr "Вихідний: з ким (канал)"
+
+#: apps/reports/templates/queue.html:403
+msgid "No Data Found"
+msgstr "Даних не знайдено"
+
+#: apps/reports/templates/queue.html:404
+msgid "No records match the selected filters. Please adjust your search criteria and try again."
+msgstr "Жодний запис не відповідає обраним фільтрам. Будь ласка, змініть критерії пошуку та спробуйте знову."
+
+#: apps/reports/templates/queue.html:413
+msgid "Queue Log Details"
+msgstr "Деталі журналу черги"
+
+#: apps/reports/templates/queue.html:416
+msgid "Loading..."
+msgstr "Завантаження..."
+
+#: apps/reports/templates/queue.html:427
+msgid "Data3"
+msgstr "Дані3"
+
+#: apps/reports/templates/queue.html:428
+msgid "Data4"
+msgstr "Дані4"
+
+#: apps/reports/templates/queue.html:429
+msgid "Data5"
+msgstr "Дані5"
+
+#: apps/reports/templates/queue.html:436
+msgid "No records found for this Call ID."
+msgstr "Записів для цього ID дзвінка не знайдено."
+
+#: apps/reports/templates/routing_report.html:7 core/templates/reports.html:17
+msgid "Routing Tables"
+msgstr "Таблиці маршрутизації"
+
+#: apps/reports/templates/routing_report.html:14
+#: apps/reports/templates/routing_report.html:48
+msgid "Prefix"
+msgstr "Префікс"
+
+#: apps/reports/templates/routing_report.html:16
+msgid "e.g. 380"
+msgstr "напр. 380"
+
+#: apps/reports/templates/routing_report.html:22
+msgid "e.g. from-internal"
+msgstr "напр. from-internal"
+
+#: apps/reports/templates/routing_report.html:26
+msgid "Filter"
+msgstr "Фільтр"
+
+#: apps/reports/templates/routing_report.html:28
+msgid "Reset"
+msgstr "Скинути"
+
+#: apps/reports/templates/routing_report.html:50
+msgid "Target Context"
+msgstr "Цільовий контекст"
+
+#: apps/reports/templates/routing_report.html:67
+msgid "No routing tables found."
+msgstr "Таблиць маршрутизації не знайдено."
+
+#: apps/reports/templates/routing_report.html:73
+msgid "No records match the filter."
+msgstr "Жодний запис не відповідає фільтру."
+
+#: core/admin.py:69
+msgid "Generic"
+msgstr "Загальне"
+
+#: core/admin.py:71
+msgid "Network settings"
+msgstr "Мережеві налаштування"
+
+#: core/admin.py:83
+msgid "TLS Settings (only if TLS protocol is used)"
+msgstr "Налаштування TLS (лише якщо використовується протокол TLS)"
+
+#: core/admin.py:174
+msgid "Routing Record"
+msgstr "Запис маршрутизації"
+
+#: core/admin.py:175
+msgid "Routing Records"
+msgstr "Записи маршрутизації"
+
+#: core/admin.py:267
+msgid "Add Members"
+msgstr "Додати учасників"
+
+#: core/admin.py:271
+msgid "Select SIP users to bulk-add as queue members. Existing members are not changed. Use the inline below to adjust details."
+msgstr "Оберіть SIP користувачів для масового додавання як учасників черги. Наявні учасники не змінюються. Використовуйте форму нижче для коригування деталей."
+
+#: core/admin.py:277
+msgid "Queue Rules"
+msgstr "Правила черги"
+
+#: core/admin.py:280
+msgid "Select a rule and click the link to edit its penalty changes."
+msgstr "Оберіть правило та натисніть посилання для редагування змін штрафів."
+
+#: core/admin.py:284
+msgid "Timeouts"
+msgstr "Таймаути"
+
+#: core/admin.py:288
+msgid "Announcements"
+msgstr "Оголошення"
+
+#: core/admin.py:292
+msgid "Advanced"
+msgstr "Розширені"
+
+#: core/admin.py:312
+msgid "Edit Rule"
+msgstr "Редагувати правило"
+
+#: core/forms.py:32 core/forms.py:38
+#, python-format
+msgid "This value: %(value)s must contain only English letters and digits."
+msgstr "Це значення: %(value)s повинно містити лише латинські літери та цифри."
+
+#: core/forms.py:49
+#, python-format
+msgid "This value: %(value)s must be longer than 2 characters."
+msgstr "Це значення: %(value)s повинно бути довшим ніж 2 символи."
+
+#: core/forms.py:71 core/forms.py:257 core/models.py:83 core/models.py:443
+msgid "Description"
+msgstr "Опис"
+
+#: core/forms.py:74 core/models.py:250
+msgid "Full name of user, description of connection"
+msgstr "Повне ім'я користувача, опис з'єднання"
+
+#: core/forms.py:78 core/forms.py:170 core/models.py:259 core/models.py:459
+#: core/templates/login.html:128
+msgid "Username"
+msgstr "Ім'я користувача"
+
+#: core/forms.py:81
+msgid "Username/ID for the incoming connection"
+msgstr "Ім'я користувача/ID для вхідного з'єднання"
+
+#: core/forms.py:85 core/forms.py:177
+msgid "Transport"
+msgstr "Транспорт"
+
+#: core/forms.py:87
+msgid "Select transport for the user"
+msgstr "Оберіть транспорт для користувача"
+
+#: core/forms.py:92 core/models.py:279 core/models.py:490
+msgid "NAT"
+msgstr "NAT"
+
+#: core/forms.py:94
+msgid "Enable NAT for the user. Use only if you are sure that your user is behind NAT."
+msgstr "Увімкнути NAT для користувача. Використовуйте лише якщо впевнені, що користувач знаходиться за NAT."
+
+#: core/forms.py:97 core/forms.py:185 core/models.py:1464
+msgid "Routing Table"
+msgstr "Таблиця маршрутизації"
+
+#: core/forms.py:99
+msgid "Select routing table for the user"
+msgstr "Оберіть таблицю маршрутизації для користувача"
+
+#: core/forms.py:105 core/models.py:304
+msgid "Auth type"
+msgstr "Тип автентифікації"
+
+#: core/forms.py:107
+msgid "Select type of authentication"
+msgstr "Оберіть тип автентифікації"
+
+#: core/forms.py:111
+msgid "Incoming dialplan"
+msgstr "План набору для вхідних дзвінків"
+
+#: core/forms.py:114
+msgid "Custom dialplan for incoming calls to the user"
+msgstr "Власний план набору для вхідних дзвінків до користувача"
+
+#: core/forms.py:118 core/models.py:320
+msgid "Settings"
+msgstr "Налаштування"
+
+#: core/forms.py:121
+msgid "Custom user settings in asterisk pjsip.conf format"
+msgstr "Власні налаштування користувача у форматі pjsip.conf Asterisk"
+
+#: core/forms.py:125 core/forms.py:192 core/models.py:327 core/models.py:514
+msgid "Auth Settings"
+msgstr "Налаштування Auth"
+
+#: core/forms.py:128 core/forms.py:195
+msgid "Custom user AUTH settings in asterisk pjsip.conf format"
+msgstr "Власні налаштування AUTH користувача у форматі pjsip.conf Asterisk"
+
+#: core/forms.py:132 core/forms.py:198
+msgid "Aor Settings"
+msgstr "Налаштування AOR"
+
+#: core/forms.py:135 core/forms.py:201
+msgid "Custom user AOR settings in asterisk pjsip.conf format"
+msgstr "Власні налаштування AOR користувача у форматі pjsip.conf Asterisk"
+
+#: core/forms.py:163 core/models.py:451
+msgid "Channel name"
+msgstr "Ім'я каналу"
+
+#: core/forms.py:166
+msgid "Name of the channel. Use only English letters and digits."
+msgstr "Ім'я каналу. Використовуйте лише латинські літери та цифри."
+
+#: core/forms.py:173
+msgid "Optional username for the connection used for remote side."
+msgstr "Необов'язкове ім'я користувача для з'єднання, що використовується для віддаленої сторони."
+
+#: core/forms.py:179
+msgid "Select transport for the peer"
+msgstr "Оберіть транспорт для піра"
+
+#: core/forms.py:187
+msgid "Select routing table for the peer"
+msgstr "Оберіть таблицю маршрутизації для піра"
+
+#: core/forms.py:234
+msgid "Select context for the extension"
+msgstr "Оберіть контекст для внутрішнього номера"
+
+#: core/forms.py:239
+msgid "Extension for the dialplan."
+msgstr "Внутрішній номер для плану набору."
+
+#: core/forms.py:243
+msgid "Dialplan"
+msgstr "План набору"
+
+#: core/forms.py:252 core/models.py:575
+msgid "Use Asterisk AEL syntax to define the dialplan."
+msgstr "Використовуйте синтаксис AEL Asterisk для визначення плану набору."
+
+#: core/forms.py:257
+msgid "Description of the extension."
+msgstr "Опис внутрішнього номера."
+
+#: core/forms.py:302
+#, python-brace-format
+msgid "Context with the name \"{name}\" already exists in the DialplanContext table. Please choose a different name."
+msgstr "Контекст з назвою \"{name}\" вже існує в таблиці DialplanContext. Будь ласка, оберіть іншу назву."
+
+#: core/forms.py:323
+#, python-brace-format
+msgid "Context with the name \"{name}\" already exists in the RoutingTable table. Please choose a different name."
+msgstr "Контекст з назвою \"{name}\" вже існує в таблиці RoutingTable. Будь ласка, оберіть іншу назву."
+
+#: core/forms.py:337
+msgid "Add SIP Users"
+msgstr "Додати SIP користувачів"
+
+#: core/forms.py:339
+#, python-brace-format
+msgid "Select users to add as queue members. Each user will get INTERFACE=PJSIP/username, penalty={penalty}. Already existing members are not duplicated."
+msgstr "Оберіть користувачів для додавання як учасників черги. Кожен користувач отримає INTERFACE=PJSIP/username, penalty={penalty}. Наявні учасники не дублюються."
+
+#: core/forms.py:342
+msgid "SIP Users"
+msgstr "SIP користувачі"
+
+#: core/models.py:63
+msgid "UDP"
+msgstr "UDP"
+
+#: core/models.py:64
+msgid "TCP"
+msgstr "TCP"
+
+#: core/models.py:65
+msgid "TLS"
+msgstr "TLS"
+
+#: core/models.py:66
+msgid "WSS"
+msgstr "WSS"
+
+#: core/models.py:70
+msgid "The default as defined by PJSIP. This is currently TLSv1"
+msgstr "Стандартне значення PJSIP. На даний момент це TLSv1"
+
+#: core/models.py:71
+msgid "TLSv1"
+msgstr "TLSv1"
+
+#: core/models.py:72
+msgid "TLSv1.1"
+msgstr "TLSv1.1"
+
+#: core/models.py:73
+msgid "TLSv1.2"
+msgstr "TLSv1.2"
+
+#: core/models.py:74
+msgid "SSLv2"
+msgstr "SSLv2"
+
+#: core/models.py:75
+msgid "SSLv3"
+msgstr "SSLv3"
+
+#: core/models.py:76
+msgid "SSLv2.3"
+msgstr "SSLv2.3"
+
+#: core/models.py:82
+msgid "Example: UDP + NAT for remote users"
+msgstr "Приклад: UDP + NAT для віддалених користувачів"
+
+#: core/models.py:92
+msgid "Example: transport-udp-nat"
+msgstr "Приклад: transport-udp-nat"
+
+#: core/models.py:110
+msgid "local_net"
+msgstr "local_net"
+
+#: core/models.py:111
+msgid "List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24"
+msgstr "Перелічіть усі локальні мережі через кому: 10.0.0.0/16, 192.168.0.0/24"
+
+#: core/models.py:116
+msgid "This is the external IP address to use in RTP handling"
+msgstr "Зовнішня IP-адреса для використання в обробці RTP"
+
+#: core/models.py:117
+msgid "External RTP IP address"
+msgstr "Зовнішня IP-адреса RTP"
+
+#: core/models.py:122
+msgid "This is much like the external_media_address setting, but for SIP signaling instead of RTP media."
+msgstr "Аналогічно налаштуванню external_media_address, але для SIP сигналізації замість RTP медіа."
+
+#: core/models.py:123
+msgid "External SIP IP address"
+msgstr "Зовнішня IP-адреса SIP"
+
+#: core/models.py:143
+msgid "01. SIP Transports"
+msgstr "01. SIP Транспорти"
+
+#: core/models.py:152
+msgid "Context name"
+msgstr "Назва контексту"
+
+#: core/models.py:153
+msgid "Unique name for the context or routing tables, use latin symbols, digits and underscores"
+msgstr "Унікальна назва для контексту або таблиць маршрутизації, використовуйте латинські символи, цифри та підкреслення"
+
+#: core/models.py:161
+msgid "Context description"
+msgstr "Опис контексту"
+
+#: core/models.py:162 core/models.py:546 core/models.py:583 core/models.py:1247
+#: core/models.py:1291 core/models.py:1324
+msgid "Use latin symbols, digits and undercore to describe"
+msgstr "Використовуйте латинські символи, цифри та підкреслення для опису"
+
+#: core/models.py:167
+msgid "04. Dialplan contexts"
+msgstr "04. Контексти плану набору"
+
+#: core/models.py:203
+msgid "Routing table name"
+msgstr "Назва таблиці маршрутизації"
+
+#: core/models.py:204
+msgid "Unique name for the routing table and dialplan context, use latin symbols, digits and underscores"
+msgstr "Унікальна назва для таблиці маршрутизації та контексту плану набору, використовуйте латинські символи, цифри та підкреслення"
+
+#: core/models.py:209
+msgid "15. Routing Tables"
+msgstr "15. Таблиці маршрутизації"
+
+#: core/models.py:242
+msgid "Plaintext"
+msgstr "Відкритий текст"
+
+#: core/models.py:243
+msgid "MD5"
+msgstr "MD5"
+
+#: core/models.py:258
+msgid "Username: 3-32 characters"
+msgstr "Ім'я користувача: 3-32 символи"
+
+#: core/models.py:266
+msgid "Password for the connection"
+msgstr "Пароль для з'єднання"
+
+#: core/models.py:267 core/models.py:467 core/templates/login.html:145
+msgid "Password"
+msgstr "Пароль"
+
+#: core/models.py:278 core/models.py:489
+msgid "Enable NAT traversal for this peer"
+msgstr "Увімкнути NAT traversal для цього піра"
+
+#: core/models.py:286
+msgid "Easy way to setup internal extension for the user"
+msgstr "Простий спосіб налаштування внутрішнього номера для користувача"
+
+#: core/models.py:303
+msgid "Type of authentication"
+msgstr "Тип автентифікації"
+
+#: core/models.py:312
+msgid "Only one allowed extension for the user"
+msgstr "Лише один дозволений внутрішній номер для користувача"
+
+#: core/models.py:313
+msgid "Allowed extension"
+msgstr "Дозволений внутрішній номер"
+
+#: core/models.py:319
+msgid "Custom user settings"
+msgstr "Власні налаштування користувача"
+
+#: core/models.py:326
+msgid "Custom user [auth] section"
+msgstr "Власна секція [auth] користувача"
+
+#: core/models.py:333
+msgid "Custom user [aor] section"
+msgstr "Власна секція [aor] користувача"
+
+#: core/models.py:334 core/models.py:521
+msgid "AOR Settings"
+msgstr "Налаштування AOR"
+
+#: core/models.py:340
+msgid "Custom user extension section for incoming calls"
+msgstr "Власна секція внутрішнього номера для вхідних дзвінків"
+
+#: core/models.py:341
+msgid "Extension Settings"
+msgstr "Налаштування внутрішнього номера"
+
+#: core/models.py:435
+msgid "02. SIP Users"
+msgstr "02. SIP Користувачі"
+
+#: core/models.py:442
+msgid "Describe a peer"
+msgstr "Опишіть піра"
+
+#: core/models.py:450
+msgid "Name of the channel"
+msgstr "Ім'я каналу"
+
+#: core/models.py:458
+msgid "Username for the connection used for remote side"
+msgstr "Ім'я користувача для з'єднання, що використовується для віддаленої сторони"
+
+#: core/models.py:466
+msgid "Clear text password for the connection used for remote side"
+msgstr "Пароль у відкритому вигляді для з'єднання з віддаленою стороною"
+
+#: core/models.py:474
+msgid "Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere."
+msgstr "Host:Port піра. Необов'язкове поле. Якщо не вказано, реєстрація буде дозволена звідусіль."
+
+#: core/models.py:475
+msgid "The list of host[:port] separated by commas"
+msgstr "Список host[:port] через кому"
+
+#: core/models.py:479
+msgid "Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. "
+msgstr "Чи має віддалений пір реєструватись тут? Використовується для GSM, E1, T1, FXS, FXO шлюзів тощо."
+
+#: core/models.py:480
+msgid "Registration here"
+msgstr "Реєстрація тут"
+
+#: core/models.py:484
+msgid "Should we register on remote service? Typically used for providers"
+msgstr "Чи потрібно реєструватися на віддаленому сервісі? Зазвичай використовується для провайдерів"
+
+#: core/models.py:485
+msgid "Outbound registration"
+msgstr "Вихідна реєстрація"
+
+#: core/models.py:493
+msgid "Maximum calls on the trunk"
+msgstr "Максимальна кількість дзвінків на транку"
+
+#: core/models.py:493
+msgid "Call Limit"
+msgstr "Ліміт дзвінків"
+
+#: core/models.py:513
+msgid "Custom peer [auth] section"
+msgstr "Власна секція [auth] піра"
+
+#: core/models.py:520
+msgid "Custom peer [aor] section"
+msgstr "Власна секція [aor] піра"
+
+#: core/models.py:525
+msgid "03. SIP Uplinks and Peers"
+msgstr "03. SIP Апліки та піри"
+
+#: core/models.py:537
+msgid "Macro name"
+msgstr "Назва макросу"
+
+#: core/models.py:538 core/models.py:608 core/models.py:779 core/models.py:1239
+#: core/models.py:1256 core/models.py:1283 core/models.py:1300
+msgid "Use latin symbols, digits and undercore"
+msgstr "Використовуйте латинські символи, цифри та підкреслення"
+
+#: core/models.py:545
+msgid "Macro description"
+msgstr "Опис макросу"
+
+#: core/models.py:548
+msgid "Macro scenario"
+msgstr "Сценарій макросу"
+
+#: core/models.py:552
+msgid "06. Dialplan macros"
+msgstr "06. Макроси плану набору"
+
+#: core/models.py:570
+msgid "Asterisk extension"
+msgstr "Внутрішній номер Asterisk"
+
+#: core/models.py:574
+msgid "Extension scenario"
+msgstr "Сценарій внутрішнього номера"
+
+#: core/models.py:582
+msgid "Extension description"
+msgstr "Опис внутрішнього номера"
+
+#: core/models.py:592
+msgid "05. Dialplan extensions"
+msgstr "05. Внутрішні номери плану набору"
+
+#: core/models.py:607
+msgid "Manager user name"
+msgstr "Ім'я користувача менеджера"
+
+#: core/models.py:616
+msgid "Manager user secret"
+msgstr "Секрет користувача менеджера"
+
+#: core/models.py:617
+msgid "Password for manager user"
+msgstr "Пароль для користувача менеджера"
+
+#: core/models.py:647
+msgid "95. Manager users"
+msgstr "95. Користувачі менеджера"
+
+#: core/models.py:654 core/models.py:655
+msgid "IP address for provisioning"
+msgstr "IP-адреса для провізіювання"
+
+#: core/models.py:664 core/models.py:665
+msgid "Hostname of the server"
+msgstr "Ім'я хоста сервера"
+
+#: core/models.py:672 core/models.py:673
+msgid "WSS port of the server"
+msgstr "WSS порт сервера"
+
+#: core/models.py:677
+msgid "Allow global monitor"
+msgstr "Дозволити глобальний моніторинг"
+
+#: core/models.py:678
+msgid "Allow to monitor calls of whole system"
+msgstr "Дозволити моніторинг дзвінків усієї системи"
+
+#: core/models.py:698
+msgid "User basic template"
+msgstr "Базовий шаблон користувача"
+
+#: core/models.py:699 core/models.py:708 core/models.py:716 core/models.py:730
+#: core/models.py:739 core/models.py:747
+msgid "You may override it by custom settings in user form"
+msgstr "Можна перевизначити власними налаштуваннями у формі користувача"
+
+#: core/models.py:707
+msgid "User AOR template"
+msgstr "Шаблон AOR користувача"
+
+#: core/models.py:715
+msgid "User auth template"
+msgstr "Шаблон auth користувача"
+
+#: core/models.py:729
+msgid "WebRTC template for endpoint"
+msgstr "Шаблон WebRTC для кінцевої точки"
+
+#: core/models.py:738
+msgid "WebRTC AOR template"
+msgstr "Шаблон AOR для WebRTC"
+
+#: core/models.py:746
+msgid "WebRTC auth template"
+msgstr "Шаблон auth для WebRTC"
+
+#: core/models.py:758
+msgid "96. General Settings"
+msgstr "96. Загальні налаштування"
+
+#: core/models.py:762
+msgid "Files"
+msgstr "Файли"
+
+#: core/models.py:763
+msgid "Playlist"
+msgstr "Плейлист"
+
+#: core/models.py:764
+msgid "Custom"
+msgstr "Власний"
+
+#: core/models.py:768 core/models.py:901
+msgid "Random"
+msgstr "Випадковий"
+
+#: core/models.py:769
+msgid "Alpha"
+msgstr "Алфавітний"
+
+#: core/models.py:778
+msgid "Music on hold name"
+msgstr "Назва музики на утриманні"
+
+#: core/models.py:795
+msgid "Directory"
+msgstr "Каталог"
+
+#: core/models.py:796
+msgid "Directory with music files"
+msgstr "Каталог з музичними файлами"
+
+#: core/models.py:827
+msgid "08. Music on hold classes"
+msgstr "08. Класи музики на утриманні"
+
+#: core/models.py:858
+msgid "Playlist entry file"
+msgstr "Файл запису плейлисту"
+
+#: core/models.py:868
+msgid "Playlist entry url"
+msgstr "URL запису плейлисту"
+
+#: core/models.py:893
+msgid "07. Music on hold playlist entries"
+msgstr "07. Записи плейлисту музики на утриманні"
+
+#: core/models.py:898
+msgid "Ring All"
+msgstr "Дзвінок усім"
+
+#: core/models.py:899
+msgid "Least Recent"
+msgstr "Найдавніший"
+
+#: core/models.py:900
+msgid "Fewest Calls"
+msgstr "Найменше дзвінків"
+
+#: core/models.py:902
+msgid "Round Robin Memory"
+msgstr "Round Robin з пам'яттю"
+
+#: core/models.py:903
+msgid "Round Robin Ordered"
+msgstr "Round Robin впорядкований"
+
+#: core/models.py:904
+msgid "Linear as configured"
+msgstr "Лінійний за налаштуванням"
+
+#: core/models.py:905
+msgid "Weighted Random"
+msgstr "Зважений випадковий"
+
+#: core/models.py:909
+msgid "Queue Name"
+msgstr "Назва черги"
+
+#: core/models.py:915
+msgid "Music on hold"
+msgstr "Музика на утриманні"
+
+#: core/models.py:921
+msgid "Announcement to the member"
+msgstr "Оголошення для учасника"
+
+#: core/models.py:922
+msgid ""
+"An announcement may be specified which is played for the member as\n"
+"soon as they answer a call, typically to indicate to them which queue\n"
+"this call should be answered as, so that agents or members who are\n"
+"listening to more than one queue can differentiated how they should\n"
+"engage the customer"
+msgstr ""
+"Можна вказати оголошення, яке відтворюється для учасника\n"
+"одразу після відповіді на дзвінок, зазвичай щоб повідомити,\n"
+"в якій черзі потрібно відповісти на цей дзвінок, щоб агенти\n"
+"або учасники, які обслуговують більше однієї черги, могли\n"
+"розрізнити, як їм слід спілкуватися з клієнтом"
+
+#: core/models.py:932
+msgid "Queue announcement to the caller"
+msgstr "Оголошення черги для абонента"
+
+#: core/models.py:933
+msgid ""
+"An announcement may be specified which is played to the caller just\n"
+"before they are bridged with an agent."
+msgstr ""
+"Можна вказати оголошення, яке відтворюється абоненту\n"
+"безпосередньо перед з'єднанням з агентом."
+
+#: core/models.py:941
+msgid "Strategy"
+msgstr "Стратегія"
+
+#: core/models.py:943
+msgid "Service Level"
+msgstr "Рівень сервісу"
+
+#: core/models.py:949
+msgid ""
+"If a 'context' is specified, and a caller enters an extension that\n"
+"matches an extension within that context, they will be taken out of\n"
+"the queue and sent to that extension."
+msgstr ""
+"Якщо вказано 'context', і абонент набирає внутрішній номер,\n"
+"що відповідає номеру в цьому контексті, він буде виведений з черги\n"
+"і переведений на цей внутрішній номер."
+
+#: core/models.py:954
+msgid "Maximum Queue Length"
+msgstr "Максимальна довжина черги"
+
+#: core/models.py:955
+msgid "Timeout"
+msgstr "Таймаут"
+
+#: core/models.py:956
+msgid "Retry"
+msgstr "Повторна спроба"
+
+#: core/models.py:960
+msgid "Application"
+msgstr "Додаток"
+
+#: core/models.py:960
+msgid "Configuration"
+msgstr "Конфігурація"
+
+#: core/models.py:961
+msgid "Timeout Priority"
+msgstr "Пріоритет таймауту"
+
+#: core/models.py:963
+msgid "Queue Weight"
+msgstr "Вага черги"
+
+#: core/models.py:964 core/models.py:1107
+msgid "Wrap-Up Time"
+msgstr "Час завершення"
+
+#: core/models.py:965
+msgid "Autofill"
+msgstr "Автозаповнення"
+
+#: core/models.py:969 core/models.py:1004 core/models.py:1012
+msgid "No"
+msgstr "Ні"
+
+#: core/models.py:970
+msgid "Autopause"
+msgstr "Автопауза"
+
+#: core/models.py:973
+msgid "Autopause Delay"
+msgstr "Затримка автопаузи"
+
+#: core/models.py:975
+msgid "Report Hold Time"
+msgstr "Повідомляти час утримання"
+
+#: core/models.py:977
+msgid "Set Interface Variable"
+msgstr "Встановити змінну інтерфейсу"
+
+#: core/models.py:980
+msgid "Set Queue Entry Variable"
+msgstr "Встановити змінну запису черги"
+
+#: core/models.py:982
+msgid "Set Queue Variable"
+msgstr "Встановити змінну черги"
+
+#: core/models.py:984
+msgid "Announce Frequency"
+msgstr "Частота оголошень"
+
+#: core/models.py:987 core/models.py:1005
+msgid "Announce Hold Time"
+msgstr "Оголошувати час утримання"
+
+#: core/models.py:990
+msgid "Minimum Announce Frequency"
+msgstr "Мінімальна частота оголошень"
+
+#: core/models.py:993
+msgid "Periodic Announce Frequency"
+msgstr "Частота періодичних оголошень"
+
+#: core/models.py:996
+msgid "Random Periodic Announce"
+msgstr "Випадкові періодичні оголошення"
+
+#: core/models.py:999
+msgid "Relative Periodic Announce"
+msgstr "Відносні періодичні оголошення"
+
+#: core/models.py:1004
+msgid "Once"
+msgstr "Один раз"
+
+#: core/models.py:1006
+msgid "Should we include estimated hold time in position announcements?"
+msgstr "Чи включати розрахунковий час утримання в оголошення позиції?"
+
+#: core/models.py:1012
+msgid "More"
+msgstr "Більше"
+
+#: core/models.py:1012
+msgid "Limit"
+msgstr "Обмеження"
+
+#: core/models.py:1013
+msgid "Announce Position"
+msgstr "Оголошувати позицію"
+
+#: core/models.py:1017
+msgid "Announce to first user"
+msgstr "Оголошувати першому користувачу"
+
+#: core/models.py:1022
+msgid "Announce Position Limit"
+msgstr "Ліміт оголошення позиції"
+
+#: core/models.py:1035
+msgid "Announce Round Seconds"
+msgstr "Округлення секунд у оголошенні"
+
+#: core/models.py:1039
+msgid "Announce position only up"
+msgstr "Оголошувати позицію лише при покращенні"
+
+#: core/models.py:1040
+msgid "Only announce the caller's position if it has improved since the last announcement."
+msgstr "Оголошувати позицію абонента лише якщо вона покращилась з моменту останнього оголошення."
+
+#: core/models.py:1047
+msgid "Queue Announcement"
+msgstr "Оголошення черги"
+
+#: core/models.py:1053
+msgid "Periodic Announce"
+msgstr "Періодичне оголошення"
+
+#: core/models.py:1054
+msgid "The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait"
+msgstr "Список файлів для оголошення через кому. Приклад: your-call-is-important-to-us, please-wait"
+
+#: core/models.py:1060
+msgid "WAV"
+msgstr "WAV"
+
+#: core/models.py:1060
+msgid "GSM"
+msgstr "GSM"
+
+#: core/models.py:1060
+msgid "WAV49"
+msgstr "WAV49"
+
+#: core/models.py:1061
+msgid "Monitor Format"
+msgstr "Формат моніторингу"
+
+#: core/models.py:1066
+msgid "Join Empty"
+msgstr "Приєднання до порожньої черги"
+
+#: core/models.py:1067
+msgid "What to do when a caller joins a queue with no members in it?"
+msgstr "Що робити, коли абонент входить у чергу без учасників?"
+
+#: core/models.py:1072
+msgid "Leave When Empty"
+msgstr "Вийти при порожній черзі"
+
+#: core/models.py:1073
+msgid "When to leave empty queue?"
+msgstr "Коли виходити з порожньої черги?"
+
+#: core/models.py:1075 core/models.py:1106
+msgid "Ring In Use"
+msgstr "Дзвінок при зайнятості"
+
+#: core/models.py:1076
+msgid "Timeout Restart"
+msgstr "Перезапуск таймауту"
+
+#: core/models.py:1082
+msgid "Default Rule"
+msgstr "Правило за замовчуванням"
+
+#: core/models.py:1083
+msgid "Escalation rule from queuerules.conf"
+msgstr "Правило ескалації з queuerules.conf"
+
+#: core/models.py:1088
+msgid "09. Queues"
+msgstr "09. Черги"
+
+#: core/models.py:1098
+msgid "Interface"
+msgstr "Інтерфейс"
+
+#: core/models.py:1099
+msgid "Penalty"
+msgstr "Штраф"
+
+#: core/models.py:1101
+msgid "Member Name"
+msgstr "Ім'я учасника"
+
+#: core/models.py:1104
+msgid "State Interface"
+msgstr "Інтерфейс стану"
+
+#: core/models.py:1111
+msgid "10. Queue Members"
+msgstr "10. Учасники черги"
+
+#: core/models.py:1129
+msgid "Announcement name"
+msgstr "Назва оголошення"
+
+#: core/models.py:1149
+msgid "11. Queue Announcements"
+msgstr "11. Оголошення черги"
+
+#: core/models.py:1161
+msgid "Unique rule name (used in Queue(...,,,rule_name))"
+msgstr "Унікальна назва правила (використовується в Queue(...,,,rule_name))"
+
+#: core/models.py:1165
+msgid "Description or notes for the rule"
+msgstr "Опис або примітки до правила"
+
+#: core/models.py:1173
+msgid "Queue Rule"
+msgstr "Правило черги"
+
+#: core/models.py:1174
+msgid "13. Queue Rules"
+msgstr "13. Правила черги"
+
+#: core/models.py:1186
+msgid "Related queue rule"
+msgstr "Пов'язане правило черги"
+
+#: core/models.py:1190
+msgid "After how many seconds in the queue this change is applied"
+msgstr "Після якої кількості секунд у черзі застосовується ця зміна"
+
+#: core/models.py:1198
+msgid "Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY"
+msgstr "Порожнє=пропустити, абсолютне (10) або відносне (+3, -2) для QUEUE_MAX_PENALTY"
+
+#: core/models.py:1206
+msgid "Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY"
+msgstr "Порожнє=пропустити, абсолютне (0) або відносне (+1, -1) для QUEUE_MIN_PENALTY"
+
+#: core/models.py:1214
+msgid "Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY"
+msgstr "Порожнє=пропустити, абсолютне (5) або відносне (+1, -1) для QUEUE_RAISE_PENALTY"
+
+#: core/models.py:1220
+msgid "Execution order if there are rules with the same time"
+msgstr "Порядок виконання при наявності правил з однаковим часом"
+
+#: core/models.py:1228
+msgid "Penalty Change"
+msgstr "Зміна штрафу"
+
+#: core/models.py:1229
+msgid "Penalty Changes"
+msgstr "Зміни штрафів"
+
+#: core/models.py:1238 core/models.py:1282
+msgid "File name"
+msgstr "Ім'я файлу"
+
+#: core/models.py:1246 core/models.py:1290
+msgid "File description"
+msgstr "Опис файлу"
+
+#: core/models.py:1249 core/models.py:1293
+msgid "File content"
+msgstr "Вміст файлу"
+
+#: core/models.py:1255 core/models.py:1299
+msgid "File path"
+msgstr "Шлях до файлу"
+
+#: core/models.py:1262 core/models.py:1263 core/models.py:1306
+#: core/models.py:1307
+msgid "File version"
+msgstr "Версія файлу"
+
+#: core/models.py:1272
+msgid "97. Configuration files"
+msgstr "97. Файли конфігурації"
+
+#: core/models.py:1312
+msgid "98. Binary files"
+msgstr "98. Бінарні файли"
+
+#: core/models.py:1323
+msgid "Configuration description"
+msgstr "Опис конфігурації"
+
+#: core/models.py:1329
+msgid "Configuration Files"
+msgstr "Файли конфігурації"
+
+#: core/models.py:1336
+msgid "Binary Files"
+msgstr "Бінарні файли"
+
+#: core/models.py:1343
+msgid "99. System Configurations"
+msgstr "99. Системні конфігурації"
+
+#: core/models.py:1353
+msgid "Persistent Members"
+msgstr "Постійні учасники"
+
+#: core/models.py:1354
+msgid "Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues."
+msgstr "Зберігати кожного динамічного учасника кожної черги в astdb, щоб при перезапуску Asterisk кожен учасник автоматично відновлювався у своїх записаних чергах."
+
+#: core/models.py:1360
+msgid "AutoFill Behavior"
+msgstr "Поведінка автозаповнення"
+
+#: core/models.py:1361
+msgid "The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no."
+msgstr "Стара поведінка черги (autofill=no) — послідовна: черга змушує всіх абонентів чекати, навіть якщо є більше одного вільного учасника, поки перший абонент не з'єднається. Нова поведінка (autofill=yes) забезпечує паралельне з'єднання абонентів з вільними учасниками. Якщо не вказано, за замовчуванням — no."
+
+#: core/models.py:1368
+msgid "Monitor Type"
+msgstr "Тип моніторингу"
+
+#: core/models.py:1369
+msgid "By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility."
+msgstr "При встановленні monitor-type = MixMonitor, app_queue буде використовувати MixMonitor замість Monitor для запису розмов учасників черги. Можна встановити тип за замовчуванням для всіх черг тут. Якщо не вказано, за замовчуванням використовується старий 'Monitor' для зворотної сумісності."
+
+#: core/models.py:1375
+msgid "Shared Lastcall"
+msgstr "Спільний останній дзвінок"
+
+#: core/models.py:1376
+msgid "shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no."
+msgstr "shared_lastcall робить lastcall та отримані дзвінки однаковими для учасників, авторизованих у більш ніж одній черзі. Корисно для дотримання wrapuptime іншої черги для спільного учасника. За замовчуванням — no."
+
+#: core/models.py:1382
+msgid "Negative Penalty Invalid"
+msgstr "Від'ємний штраф недійсний"
+
+#: core/models.py:1383
+msgid "negative_penalty_invalid = no"
+msgstr "negative_penalty_invalid = no"
+
+#: core/models.py:1389
+msgid "Log Membername as Agent"
+msgstr "Логувати ім'я учасника як агента"
+
+#: core/models.py:1390
+msgid "log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility."
+msgstr "log_membername_as_agent змушує app_queue записувати ім'я учасника замість інтерфейсу для подій ADDMEMBER та REMOVEMEMBER при встановленому state_interface. За замовчуванням — no."
+
+#: core/models.py:1396
+msgid "Force Longest Waiting Caller"
+msgstr "Примусова черговість найдовшого очікування"
+
+#: core/models.py:1397
+msgid "force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'."
+msgstr "force_longest_waiting_caller забезпечує пропонування абонентів агентам у порядку черги (спочатку найдовше очікуючий), навіть між кількома чергами. За замовчуванням — no."
+
+#: core/models.py:1409
+msgid "12. Queue Global Settings"
+msgstr "12. Глобальні налаштування черги"
+
+#: core/models.py:1416
+msgid "Name of the trunk group"
+msgstr "Назва групи транків"
+
+#: core/models.py:1417
+msgid "Trunk Group Name"
+msgstr "Назва групи транків"
+
+#: core/models.py:1423
+msgid "SIP Peers in the trunk group"
+msgstr "SIP піри у групі транків"
+
+#: core/models.py:1424
+msgid "SIP Peers"
+msgstr "SIP піри"
+
+#: core/models.py:1428
+msgid "14. Trunk Groups"
+msgstr "14. Групи транків"
+
+#: core/models.py:1438
+msgid "Name of the routing record"
+msgstr "Назва запису маршрутизації"
+
+#: core/models.py:1439
+msgid "Routing Record Name"
+msgstr "Назва запису маршрутизації"
+
+#: core/models.py:1444
+msgid "Prefix of the routing record"
+msgstr "Префікс запису маршрутизації"
+
+#: core/models.py:1445
+msgid "Routing Record Prefix"
+msgstr "Префікс запису маршрутизації"
+
+#: core/models.py:1454
+msgid "Context for the routing record"
+msgstr "Контекст для запису маршрутизації"
+
+#: core/models.py:1455
+msgid "Routing Record Context"
+msgstr "Контекст запису маршрутизації"
+
+#: core/models.py:1463
+msgid "Routing table for the routing record"
+msgstr "Таблиця маршрутизації для запису"
+
+#: core/models.py:1492
+msgid "16. Routing Records"
+msgstr "16. Записи маршрутизації"
+
+#: core/models.py:1500
+msgid "Caller ID to block"
+msgstr "Ідентифікатор абонента для блокування"
+
+#: core/models.py:1505
+msgid "Destination number where calls must be blocked. Default= for whole system blocking."
+msgstr "Номер призначення, де дзвінки повинні блокуватися. Порожнє = блокування для всієї системи."
+
+#: core/models.py:1514
+msgid "Reason for blocking the caller ID"
+msgstr "Причина блокування ідентифікатора абонента"
+
+#: core/models.py:1515 core/models.py:1553
+msgid "Reason"
+msgstr "Причина"
+
+#: core/models.py:1521
+msgid "Expiration date for the blacklist entry. If not set, the entry is permanent."
+msgstr "Дата закінчення терміну дії запису чорного списку. Якщо не вказано — запис постійний."
+
+#: core/models.py:1522 core/models.py:1560
+msgid "Expiration Date"
+msgstr "Дата закінчення"
+
+#: core/models.py:1527
+msgid "17. Blacklist"
+msgstr "17. Чорний список"
+
+#: core/models.py:1538
+msgid "Caller ID to allow"
+msgstr "Ідентифікатор абонента для дозволу"
+
+#: core/models.py:1543
+msgid "Destination number where calls must be allowed. Default= for whole system allowing."
+msgstr "Номер призначення, де дзвінки повинні дозволятися. Порожнє = дозвіл для всієї системи."
+
+#: core/models.py:1552
+msgid "Reason for allowing the caller ID"
+msgstr "Причина дозволу ідентифікатора абонента"
+
+#: core/models.py:1559
+msgid "Expiration date for the whitelist entry. If not set, the entry is permanent."
+msgstr "Дата закінчення терміну дії запису білого списку. Якщо не вказано — запис постійний."
+
+#: core/models.py:1565
+msgid "18. Whitelist"
+msgstr "18. Білий список"
+
+#: core/models.py:1576
+msgid "Caller ID to recognize"
+msgstr "Ідентифікатор абонента для розпізнавання"
+
+#: core/models.py:1580
+msgid "Name of the caller ID"
+msgstr "Ім'я ідентифікатора абонента"
+
+#: core/models.py:1585
+msgid "19. Contacts"
+msgstr "19. Контакти"
+
+#: core/models.py:1618
+msgid "Sound file"
+msgstr "Звуковий файл"
+
+#: core/models.py:1632
+msgid "File name used in dialplans"
+msgstr "Ім'я файлу, що використовується в планах набору"
+
+#: core/models.py:1633
+msgid "The file name without extension. You may enter completely different name here."
+msgstr "Ім'я файлу без розширення. Тут можна вказати зовсім іншу назву."
+
+#: core/models.py:1641
+msgid "Language"
+msgstr "Мова"
+
+#: core/models.py:1642
+msgid "Language of the sound file"
+msgstr "Мова звукового файлу"
+
+#: core/models.py:1650
+msgid "20. Sound files"
+msgstr "20. Звукові файли"
+
+#: core/models.py:1659
+msgid "Caller ID to monitor. Blank for all calls."
+msgstr "Ідентифікатор абонента для моніторингу. Порожнє — для всіх дзвінків."
+
+#: core/models.py:1666
+msgid "Destination to monitor. Blank for all destinations."
+msgstr "Призначення для моніторингу. Порожнє — для всіх призначень."
+
+#: core/models.py:1671
+msgid "Force enable monitor for this caller ID and destination"
+msgstr "Примусово увімкнути моніторинг для цього абонента та призначення"
+
+#: core/models.py:1672
+msgid "Force Enable Monitor"
+msgstr "Примусово увімкнути моніторинг"
+
+#: core/models.py:1676
+msgid "Force disable monitor for this caller ID and destination"
+msgstr "Примусово вимкнути моніторинг для цього абонента та призначення"
+
+#: core/models.py:1677
+msgid "Force Disable Monitor"
+msgstr "Примусово вимкнути моніторинг"
+
+#: core/models.py:1680 core/models.py:1747
+msgid "Modified"
+msgstr "Змінено"
+
+#: core/models.py:1712
+msgid "The caller ID associated with the monitor recording"
+msgstr "Ідентифікатор абонента, пов'язаний із записом моніторингу"
+
+#: core/models.py:1719
+msgid "The destination number associated with the monitor recording"
+msgstr "Номер призначення, пов'язаний із записом моніторингу"
+
+#: core/models.py:1724
+msgid "The filename of the monitor recording"
+msgstr "Ім'я файлу запису моніторингу"
+
+#: core/models.py:1725
+msgid "Monitor Filename"
+msgstr "Ім'я файлу моніторингу"
+
+#: core/models.py:1732
+msgid "The unique ID of the CDR associated with this monitor recording"
+msgstr "Унікальний ID CDR, пов'язаний із цим записом моніторингу"
+
+#: core/models.py:1733
+msgid "CDR UniqueID"
+msgstr "UniqueID CDR"
+
+#: core/models.py:1738
+msgid "Indicates if the filename is requested by API usage"
+msgstr "Вказує, чи запитано ім'я файлу через API"
+
+#: core/models.py:1739
+msgid "Requested by API"
+msgstr "Запитано через API"
+
+#: core/models.py:1743
+msgid "Indicates if the filename is used by the system"
+msgstr "Вказує, чи використовується ім'я файлу системою"
+
+#: core/models.py:1744
+msgid "Used by System"
+msgstr "Використовується системою"
+
+#: core/templates/base.html:89 core/templates/base.html:107
+msgid "Copied!"
+msgstr "Скопійовано!"
+
+#: core/templates/base.html:92 core/templates/base.html:109
+msgid "Copy error."
+msgstr "Помилка копіювання."
+
+#: core/templates/header.html:68
+msgid "End session?"
+msgstr "Завершити сесію?"
+
+#: core/templates/header.html:72
+msgid "End session"
+msgstr "Завершити сесію"
+
+#: core/templates/home.html:5
+msgid "Welcome to PearlPBX2"
+msgstr "Ласкаво просимо до PearlPBX2"
+
+#: core/templates/login.html:4 core/templates/login.html:155
+msgid "Log in"
+msgstr "Увійти"
+
+#: core/templates/login.html:115
+msgid "Log in to PearlPBX2"
+msgstr "Вхід до PearlPBX2"
+
+#: core/templates/login.html:164
+msgid "Please check your username and/or password."
+msgstr "Будь ласка, перевірте ім'я користувача та/або пароль."
+
+#: core/templates/reports.html:6 pbx/settings.py:254
+msgid "Reports"
+msgstr "Звіти"
+
+#: core/templates/reports.html:11
+msgid "General"
+msgstr "Загальне"
+
+#: core/templates/reports.html:13
+msgid "CDR Filter"
+msgstr "Фільтр CDR"
+
+#: core/templates/reports.html:14
+msgid "Call Recordings"
+msgstr "Записи дзвінків"
+
+#: core/templates/reports.html:15
+msgid "Queues Activity"
+msgstr "Активність черг"
+
+#: core/templates/reports.html:16
+msgid "Callback"
+msgstr "Зворотній дзвінок"
+
+#: core/templates/reports.html:23
+msgid "Analytics"
+msgstr "Аналітика"
+
+#: core/templates/reports.html:31
+msgid "Queue Activity (Hourly/Daily)"
+msgstr "Активність черги (погодинна/щоденна)"
+
+#: core/validators.py:33 core/validators.py:38
+#, python-format
+msgid "%(value)s is not a valid port"
+msgstr "%(value)s не є дійсним портом"
+
+#: core/validators.py:85
+msgid "Asterisk extension pattern must start with the \"_\" character"
+msgstr "Шаблон внутрішнього номера Asterisk повинен починатися з символу \"_\""
+
+#: core/validators.py:94
+msgid "Pattern cannot be empty after \"_\""
+msgstr "Шаблон не може бути порожнім після \"_\""
+
+#: core/validators.py:104
+msgid "Invalid characters in pattern. Allowed: digits, X, Z, N, [ranges], +, -, ., !"
+msgstr "Недійсні символи в шаблоні. Дозволено: цифри, X, Z, N, [діапазони], +, -, ., !"
+
+#: core/validators.py:116
+msgid "Unbalanced square brackets in pattern"
+msgstr "Незбалансовані квадратні дужки в шаблоні"
+
+#: core/validators.py:125
+msgid "Empty square brackets are not allowed"
+msgstr "Порожні квадратні дужки не дозволені"
+
+#: core/validators.py:136
+#, python-format
+msgid "Invalid range in brackets: %(content)s"
+msgstr "Недійсний діапазон у дужках: %(content)s"
+
+#: core/validators.py:142
+#, python-format
+msgid "Invalid range format: %(content)s"
+msgstr "Недійсний формат діапазону: %(content)s"
+
+#: core/validators.py:150
+msgid "Pattern is too long (maximum 80 characters)"
+msgstr "Шаблон занадто довгий (максимум 80 символів)"
+
+#: core/validators.py:158
+msgid "Double wildcards (.., !!) are not recommended"
+msgstr "Подвійні маски (.., !!) не рекомендовані"
+
+#: pbx/admin.py:29
+msgid "PBX Setup"
+msgstr "Налаштування АТС"
+
+#: pbx/admin.py:30
+msgid "PBX Administration"
+msgstr "Адміністрування АТС"
+
+#: pbx/admin.py:89
+msgid "Configurations files saved successfully."
+msgstr "Файли конфігурації успішно збережені."
+
+#: pbx/admin.py:93
+#, python-format
+msgid "An error occurred: %(error)s"
+msgstr "Виникла помилка: %(error)s"
+
+#: pbx/settings.py:126
+msgid "Ukrainian"
+msgstr "Українська"
+
+#: pbx/settings.py:127
+msgid "English"
+msgstr "English"
+
+#: pbx/settings.py:128
+msgid "Spanish"
+msgstr "Español"
+
+#: pbx/settings.py:242
+msgid "Dashboard"
+msgstr "Панель моніторингу"
+
+#: pbx/settings.py:248
+msgid "ULINE Monitor"
+msgstr "Монітор ліній"
+
+#: pbx/settings.py:260
+msgid "Admin panel"
+msgstr "Панель адміністратора"
+
+#: templates/admin/apply.html:18 templates/admin/base.html:47
+msgid "Apply changes"
+msgstr "Застосувати зміни"
+
+#: templates/admin/apply.html:20
+msgid "Review the generated configuration files below, then choose how to apply them:"
+msgstr "Перегляньте згенеровані файли конфігурації нижче, потім оберіть спосіб їх застосування:"
+
+#: templates/admin/apply.html:21 templates/admin/apply.html:39
+msgid "Soft Reload"
+msgstr "М'яке перезавантаження"
+
+#: templates/admin/apply.html:21
+msgid "reloads only the affected modules, active calls are not interrupted."
+msgstr "перезавантажує лише задіяні модулі, активні дзвінки не перериваються."
+
+#: templates/admin/apply.html:22 templates/admin/apply.html:42
+msgid "Hard Restart Now"
+msgstr "Жорсткий перезапуск зараз"
+
+#: templates/admin/apply.html:22
+msgid "fully restarts Asterisk. All active calls will be dropped."
+msgstr "повністю перезапускає Asterisk. Всі активні дзвінки будуть скинуті."
+
+#: templates/admin/apply.html:25
+#, python-format
+msgid "Configuration files to be generated (%(count)s)"
+msgstr "Файли конфігурації для генерації (%(count)s)"
+
+#: templates/admin/apply.html:39
+msgid "Reload modules without restarting Asterisk (no dropped calls)"
+msgstr "Перезавантажити модулі без перезапуску Asterisk (без обривів дзвінків)"
+
+#: templates/admin/apply.html:42
+msgid "Full restart — drops all active calls"
+msgstr "Повний перезапуск — скидає всі активні дзвінки"
+
+#: templates/admin/base.html:28
+msgid "Skip to main content"
+msgstr "Перейти до основного вмісту"
+
+#: templates/admin/base.html:43
+msgid "Welcome,"
+msgstr "Вітаємо,"
+
+#: templates/admin/base.html:61
+msgid "View site"
+msgstr "Переглянути сайт"
+
+#: templates/admin/base.html:66
+msgid "Documentation"
+msgstr "Документація"
+
+#: templates/admin/base.html:70
+msgid "Change password"
+msgstr "Змінити пароль"
+
+#: templates/admin/base.html:74
+msgid "Log out"
+msgstr "Вийти"
+
+#: templates/admin/base.html:86
+msgid "Breadcrumbs"
+msgstr "Навігаційний ланцюжок"
+
+#: templates/admin/base.html:89
+msgid "Home"
+msgstr "Головна"
+
+#: templates/admin/index.html:23
+msgid "Recent actions"
+msgstr "Останні дії"
+
+#: templates/admin/index.html:24
+msgid "My actions"
+msgstr "Мої дії"
+
+#: templates/admin/index.html:28
+msgid "None available"
+msgstr "Немає доступних"
+
+#: templates/admin/index.html:42
+msgid "Unknown content"
+msgstr "Невідомий вміст"

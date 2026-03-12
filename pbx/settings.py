@@ -1,5 +1,6 @@
 import environ
 
+from django.utils.translation import gettext_lazy as _
 from pathlib import Path
 
 env = environ.Env()
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -118,7 +120,16 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "uk"
+
+LANGUAGES = [
+    ("uk", _("Ukrainian")),
+    ("en", _("English")),
+    ("es", _("Spanish")),
+]
+
+LOCALE_PATHS = [BASE_DIR / "locale"]
+
 TIME_ZONE = "Europe/Kyiv"
 USE_I18N = True
 USE_TZ = True
@@ -228,25 +239,25 @@ LOGIN_REDIRECT_URL = "/"
 
 HEADER_MENU_PAGES = [
     {
-        "title": "Dashboard",
+        "title": _("Dashboard"),
         "url": "/dashboard/",
         "item_icon": "home",
         "allowed_roles": ["admin", "superuser"],
     },
     {
-        "title": "ULINE Monitor",
+        "title": _("ULINE Monitor"),
         "url": "/dashboard/ulines/",
         "item_icon": "call_split",
         "allowed_roles": ["admin", "superuser"],
     },
     {
-        "title": "Reports",
+        "title": _("Reports"),
         "url": "/reports/",
         "item_icon": "print",
         "allowed_roles": ["admin", "superuser"],
     },
     {
-        "title": "Admin panel",
+        "title": _("Admin panel"),
         "url": "/admin",
         "item_icon": "settings",
         "allowed_roles": ["superuser"],

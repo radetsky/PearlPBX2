@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
+from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 
 from core.models import (
@@ -67,71 +68,71 @@ class RoutingTableChoiceField(forms.ModelChoiceField):
 
 class SIPUserForm(forms.ModelForm):
     name = forms.CharField(
-        label="Description",
+        label=_("Description"),
         required=True,
         validators=[min3len],
-        help_text="Full name of user, description of connection",
+        help_text=_("Full name of user, description of connection"),
     )
 
     username = forms.CharField(
-        label="Username",
+        label=_("Username"),
         required=True,
         validators=[validate_alphanumeric, min3len],
-        help_text="Username/ID for the incoming connection ",
+        help_text=_("Username/ID for the incoming connection"),
     )
 
     transport = SIPTransportChoiceField(
-        label="Transport",
+        label=_("Transport"),
         required=True,
-        help_text="Select transport for the user",
+        help_text=_("Select transport for the user"),
         queryset=SIPTransport.objects.all(),
         empty_label=None,
     )
     nat = forms.BooleanField(
-        label="NAT",
+        label=_("NAT"),
         required=False,
-        help_text="Enable NAT for the user. Use only if you are sure that your user is behind NAT.",
+        help_text=_("Enable NAT for the user. Use only if you are sure that your user is behind NAT."),
     )
     routing_table = RoutingTableChoiceField(
-        label="Routing Table",
+        label=_("Routing Table"),
         required=True,
-        help_text="Select routing table for the user",
+        help_text=_("Select routing table for the user"),
         queryset=RoutingTable.objects.all(),
         empty_label=None,
     )
 
     auth_type = forms.ChoiceField(
-        label="Auth type",
+        label=_("Auth type"),
         required=True,
-        help_text="Select type of authentication",
+        help_text=_("Select type of authentication"),
         choices=SIPUser.AUTHTYPE_CHOICES,
     )
     custom_extension = forms.CharField(
-        label="Incoming dialplan",
+        label=_("Incoming dialplan"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom dialplan for incoming calls to the user",
+        help_text=_("Custom dialplan for incoming calls to the user"),
     )
 
     custom_settings = forms.CharField(
-        label="Settings",
+        label=_("Settings"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom user settings in asterisk pjsip.conf format",
+        help_text=_("Custom user settings in asterisk pjsip.conf format"),
     )
 
     custom_auth_settings = forms.CharField(
-        label="Auth Settings",
+        label=_("Auth Settings"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom user AUTH settings in asterisk pjsip.conf format",
+        help_text=_("Custom user AUTH settings in asterisk pjsip.conf format"),
     )
 
     custom_aor_settings = forms.CharField(
-        label="Aor Settings",
+        label=_("Aor Settings"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom user AOR settings in asterisk pjsip.conf format",
+        help_text=_("Custom user AOR settings in asterisk pjsip.conf format"),
     )
 
     class Meta:
@@ -159,45 +160,45 @@ class SIPUserForm(forms.ModelForm):
 
 class SIPPeerForm(forms.ModelForm):
     name = forms.CharField(
-        label="Channel name",
+        label=_("Channel name"),
         required=True,
         validators=[validate_alphanumeric, min3len],
-        help_text="Name of the channel. Use only English letters and digits.",
+        help_text=_("Name of the channel. Use only English letters and digits."),
     )
 
     username = forms.CharField(
-        label="Username",
+        label=_("Username"),
         required=False,
         validators=[validate_alphanumeric, min3len],
-        help_text="Optional username for the connection used for remote side.",
+        help_text=_("Optional username for the connection used for remote side."),
     )
 
     transport = SIPTransportChoiceField(
-        label="Transport",
+        label=_("Transport"),
         required=True,
-        help_text="Select transport for the peer",
+        help_text=_("Select transport for the peer"),
         queryset=SIPTransport.objects.all(),
         empty_label=None,
     )
 
     routing_table = RoutingTableChoiceField(
-        label="Routing Table",
+        label=_("Routing Table"),
         required=True,
-        help_text="Select routing table for the peer",
+        help_text=_("Select routing table for the peer"),
         queryset=RoutingTable.objects.all(),
         empty_label=None,
     )
     custom_auth_settings = forms.CharField(
-        label="Auth Settings",
+        label=_("Auth Settings"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom user AUTH settings in asterisk pjsip.conf format",
+        help_text=_("Custom user AUTH settings in asterisk pjsip.conf format"),
     )
     custom_aor_settings = forms.CharField(
-        label="Aor Settings",
+        label=_("Aor Settings"),
         widget=forms.Textarea,
         required=False,
-        help_text="Custom user AOR settings in asterisk pjsip.conf format",
+        help_text=_("Custom user AOR settings in asterisk pjsip.conf format"),
     )
 
     class Meta:
@@ -228,18 +229,18 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
 """
 
     context = DialplanContextChoiceField(
-        label="Context",
+        label=_("Context"),
         required=True,
-        help_text="Select context for the extension",
+        help_text=_("Select context for the extension"),
         queryset=DialplanContext.objects.all(),
         empty_label=None,
     )
     ext = forms.CharField(
-        label="Extension", required=True, help_text="Extension for the dialplan."
+        label=_("Extension"), required=True, help_text=_("Extension for the dialplan.")
     )
 
     dialplan = forms.CharField(
-        label="Dialplan",
+        label=_("Dialplan"),
         widget=forms.Textarea(
             attrs={
                 "cols": 80,
@@ -248,12 +249,12 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
             }
         ),
         required=True,
-        help_text="Use Asterisk AEL syntax to define the dialplan.",
+        help_text=_("Use Asterisk AEL syntax to define the dialplan."),
         initial=DIALPLAN_TEMPLATE.strip(),
     )
 
     description = forms.CharField(
-        label="Description", required=False, help_text="Description of the extension."
+        label=_("Description"), required=False, help_text=_("Description of the extension.")
     )
 
     def clean_dialplan(self):
@@ -297,8 +298,10 @@ class RoutingTableAdminForm(forms.ModelForm):
         # Note: Both DialplanContext.name and RoutingTable.name are context names in extensions.ael and must not be the same.
         if DialplanContext.objects.filter(name=name).exists():
             raise forms.ValidationError(
-                f'Context with the name "{name}" already exists in the DialplanContext table. '
-                "Please choose a different name."
+                format_lazy(
+                    _('Context with the name "{name}" already exists in the DialplanContext table. Please choose a different name.'),
+                    name=name,
+                )
             )
         return name
 
@@ -316,8 +319,10 @@ class DialplanContextAdminForm(forms.ModelForm):
         # Check if the name already exists in RoutingTable.
         if RoutingTable.objects.filter(name=name).exists():
             raise forms.ValidationError(
-                f'Context with the name "{name}" already exists in the RoutingTable table. '
-                "Please choose a different name."
+                format_lazy(
+                    _('Context with the name "{name}" already exists in the RoutingTable table. Please choose a different name.'),
+                    name=name,
+                )
             )
         return name
 
@@ -329,13 +334,12 @@ class QueueAdminForm(forms.ModelForm):
     add_sip_users = forms.ModelMultipleChoiceField(
         queryset=SIPUser.objects.all().order_by("username"),
         required=False,
-        label="Add SIP Users",
-        help_text=(
-            f"Select users to add as queue members. "
-            f"Each user will get INTERFACE=PJSIP/username, penalty={DEFAULT_QUEUE_MEMBER_PENALTY}. "
-            f"Already existing members are not duplicated."
+        label=_("Add SIP Users"),
+        help_text=format_lazy(
+            _("Select users to add as queue members. Each user will get INTERFACE=PJSIP/username, penalty={penalty}. Already existing members are not duplicated."),
+            penalty=DEFAULT_QUEUE_MEMBER_PENALTY,
         ),
-        widget=FilteredSelectMultiple("SIP Users", is_stacked=False),
+        widget=FilteredSelectMultiple(_("SIP Users"), is_stacked=False),
     )
 
     class Meta:

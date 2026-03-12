@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 {% load form_extras %}
+{% load i18n %}
 {% load static %}
 
 {% block content %}
 <div class="uk-container uk-container-expand uk-margin-top">
-    <h1 class="uk-heading-line uk-text-center"><span>Call Recordings Report</span></h1>
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Call Recordings Report" %}</span></h1>
     <!-- Filter form -->
     <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
         <div class="uk-card-header uk-padding-small">
             <h3 class="uk-card-title uk-margin-remove-bottom">
-                <span uk-icon="settings" class="uk-margin-small-right"></span>Filters
+                <span uk-icon="settings" class="uk-margin-small-right"></span>{% trans "Filters" %}
             </h3>
         </div>
         <form method="get" class="uk-form-stacked">
@@ -41,10 +42,10 @@
             </div>
             <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-border-rounded uk-button-primary uk-margin-small-right">
-                    <span uk-icon="search" class="uk-margin-small-right"></span>Show report
+                    <span uk-icon="search" class="uk-margin-small-right"></span>{% trans "Show report" %}
                 </button>
                 <a href="{% url 'monitor_report' %}" class="uk-button uk-border-rounded uk-button-default uk-margin-small-right">
-                    <span uk-icon="refresh" class="uk-margin-small-right"></span>Clear
+                    <span uk-icon="refresh" class="uk-margin-small-right"></span>{% trans "Clear" %}
                 </a>
             </div>
         </form>
@@ -57,7 +58,7 @@
             <div class="uk-card-header">
                 <h3 class="uk-card-title uk-margin-remove-bottom">
                     <span uk-icon="table" class="uk-margin-small-right"></span>
-                    Results ({{ recordings.paginator.count }} records)
+                    {% blocktrans with count=recordings.paginator.count %}Results ({{ count }} records){% endblocktrans %}
                 </h3>
             </div>
             <div class="uk-card-body uk-padding-remove">
@@ -74,18 +75,18 @@
                         <thead>
                             <tr>
                                 <th class="uk-text-nowrap">
-                                    <span uk-icon="calendar" class="uk-margin-small-right"></span>Date/Time
+                                    <span uk-icon="calendar" class="uk-margin-small-right"></span>{% trans "Date/Time" %}
                                 </th>
-                                <th class="uk-text-nowrap">Source</th>
-                                <th class="uk-text-nowrap">Destination</th>
+                                <th class="uk-text-nowrap">{% trans "Source" %}</th>
+                                <th class="uk-text-nowrap">{% trans "Destination" %}</th>
                                 <th class="uk-text-center">
-                                    <span uk-icon="file-audio" class="uk-margin-small-right"></span>Filename
+                                    <span uk-icon="file-audio" class="uk-margin-small-right"></span>{% trans "Filename" %}
                                 </th>
                                 <th class="uk-text-center">
-                                    <span uk-icon="play" class="uk-margin-small-right"></span>Audio
+                                    <span uk-icon="play" class="uk-margin-small-right"></span>{% trans "Audio" %}
                                 </th>
                                 <th class="uk-text-right">
-                                    <span uk-icon="download" class="uk-margin-small-right"></span>Download
+                                    <span uk-icon="download" class="uk-margin-small-right"></span>{% trans "Download" %}
                                 </th>
                             </tr>
                         </thead>
@@ -110,10 +111,10 @@
                                     {% if rec.get_audio_url %}
                                         <div class="compact-player" onclick="toggleCompactPlay(this)" data-audio="{{ rec.get_audio_url }}">
                                             <button class="compact-btn">▶</button>
-                                            <span>Play</span>
+                                            <span>{% trans "Play" %}</span>
                                         </div>
                                     {% else %}
-                                        <span class="uk-text-muted">No audio</span>
+                                        <span class="uk-text-muted">{% trans "No audio" %}</span>
                                     {% endif %}
                                 </td>
                                 <td class="uk-text-right">
@@ -130,7 +131,7 @@
                             <tr>
                                 <td colspan="4" class="uk-text-center uk-text-muted uk-padding">
                                     <div uk-icon="icon: info; ratio: 2"></div>
-                                    <p class="uk-margin-small-top">No data found</p>
+                                    <p class="uk-margin-small-top">{% trans "No data found" %}</p>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -150,7 +151,7 @@
                         </li>
                     {% endif %}
                     <li class="uk-active">
-                        <span>{{ recordings.number }} of {{ recordings.paginator.num_pages }}</span>
+                        <span>{% blocktrans with current=recordings.number total=recordings.paginator.num_pages %}{{ current }} of {{ total }}{% endblocktrans %}</span>
                     </li>
                     {% if recordings.has_next %}
                         <li>

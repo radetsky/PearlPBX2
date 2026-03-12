@@ -1,7 +1,8 @@
-{% load static %}
+{% load static i18n %}
+{% get_current_language as CURRENT_LANGUAGE %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ CURRENT_LANGUAGE }}">
 
 <head>
     <meta charset="UTF-8">
@@ -85,10 +86,10 @@
                     navigator.clipboard
                         .writeText(text)
                         .then(function() {
-                            UIkit.notification('Copied!', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
+                            UIkit.notification('{% trans "Copied!" %}', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
                         })
                         .catch(function(error) {
-                            UIkit.notification('Copy error.', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
+                            UIkit.notification('{% trans "Copy error." %}', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
                             console.error('copying text to clipboard. error:', error);
                         });
                 } else {
@@ -103,9 +104,9 @@
 
                     try {
                         document.execCommand('copy');
-                        UIkit.notification('Copied!', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
+                        UIkit.notification('{% trans "Copied!" %}', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'success'});
                     } catch (error) {
-                        UIkit.notification('Copy error.', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
+                        UIkit.notification('{% trans "Copy error." %}', {pos: 'top-center', timeout: {{ TEMPLATE_POPUP_TIMEOUT_MS }}, status: 'danger'});
                         console.error('copying text to clipboard. error:', error);
                     } finally {
                         textarea.remove();
