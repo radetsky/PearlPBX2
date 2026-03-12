@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-12 14:50+0200\n"
+"POT-Creation-Date: 2026-03-12 16:30+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Ukrainian\n"
@@ -107,6 +107,8 @@ msgid "Caller"
 msgstr "Абонент"
 
 #: apps/dashboard/templates/dashboard/operator_panel.html:639
+#: apps/lists/templates/lists/contacts.html:40
+#: apps/lists/templates/lists/contacts.html:90
 #: apps/reports/templates/routing_report.html:49 core/models.py:93
 #: core/models.py:251 core/models.py:1580
 msgid "Name"
@@ -266,6 +268,190 @@ msgstr "Немає активних ULINE"
 #: apps/dashboard/templates/dashboard/ulines.html:294
 msgid "Delete ALL active ULINEs from Redis?\\n\\nThis will detach all current calls from parking slots!"
 msgstr "Видалити ВСІ активні ULINE з Redis?\\n\\nЦе відключить усі поточні дзвінки від слотів паркування!"
+
+#: apps/lists/templates/lists/allowlist.html:9
+#: apps/lists/templates/lists/index.html:24
+msgid "Allowlist"
+msgstr "Білий список"
+
+#: apps/lists/templates/lists/allowlist.html:12
+#: apps/lists/templates/lists/blocklist.html:12
+#: apps/lists/templates/lists/contacts.html:12
+msgid "Back"
+msgstr "Назад"
+
+#: apps/lists/templates/lists/allowlist.html:15
+#: apps/lists/templates/lists/blocklist.html:15
+#: apps/lists/templates/lists/contacts.html:15
+msgid "Add"
+msgstr "Додати"
+
+#: apps/lists/templates/lists/allowlist.html:24
+#: apps/lists/templates/lists/blocklist.html:24
+msgid "Search by number..."
+msgstr "Пошук за номером..."
+
+#: apps/lists/templates/lists/allowlist.html:27
+#: apps/lists/templates/lists/blocklist.html:27
+#: apps/lists/templates/lists/contacts.html:27
+#: apps/reports/templates/analytics_agent_calls.html:32
+#: apps/reports/templates/analytics_call_duration.html:31
+#: apps/reports/templates/analytics_missed_by_hour.html:32
+#: apps/reports/templates/analytics_missed_calls.html:33
+#: apps/reports/templates/analytics_outbound_calls.html:32
+#: apps/reports/templates/analytics_queue_activity.html:31
+#: apps/reports/templates/analytics_queue_calls.html:53
+msgid "Search"
+msgstr "Пошук"
+
+#: apps/lists/templates/lists/allowlist.html:28
+#: apps/lists/templates/lists/blocklist.html:28
+#: apps/lists/templates/lists/contacts.html:28
+#: apps/reports/templates/routing_report.html:28
+msgid "Reset"
+msgstr "Скинути"
+
+#: apps/lists/templates/lists/allowlist.html:39
+#: apps/lists/templates/lists/allowlist.html:91
+#: apps/lists/templates/lists/blocklist.html:39
+#: apps/lists/templates/lists/blocklist.html:91
+#: apps/lists/templates/lists/contacts.html:39
+#: apps/lists/templates/lists/contacts.html:85
+#: apps/reports/templates/queue.html:375 core/models.py:1501
+#: core/models.py:1539 core/models.py:1577 core/models.py:1660
+msgid "Caller ID"
+msgstr "Ідентифікатор абонента"
+
+#: apps/lists/templates/lists/allowlist.html:40
+#: apps/lists/templates/lists/allowlist.html:96
+#: apps/lists/templates/lists/blocklist.html:40
+#: apps/lists/templates/lists/blocklist.html:96
+#: apps/reports/templates/callback_report.html:98
+#: apps/reports/templates/cdr.html:107 apps/reports/templates/monitor.html:81
+#: core/models.py:1507 core/models.py:1545 core/models.py:1667
+msgid "Destination"
+msgstr "Призначення"
+
+#: apps/lists/templates/lists/allowlist.html:41
+#: apps/lists/templates/lists/allowlist.html:100
+#: apps/lists/templates/lists/blocklist.html:41
+#: apps/lists/templates/lists/blocklist.html:100 core/models.py:1515
+#: core/models.py:1553
+msgid "Reason"
+msgstr "Причина"
+
+#: apps/lists/templates/lists/allowlist.html:42
+#: apps/lists/templates/lists/allowlist.html:104
+#: apps/lists/templates/lists/blocklist.html:42
+#: apps/lists/templates/lists/blocklist.html:104 core/models.py:1522
+#: core/models.py:1560
+msgid "Expiration Date"
+msgstr "Дата закінчення"
+
+#: apps/lists/templates/lists/allowlist.html:43
+#: apps/lists/templates/lists/blocklist.html:43
+#: apps/lists/templates/lists/contacts.html:41
+msgid "Actions"
+msgstr "Дії"
+
+#: apps/lists/templates/lists/allowlist.html:61
+#: apps/lists/templates/lists/blocklist.html:61
+#: apps/lists/templates/lists/contacts.html:55
+msgid "Edit"
+msgstr "Редагувати"
+
+#: apps/lists/templates/lists/allowlist.html:66
+#: apps/lists/templates/lists/blocklist.html:66
+msgid "Delete this entry?"
+msgstr "Видалити цей запис?"
+
+#: apps/lists/templates/lists/allowlist.html:67
+#: apps/lists/templates/lists/blocklist.html:67
+#: apps/lists/templates/lists/contacts.html:61
+msgid "Delete"
+msgstr "Видалити"
+
+#: apps/lists/templates/lists/allowlist.html:74
+#: apps/lists/templates/lists/blocklist.html:74
+msgid "No entries found."
+msgstr "Записів не знайдено."
+
+#: apps/lists/templates/lists/allowlist.html:86
+#: apps/lists/templates/lists/allowlist.html:127
+#: apps/lists/templates/lists/blocklist.html:86
+#: apps/lists/templates/lists/blocklist.html:127
+msgid "Add Entry"
+msgstr "Додати запис"
+
+#: apps/lists/templates/lists/allowlist.html:108
+#: apps/lists/templates/lists/blocklist.html:108
+#: apps/lists/templates/lists/contacts.html:95
+msgid "Cancel"
+msgstr "Скасувати"
+
+#: apps/lists/templates/lists/allowlist.html:109
+#: apps/lists/templates/lists/blocklist.html:109
+#: apps/lists/templates/lists/contacts.html:96
+msgid "Save"
+msgstr "Зберегти"
+
+#: apps/lists/templates/lists/allowlist.html:138
+#: apps/lists/templates/lists/blocklist.html:138
+msgid "Edit Entry"
+msgstr "Редагувати запис"
+
+#: apps/lists/templates/lists/blocklist.html:9
+#: apps/lists/templates/lists/index.html:14
+msgid "Blocklist"
+msgstr "Чорний список"
+
+#: apps/lists/templates/lists/contacts.html:9
+#: apps/lists/templates/lists/index.html:34
+msgid "Contacts"
+msgstr "Контакти"
+
+#: apps/lists/templates/lists/contacts.html:24
+msgid "Search by number or name..."
+msgstr "Пошук за номером або ім'ям..."
+
+#: apps/lists/templates/lists/contacts.html:60
+msgid "Delete this contact?"
+msgstr "Видалити цей контакт?"
+
+#: apps/lists/templates/lists/contacts.html:68
+msgid "No contacts found."
+msgstr "Контактів не знайдено."
+
+#: apps/lists/templates/lists/contacts.html:80
+#: apps/lists/templates/lists/contacts.html:114
+msgid "Add Contact"
+msgstr "Додати контакт"
+
+#: apps/lists/templates/lists/contacts.html:123
+msgid "Edit Contact"
+msgstr "Редагувати контакт"
+
+#: apps/lists/templates/lists/index.html:8 pbx/settings.py:261
+msgid "Lists"
+msgstr "Списки"
+
+#: apps/lists/templates/lists/index.html:15
+msgid "Manage blocked caller IDs"
+msgstr "Керування заблокованими абонентами"
+
+#: apps/lists/templates/lists/index.html:16
+#: apps/lists/templates/lists/index.html:26
+#: apps/lists/templates/lists/index.html:36
+msgid "Open"
+msgstr "Відкрити"
+
+#: apps/lists/templates/lists/index.html:25
+msgid "Manage allowed caller IDs"
+msgstr "Керування дозволеними абонентами"
+
+#: apps/lists/templates/lists/index.html:35
+msgid "Manage contact names for caller IDs"
+msgstr "Керування іменами контактів"
 
 #: apps/provision/admin.py:30
 msgid "Device Information"
@@ -553,16 +739,6 @@ msgstr "Даних за обраний період не знайдено."
 msgid "Calls by Agent in Queue"
 msgstr "Дзвінки агентів у черзі"
 
-#: apps/reports/templates/analytics_agent_calls.html:32
-#: apps/reports/templates/analytics_call_duration.html:31
-#: apps/reports/templates/analytics_missed_by_hour.html:32
-#: apps/reports/templates/analytics_missed_calls.html:33
-#: apps/reports/templates/analytics_outbound_calls.html:32
-#: apps/reports/templates/analytics_queue_activity.html:31
-#: apps/reports/templates/analytics_queue_calls.html:53
-msgid "Search"
-msgstr "Пошук"
-
 #: apps/reports/templates/analytics_call_duration.html:5
 #: apps/reports/templates/analytics_call_duration.html:9
 #: core/templates/reports.html:30
@@ -719,12 +895,6 @@ msgstr "Створено"
 #: apps/reports/templates/cdr.html:104 apps/reports/templates/monitor.html:80
 msgid "Source"
 msgstr "Джерело"
-
-#: apps/reports/templates/callback_report.html:98
-#: apps/reports/templates/cdr.html:107 apps/reports/templates/monitor.html:81
-#: core/models.py:1507 core/models.py:1545 core/models.py:1667
-msgid "Destination"
-msgstr "Призначення"
 
 #: apps/reports/templates/callback_report.html:104
 msgid "Updated"
@@ -917,11 +1087,6 @@ msgstr "Звіт пропущених та передзвонів"
 msgid "Abandon Time"
 msgstr "Час відмови"
 
-#: apps/reports/templates/queue.html:375 core/models.py:1501
-#: core/models.py:1539 core/models.py:1577 core/models.py:1660
-msgid "Caller ID"
-msgstr "Ідентифікатор абонента"
-
 #: apps/reports/templates/queue.html:376
 msgid "Incoming Call (from this number)"
 msgstr "Вхідний дзвінок (з цього номера)"
@@ -990,10 +1155,6 @@ msgstr "напр. from-internal"
 #: apps/reports/templates/routing_report.html:26
 msgid "Filter"
 msgstr "Фільтр"
-
-#: apps/reports/templates/routing_report.html:28
-msgid "Reset"
-msgstr "Скинути"
 
 #: apps/reports/templates/routing_report.html:50
 msgid "Target Context"
@@ -2129,17 +2290,9 @@ msgstr "Номер призначення, де дзвінки повинні б
 msgid "Reason for blocking the caller ID"
 msgstr "Причина блокування ідентифікатора абонента"
 
-#: core/models.py:1515 core/models.py:1553
-msgid "Reason"
-msgstr "Причина"
-
 #: core/models.py:1521
 msgid "Expiration date for the blacklist entry. If not set, the entry is permanent."
 msgstr "Дата закінчення терміну дії запису чорного списку. Якщо не вказано — запис постійний."
-
-#: core/models.py:1522 core/models.py:1560
-msgid "Expiration Date"
-msgstr "Дата закінчення"
 
 #: core/models.py:1527
 msgid "17. Blacklist"
@@ -2301,7 +2454,7 @@ msgstr "Вхід до PearlPBX2"
 msgid "Please check your username and/or password."
 msgstr "Будь ласка, перевірте ім'я користувача та/або пароль."
 
-#: core/templates/reports.html:6 pbx/settings.py:254
+#: core/templates/reports.html:6 pbx/settings.py:255
 msgid "Reports"
 msgstr "Звіти"
 
@@ -2393,27 +2546,27 @@ msgstr "Файли конфігурації успішно збережені."
 msgid "An error occurred: %(error)s"
 msgstr "Виникла помилка: %(error)s"
 
-#: pbx/settings.py:126
+#: pbx/settings.py:127
 msgid "Ukrainian"
 msgstr "Українська"
 
-#: pbx/settings.py:127
+#: pbx/settings.py:128
 msgid "English"
 msgstr "English"
 
-#: pbx/settings.py:128
+#: pbx/settings.py:129
 msgid "Spanish"
 msgstr "Español"
 
-#: pbx/settings.py:242
+#: pbx/settings.py:243
 msgid "Dashboard"
 msgstr "Панель моніторингу"
 
-#: pbx/settings.py:248
+#: pbx/settings.py:249
 msgid "ULINE Monitor"
 msgstr "Монітор ліній"
 
-#: pbx/settings.py:260
+#: pbx/settings.py:267
 msgid "Admin panel"
 msgstr "Панель адміністратора"
 

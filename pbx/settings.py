@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.provision",
     "apps.reports",
     "apps.dashboard",
+    "apps.lists",
     "pbx.apps.MyAdminConfig",  # replaces 'django.contrib.admin'
 ]
 
@@ -254,6 +255,12 @@ HEADER_MENU_PAGES = [
         "title": _("Reports"),
         "url": "/reports/",
         "item_icon": "print",
+        "allowed_roles": ["admin", "superuser"],
+    },
+    {
+        "title": _("Lists"),
+        "url": "/lists/",
+        "item_icon": "list",
         "allowed_roles": ["admin", "superuser"],
     },
     {
