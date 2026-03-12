@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Call Duration by Operator{% endblock %}
+
+{% block content %}
+<div class="uk-container uk-container-expand uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>Call Duration by Operator</span></h1>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+        <form method="get" class="uk-form-stacked">
+            <div class="uk-grid-match uk-child-width-1-3@s" uk-grid>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_from.id_for_label }}">{{ form.date_from.label }}</label>
+                    <div class="uk-form-controls">{{ form.date_from }}</div>
+                    {% if form.date_from.errors %}<span class="uk-text-danger">{{ form.date_from.errors }}</span>{% endif %}
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_to.id_for_label }}">{{ form.date_to.label }}</label>
+                    <div class="uk-form-controls">{{ form.date_to }}</div>
+                    {% if form.date_to.errors %}<span class="uk-text-danger">{{ form.date_to.errors }}</span>{% endif %}
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.queuename.id_for_label }}">{{ form.queuename.label }}</label>
+                    <div class="uk-form-controls">{{ form.queuename }}</div>
+                </div>
+            </div>
+            <div class="uk-margin-top">
+                <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
+                    <span uk-icon="search"></span> Search
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if table_data is not None %}
+        {% if table_data %}
+            <div class="uk-margin-bottom">
+                <span class="uk-text-lead">
+                    Average call duration: <strong>{{ overall_avg_fmt }}</strong>
+                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                    Total talk time: <strong>{{ overall_total_fmt }}</strong>
+                </span>
+            </div>
+
+            <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                        <h3 class="uk-card-title">Table</h3>
+                        <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Operator</th>
+                                    <th class="uk-text-right">Total (min:sec)</th>
+                                    <th class="uk-text-right">Avg (min:sec)</th>
+                                    <th class="uk-text-right">Calls</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in table_data %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ row.agent }}</td>
+                                    <td class="uk-text-right">{{ row.total_fmt }}</td>
+                                    <td class="uk-text-right">{{ row.avg_fmt }}</td>
+                                    <td class="uk-text-right">{{ row.call_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                        <h3 class="uk-card-title">Chart</h3>
+                        <canvas id="durationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            {{ chart_data|json_script:"chart-data" }}
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            <script>
+            (function () {
+                const raw = document.getElementById('chart-data').textContent;
+                const data = JSON.parse(raw);
+                const colors = data.labels.map((_, i) => `hsl(${(i * 47) % 360}, 60%, 55%)`);
+                new Chart(document.getElementById('durationChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Total talk time',
+                            data: data.values,
+                            backgroundColor: colors,
+                            borderColor: colors,
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const s = ctx.parsed.y;
+                                        return ` ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0,
+                                    callback: val => `${Math.floor(val / 60)}m`
+                                }
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+        {% else %}
+            <div class="uk-alert uk-alert-warning" uk-alert>
+                <p>No completed calls found for the selected period.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock content %}

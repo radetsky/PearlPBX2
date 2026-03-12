@@ -293,6 +293,10 @@ class AnalyticsMissedByHourForm(_AnalyticsQueueFilterForm):
     pass
 
 
+class AnalyticsCallDurationForm(_AnalyticsQueueFilterForm):
+    pass
+
+
 class CallbackNumberReportForm(forms.Form):
     DIAL_STATUS_CHOICES = [
         ("", "All"),

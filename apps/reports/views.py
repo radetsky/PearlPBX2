@@ -19,6 +19,7 @@ from apps.reports.models import CDR
 from apps.reports.forms import (
     ASTERISK_NONE,
     AnalyticsAgentCallsForm,
+    AnalyticsCallDurationForm,
     AnalyticsDateRangeForm,
     AnalyticsMissedByHourForm,
     CDRReportForm,
@@ -636,6 +637,13 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
         return render(request, self.template_name, context)
 
 
+def _fmt_duration(total_seconds):
+    """Format seconds as MM:SS (minutes may exceed 59)."""
+    minutes = total_seconds // 60
+    secs = total_seconds % 60
+    return f"{minutes}:{secs:02d}"
+
+
 def _clean_agent_name(agent):
     """Extract short agent label from Asterisk channel string.
 
@@ -905,6 +913,73 @@ class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
             "form": form,
             "table_data": table_data,
             "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
+    template_name = "analytics_call_duration.html"
+
+    def get(self, request):
+        form = AnalyticsCallDurationForm(request.GET or None)
+        table_data = None
+        chart_data = None
+        overall_avg_fmt = None
+        overall_total_fmt = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(agent=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            safe_talk_sec = Sum(
+                Case(
+                    When(data2__regex=r"^[0-9]+$", then=Cast(F("data2"), output_field=IntegerField())),
+                    default=None,
+                    output_field=IntegerField(),
+                )
+            )
+            rows = list(
+                qs.values("agent")
+                .annotate(total_seconds=safe_talk_sec, call_count=Count("id"))
+                .order_by("-total_seconds")
+            )
+
+            table_data = []
+            total_all = 0
+            calls_all = 0
+            for r in rows:
+                total = r["total_seconds"] or 0
+                count = r["call_count"]
+                total_all += total
+                calls_all += count
+                table_data.append({
+                    "agent": _clean_agent_name(r["agent"]),
+                    "total_fmt": _fmt_duration(total),
+                    "avg_fmt": _fmt_duration(total // count if count else 0),
+                    "call_count": count,
+                })
+
+            overall_total_fmt = _fmt_duration(total_all)
+            overall_avg_fmt = _fmt_duration(total_all // calls_all if calls_all else 0)
+            chart_data = json.dumps({
+                "labels": [row["agent"] for row in table_data],
+                "values": [r["total_seconds"] or 0 for r in rows],
+            })
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "overall_avg_fmt": overall_avg_fmt,
+            "overall_total_fmt": overall_total_fmt,
         }
         return render(request, self.template_name, context)
 
