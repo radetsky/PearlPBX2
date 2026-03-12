@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Blocklist{% endblock %}
+
+{% block content %}
+<div class="uk-container uk-container-expand uk-margin-top">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom">
+        <h1 class="uk-heading-line uk-margin-remove"><span>{% trans "Blocklist" %}</span></h1>
+        <div>
+            <a href="{% url 'lists_index' %}" class="uk-button uk-button-default uk-border-rounded uk-margin-small-right">
+                <span uk-icon="arrow-left"></span> {% trans "Back" %}
+            </a>
+            <button id="add-btn" class="uk-button uk-button-primary uk-border-rounded" uk-toggle="target: #modal-form">
+                <span uk-icon="plus"></span> {% trans "Add" %}
+            </button>
+        </div>
+    </div>
+
+    <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-margin-bottom uk-border-rounded">
+        <form method="get">
+            <div class="uk-flex uk-flex-middle" uk-grid>
+                <div class="uk-width-expand">
+                    <input class="uk-input uk-border-rounded" type="text" name="q" value="{{ q }}" placeholder="{% trans "Search by number..." %}">
+                </div>
+                <div class="uk-width-auto">
+                    <button class="uk-button uk-button-primary uk-border-rounded" type="submit">{% trans "Search" %}</button>
+                    {% if q %}<a href="{% url 'blocklist' %}" class="uk-button uk-button-default uk-border-rounded uk-margin-small-left">{% trans "Reset" %}</a>{% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="uk-card uk-card-default uk-border-rounded">
+        <div class="uk-card-body uk-padding-small">
+            <table class="uk-table uk-table-striped uk-table-hover uk-table-small uk-margin-remove-bottom">
+                <thead>
+                    <tr>
+                        <th>{% trans "Caller ID" %}</th>
+                        <th>{% trans "Destination" %}</th>
+                        <th>{% trans "Reason" %}</th>
+                        <th>{% trans "Expiration Date" %}</th>
+                        <th>{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in objects %}
+                    <tr>
+                        <td>{{ item.callerid }}</td>
+                        <td>{{ item.destination|default:"—" }}</td>
+                        <td>{{ item.reason|default:"—" }}</td>
+                        <td>{{ item.expiration_date|date:"d/m/Y H:i"|default:"—" }}</td>
+                        <td>
+                            <button class="edit-btn uk-button uk-button-default uk-button-small uk-border-rounded"
+                                data-pk="{{ item.pk }}"
+                                data-callerid="{{ item.callerid }}"
+                                data-destination="{{ item.destination }}"
+                                data-reason="{{ item.reason }}"
+                                data-expiration="{% if item.expiration_date %}{{ item.expiration_date|date:'Y-m-d\TH:i' }}{% endif %}"
+                                uk-toggle="target: #modal-form">
+                                {% trans "Edit" %}
+                            </button>
+                            <form method="post" action="{% url 'blocklist_delete' item.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="uk-button uk-button-danger uk-button-small uk-border-rounded"
+                                    onclick="return confirm('{% trans "Delete this entry?" %}')">
+                                    {% trans "Delete" %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="uk-text-center uk-text-muted">{% trans "No entries found." %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modal-form" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        <h2 class="uk-modal-title" id="modal-title">{% trans "Add Entry" %}</h2>
+        <form method="post" action="{% url 'blocklist' %}">
+            {% csrf_token %}
+            <input type="hidden" name="pk" id="form-pk" value="">
+            <div class="uk-margin">
+                <label class="uk-form-label">{% trans "Caller ID" %} *</label>
+                <div class="uk-form-controls">{{ form.callerid }}</div>
+                {% if form.callerid.errors %}<p class="uk-text-danger uk-margin-remove">{{ form.callerid.errors.0 }}</p>{% endif %}
+            </div>
+            <div class="uk-margin">
+                <label class="uk-form-label">{% trans "Destination" %}</label>
+                <div class="uk-form-controls">{{ form.destination }}</div>
+            </div>
+            <div class="uk-margin">
+                <label class="uk-form-label">{% trans "Reason" %}</label>
+                <div class="uk-form-controls">{{ form.reason }}</div>
+            </div>
+            <div class="uk-margin">
+                <label class="uk-form-label">{% trans "Expiration Date" %}</label>
+                <div class="uk-form-controls">{{ form.expiration_date }}</div>
+            </div>
+            <div class="uk-margin uk-text-right">
+                <button type="button" class="uk-button uk-button-default uk-border-rounded uk-modal-close">{% trans "Cancel" %}</button>
+                <button type="submit" class="uk-button uk-button-primary uk-border-rounded">{% trans "Save" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+{% if form.errors %}
+document.addEventListener('DOMContentLoaded', function () {
+    UIkit.modal(document.getElementById('modal-form')).show();
+});
+{% endif %}
+document.addEventListener('DOMContentLoaded', function () {
+    var addBtn = document.getElementById('add-btn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function () {
+            document.getElementById('modal-title').textContent = '{% trans "Add Entry" %}';
+            document.getElementById('form-pk').value = '';
+            document.getElementById('id_callerid').value = '';
+            document.getElementById('id_destination').value = '';
+            document.getElementById('id_reason').value = '';
+            document.getElementById('id_expiration_date').value = '';
+        });
+    }
+
+    document.querySelectorAll('.edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('modal-title').textContent = '{% trans "Edit Entry" %}';
+            document.getElementById('form-pk').value = btn.dataset.pk;
+            document.getElementById('id_callerid').value = btn.dataset.callerid;
+            document.getElementById('id_destination').value = btn.dataset.destination;
+            document.getElementById('id_reason').value = btn.dataset.reason;
+            document.getElementById('id_expiration_date').value = btn.dataset.expiration;
+        });
+    });
+});
+</script>
+{% endblock extra_js %}

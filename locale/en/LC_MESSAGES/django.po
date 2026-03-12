@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-12 14:50+0200\n"
+"POT-Creation-Date: 2026-03-12 16:17+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: English\n"
@@ -107,6 +107,8 @@ msgid "Caller"
 msgstr ""
 
 #: apps/dashboard/templates/dashboard/operator_panel.html:639
+#: apps/lists/templates/lists/contacts.html:26
+#: apps/lists/templates/lists/contacts.html:76
 #: apps/reports/templates/routing_report.html:49 core/models.py:93
 #: core/models.py:251 core/models.py:1580
 msgid "Name"
@@ -265,6 +267,161 @@ msgstr ""
 
 #: apps/dashboard/templates/dashboard/ulines.html:294
 msgid "Delete ALL active ULINEs from Redis?\\n\\nThis will detach all current calls from parking slots!"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:9
+#: apps/lists/templates/lists/index.html:24
+msgid "Allowlist"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:12
+#: apps/lists/templates/lists/blocklist.html:12
+#: apps/lists/templates/lists/contacts.html:12
+msgid "Back"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:15
+#: apps/lists/templates/lists/blocklist.html:15
+#: apps/lists/templates/lists/contacts.html:15
+msgid "Add"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:25
+#: apps/lists/templates/lists/allowlist.html:77
+#: apps/lists/templates/lists/blocklist.html:25
+#: apps/lists/templates/lists/blocklist.html:77
+#: apps/lists/templates/lists/contacts.html:25
+#: apps/lists/templates/lists/contacts.html:71
+#: apps/reports/templates/queue.html:375 core/models.py:1501
+#: core/models.py:1539 core/models.py:1577 core/models.py:1660
+msgid "Caller ID"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:26
+#: apps/lists/templates/lists/allowlist.html:82
+#: apps/lists/templates/lists/blocklist.html:26
+#: apps/lists/templates/lists/blocklist.html:82
+#: apps/reports/templates/callback_report.html:98
+#: apps/reports/templates/cdr.html:107 apps/reports/templates/monitor.html:81
+#: core/models.py:1507 core/models.py:1545 core/models.py:1667
+msgid "Destination"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:27
+#: apps/lists/templates/lists/allowlist.html:86
+#: apps/lists/templates/lists/blocklist.html:27
+#: apps/lists/templates/lists/blocklist.html:86 core/models.py:1515
+#: core/models.py:1553
+msgid "Reason"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:28
+#: apps/lists/templates/lists/allowlist.html:90
+#: apps/lists/templates/lists/blocklist.html:28
+#: apps/lists/templates/lists/blocklist.html:90 core/models.py:1522
+#: core/models.py:1560
+msgid "Expiration Date"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:29
+#: apps/lists/templates/lists/blocklist.html:29
+#: apps/lists/templates/lists/contacts.html:27
+msgid "Actions"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:47
+#: apps/lists/templates/lists/blocklist.html:47
+#: apps/lists/templates/lists/contacts.html:41
+msgid "Edit"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:52
+#: apps/lists/templates/lists/blocklist.html:52
+msgid "Delete this entry?"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:53
+#: apps/lists/templates/lists/blocklist.html:53
+#: apps/lists/templates/lists/contacts.html:47
+msgid "Delete"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:60
+#: apps/lists/templates/lists/blocklist.html:60
+msgid "No entries found."
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:72
+#: apps/lists/templates/lists/allowlist.html:108
+#: apps/lists/templates/lists/blocklist.html:72
+#: apps/lists/templates/lists/blocklist.html:108
+msgid "Add Entry"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:94
+#: apps/lists/templates/lists/blocklist.html:94
+#: apps/lists/templates/lists/contacts.html:81
+msgid "Cancel"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:95
+#: apps/lists/templates/lists/blocklist.html:95
+#: apps/lists/templates/lists/contacts.html:82
+msgid "Save"
+msgstr ""
+
+#: apps/lists/templates/lists/allowlist.html:119
+#: apps/lists/templates/lists/blocklist.html:119
+msgid "Edit Entry"
+msgstr ""
+
+#: apps/lists/templates/lists/blocklist.html:9
+#: apps/lists/templates/lists/index.html:14
+msgid "Blocklist"
+msgstr ""
+
+#: apps/lists/templates/lists/contacts.html:9
+#: apps/lists/templates/lists/index.html:34
+msgid "Contacts"
+msgstr ""
+
+#: apps/lists/templates/lists/contacts.html:46
+msgid "Delete this contact?"
+msgstr ""
+
+#: apps/lists/templates/lists/contacts.html:54
+msgid "No contacts found."
+msgstr ""
+
+#: apps/lists/templates/lists/contacts.html:66
+#: apps/lists/templates/lists/contacts.html:95
+msgid "Add Contact"
+msgstr ""
+
+#: apps/lists/templates/lists/contacts.html:104
+msgid "Edit Contact"
+msgstr ""
+
+#: apps/lists/templates/lists/index.html:8 pbx/settings.py:261
+msgid "Lists"
+msgstr ""
+
+#: apps/lists/templates/lists/index.html:15
+msgid "Manage blocked caller IDs"
+msgstr ""
+
+#: apps/lists/templates/lists/index.html:16
+#: apps/lists/templates/lists/index.html:26
+#: apps/lists/templates/lists/index.html:36
+msgid "Open"
+msgstr ""
+
+#: apps/lists/templates/lists/index.html:25
+msgid "Manage allowed caller IDs"
+msgstr ""
+
+#: apps/lists/templates/lists/index.html:35
+msgid "Manage contact names for caller IDs"
 msgstr ""
 
 #: apps/provision/admin.py:30
@@ -720,12 +877,6 @@ msgstr ""
 msgid "Source"
 msgstr ""
 
-#: apps/reports/templates/callback_report.html:98
-#: apps/reports/templates/cdr.html:107 apps/reports/templates/monitor.html:81
-#: core/models.py:1507 core/models.py:1545 core/models.py:1667
-msgid "Destination"
-msgstr ""
-
 #: apps/reports/templates/callback_report.html:104
 msgid "Updated"
 msgstr ""
@@ -915,11 +1066,6 @@ msgstr ""
 
 #: apps/reports/templates/queue.html:374
 msgid "Abandon Time"
-msgstr ""
-
-#: apps/reports/templates/queue.html:375 core/models.py:1501
-#: core/models.py:1539 core/models.py:1577 core/models.py:1660
-msgid "Caller ID"
 msgstr ""
 
 #: apps/reports/templates/queue.html:376
@@ -2119,16 +2265,8 @@ msgstr ""
 msgid "Reason for blocking the caller ID"
 msgstr ""
 
-#: core/models.py:1515 core/models.py:1553
-msgid "Reason"
-msgstr ""
-
 #: core/models.py:1521
 msgid "Expiration date for the blacklist entry. If not set, the entry is permanent."
-msgstr ""
-
-#: core/models.py:1522 core/models.py:1560
-msgid "Expiration Date"
 msgstr ""
 
 #: core/models.py:1527
@@ -2291,7 +2429,7 @@ msgstr ""
 msgid "Please check your username and/or password."
 msgstr ""
 
-#: core/templates/reports.html:6 pbx/settings.py:254
+#: core/templates/reports.html:6 pbx/settings.py:255
 msgid "Reports"
 msgstr ""
 
@@ -2383,27 +2521,27 @@ msgstr ""
 msgid "An error occurred: %(error)s"
 msgstr ""
 
-#: pbx/settings.py:126
+#: pbx/settings.py:127
 msgid "Ukrainian"
 msgstr ""
 
-#: pbx/settings.py:127
+#: pbx/settings.py:128
 msgid "English"
 msgstr ""
 
-#: pbx/settings.py:128
+#: pbx/settings.py:129
 msgid "Spanish"
 msgstr ""
 
-#: pbx/settings.py:242
+#: pbx/settings.py:243
 msgid "Dashboard"
 msgstr ""
 
-#: pbx/settings.py:248
+#: pbx/settings.py:249
 msgid "ULINE Monitor"
 msgstr ""
 
-#: pbx/settings.py:260
+#: pbx/settings.py:267
 msgid "Admin panel"
 msgstr ""
 
