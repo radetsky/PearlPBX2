@@ -2,16 +2,40 @@
 {% load static %}
 
 {% block content %}
-    <h2>Reports</h2>
-    <p>Here you can view various reports related to your system.</p>
-    <ul class="uk-list uk-list-striped">
-        <li><a href="{% url 'cdr_report' %}">CDR Filter</a></li>
-        <li><a href="{% url 'monitor_report' %}">Call Recordings</a></li>
-        <li><a href="{% url 'queuelog_report' %}">Queues Activity</a></li>
-        <li><a href="{% url 'callback_report' %}">Callback</a></li>
-        <li><a href="{% url 'routing_report' %}">Routing Tables</a></li>
-    </ul>
+<div class="uk-container uk-container-expand uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>Reports</span></h1>
+
+    <div class="uk-grid-match uk-child-width-1-2@m uk-margin-top" uk-grid>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                <h3 class="uk-card-title">General</h3>
+                <ul class="uk-list uk-list-striped">
+                    <li><a href="{% url 'cdr_report' %}">CDR Filter</a></li>
+                    <li><a href="{% url 'monitor_report' %}">Call Recordings</a></li>
+                    <li><a href="{% url 'queuelog_report' %}">Queues Activity</a></li>
+                    <li><a href="{% url 'callback_report' %}">Callback</a></li>
+                    <li><a href="{% url 'routing_report' %}">Routing Tables</a></li>
+                </ul>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                <h3 class="uk-card-title">Analytics</h3>
+                <ul class="uk-list uk-list-striped">
+                    <li><a href="{% url 'analytics_queue_calls' %}">Calls by Queue</a></li>
+                    <li><a href="{% url 'analytics_agent_calls' %}">Calls by Agent in Queue</a></li>
+                    <li><a href="{% url 'analytics_outbound_calls' %}">Outbound Calls by Agent</a></li>
+                    <li><a href="{% url 'analytics_missed_calls' %}">Missed Calls by Queue</a></li>
+                    <li><a href="{% url 'analytics_missed_by_hour' %}">Missed Calls by Hour</a></li>
+                    <li><a href="{% url 'analytics_call_duration' %}">Call Duration by Operator</a></li>
+                    <li><a href="{% url 'analytics_queue_activity' %}">Queue Activity (Hourly/Daily)</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="uk-position-bottom-center uk-position-small">
         <span class="uk-text-small uk-text-muted">© {% now "Y" %} PearlPBX2</span>
     </div>
+</div>
 {% endblock content %}

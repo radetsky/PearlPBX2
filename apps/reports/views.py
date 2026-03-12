@@ -1,6 +1,8 @@
 import csv
+import json
 import mimetypes
 import os
+from datetime import timedelta
 
 from django.views import View
 from django.shortcuts import render, get_object_or_404
@@ -10,23 +12,26 @@ from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 
 from apps.callback.models import CallbackNumber
+from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
 from apps.reports.forms import (
+    ASTERISK_NONE,
+    AnalyticsAgentCallsForm,
+    AnalyticsCallDurationForm,
+    AnalyticsDateRangeForm,
+    AnalyticsQueueActivityForm,
+    AnalyticsMissedByHourForm,
     CDRReportForm,
     MonitorFilenamesReportForm,
     CallbackNumberReportForm,
 )
 
-from core.models import MonitorFilenames, RoutingTable, RoutingRecord
-
 from django.db.models import Prefetch
 from django.views.generic import FormView
-from django.db.models import Count, Avg, F, Case, When, IntegerField
-from django.db.models.functions import Cast
-
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value, Q
+from django.db.models.functions import Cast, StrIndex, Substr, TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
 
@@ -86,7 +91,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
             }
         )
 
-        # Якщо запит на експорт
+        # Handle CSV export request
         if self.request.GET.get("export") == "csv":
             return self.export_csv(queryset, report_type)
 
@@ -254,7 +259,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         """Agent performance"""
         # Agent statistics
         agents_data = (
-            queryset.exclude(agent="NONE")
+            queryset.exclude(agent=ASTERISK_NONE)
             .values("agent")
             .annotate(
                 total_events=Count("id"),
@@ -308,7 +313,7 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
     def get_queue_performance_data(self, queryset):
         """Queue performance"""
         queues_data = (
-            queryset.exclude(queuename="NONE")
+            queryset.exclude(queuename=ASTERISK_NONE)
             .values("queuename")
             .annotate(
                 total_calls=Count(Case(When(event="ENTERQUEUE", then=1))),
@@ -585,6 +590,514 @@ class CDRReportView(ReportViewPermissionMixin, View):
             )
 
         return response
+
+
+class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_queue_calls.html"
+
+    def get(self, request):
+        form = AnalyticsDateRangeForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        show_unique = False
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            exclude_contacts = form.cleaned_data["exclude_contacts"]
+            show_unique = form.cleaned_data["show_unique"]
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(queuename=ASTERISK_NONE)
+
+            if exclude_contacts:
+                known_callids = QueueLog.objects.filter(
+                    event="ENTERQUEUE",
+                    time__range=(date_from, date_to),
+                    data2__in=Contact.objects.values_list("callerid", flat=True),
+                ).values_list("callid", flat=True)
+                qs = qs.exclude(callid__in=known_callids)
+
+            rows = list(
+                qs.values("queuename")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+
+            if show_unique:
+                callids = list(qs.values_list("callid", flat=True))
+                unique_by_queue = {}
+                if callids:
+                    unique_by_queue = {
+                        r["queuename"]: r["unique_callers"]
+                        for r in QueueLog.objects.filter(
+                            event="ENTERQUEUE",
+                            time__range=(date_from, date_to),
+                            callid__in=callids,
+                        )
+                        .values("queuename")
+                        .annotate(unique_callers=Count("data2", distinct=True))
+                    }
+                table_data = [{**r, "unique_callers": unique_by_queue.get(r["queuename"], 0)} for r in rows]
+            else:
+                table_data = rows
+
+            labels = [r["queuename"] for r in rows]
+            values = [r["total"] for r in rows]
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "show_unique": show_unique,
+        }
+        return render(request, self.template_name, context)
+
+
+def _fmt_duration(total_seconds):
+    """Format seconds as MM:SS (minutes may exceed 59)."""
+    minutes = total_seconds // 60
+    secs = total_seconds % 60
+    return f"{minutes}:{secs:02d}"
+
+
+def _clean_agent_name(agent):
+    """Extract short agent label from Asterisk channel string.
+
+    Examples: 'Local/223@agents' -> '223', 'PJSIP/223' -> '223', '223' -> '223'
+    """
+    name = agent.split("/")[-1]
+    return name.split("@")[0]
+
+
+class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_agent_calls.html"
+
+    def get(self, request):
+        form = AnalyticsAgentCallsForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(agent=ASTERISK_NONE)
+
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            rows = list(
+                qs.values("agent")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+
+            labels, values, table_data = [], [], []
+            for r in rows:
+                agent = _clean_agent_name(r["agent"])
+                labels.append(agent)
+                values.append(r["total"])
+                table_data.append({"agent": agent, "total": r["total"]})
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_outbound_calls.html"
+
+    def get(self, request):
+        form = AnalyticsAgentCallsForm(request.GET or None)
+        chart_data = None
+        table_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            # Collect queue members active in the period (lazy queryset, used as subquery)
+            agent_qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+            ).exclude(agent=ASTERISK_NONE)
+            if queuename:
+                agent_qs = agent_qs.filter(queuename=queuename)
+            agent_channels = agent_qs.values_list("agent", flat=True).distinct()
+
+            # Match CDR channel against agent channels by stripping the unique suffix
+            # CDR channel format: "SIP/237-00001234" -> base "SIP/237"
+            rows = list(
+                CDR.objects.filter(start__range=(date_from, date_to))
+                .annotate(
+                    base_channel=Case(
+                        When(
+                            channel__contains="-",
+                            then=Substr("channel", 1, StrIndex("channel", Value("-")) - 1),
+                        ),
+                        default=F("channel"),
+                        output_field=CharField(),
+                    )
+                )
+                .filter(base_channel__in=agent_channels)
+                .values("base_channel")
+                .annotate(total=Count("id"))
+                .order_by("-total")
+            )
+
+            labels, values, table_data = [], [], []
+            for r in rows:
+                labels.append(r["base_channel"])
+                values.append(r["total"])
+                table_data.append({"agent": r["base_channel"], "total": r["total"]})
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_missed_calls.html"
+
+    def get(self, request):
+        form = AnalyticsDateRangeForm(request.GET or None)
+        table_data = None
+        chart_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            exclude_contacts = form.cleaned_data["exclude_contacts"]
+
+            # Materialise exclusion list once (avoid repeated subquery per queue)
+            known_callids = None
+            if exclude_contacts:
+                known_callids = list(
+                    QueueLog.objects.filter(
+                        event="ENTERQUEUE",
+                        time__range=(date_from, date_to),
+                        data2__in=Contact.objects.values_list("callerid", flat=True),
+                    ).values_list("callid", flat=True)
+                )
+
+            queue_names = (
+                QueueLog.objects.filter(
+                    time__range=(date_from, date_to),
+                    event="ABANDON",
+                )
+                .exclude(queuename=ASTERISK_NONE)
+                .values_list("queuename", flat=True)
+                .distinct()
+                .order_by("queuename")
+            )
+
+            labels, values, table_data = [], [], []
+            for queuename in queue_names:
+                abandoned_qs = QueueLog.objects.filter(
+                    time__range=(date_from, date_to),
+                    queuename=queuename,
+                    event="ABANDON",
+                )
+                if known_callids is not None:
+                    abandoned_qs = abandoned_qs.exclude(callid__in=known_callids)
+
+                # Fetch abandon events once; derive count from result (avoids extra COUNT query)
+                abandon_events = list(abandoned_qs.values("callid", "time"))
+                missed = len(abandon_events)
+                if missed == 0:
+                    continue
+
+                callerid_by_callid = {
+                    row["callid"]: row["data2"]
+                    for row in QueueLog.objects.filter(
+                        event="ENTERQUEUE",
+                        callid__in=[e["callid"] for e in abandon_events],
+                    ).values("callid", "data2")
+                }
+
+                called_back = 0
+                operators = 0
+
+                # Per missed call: check lucky then done (mutually exclusive, matching original logic)
+                for row in abandon_events:
+                    callid = row["callid"]
+                    abandon_time = row["time"]
+                    callerid = callerid_by_callid.get(callid)
+                    if not callerid:
+                        continue
+
+                    # Lucky: callerid re-entered same queue after abandon_time and completed
+                    new_callids = QueueLog.objects.filter(
+                        time__gte=abandon_time,
+                        time__lte=date_to,
+                        queuename=queuename,
+                        event="ENTERQUEUE",
+                        data2=callerid,
+                    ).exclude(callid=callid).values("callid")
+
+                    if QueueLog.objects.filter(
+                        callid__in=new_callids,
+                        event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+                    ).exists():
+                        called_back += 1
+                        continue
+
+                    # Done: operator dialed callerid after abandon_time (only if not lucky)
+                    if CDR.objects.filter(
+                        start__gte=abandon_time,
+                        start__lte=date_to,
+                        disposition="ANSWERED",
+                        dst=callerid,
+                    ).exists():
+                        operators += 1
+
+                labels.append(queuename)
+                values.append(missed)
+                table_data.append({
+                    "queuename": queuename,
+                    "missed": missed,
+                    "called_back": called_back,
+                    "operators": operators,
+                    "remaining": max(0, missed - called_back - operators),
+                })
+
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
+    template_name = "analytics_missed_by_hour.html"
+
+    def get(self, request):
+        form = AnalyticsMissedByHourForm(request.GET or None)
+        table_data = None
+        chart_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            local_tz = timezone.get_current_timezone()
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event="ABANDON",
+            ).exclude(queuename=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+            hour_counts = {
+                row["hour"]: row["count"]
+                for row in qs.annotate(hour=TruncHour("time", tzinfo=local_tz))
+                .values("hour")
+                .annotate(count=Count("id"))
+            }
+
+            # Fill all hours in range with zeros
+            start = date_from.replace(minute=0, second=0, microsecond=0)
+            end = date_to.replace(minute=0, second=0, microsecond=0)
+            table_data = []
+            current = start
+            while current <= end:
+                table_data.append({"hour": current, "count": hour_counts.get(current, 0)})
+                current += timedelta(hours=1)
+
+            label_fmt = "%m-%d %H:%M" if date_from.date() != date_to.date() else "%H:%M"
+            chart_data = json.dumps({
+                "labels": [row["hour"].strftime(label_fmt) for row in table_data],
+                "values": [row["count"] for row in table_data],
+            })
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
+    template_name = "analytics_call_duration.html"
+
+    def get(self, request):
+        form = AnalyticsCallDurationForm(request.GET or None)
+        table_data = None
+        chart_data = None
+        overall_avg_fmt = None
+        overall_total_fmt = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+            ).exclude(agent=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            safe_talk_sec = Sum(
+                Case(
+                    When(data2__regex=r"^[0-9]+$", then=Cast(F("data2"), output_field=IntegerField())),
+                    default=None,
+                    output_field=IntegerField(),
+                )
+            )
+            rows = list(
+                qs.values("agent")
+                .annotate(total_seconds=safe_talk_sec, call_count=Count("id"))
+                .order_by("-total_seconds")
+            )
+
+            table_data = []
+            total_all = 0
+            calls_all = 0
+            for r in rows:
+                total = r["total_seconds"] or 0
+                count = r["call_count"]
+                total_all += total
+                calls_all += count
+                table_data.append({
+                    "agent": _clean_agent_name(r["agent"]),
+                    "total_fmt": _fmt_duration(total),
+                    "avg_fmt": _fmt_duration(total // count if count else 0),
+                    "call_count": count,
+                })
+
+            overall_total_fmt = _fmt_duration(total_all)
+            overall_avg_fmt = _fmt_duration(total_all // calls_all if calls_all else 0)
+            chart_data = json.dumps({
+                "labels": [row["agent"] for row in table_data],
+                "values": [r["total_seconds"] or 0 for r in rows],
+            })
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "overall_avg_fmt": overall_avg_fmt,
+            "overall_total_fmt": overall_total_fmt,
+        }
+        return render(request, self.template_name, context)
+
+
+class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
+    template_name = "analytics_queue_activity.html"
+
+    def get(self, request):
+        form = AnalyticsQueueActivityForm(request.GET or None)
+        table_data = None
+        chart_data = None
+        totals = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            queuename = form.cleaned_data["queuename"]
+
+            is_hourly = date_from.date() == date_to.date()
+            local_tz = timezone.get_current_timezone()
+            trunc_fn = TruncHour if is_hourly else TruncDate
+
+            qs = QueueLog.objects.filter(
+                time__range=(date_from, date_to),
+                event__in=["COMPLETECALLER", "COMPLETEAGENT", "ABANDON"],
+            ).exclude(queuename=ASTERISK_NONE)
+            if queuename:
+                qs = qs.filter(queuename=queuename)
+
+            period_data = {
+                row["period"]: row
+                for row in qs.annotate(period=trunc_fn("time", tzinfo=local_tz))
+                .values("period")
+                .annotate(
+                    answered=Count("id", filter=Q(event__in=["COMPLETECALLER", "COMPLETEAGENT"])),
+                    missed=Count("id", filter=Q(event="ABANDON")),
+                )
+            }
+
+            # Build full period range filled with zeros
+            # period_data keys are datetime.datetime (hourly) or datetime.date (daily)
+            # to match current variable type in each branch
+            if is_hourly:
+                start = date_from.replace(minute=0, second=0, microsecond=0)
+                end = date_to.replace(minute=0, second=0, microsecond=0)
+                step = timedelta(hours=1)
+                period_fmt = lambda dt: (
+                    f"{dt.strftime('%Y-%m-%d %H:%M:%S')} - "
+                    f"{(dt + timedelta(hours=1) - timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                chart_fmt = "%H"
+            else:
+                start = date_from.date()
+                end = date_to.date()
+                step = timedelta(days=1)
+                period_fmt = str
+                chart_fmt = "%Y-%m-%d"
+
+            labels, table_data = [], []
+            total_answered = total_missed = 0
+            current = start
+            while current <= end:
+                row = period_data.get(current, {})
+                answered = row.get("answered", 0)
+                missed = row.get("missed", 0)
+                total = answered + missed
+                pct = f"{missed / total * 100:.2f}" if total else "0.00"
+                total_answered += answered
+                total_missed += missed
+                labels.append(current.strftime(chart_fmt))
+                table_data.append({
+                    "period": period_fmt(current),
+                    "answered": answered,
+                    "missed": missed,
+                    "total": total,
+                    "pct": pct,
+                })
+                current += step
+
+            totals = {
+                "answered": total_answered,
+                "missed": total_missed,
+                "total": total_answered + total_missed,
+            }
+            chart_data = json.dumps({
+                "labels": labels,
+                "answered": [r["answered"] for r in table_data],
+                "missed": [r["missed"] for r in table_data],
+                "total": [r["total"] for r in table_data],
+            })
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "totals": totals,
+        }
+        return render(request, self.template_name, context)
 
 
 class RoutingTableReportView(ReportViewPermissionMixin, View):

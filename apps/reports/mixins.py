@@ -23,6 +23,13 @@ class ReportViewPermissionMixin(AccessMixin):
         "QueueLogRecordsByCallIdView": "view_queue_reports",
         "CallbackNumberReportView": "view_callback_statistics",
         "RoutingTableReportView": "view_routing_report",
+        "AnalyticsQueueCallsView": "view_analytics_reports",
+        "AnalyticsAgentCallsView": "view_analytics_reports",
+        "AnalyticsOutboundCallsView": "view_analytics_reports",
+        "AnalyticsMissedCallsView": "view_analytics_reports",
+        "AnalyticsMissedByHourView": "view_analytics_reports",
+        "AnalyticsCallDurationView": "view_analytics_reports",
+        "AnalyticsQueueActivityView": "view_analytics_reports",
     }
 
     # Optional: explicitly set permission (overrides auto-detection)

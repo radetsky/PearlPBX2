@@ -10,6 +10,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Queue management** — queues, members, rules, announcements
 - **Real-time operator dashboard** — live call monitoring via WebSocket
 - **CDR & reports** — call detail records, queue logs, callback reports, call recordings
+- **Analytics reports** — queue calls, agent calls, outbound calls, missed calls, missed by hour, call duration, queue activity (hourly/daily) with Chart.js charts
 - **Callback queue** — automated outbound callback system
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones
 - **REST API** — blacklist/whitelist management
@@ -114,6 +115,7 @@ Each service has its own `env.sample` and README with setup instructions.
 | `/admin/apply` | Apply configuration changes to Asterisk |
 | `/dashboard/` | Real-time operator panel |
 | `/reports/` | CDR, recordings, queue logs, callback reports |
+| `/reports/analytics/` | Analytics reports with charts (queues, agents, missed calls, etc.) |
 | `/api/v1/` | REST API |
 
 ## Contributing
