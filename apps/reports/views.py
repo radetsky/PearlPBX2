@@ -742,6 +742,121 @@ class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
         return render(request, self.template_name, context)
 
 
+class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
+    template_name = "analytics_missed_calls.html"
+
+    def get(self, request):
+        form = AnalyticsDateRangeForm(request.GET or None)
+        table_data = None
+        chart_data = None
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            exclude_contacts = form.cleaned_data["exclude_contacts"]
+
+            # Materialise exclusion list once (avoid repeated subquery per queue)
+            known_callids = None
+            if exclude_contacts:
+                known_callids = list(
+                    QueueLog.objects.filter(
+                        event="ENTERQUEUE",
+                        time__range=(date_from, date_to),
+                        data2__in=Contact.objects.values_list("callerid", flat=True),
+                    ).values_list("callid", flat=True)
+                )
+
+            queue_names = (
+                QueueLog.objects.filter(
+                    time__range=(date_from, date_to),
+                    event="ABANDON",
+                )
+                .exclude(queuename=ASTERISK_NONE)
+                .values_list("queuename", flat=True)
+                .distinct()
+                .order_by("queuename")
+            )
+
+            labels, values, table_data = [], [], []
+            for queuename in queue_names:
+                abandoned_qs = QueueLog.objects.filter(
+                    time__range=(date_from, date_to),
+                    queuename=queuename,
+                    event="ABANDON",
+                )
+                if known_callids is not None:
+                    abandoned_qs = abandoned_qs.exclude(callid__in=known_callids)
+
+                # Fetch abandon events once; derive count from result (avoids extra COUNT query)
+                abandon_events = list(abandoned_qs.values("callid", "time"))
+                missed = len(abandon_events)
+                if missed == 0:
+                    continue
+
+                callerid_by_callid = {
+                    row["callid"]: row["data2"]
+                    for row in QueueLog.objects.filter(
+                        event="ENTERQUEUE",
+                        callid__in=[e["callid"] for e in abandon_events],
+                    ).values("callid", "data2")
+                }
+
+                called_back = 0
+                operators = 0
+
+                # Per missed call: check lucky then done (mutually exclusive, matching original logic)
+                for row in abandon_events:
+                    callid = row["callid"]
+                    abandon_time = row["time"]
+                    callerid = callerid_by_callid.get(callid)
+                    if not callerid:
+                        continue
+
+                    # Lucky: callerid re-entered same queue after abandon_time and completed
+                    new_callids = QueueLog.objects.filter(
+                        time__gte=abandon_time,
+                        time__lte=date_to,
+                        queuename=queuename,
+                        event="ENTERQUEUE",
+                        data2=callerid,
+                    ).exclude(callid=callid).values("callid")
+
+                    if QueueLog.objects.filter(
+                        callid__in=new_callids,
+                        event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+                    ).exists():
+                        called_back += 1
+                        continue
+
+                    # Done: operator dialed callerid after abandon_time (only if not lucky)
+                    if CDR.objects.filter(
+                        start__gte=abandon_time,
+                        start__lte=date_to,
+                        disposition="ANSWERED",
+                        dst=callerid,
+                    ).exists():
+                        operators += 1
+
+                labels.append(queuename)
+                values.append(missed)
+                table_data.append({
+                    "queuename": queuename,
+                    "missed": missed,
+                    "called_back": called_back,
+                    "operators": operators,
+                    "remaining": max(0, missed - called_back - operators),
+                })
+
+            chart_data = json.dumps({"labels": labels, "values": values})
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+        }
+        return render(request, self.template_name, context)
+
+
 class RoutingTableReportView(ReportViewPermissionMixin, View):
     def get(self, request):
         prefix_filter = request.GET.get("prefix", "").strip()
