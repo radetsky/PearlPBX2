@@ -1,9 +1,246 @@
 {% extends 'base.html' %}
 {% load static i18n %}
 
+{% block title %}PearlPBX2 — {% trans "Home" %}{% endblock %}
+
 {% block content %}
-    <h2>{% trans "Welcome to PearlPBX2" %}</h2>
-    <div class="uk-position-bottom-center uk-position-small">
-        <span class="uk-text-small uk-text-muted">© {% now "Y" %} PearlPBX2</span>
+<div class="uk-margin-medium-bottom">
+
+    <!-- DB Stats Row -->
+    <h4 class="uk-heading-line uk-margin-small-bottom"><span>{% trans "System Overview" %}</span></h4>
+    <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@l uk-margin-bottom" uk-grid>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: users; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.sip_users }}</div>
+                <div class="uk-text-small">{% trans "SIP Users" %}</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: server; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.sip_peers }}</div>
+                <div class="uk-text-small">{% trans "Trunks" %}</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: list; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.queues }}</div>
+                <div class="uk-text-small">{% trans "Queues" %}</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: git-branch; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.routing_records }}</div>
+                <div class="uk-text-small">{% trans "Routes" %}</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: receiver; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.contacts }}</div>
+                <div class="uk-text-small">{% trans "Contacts" %}</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-primary uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <span uk-icon="icon: ban; ratio: 1.5"></span>
+                <div class="uk-text-large uk-text-bold">{{ stats.blocklist }}</div>
+                <div class="uk-text-small">{% trans "Blocklist" %}</div>
+            </div>
+        </div>
     </div>
+
+    <!-- Live Status -->
+    <h4 class="uk-heading-line uk-margin-small-bottom"><span>{% trans "Live Status" %}</span></h4>
+    <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-3@m uk-margin-bottom" uk-grid>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-border-rounded">
+                <div class="uk-text-meta">{% trans "Asterisk Version" %}</div>
+                <div id="asterisk-version" class="uk-text-emphasis">—</div>
+                <div class="uk-text-meta uk-margin-small-top">{% trans "Uptime" %}</div>
+                <div id="asterisk-uptime" class="uk-text-emphasis">—</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+                <div class="uk-text-meta">{% trans "Active Calls" %}</div>
+                <div id="active-calls" class="uk-text-large uk-text-bold" style="font-size: 2.5rem;">—</div>
+            </div>
+        </div>
+        <div>
+            <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-border-rounded">
+                <div class="uk-text-meta uk-margin-small-bottom">{% trans "Queue Occupancy" %}</div>
+                <div id="queue-list">
+                    <span class="uk-text-muted">{% trans "Loading..." %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDR Chart -->
+    <h4 class="uk-heading-line uk-margin-small-bottom"><span>{% trans "Call Load — Last 14 Days" %}</span></h4>
+    <div class="uk-card uk-card-default uk-card-body uk-border-rounded uk-margin-bottom">
+        <div id="chart-placeholder" class="uk-text-center uk-text-muted uk-padding" style="display:none;">
+            {% trans "No call data for the last 14 days." %}
+        </div>
+        <canvas id="callsChart" style="max-height: 280px;"></canvas>
+    </div>
+
+    <!-- Quick Links -->
+    <h4 class="uk-heading-line uk-margin-small-bottom"><span>{% trans "Quick Links" %}</span></h4>
+    <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-4@m" uk-grid>
+        <div>
+            <a href="/dashboard/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: home; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Dashboard" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="{% url 'reports' %}" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: album; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Reports" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="{% url 'lists_index' %}" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: list; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Lists" %}</div>
+            </a>
+        </div>
+        {% if user.is_superuser %}
+        <div>
+            <a href="/admin/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: settings; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Admin Panel" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="/admin/core/sipuser/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: users; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "SIP Users" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="/admin/core/sippeer/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: server; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Trunks" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="/admin/core/queue/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: list; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Queues" %}</div>
+            </a>
+        </div>
+        <div>
+            <a href="/admin/core/routingrecord/" class="uk-card uk-card-default uk-card-hover uk-card-body uk-padding-small uk-border-rounded uk-text-center uk-display-block">
+                <span uk-icon="icon: git-branch; ratio: 1.5"></span>
+                <div class="uk-text-small uk-margin-small-top">{% trans "Routing" %}</div>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{{ cdr_chart_data|json_script:"cdr-chart-data" }}
 {% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    // CDR Chart
+    const rawData = JSON.parse(document.getElementById('cdr-chart-data').textContent);
+
+    if (rawData.length === 0) {
+        document.getElementById('chart-placeholder').style.display = '';
+        document.getElementById('callsChart').style.display = 'none';
+    } else {
+        const aggregated = {};
+        rawData.forEach(r => {
+            if (!aggregated[r.date]) aggregated[r.date] = { total: 0, answered: 0 };
+            aggregated[r.date].total += r.count;
+            if (r.disposition === 'ANSWERED') aggregated[r.date].answered += r.count;
+        });
+        const dateSet = Object.keys(aggregated).sort();
+
+        new Chart(document.getElementById('callsChart'), {
+            type: 'bar',
+            data: {
+                labels: dateSet,
+                datasets: [
+                    {
+                        label: 'Total',
+                        data: dateSet.map(d => aggregated[d].total),
+                        backgroundColor: 'rgba(100, 149, 237, 0.5)',
+                        borderColor: 'rgba(100, 149, 237, 1)',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                    },
+                    {
+                        label: 'Answered',
+                        data: dateSet.map(d => aggregated[d].answered),
+                        backgroundColor: 'rgba(60, 179, 113, 0.6)',
+                        borderColor: 'rgba(60, 179, 113, 1)',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
+
+    // Live status
+    fetch('/api/homepage-status/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.asterisk) {
+                document.getElementById('asterisk-version').textContent = data.asterisk.AsteriskVersion || '—';
+                document.getElementById('asterisk-uptime').textContent = data.asterisk.CoreUptime || '—';
+            }
+            document.getElementById('active-calls').textContent = data.active_calls;
+
+            const queueList = document.getElementById('queue-list');
+            if (data.queues && data.queues.length > 0) {
+                queueList.innerHTML = '';
+                data.queues.forEach(q => {
+                    const div = document.createElement('div');
+                    div.className = 'uk-flex uk-flex-between uk-margin-small-bottom';
+                    const name = document.createElement('span');
+                    name.className = 'uk-text-bold';
+                    name.textContent = q.name;
+                    const badge = document.createElement('span');
+                    badge.className = 'uk-badge';
+                    badge.textContent = q.callers + ' waiting';
+                    const agents = document.createElement('span');
+                    agents.className = 'uk-text-muted uk-text-small';
+                    agents.textContent = q.available_members + '/' + q.total_members + ' agents';
+                    div.append(name, badge, agents);
+                    queueList.appendChild(div);
+                });
+            } else {
+                queueList.innerHTML = '<span class="uk-text-muted">{% trans "No active queues" %}</span>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('asterisk-version').textContent = '—';
+            document.getElementById('asterisk-uptime').textContent = '—';
+            document.getElementById('active-calls').textContent = '—';
+            document.getElementById('queue-list').innerHTML = '<span class="uk-text-muted">{% trans "Unavailable" %}</span>';
+        });
+})();
+</script>
+{% endblock extra_js %}
