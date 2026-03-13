@@ -4,9 +4,20 @@ All notable changes to PearlPBX2 are documented here.
 
 ---
 
-## [Unreleased]
+## [2.1.0] — 2026-03-13
 
 ### Added
+
+**Welcome page** — home page (`/`) redesigned into a live system status dashboard:
+
+- **DB Stats row** — 6 cards showing counts: SIP Users, Trunks, Queues, Routes, Contacts, Blocklist
+- **Live Status** — Asterisk version, uptime, active calls count, and per-queue occupancy; loaded asynchronously via `/api/homepage-status/` with graceful fallback (`—`) when AMI or Redis is unavailable
+- **CDR chart** — Chart.js bar chart showing total and answered calls for the last 14 days, rendered from server-side data (no extra request); shows placeholder text if no CDR data exists
+- **Quick Links** — navigation cards to Dashboard, Reports, Lists, Admin Panel, SIP Users, Trunks, Queues, Routing (admin-only cards visible to superusers only)
+
+New JSON endpoint `GET /api/homepage-status/` returns Asterisk `CoreStatus` (via AMI, 3 s timeout) and Redis channel/queue data.
+
+---
 
 **Lists section** — new `/lists/` section accessible to the "Report Viewer" group (no admin rights required):
 
