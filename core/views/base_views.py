@@ -56,16 +56,14 @@ class HomepageView(LoginRequiredMixin, TemplateView):
             .annotate(count=Count("id"))
             .order_by("start__date")
         )
-        ctx["cdr_chart_data"] = json.dumps(
-            [
-                {
-                    "date": str(row["start__date"]),
-                    "disposition": row["disposition"],
-                    "count": row["count"],
-                }
-                for row in cdr_rows
-            ]
-        )
+        ctx["cdr_chart_data"] = [
+            {
+                "date": str(row["start__date"]),
+                "disposition": row["disposition"],
+                "count": row["count"],
+            }
+            for row in cdr_rows
+        ]
         return ctx
 
 
