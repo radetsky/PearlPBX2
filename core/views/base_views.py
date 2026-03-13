@@ -1,11 +1,12 @@
 import datetime
 import json
 import logging
+import re
 import threading
 
 import django.contrib.auth.views as django_auth_views
 import redis
-from asterisk.ami import AMIClient, SimpleAction
+from asterisk.ami import Action, AMIClient, SimpleAction
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
@@ -113,8 +114,38 @@ class HomepageStatusView(LoginRequiredMixin, View):
             client.send_action(SimpleAction("CoreStatus"), callback=on_status)
 
         def on_status(response, **kwargs):
-            for k in ("AsteriskVersion", "CoreUptime", "CoreReloadTime", "CoreCurrentCalls"):
-                ami_result[k] = response.keys.get(k, "")
+            keys = response.keys
+            ami_result["current_calls"] = keys.get("CoreCurrentCalls", "0")
+            ami_result["processed_calls"] = keys.get("CoreProcessedCalls", "0")
+            startup_date = keys.get("CoreStartupDate", "")
+            startup_time = keys.get("CoreStartupTime", "")
+            if startup_date and startup_time:
+                try:
+                    startup_dt = datetime.datetime.strptime(
+                        f"{startup_date} {startup_time}", "%Y-%m-%d %H:%M:%S"
+                    )
+                    delta = datetime.datetime.now() - startup_dt
+                    days = delta.days
+                    hours, rem = divmod(delta.seconds, 3600)
+                    minutes = rem // 60
+                    parts = []
+                    if days:
+                        parts.append(f"{days}d")
+                    if hours:
+                        parts.append(f"{hours}h")
+                    parts.append(f"{minutes}m")
+                    ami_result["uptime"] = " ".join(parts)
+                except ValueError:
+                    ami_result["uptime"] = f"{startup_date} {startup_time}"
+            client.send_action(
+                Action("Command", {"Command": "core show version"}),
+                callback=on_version,
+            )
+
+        def on_version(response, **kwargs):
+            output = response.keys.get("Output", "")
+            m = re.match(r"(Asterisk\s+[\d.]+)", output)
+            ami_result["version"] = m.group(1) if m else output.split(" built")[0]
             try:
                 client.logoff()
             except Exception:

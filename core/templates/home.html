@@ -65,9 +65,11 @@
             </div>
         </div>
         <div>
-            <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-border-rounded uk-text-center">
+            <div class="uk-card uk-card-default uk-card-body uk-padding-small uk-border-rounded">
                 <div class="uk-text-meta">{% trans "Active Calls" %}</div>
-                <div id="active-calls" class="uk-text-large uk-text-bold" style="font-size: 2.5rem;">—</div>
+                <div id="active-calls" class="uk-text-emphasis">—</div>
+                <div class="uk-text-meta uk-margin-small-top">{% trans "Processed Calls" %}</div>
+                <div id="processed-calls" class="uk-text-emphasis">—</div>
             </div>
         </div>
         <div>
@@ -208,10 +210,11 @@
         .then(r => r.json())
         .then(data => {
             if (data.asterisk) {
-                document.getElementById('asterisk-version').textContent = data.asterisk.AsteriskVersion || '—';
-                document.getElementById('asterisk-uptime').textContent = data.asterisk.CoreUptime || '—';
+                document.getElementById('asterisk-version').textContent = data.asterisk.version || '—';
+                document.getElementById('asterisk-uptime').textContent = data.asterisk.uptime || '—';
+                document.getElementById('active-calls').textContent = data.asterisk.current_calls ?? '—';
+                document.getElementById('processed-calls').textContent = data.asterisk.processed_calls ?? '—';
             }
-            document.getElementById('active-calls').textContent = data.active_calls;
 
             const queueList = document.getElementById('queue-list');
             if (data.queues && data.queues.length > 0) {
