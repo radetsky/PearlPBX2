@@ -114,7 +114,7 @@ class HomepageStatusView(LoginRequiredMixin, View):
 
         def on_status(response, **kwargs):
             for k in ("AsteriskVersion", "CoreUptime", "CoreReloadTime", "CoreCurrentCalls"):
-                ami_result[k] = response.get(k, "")
+                ami_result[k] = response.keys.get(k, "")
             try:
                 client.logoff()
             except Exception:
