@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
@@ -17,6 +18,7 @@ class ListCRUDView(ReportViewPermissionMixin, View):
     order_by_field = "callerid"
     success_url_name = None
     search_fields = []
+    page_size = 100
 
     def get_queryset(self, q=""):
         qs = self.model.objects.order_by(self.order_by_field)
@@ -30,8 +32,11 @@ class ListCRUDView(ReportViewPermissionMixin, View):
     def get(self, request):
         q = request.GET.get("q", "").strip()
         form = self.form_class()
-        objects = self.get_queryset(q)
-        return render(request, self.template_name, {"objects": objects, "form": form, "q": q})
+        qs = self.get_queryset(q)
+        paginator = Paginator(qs, self.page_size)
+        page_number = request.GET.get("page", 1)
+        page_obj = paginator.get_page(page_number)
+        return render(request, self.template_name, {"page_obj": page_obj, "form": form, "q": q})
 
     def post(self, request):
         pk = request.POST.get("pk")
@@ -43,8 +48,10 @@ class ListCRUDView(ReportViewPermissionMixin, View):
         if form.is_valid():
             form.save()
             return redirect(self.success_url_name)
-        objects = self.get_queryset()
-        return render(request, self.template_name, {"objects": objects, "form": form, "q": ""})
+        qs = self.get_queryset()
+        paginator = Paginator(qs, self.page_size)
+        page_obj = paginator.get_page(1)
+        return render(request, self.template_name, {"page_obj": page_obj, "form": form, "q": ""})
 
 
 class ListDeleteView(ReportViewPermissionMixin, View):
