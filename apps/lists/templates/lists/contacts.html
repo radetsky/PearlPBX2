@@ -42,7 +42,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in objects %}
+                    {% for item in page_obj %}
                     <tr>
                         <td>{{ item.callerid }}</td>
                         <td>{{ item.name }}</td>
@@ -71,6 +71,36 @@
                 </tbody>
             </table>
         </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="uk-card-footer uk-padding-small">
+            <div class="uk-flex uk-flex-between uk-flex-middle">
+                <p class="uk-margin-remove uk-text-muted uk-text-small">
+                    {% trans "Showing" %} {{ page_obj.start_index }}–{{ page_obj.end_index }} {% trans "of" %} {{ page_obj.paginator.count }}
+                </p>
+                <ul class="uk-pagination uk-margin-remove">
+                    {% if page_obj.has_previous %}
+                    <li><a href="?q={{ q }}&page={{ page_obj.previous_page_number }}"><span uk-pagination-previous></span></a></li>
+                    {% else %}
+                    <li class="uk-disabled"><span uk-pagination-previous></span></li>
+                    {% endif %}
+                    {% for p in page_obj.paginator.page_range %}
+                        {% if p == page_obj.number %}
+                        <li class="uk-active"><span>{{ p }}</span></li>
+                        {% elif p == 1 or p == page_obj.paginator.num_pages or p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+                        <li><a href="?q={{ q }}&page={{ p }}">{{ p }}</a></li>
+                        {% elif p == page_obj.number|add:"-3" or p == page_obj.number|add:"3" %}
+                        <li class="uk-disabled"><span>…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <li><a href="?q={{ q }}&page={{ page_obj.next_page_number }}"><span uk-pagination-next></span></a></li>
+                    {% else %}
+                    <li class="uk-disabled"><span uk-pagination-next></span></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
