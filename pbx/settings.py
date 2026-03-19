@@ -243,13 +243,13 @@ HEADER_MENU_PAGES = [
         "title": _("Dashboard"),
         "url": "/dashboard/",
         "item_icon": "home",
-        "allowed_roles": ["admin", "superuser"],
+        "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {
         "title": _("ULINE Monitor"),
         "url": "/dashboard/ulines/",
         "item_icon": "call_split",
-        "allowed_roles": ["admin", "superuser"],
+        "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {
         "title": _("Reports"),
@@ -261,7 +261,7 @@ HEADER_MENU_PAGES = [
         "title": _("Lists"),
         "url": "/lists/",
         "item_icon": "list",
-        "allowed_roles": ["admin", "superuser"],
+        "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {
         "title": _("Admin panel"),
