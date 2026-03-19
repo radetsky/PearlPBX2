@@ -255,7 +255,7 @@ HEADER_MENU_PAGES = [
         "title": _("Reports"),
         "url": "/reports/",
         "item_icon": "print",
-        "allowed_roles": ["admin", "superuser"],
+        "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {
         "title": _("Lists"),

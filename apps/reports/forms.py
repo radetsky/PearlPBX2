@@ -7,6 +7,7 @@ from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
 
 ASTERISK_NONE = "NONE"
+DATETIME_LOCAL_FORMAT = "%Y-%m-%dT%H:%M"
 
 
 def _get_queue_choices(empty_label=None):
@@ -27,7 +28,7 @@ class QueueLogReportForm(forms.Form):
         label=_("Date From"),
         required=False,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
@@ -40,7 +41,7 @@ class QueueLogReportForm(forms.Form):
         label=_("Date To"),
         required=False,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
@@ -159,7 +160,7 @@ class MonitorFilenamesReportForm(forms.Form):
         label=_("Created from"),
         required=False,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -168,7 +169,7 @@ class MonitorFilenamesReportForm(forms.Form):
         label=_("Created to"),
         required=False,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -187,7 +188,7 @@ class CDRReportForm(forms.Form):
     start_date = forms.DateTimeField(
         label=_("Start date"),
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -196,7 +197,7 @@ class CDRReportForm(forms.Form):
     end_date = forms.DateTimeField(
         label=_("End date"),
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -259,7 +260,7 @@ class _AnalyticsBaseForm(forms.Form):
         label=_("Date From"),
         required=True,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -269,7 +270,7 @@ class _AnalyticsBaseForm(forms.Form):
         label=_("Date To"),
         required=True,
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
@@ -329,7 +330,7 @@ class CallbackNumberReportForm(forms.Form):
     start_date = forms.DateTimeField(
         label=_("Created from"),
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -338,7 +339,7 @@ class CallbackNumberReportForm(forms.Form):
     end_date = forms.DateTimeField(
         label=_("Created to"),
         widget=forms.DateTimeInput(
-            format='%Y-%m-%dT%H:%M',
+            format=DATETIME_LOCAL_FORMAT,
             attrs={"type": "datetime-local", "class": "form-control"}
         ),
         initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
