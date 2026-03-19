@@ -24,6 +24,9 @@ class EventWrapper:
         return self.event.keys.get(key, default)
 
 
+REDIS_STATE_TTL = 7200  # seconds; health check refreshes every 30s, so 2h gives ample recovery window
+
+
 class DashboardAMIListener:
     def __init__(self, **kwargs):
         self.params = kwargs
@@ -155,7 +158,7 @@ class DashboardAMIListener:
         try:
             state_key = f"asterisk:queue:{queue_name}"
             await self.redis_client.setex(
-                state_key, 3600, json.dumps(self.queue_state.get(queue_name, {}))
+                state_key, REDIS_STATE_TTL, json.dumps(self.queue_state.get(queue_name, {}))
             )
         except Exception as e:
             self.logger.error(f"Error updating queue state: {e}")
@@ -165,7 +168,7 @@ class DashboardAMIListener:
         try:
             await self.redis_client.setex(
                 "asterisk:channels:all",
-                3600,
+                REDIS_STATE_TTL,
                 json.dumps(self.channels_state),
             )
         except Exception as e:
@@ -176,7 +179,7 @@ class DashboardAMIListener:
         try:
             await self.redis_client.setex(
                 f"asterisk:channel:{channel_name}",
-                3600,
+                REDIS_STATE_TTL,
                 json.dumps(channel_data),
             )
         except Exception as e:
@@ -187,7 +190,7 @@ class DashboardAMIListener:
         try:
             await self.redis_client.setex(
                 f"asterisk:uid:{uniqueid}",
-                3600,
+                REDIS_STATE_TTL,
                 channel_name,
             )
         except Exception as e:
@@ -730,6 +733,15 @@ class DashboardAMIListener:
 
                 await self.redis_client.ping()  # type: ignore
                 await self.update_channels_state()
+                if self.queue_state:
+                    async with self.redis_client.pipeline(transaction=False) as pipe:
+                        for queue_name, state in list(self.queue_state.items()):
+                            pipe.setex(
+                                f"asterisk:queue:{queue_name}",
+                                REDIS_STATE_TTL,
+                                json.dumps(state),
+                            )
+                        await pipe.execute()
                 self.logger.debug("Health check: OK")
             except Exception as e:
                 self.logger.error(f"Health check failed: {e}")

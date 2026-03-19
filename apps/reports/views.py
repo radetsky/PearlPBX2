@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
+from django.utils.timezone import localtime
 
 from apps.callback.models import CallbackNumber
 from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
@@ -18,6 +19,7 @@ from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
 from apps.reports.forms import (
     ASTERISK_NONE,
+    DATETIME_LOCAL_FORMAT,
     AnalyticsAgentCallsForm,
     AnalyticsCallDurationForm,
     AnalyticsDateRangeForm,
@@ -592,11 +594,19 @@ class CDRReportView(ReportViewPermissionMixin, View):
         return response
 
 
+def _default_analytics_params():
+    now = localtime(timezone.now())
+    return {
+        "date_from": now.replace(hour=0, minute=0, second=0, microsecond=0).strftime(DATETIME_LOCAL_FORMAT),
+        "date_to": now.replace(hour=23, minute=59, second=59, microsecond=0).strftime(DATETIME_LOCAL_FORMAT),
+    }
+
+
 class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
     template_name = "analytics_queue_calls.html"
 
     def get(self, request):
-        form = AnalyticsDateRangeForm(request.GET or None)
+        form = AnalyticsDateRangeForm(request.GET or _default_analytics_params())
         chart_data = None
         table_data = None
 
@@ -646,7 +656,7 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
 
             labels = [r["queuename"] for r in rows]
             values = [r["total"] for r in rows]
-            chart_data = json.dumps({"labels": labels, "values": values})
+            chart_data = {"labels": labels, "values": values}
 
         context = {
             "form": form,
@@ -677,7 +687,7 @@ class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
     template_name = "analytics_agent_calls.html"
 
     def get(self, request):
-        form = AnalyticsAgentCallsForm(request.GET or None)
+        form = AnalyticsAgentCallsForm(request.GET or _default_analytics_params())
         chart_data = None
         table_data = None
 
@@ -706,7 +716,7 @@ class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
                 labels.append(agent)
                 values.append(r["total"])
                 table_data.append({"agent": agent, "total": r["total"]})
-            chart_data = json.dumps({"labels": labels, "values": values})
+            chart_data = {"labels": labels, "values": values}
 
         context = {
             "form": form,
@@ -720,7 +730,7 @@ class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
     template_name = "analytics_outbound_calls.html"
 
     def get(self, request):
-        form = AnalyticsAgentCallsForm(request.GET or None)
+        form = AnalyticsAgentCallsForm(request.GET or _default_analytics_params())
         chart_data = None
         table_data = None
 
@@ -762,7 +772,7 @@ class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
                 labels.append(r["base_channel"])
                 values.append(r["total"])
                 table_data.append({"agent": r["base_channel"], "total": r["total"]})
-            chart_data = json.dumps({"labels": labels, "values": values})
+            chart_data = {"labels": labels, "values": values}
 
         context = {
             "form": form,
@@ -776,7 +786,7 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
     template_name = "analytics_missed_calls.html"
 
     def get(self, request):
-        form = AnalyticsDateRangeForm(request.GET or None)
+        form = AnalyticsDateRangeForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
 
@@ -877,7 +887,7 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                     "remaining": max(0, missed - called_back - operators),
                 })
 
-            chart_data = json.dumps({"labels": labels, "values": values})
+            chart_data = {"labels": labels, "values": values}
 
         context = {
             "form": form,
@@ -891,7 +901,7 @@ class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
     template_name = "analytics_missed_by_hour.html"
 
     def get(self, request):
-        form = AnalyticsMissedByHourForm(request.GET or None)
+        form = AnalyticsMissedByHourForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
 
@@ -924,10 +934,10 @@ class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
                 current += timedelta(hours=1)
 
             label_fmt = "%m-%d %H:%M" if date_from.date() != date_to.date() else "%H:%M"
-            chart_data = json.dumps({
+            chart_data = {
                 "labels": [row["hour"].strftime(label_fmt) for row in table_data],
                 "values": [row["count"] for row in table_data],
-            })
+            }
 
         context = {
             "form": form,
@@ -941,7 +951,7 @@ class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
     template_name = "analytics_call_duration.html"
 
     def get(self, request):
-        form = AnalyticsCallDurationForm(request.GET or None)
+        form = AnalyticsCallDurationForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
         overall_avg_fmt = None
@@ -989,10 +999,10 @@ class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
 
             overall_total_fmt = _fmt_duration(total_all)
             overall_avg_fmt = _fmt_duration(total_all // calls_all if calls_all else 0)
-            chart_data = json.dumps({
+            chart_data = {
                 "labels": [row["agent"] for row in table_data],
                 "values": [r["total_seconds"] or 0 for r in rows],
-            })
+            }
 
         context = {
             "form": form,
@@ -1008,7 +1018,7 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
     template_name = "analytics_queue_activity.html"
 
     def get(self, request):
-        form = AnalyticsQueueActivityForm(request.GET or None)
+        form = AnalyticsQueueActivityForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
         totals = None
@@ -1084,12 +1094,12 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
                 "missed": total_missed,
                 "total": total_answered + total_missed,
             }
-            chart_data = json.dumps({
+            chart_data = {
                 "labels": labels,
                 "answered": [r["answered"] for r in table_data],
                 "missed": [r["missed"] for r in table_data],
                 "total": [r["total"] for r in table_data],
-            })
+            }
 
         context = {
             "form": form,
