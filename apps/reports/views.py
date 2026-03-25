@@ -427,11 +427,15 @@ class AudioFileView(ReportViewPermissionMixin, View):
             )
         else:
             range_header = request.META.get("HTTP_RANGE", "").strip()
-            range_match = re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
+            range_match = (
+                re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
+            )
 
             if range_match:
                 first = int(range_match.group(1))
-                last = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+                last = (
+                    int(range_match.group(2)) if range_match.group(2) else file_size - 1
+                )
                 last = min(last, file_size - 1)
                 if first >= file_size or first > last:
                     return HttpResponse(status=416)
@@ -443,7 +447,9 @@ class AudioFileView(ReportViewPermissionMixin, View):
                 response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
                 response["Content-Length"] = str(length)
             else:
-                response = FileResponse(open(file_path, "rb"), content_type=content_type)
+                response = FileResponse(
+                    open(file_path, "rb"), content_type=content_type
+                )
                 response["Content-Length"] = str(file_size)
                 response["Content-Disposition"] = f'inline; filename="{filename}"'
 
@@ -490,7 +496,9 @@ class MonitorReportView(ReportViewPermissionMixin, View):
             if uniqueids:
                 cdr_durations = {
                     row["uniqueid"]: row["duration"]
-                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values("uniqueid", "duration")
+                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
+                        "uniqueid", "duration"
+                    )
                 }
 
         context = {
@@ -1284,7 +1292,9 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
             if uniqueids:
                 cdr_durations = {
                     row["uniqueid"]: row["duration"]
-                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values("uniqueid", "duration")
+                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
+                        "uniqueid", "duration"
+                    )
                 }
                 for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=uniqueids):
                     url = mf.get_audio_url()
