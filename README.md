@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.1.0`
+# PearlPBX2 `v2.1.4`
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
 
@@ -10,7 +10,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Call routing** — prefix-based routing tables
 - **Queue management** — queues, members, rules, announcements
 - **Real-time operator dashboard** — live call monitoring via WebSocket
-- **CDR & reports** — call detail records, queue logs, callback reports, call recordings
+- **CDR & reports** — call detail records with direction/channel filters, queue logs, callback reports with duration and recordings, call recordings browser
 - **Analytics reports** — queue calls, agent calls, outbound calls, missed calls, missed by hour, call duration, queue activity (hourly/daily) with Chart.js charts
 - **Callback queue** — automated outbound callback system
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones

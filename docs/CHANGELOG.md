@@ -4,6 +4,29 @@ All notable changes to PearlPBX2 are documented here.
 
 ---
 
+## [2.1.4] — 2026-03-25
+
+### Added
+
+- **CDR report: call direction filter** — new `call_direction` dropdown with 7 options: All calls, Incoming, Outgoing, Internal, Transit, Unbridged (Peers), Unbridged (Users). Filters by `src_channel` / `dst_channel` prefix logic in the view.
+- **CDR report: channel autocomplete** — `src_channel` and `dst_channel` inputs now use `ChannelComboboxWidget`, a new `<datalist>`-based widget that suggests active PJSIP channels (SIPUser + SIPPeer) without extra JS dependencies.
+- **CDR report: flatpickr date picker** — date/time inputs replaced with [flatpickr](https://flatpickr.js.org/) (24h mode, Ok/Cancel buttons, date format `Y-m-d H:i`). Static assets: `static/css/flatpickr.min.css`, `static/js/flatpickr.min.js`.
+- **Callback report: duration column** — call duration shown per row, resolved via `cdr_uniqueid` lookup against the CDR table.
+- **Callback report: audio recording links** — recording playback link shown when a matching `MonitorFilenames` entry is found by `cdr_uniqueid`.
+- **`ChannelComboboxWidget`** (`core/widgets.py`) — reusable text input with `<datalist>` of PJSIP channel suggestions; escapes values with `django.utils.html.escape`.
+
+### Changed
+
+- Date format in all report forms changed from `%Y-%m-%dT%H:%M` to `%Y-%m-%d %H:%M` to match flatpickr output.
+
+### Fixed
+
+- **Dashboard tests: hardcoded password removed** — test credentials replaced with a `_TEST_PASSWORD` constant (`T3stP@ssw0rd!`) to avoid committing weak credentials in source code.
+- **Dashboard tests: user creation moved to `setUpTestData`** — `User.objects.create_user` / `create_superuser` now runs once per test class instead of once per test, eliminating redundant password hashing.
+- **Dashboard tests: explicit session reset before superuser login** — `self.client.logout()` added before `client.login(username="admin")` in `test_superuser_allowed` to prevent implicit session overwrite.
+
+---
+
 ## [2.1.3] — 2026-03-25
 
 ### Changed
