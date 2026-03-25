@@ -41,10 +41,10 @@ def reverse_analytics_permission(apps, schema_editor):
     except Group.DoesNotExist:
         pass
 
-class Migration(migrations.Migration):
 
+class Migration(migrations.Migration):
     dependencies = [
-        ('core', '0063_add_lists_edit_permissions'),
+        ("core", "0063_add_lists_edit_permissions"),
     ]
 
     operations = [

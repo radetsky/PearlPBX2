@@ -390,3 +390,10 @@
     color: white;
     font-weight: bold;
 }
+.flatpickr-btn-bar {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid #e8e8e8;
+    justify-content: flex-end;
+}

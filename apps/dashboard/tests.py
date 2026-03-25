@@ -302,13 +302,17 @@ class TestAuthRequired(TestCase):
 class TestUlineMonitorAccess(DashboardAPITestBase):
     def setUp(self):
         super().setUp()
-        self.superuser = User.objects.create_superuser(username="admin", password="pass")
+        self.superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
 
     def _mock_redis_for_uline(self):
         m = MagicMock()
         m.exists.return_value = True
         m.scan_iter.return_value = iter([])
-        m.pipeline.return_value.__enter__ = MagicMock(return_value=MagicMock(execute=MagicMock(return_value=[])))
+        m.pipeline.return_value.__enter__ = MagicMock(
+            return_value=MagicMock(execute=MagicMock(return_value=[]))
+        )
         m.pipeline.return_value.__exit__ = MagicMock(return_value=False)
         m.pipeline.return_value.execute.return_value = []
         return m

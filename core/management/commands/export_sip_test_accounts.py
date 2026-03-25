@@ -63,13 +63,17 @@ class Command(BaseCommand):
 
         accounts = []
 
-        for peer in SIPPeer.objects.select_related("transport", "routing_table").order_by("name"):
+        for peer in SIPPeer.objects.select_related(
+            "transport", "routing_table"
+        ).order_by("name"):
             if peer.registrationHere:
                 account = self._build_gsm_gateway(peer, domain, pbx_port, local_port)
             elif peer.registrationThere:
                 account = self._build_voip_provider(peer, domain, pbx_port, local_port)
             else:
-                self.stderr.write(f"Skipping peer '{peer.name}': neither registrationHere nor registrationThere")
+                self.stderr.write(
+                    f"Skipping peer '{peer.name}': neither registrationHere nor registrationThere"
+                )
                 continue
 
             dest_numbers = self._get_dest_numbers(peer.routing_table)
@@ -79,7 +83,9 @@ class Command(BaseCommand):
             accounts.append(account)
             local_port += port_step
 
-        for user in SIPUser.objects.select_related("routing_table").order_by("username"):
+        for user in SIPUser.objects.select_related("routing_table").order_by(
+            "username"
+        ):
             caller_id = user.extension or user.username
             account = {
                 "id": _QuotedStr(user.username),
@@ -111,7 +117,9 @@ class Command(BaseCommand):
         else:
             with open(output, "w") as f:
                 f.write(yaml_content)
-            self.stderr.write(self.style.SUCCESS(f"Exported {len(accounts)} accounts to {output}"))
+            self.stderr.write(
+                self.style.SUCCESS(f"Exported {len(accounts)} accounts to {output}")
+            )
 
     def _build_gsm_gateway(self, peer, domain, pbx_port, local_port):
         account = {"id": _QuotedStr(peer.name), "type": "gsm_gateway"}

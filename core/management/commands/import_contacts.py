@@ -63,10 +63,14 @@ class Command(BaseCommand):
                 errors.append((line_num, f"{callerid!r}: empty name"))
                 continue
             if len(callerid) > _CALLERID_MAX:
-                errors.append((line_num, f"{callerid!r}: callerid exceeds {_CALLERID_MAX} chars"))
+                errors.append(
+                    (line_num, f"{callerid!r}: callerid exceeds {_CALLERID_MAX} chars")
+                )
                 continue
             if len(name) > _NAME_MAX:
-                errors.append((line_num, f"{callerid!r}: name exceeds {_NAME_MAX} chars"))
+                errors.append(
+                    (line_num, f"{callerid!r}: name exceeds {_NAME_MAX} chars")
+                )
                 continue
 
             if dry_run:
@@ -91,7 +95,9 @@ class Command(BaseCommand):
                 skipped += 1
 
         if dry_run:
-            self.stdout.write(self.style.WARNING("\n=== DRY RUN — no changes made ===\n"))
+            self.stdout.write(
+                self.style.WARNING("\n=== DRY RUN — no changes made ===\n")
+            )
 
         if errors:
             self.stdout.write(self.style.ERROR("Errors:"))

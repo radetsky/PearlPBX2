@@ -83,6 +83,9 @@
                                     <span uk-icon="file-audio" class="uk-margin-small-right"></span>{% trans "Filename" %}
                                 </th>
                                 <th class="uk-text-center">
+                                    <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Duration" %}
+                                </th>
+                                <th class="uk-text-center">
                                     <span uk-icon="play" class="uk-margin-small-right"></span>{% trans "Audio" %}
                                 </th>
                                 <th class="uk-text-right">
@@ -106,6 +109,9 @@
                                     {% else %}
                                         {{ rec.filename|default:"-" }}
                                     {% endif %}
+                                </td>
+                                <td class="uk-text-center uk-text-small">
+                                    {{ cdr_durations|get_item:rec.cdr_uniqueid|duration_format }}
                                 </td>
                                 <td class="uk-text-center">
                                     {% if rec.get_audio_url %}

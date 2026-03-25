@@ -24,7 +24,9 @@ class EventWrapper:
         return self.event.keys.get(key, default)
 
 
-REDIS_STATE_TTL = 7200  # seconds; health check refreshes every 30s, so 2h gives ample recovery window
+REDIS_STATE_TTL = (
+    7200  # seconds; health check refreshes every 30s, so 2h gives ample recovery window
+)
 
 
 class DashboardAMIListener:
@@ -99,7 +101,9 @@ class DashboardAMIListener:
             if self._reconnecting:
                 return
             self._reconnecting = True
-        t = threading.Thread(target=self._reconnect_loop, daemon=True, name="ami-reconnect")
+        t = threading.Thread(
+            target=self._reconnect_loop, daemon=True, name="ami-reconnect"
+        )
         t.start()
 
     def _reconnect_loop(self):
@@ -158,7 +162,9 @@ class DashboardAMIListener:
         try:
             state_key = f"asterisk:queue:{queue_name}"
             await self.redis_client.setex(
-                state_key, REDIS_STATE_TTL, json.dumps(self.queue_state.get(queue_name, {}))
+                state_key,
+                REDIS_STATE_TTL,
+                json.dumps(self.queue_state.get(queue_name, {})),
             )
         except Exception as e:
             self.logger.error(f"Error updating queue state: {e}")
@@ -451,7 +457,9 @@ class DashboardAMIListener:
                     f"parking:uline:{n_str}",
                     f"parking:uid:{uniqueid}",
                 )
-                self.logger.info(f"Released ULINE {n_str} for {channel} (uniqueid={uniqueid})")
+                self.logger.info(
+                    f"Released ULINE {n_str} for {channel} (uniqueid={uniqueid})"
+                )
         except Exception as e:
             self.logger.error(f"Error releasing ULINE for {uniqueid}: {e}")
 
@@ -615,9 +623,7 @@ class DashboardAMIListener:
 
     async def handle_queue_member(self, event):
         """Handle queue member event (bulk QueueStatus response)."""
-        await self._upsert_queue_member(
-            event.get("Queue"), event.get("Name"), event
-        )
+        await self._upsert_queue_member(event.get("Queue"), event.get("Name"), event)
 
     async def handle_queue_caller_join(self, event):
         """Handle caller joining a queue."""

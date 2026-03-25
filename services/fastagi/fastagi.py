@@ -559,7 +559,9 @@ class FastAGIHandler:
             yield self.agi.setVariable("ULINE", "0")
         else:
             yield self.agi.setVariable("ULINE", str(uline))
-            logger.info(f"Allocated ULINE={uline} for channel={channel} uniqueid={cdr_uniqueid}")
+            logger.info(
+                f"Allocated ULINE={uline} for channel={channel} uniqueid={cdr_uniqueid}"
+            )
         yield self.agi.finish()
 
     def async_sleep(self, seconds: float) -> Deferred:
@@ -652,7 +654,9 @@ def sweep_parking_ulines() -> None:
     """Release stale ULINE slots whose call channel is no longer active."""
     try:
         if not redis_client.exists("asterisk:channels:all"):
-            logger.warning("Dashboard not running — skipping ULINE sweep to avoid false positives")
+            logger.warning(
+                "Dashboard not running — skipping ULINE sweep to avoid false positives"
+            )
             return
 
         active_uids = set()

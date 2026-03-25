@@ -9,6 +9,7 @@ Run:
     source .python-venv/bin/activate
     pytest tests/test_uline_redis.py -v
 """
+
 import sys
 import os
 
@@ -22,6 +23,7 @@ from uline_redis import ULineRedisManager
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def r():
@@ -41,6 +43,7 @@ def manager(r):
 # ---------------------------------------------------------------------------
 # allocate()
 # ---------------------------------------------------------------------------
+
 
 class TestAllocate:
     def test_returns_slot_number(self, manager):
@@ -97,6 +100,7 @@ class TestAllocate:
 # release()
 # ---------------------------------------------------------------------------
 
+
 class TestRelease:
     def test_releases_existing_slot(self, r, manager):
         manager.allocate("uid-1", "PJSIP/101", "2024-01-01", "101")
@@ -129,6 +133,7 @@ class TestRelease:
 # flush_all()
 # ---------------------------------------------------------------------------
 
+
 class TestFlushAll:
     def test_clears_all_keys(self, r, manager):
         manager.allocate("uid-1", "PJSIP/101", "2024-01-01", "101")
@@ -151,6 +156,7 @@ class TestFlushAll:
 # ---------------------------------------------------------------------------
 # get_stats()
 # ---------------------------------------------------------------------------
+
 
 class TestGetStats:
     def test_empty_stats(self, manager):

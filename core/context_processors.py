@@ -35,11 +35,7 @@ def header_menu_context_processor(request: HttpRequest):
     return {
         "allowed_header_menu_items": filtered_menu,
         "selected_header_menu_item": next(
-            (
-                item
-                for item in filtered_menu
-                if request.path.startswith(item["url"])
-            ),
+            (item for item in filtered_menu if request.path.startswith(item["url"])),
             None,
         ),
     }

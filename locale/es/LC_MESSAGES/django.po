@@ -2653,3 +2653,30 @@ msgstr "Ninguna disponible"
 #: templates/admin/index.html:42
 msgid "Unknown content"
 msgstr "Contenido desconocido"
+
+msgid "Ok"
+msgstr "Sí"
+
+msgid "Call direction"
+msgstr "Dirección de llamada"
+
+msgid "All calls"
+msgstr "Todas las llamadas"
+
+msgid "Incoming"
+msgstr "Entrantes"
+
+msgid "Outgoing"
+msgstr "Salientes"
+
+msgid "Internal"
+msgstr "Internas"
+
+msgid "Transit"
+msgstr "Tránsito"
+
+msgid "Unbridged (Peers)"
+msgstr "Sin conexión (Peers)"
+
+msgid "Unbridged (Users)"
+msgstr "Sin conexión (Users)"

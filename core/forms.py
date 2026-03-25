@@ -91,7 +91,9 @@ class SIPUserForm(forms.ModelForm):
     nat = forms.BooleanField(
         label=_("NAT"),
         required=False,
-        help_text=_("Enable NAT for the user. Use only if you are sure that your user is behind NAT."),
+        help_text=_(
+            "Enable NAT for the user. Use only if you are sure that your user is behind NAT."
+        ),
     )
     routing_table = RoutingTableChoiceField(
         label=_("Routing Table"),
@@ -254,7 +256,9 @@ AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
     )
 
     description = forms.CharField(
-        label=_("Description"), required=False, help_text=_("Description of the extension.")
+        label=_("Description"),
+        required=False,
+        help_text=_("Description of the extension."),
     )
 
     def clean_dialplan(self):
@@ -299,7 +303,9 @@ class RoutingTableAdminForm(forms.ModelForm):
         if DialplanContext.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 format_lazy(
-                    _('Context with the name "{name}" already exists in the DialplanContext table. Please choose a different name.'),
+                    _(
+                        'Context with the name "{name}" already exists in the DialplanContext table. Please choose a different name.'
+                    ),
                     name=name,
                 )
             )
@@ -320,7 +326,9 @@ class DialplanContextAdminForm(forms.ModelForm):
         if RoutingTable.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 format_lazy(
-                    _('Context with the name "{name}" already exists in the RoutingTable table. Please choose a different name.'),
+                    _(
+                        'Context with the name "{name}" already exists in the RoutingTable table. Please choose a different name.'
+                    ),
                     name=name,
                 )
             )
@@ -336,7 +344,9 @@ class QueueAdminForm(forms.ModelForm):
         required=False,
         label=_("Add SIP Users"),
         help_text=format_lazy(
-            _("Select users to add as queue members. Each user will get INTERFACE=PJSIP/username, penalty={penalty}. Already existing members are not duplicated."),
+            _(
+                "Select users to add as queue members. Each user will get INTERFACE=PJSIP/username, penalty={penalty}. Already existing members are not duplicated."
+            ),
             penalty=DEFAULT_QUEUE_MEMBER_PENALTY,
         ),
         widget=FilteredSelectMultiple(_("SIP Users"), is_stacked=False),

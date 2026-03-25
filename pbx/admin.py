@@ -90,7 +90,9 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
 
                 return redirect("admin:index")
             except Exception as e:
-                messages.error(request, _("An error occurred: %(error)s") % {"error": str(e)})
+                messages.error(
+                    request, _("An error occurred: %(error)s") % {"error": str(e)}
+                )
 
         context = self.get_context_data(**kwargs)
         context["cfgfiles"] = cfgfiles

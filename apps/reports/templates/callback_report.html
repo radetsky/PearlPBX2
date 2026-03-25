@@ -110,6 +110,9 @@
                                         <span uk-icon="server" class="uk-margin-small-right"></span>{% trans "Service" %}
                                     </th>
                                     <th class="uk-table-shrink">
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Duration" %}
+                                    </th>
+                                    <th class="uk-table-shrink">
                                         <span uk-icon="file-audio" class="uk-margin-small-right"></span>{% trans "Recording" %}
                                     </th>
                                 </tr>
@@ -151,6 +154,9 @@
                                     </td>
                                     <td class="uk-text-truncate uk-text-small" style="max-width: 150px;">
                                         {{ cb.service.name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-small">
+                                        {{ cdr_durations|get_item:cb.uniqueid|duration_format }}
                                     </td>
                                     <td class="uk-text-shrink">
                                         {% with audio_url=cdr_audio_urls|get_item:cb.uniqueid %}

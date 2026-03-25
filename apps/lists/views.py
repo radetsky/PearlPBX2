@@ -36,7 +36,9 @@ class ListCRUDView(ReportViewPermissionMixin, View):
         paginator = Paginator(qs, self.page_size)
         page_number = request.GET.get("page", 1)
         page_obj = paginator.get_page(page_number)
-        return render(request, self.template_name, {"page_obj": page_obj, "form": form, "q": q})
+        return render(
+            request, self.template_name, {"page_obj": page_obj, "form": form, "q": q}
+        )
 
     def post(self, request):
         pk = request.POST.get("pk")
@@ -51,7 +53,9 @@ class ListCRUDView(ReportViewPermissionMixin, View):
         qs = self.get_queryset()
         paginator = Paginator(qs, self.page_size)
         page_obj = paginator.get_page(1)
-        return render(request, self.template_name, {"page_obj": page_obj, "form": form, "q": ""})
+        return render(
+            request, self.template_name, {"page_obj": page_obj, "form": form, "q": ""}
+        )
 
 
 class ListDeleteView(ReportViewPermissionMixin, View):

@@ -2629,3 +2629,30 @@ msgstr ""
 #: templates/admin/index.html:42
 msgid "Unknown content"
 msgstr ""
+
+msgid "Ok"
+msgstr ""
+
+msgid "Call direction"
+msgstr ""
+
+msgid "All calls"
+msgstr ""
+
+msgid "Incoming"
+msgstr ""
+
+msgid "Outgoing"
+msgstr ""
+
+msgid "Internal"
+msgstr ""
+
+msgid "Transit"
+msgstr ""
+
+msgid "Unbridged (Peers)"
+msgstr ""
+
+msgid "Unbridged (Users)"
+msgstr ""
