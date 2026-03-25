@@ -445,11 +445,11 @@ class DashboardAMIListener:
 
         # Release ULINE if one was allocated for this call
         try:
-            n_str = await self.redis_client.get(f"express:uid:{uniqueid}")
+            n_str = await self.redis_client.get(f"parking:uid:{uniqueid}")
             if n_str:
                 await self.redis_client.delete(
-                    f"express:uline:{n_str}",
-                    f"express:uid:{uniqueid}",
+                    f"parking:uline:{n_str}",
+                    f"parking:uid:{uniqueid}",
                 )
                 self.logger.info(f"Released ULINE {n_str} for {channel} (uniqueid={uniqueid})")
         except Exception as e:

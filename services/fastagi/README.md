@@ -11,6 +11,7 @@ FastAGI server for PearlPBX2 using Twisted and StarPy. Provides various AGI hand
 - **mixmonitor** - Start call recording based on monitor settings
 - **add-callback** - Add callback request to the database
 - **queue-status** - Check queue availability (ready operators and waiting callers)
+- **parking-uline** - Allocate a unique parking slot (ULINE) for a call via Redis
 
 ## Installation
 
@@ -39,12 +40,20 @@ Configuration is done via environment variables:
 | `DB_USER` | user | Database user |
 | `DB_PASS` | pass | Database password |
 
-### Redis (for queue-status)
+### Redis (for queue-status and parking-uline)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `REDIS_HOST` | localhost | Redis server host |
 | `REDIS_PORT` | 6379 | Redis server port |
+
+### Parking ULINE
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PARKING_ULINE_MIN` | 1 | First parking slot number |
+| `PARKING_ULINE_MAX` | 199 | Last parking slot number |
+| `ULINE_SWEEP_INTERVAL` | 300 | Seconds between stale-slot sweep runs |
 
 ### Asterisk AMI (fallback for queue-status)
 
@@ -237,6 +246,34 @@ if (${CALLBACK_ADDED} = 1) {
 
 ---
 
+### parking-uline
+
+Allocate a unique parking line number (ULINE) for the current call. Slot is stored in Redis with a TTL of 1 hour. A background sweep releases slots whose call channel is no longer active.
+
+**Dialplan (AEL):**
+```
+AGI(agi://127.0.0.1:4573/parking-uline);
+if (${ULINE} = 0) {
+    // No free slots — handle overflow
+    Hangup();
+}
+NoOp(Parking slot: ${ULINE});
+```
+
+**Channel variables set:**
+- `ULINE` - Allocated slot number (1–199 by default), or "0" if no slots available
+
+**Redis keys written:**
+- `parking:uline:{N}` — hash with `uniqueid`, `channel`, `caller_id`, `cdr_start`, `allocated_at`; TTL 3600 s
+- `parking:uid:{uniqueid}` — string mapping uniqueid → slot number; TTL 3600 s
+
+**Slot lifecycle:**
+1. Allocated by `parking-uline` AGI call via atomic Lua script
+2. Released automatically by sweep job when call channel disappears (requires dashboard service running)
+3. Released by `flush` action from the ULINE monitor in the web UI
+
+---
+
 ### queue-status
 
 Check queue status before routing calls. Returns count of available operators and waiting callers.
@@ -265,6 +302,47 @@ if (${READYTORECEIVE} > 0) {
 **Data sources:**
 1. **Primary:** Redis cache at `asterisk:queue:{name}` (populated by dashboard service)
 2. **Fallback:** Direct AMI query if Redis is unavailable
+
+## Testing
+
+Unit tests cover `ULineRedisManager` and `sweep_parking_ulines`. They use `fakeredis` with Lua support — no real Redis or Asterisk needed.
+
+### Setup
+
+`pytest` and `fakeredis[lua]` are already listed in `requirements.txt` and will be installed with the regular install step.
+
+If you need to install them separately:
+
+```bash
+pip install pytest "fakeredis[lua]"
+```
+
+### Run all tests
+
+```bash
+cd services/fastagi
+source .python-venv/bin/activate
+pytest tests/ -v
+```
+
+### Run specific test files
+
+```bash
+# ULineRedisManager only (allocate, release, flush_all, get_stats)
+pytest tests/test_uline_redis.py -v
+
+# sweep_parking_ulines only
+pytest tests/test_sweep.py -v
+```
+
+### Test coverage
+
+| Test file | What is tested |
+|-----------|---------------|
+| `tests/test_uline_redis.py` | `ULineRedisManager`: slot allocation (Lua atomicity, idempotency, TTL, full-range), release, flush, stats |
+| `tests/test_sweep.py` | `sweep_parking_ulines`: skips when dashboard offline, releases stale slots, keeps active slots, reschedules via reactor |
+
+---
 
 ## Database Tables
 

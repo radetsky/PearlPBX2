@@ -4,6 +4,25 @@ All notable changes to PearlPBX2 are documented here.
 
 ---
 
+## [2.1.3] — 2026-03-25
+
+### Changed
+
+- **FastAGI: parking ULINE moved from `services/express` to `services/fastagi`** — ULINE management is now handled by the general-purpose FastAGI service. The `express` service no longer exists as a separate process.
+  - New handler: `parking-uline` — allocates a parking slot via atomic Redis Lua script, sets `ULINE` channel variable
+  - New module: `services/fastagi/uline_redis.py` — `ULineRedisManager` class (allocate / release / flush_all / get_stats)
+  - Background sweep job (`sweep_parking_ulines`) releases stale slots when call channels disappear; runs every `ULINE_SWEEP_INTERVAL` seconds (default 300)
+  - New env vars: `PARKING_ULINE_MIN` (default 1), `PARKING_ULINE_MAX` (default 199), `ULINE_SWEEP_INTERVAL` (default 300)
+
+### Added
+
+- **FastAGI tests** — unit tests for ULINE logic with no external dependencies (fakeredis + Lua):
+  - `services/fastagi/tests/test_uline_redis.py` — 20 tests for `ULineRedisManager`
+  - `services/fastagi/tests/test_sweep.py` — 6 tests for `sweep_parking_ulines`
+  - `pytest` and `fakeredis[lua]` added to `services/fastagi/requirements.txt`
+
+---
+
 ## [2.1.0] — 2026-03-13
 
 ### Added
