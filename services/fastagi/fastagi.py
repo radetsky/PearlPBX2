@@ -548,12 +548,19 @@ class FastAGIHandler:
         if isinstance(cdr_start, bytes):
             cdr_start = cdr_start.decode("utf-8")
 
-        uline = uline_manager.allocate(
-            uniqueid=cdr_uniqueid,
-            channel=channel,
-            cdr_start=cdr_start,
-            caller_id=caller_id,
-        )
+        try:
+            uline = uline_manager.allocate(
+                uniqueid=cdr_uniqueid,
+                channel=channel,
+                cdr_start=cdr_start,
+                caller_id=caller_id,
+            )
+        except Exception:
+            logger.exception("Failed to allocate parking ULINE")
+            yield self.agi.setVariable("ULINE", "0")
+            yield self.agi.finish()
+            return
+
         if uline is None:
             logger.error("No free parking ULINEs — all slots busy")
             yield self.agi.setVariable("ULINE", "0")
