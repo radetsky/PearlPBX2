@@ -147,7 +147,7 @@ def uline_monitor(request):
         dashboard_alive = r.exists("asterisk:channels:all")
 
         sorted_keys = sorted(
-            r.scan_iter("express:uline:*"),
+            r.scan_iter("parking:uline:*"),
             key=lambda k: int(k.split(":")[-1]),
         )
 
@@ -203,8 +203,8 @@ def uline_monitor(request):
             })
 
         from django.conf import settings
-        uline_min = getattr(settings, "ULINE_MIN", 1)
-        uline_max = getattr(settings, "ULINE_MAX", 199)
+        uline_min = getattr(settings, "PARKING_ULINE_MIN", 1)
+        uline_max = getattr(settings, "PARKING_ULINE_MAX", 199)
         total = uline_max - uline_min + 1
         used = len(ulines)
 
@@ -236,8 +236,8 @@ def uline_flush(request):
     try:
         r = _get_redis()
         keys = (
-            list(r.scan_iter("express:uline:*"))
-            + list(r.scan_iter("express:uid:*"))
+            list(r.scan_iter("parking:uline:*"))
+            + list(r.scan_iter("parking:uid:*"))
         )
         if keys:
             r.delete(*keys)

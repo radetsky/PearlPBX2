@@ -13,6 +13,7 @@ from datetime import datetime
 
 import redis
 from asterisk.ami import AMIClient, SimpleAction
+from uline_redis import ULineRedisManager
 
 from typing import Callable, Generator
 from twisted.internet import reactor
@@ -343,6 +344,8 @@ redis_client = redis.Redis(
     decode_responses=True,
 )
 
+uline_manager = ULineRedisManager(redis_client=redis_client)
+
 
 # ---------------- AGI Handler Class ----------------
 class FastAGIHandler:
@@ -370,6 +373,8 @@ class FastAGIHandler:
             return self.add_callback()
         elif network_script == "queue-status":
             return self.queue_status()
+        elif network_script == "parking-uline":
+            return self.parking_uline()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -530,6 +535,33 @@ class FastAGIHandler:
         self.sequence.append(self.agi.finish)
         return self.sequence()
 
+    @inlineCallbacks
+    def parking_uline(self):
+        channel = self.agi.variables.get(b"agi_channel", b"?").decode("utf-8")
+        caller_id = self.agi.variables.get(b"agi_callerid", b"?").decode("utf-8")
+
+        cdr_uniqueid = (yield self.agi.getVariable("CDR(uniqueid)")) or b""
+        if isinstance(cdr_uniqueid, bytes):
+            cdr_uniqueid = cdr_uniqueid.decode("utf-8")
+
+        cdr_start = (yield self.agi.getVariable("CDR(start)")) or b""
+        if isinstance(cdr_start, bytes):
+            cdr_start = cdr_start.decode("utf-8")
+
+        uline = uline_manager.allocate(
+            uniqueid=cdr_uniqueid,
+            channel=channel,
+            cdr_start=cdr_start,
+            caller_id=caller_id,
+        )
+        if uline is None:
+            logger.error("No free parking ULINEs — all slots busy")
+            yield self.agi.setVariable("ULINE", "0")
+        else:
+            yield self.agi.setVariable("ULINE", str(uline))
+            logger.info(f"Allocated ULINE={uline} for channel={channel} uniqueid={cdr_uniqueid}")
+        yield self.agi.finish()
+
     def async_sleep(self, seconds: float) -> Deferred:
         """
         Asynchronous sleep function to yield control back to the reactor.
@@ -612,6 +644,49 @@ class FastAGIHandler:
         return self.dial_with_retry(trunk_group_entries, extension, int(max_attempts))
 
 
+# ---------------- Parking ULINE Sweep ----------------
+_ULINE_SWEEP_INTERVAL = int(os.environ.get("ULINE_SWEEP_INTERVAL", 300))
+
+
+def sweep_parking_ulines() -> None:
+    """Release stale ULINE slots whose call channel is no longer active."""
+    try:
+        if not redis_client.exists("asterisk:channels:all"):
+            logger.warning("Dashboard not running — skipping ULINE sweep to avoid false positives")
+            return
+
+        active_uids = set()
+        for key in redis_client.scan_iter("asterisk:uid:*"):
+            active_uids.add(key.split(":")[-1])
+
+        uline_keys = list(redis_client.scan_iter("parking:uline:*"))
+        if not uline_keys:
+            logger.debug("Parking ULINE sweep: no active slots")
+            return
+
+        pipe = redis_client.pipeline()
+        for key in uline_keys:
+            pipe.hgetall(key)
+        slot_data = pipe.execute()
+
+        released = 0
+        for key, data in zip(uline_keys, slot_data):
+            uniqueid = data.get("uniqueid", "")
+            if uniqueid and uniqueid not in active_uids:
+                redis_client.delete(key, f"parking:uid:{uniqueid}")
+                released += 1
+                logger.info(f"Sweep released stale {key} (uniqueid={uniqueid})")
+
+        if released:
+            logger.info(f"Parking ULINE sweep: released {released} stale slots")
+        else:
+            logger.debug("Parking ULINE sweep: no stale slots found")
+    except Exception as e:
+        logger.error(f"Parking ULINE sweep error: {e}")
+    finally:
+        reactor.callLater(_ULINE_SWEEP_INTERVAL, sweep_parking_ulines)
+
+
 # ---------------- Main Entry Function ----------------
 def agi_entry_function(agi: fastagi.FastAGIProtocol) -> Deferred:
     logger.debug("Received new AGI connection")
@@ -632,6 +707,7 @@ def start_fastagi_server(
     factory = fastagi.FastAGIFactory(handler)
     reactor.listenTCP(port, factory, backlog, host)
     logger.info(f"FastAGI server listening on {host}:{port}")
+    reactor.callLater(_ULINE_SWEEP_INTERVAL, sweep_parking_ulines)
     reactor.run()
 
 
