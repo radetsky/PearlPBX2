@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
+from core.widgets import ChannelComboboxWidget
 
 ASTERISK_NONE = "NONE"
 DATETIME_LOCAL_FORMAT = "%Y-%m-%dT%H:%M"
@@ -224,17 +225,11 @@ class CDRReportForm(forms.Form):
         label=_("Source channel"),
         max_length=80,
         required=False,
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter channel")}
-        ),
     )
     dst_channel = forms.CharField(
         label=_("Destination channel"),
         max_length=80,
         required=False,
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter channel")}
-        ),
     )
     disposition = forms.ChoiceField(
         label=_("Call status"),
@@ -253,6 +248,37 @@ class CDRReportForm(forms.Form):
         required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
     )
+
+    DIRECTION_CHOICES = [
+        ("", _("All calls")),
+        ("incoming", _("Incoming")),
+        ("outgoing", _("Outgoing")),
+        ("internal", _("Internal")),
+        ("transit", _("Transit")),
+        ("unbridged_peer", _("Unbridged (Peers)")),
+        ("unbridged_user", _("Unbridged (Users)")),
+    ]
+
+    call_direction = forms.ChoiceField(
+        label=_("Call direction"),
+        choices=DIRECTION_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        channels = self._channel_choices()
+        channel_attrs = {"class": "form-control", "placeholder": _("Enter channel")}
+        self.fields["src_channel"].widget = ChannelComboboxWidget(choices=channels, attrs=channel_attrs)
+        self.fields["dst_channel"].widget = ChannelComboboxWidget(choices=channels, attrs=channel_attrs)
+
+    @staticmethod
+    def _channel_choices():
+        from core.models import SIPUser, SIPPeer
+        users = [f"PJSIP/{u}" for u in SIPUser.objects.values_list("username", flat=True).order_by("username")]
+        peers = [f"PJSIP/{p}" for p in SIPPeer.objects.values_list("name", flat=True).order_by("name")]
+        return sorted(set(users + peers))
 
 
 class _AnalyticsBaseForm(forms.Form):

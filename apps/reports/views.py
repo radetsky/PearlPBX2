@@ -2,18 +2,19 @@ import csv
 import json
 import mimetypes
 import os
+import re
 from datetime import timedelta
 
 from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 from django.utils.timezone import localtime
 
 from apps.callback.models import CallbackNumber
-from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
+from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord, SIPUser, SIPPeer
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
@@ -486,6 +487,28 @@ class CDRReportView(ReportViewPermissionMixin, View):
             qs = qs.filter(duration__gte=data["min_duration"])
         if data.get("max_duration") is not None:
             qs = qs.filter(duration__lte=data["max_duration"])
+        direction = data.get("call_direction")
+        if direction:
+            peer_names = list(SIPPeer.objects.values_list("name", flat=True))
+            user_names = list(SIPUser.objects.values_list("username", flat=True))
+            peer_pattern = r"^PJSIP/(" + "|".join(re.escape(n) for n in peer_names) + r")-"
+            user_pattern = r"^PJSIP/(" + "|".join(re.escape(n) for n in user_names) + r")-"
+
+            def channel_q(pattern, field):
+                return Q(**{f"{field}__regex": pattern})
+
+            if direction == "incoming":
+                qs = qs.filter(channel_q(peer_pattern, "channel"))
+            elif direction == "outgoing":
+                qs = qs.filter(channel_q(user_pattern, "channel"))
+            elif direction == "internal":
+                qs = qs.filter(channel_q(user_pattern, "channel") & channel_q(user_pattern, "dstchannel"))
+            elif direction == "transit":
+                qs = qs.filter(channel_q(peer_pattern, "channel") & channel_q(peer_pattern, "dstchannel"))
+            elif direction == "unbridged_peer":
+                qs = qs.filter(channel_q(peer_pattern, "channel"), dstchannel="")
+            elif direction == "unbridged_user":
+                qs = qs.filter(channel_q(user_pattern, "channel"), dstchannel="")
         return qs.order_by("-start")
 
     @staticmethod
