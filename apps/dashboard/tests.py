@@ -5,29 +5,37 @@ import redis
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
 
+_TEST_PASSWORD = "T3stP@ssw0rd!"
+
 
 class TestOperatorPanel(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="testop", password=_TEST_PASSWORD)
+
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="testop", password="pass")
 
     def test_redirects_anonymous(self):
         resp = self.client.get("/dashboard/")
         self.assertEqual(resp.status_code, 302)
 
     def test_returns_200_for_authenticated(self):
-        self.client.login(username="testop", password="pass")
+        self.client.login(username="testop", password=_TEST_PASSWORD)
         resp = self.client.get("/dashboard/")
         self.assertEqual(resp.status_code, 200)
 
 
 class DashboardAPITestBase(TestCase):
-    """Base class — creates user, logs in, sets up Redis mock."""
+    """Base class — creates user once per class, logs in per test, sets up Redis mock."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="testop", password=_TEST_PASSWORD)
 
     def setUp(self):
-        self.user = User.objects.create_user(username="testop", password="pass")
         self.client = Client()
-        self.client.login(username="testop", password="pass")
+        self.client.login(username="testop", password=_TEST_PASSWORD)
         self.mock_redis = MagicMock()
 
     def _patch_redis(self):
@@ -300,10 +308,11 @@ class TestAuthRequired(TestCase):
 
 
 class TestUlineMonitorAccess(DashboardAPITestBase):
-    def setUp(self):
-        super().setUp()
-        self.superuser = User.objects.create_superuser(
-            username="admin", password="pass"
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.superuser = User.objects.create_superuser(
+            username="admin", password=_TEST_PASSWORD
         )
 
     def _mock_redis_for_uline(self):
@@ -327,7 +336,8 @@ class TestUlineMonitorAccess(DashboardAPITestBase):
         self.assertIn(resp.status_code, [200, 503])
 
     def test_superuser_allowed(self):
-        self.client.login(username="admin", password="pass")
+        self.client.logout()
+        self.client.login(username="admin", password=_TEST_PASSWORD)
         mock_r = self._mock_redis_for_uline()
         with patch("apps.dashboard.views._get_redis", return_value=mock_r):
             resp = self.client.get("/dashboard/ulines/")
