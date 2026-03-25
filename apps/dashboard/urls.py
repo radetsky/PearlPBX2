@@ -5,6 +5,7 @@ app_name = "dashboard"
 
 urlpatterns = [
     path("", views.operator_panel, name="operator_panel"),
+    path("live/", views.new_dashboard, name="new_dashboard"),
     path("ulines/", views.uline_monitor, name="uline_monitor"),
     path("ulines/flush/", views.uline_flush, name="uline_flush"),
     # Queues
@@ -19,4 +20,5 @@ urlpatterns = [
     ),
     path("api/channels/<path:channel_name>/", views.get_channel, name="get_channel"),
     path("api/calls/active/", views.get_active_calls, name="get_active_calls"),
+    path("api/endpoints/", views.get_sip_endpoints, name="get_sip_endpoints"),
 ]
