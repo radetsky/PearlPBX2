@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 
@@ -49,3 +50,23 @@ class PasswordWithToggleInput(forms.PasswordInput):
         final_attrs_str = " ".join([f'{k}="{v}"' for k, v in final_attrs.items()])
         html = self.template.format(name=name, value=value or "", attrs=final_attrs_str)
         return mark_safe(html)
+
+
+class ChannelComboboxWidget(forms.TextInput):
+    """Text input with a datalist of PJSIP channel suggestions (no extra JS deps)."""
+
+    def __init__(self, choices=(), attrs=None):
+        super().__init__(attrs)
+        self.choices = list(choices)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        datalist_id = f"datalist_{name}"
+        extra = {"list": datalist_id}
+        if attrs:
+            attrs = {**attrs, **extra}
+        else:
+            attrs = extra
+        input_html = super().render(name, value, attrs, renderer)
+        options = "".join(f'<option value="{escape(ch)}">' for ch in self.choices)
+        datalist_html = f'<datalist id="{datalist_id}">{options}</datalist>'
+        return mark_safe(input_html + datalist_html)

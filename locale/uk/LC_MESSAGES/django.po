@@ -2654,3 +2654,30 @@ msgstr "Немає доступних"
 #: templates/admin/index.html:42
 msgid "Unknown content"
 msgstr "Невідомий вміст"
+
+msgid "Ok"
+msgstr "Так"
+
+msgid "Call direction"
+msgstr "Напрямок дзвінка"
+
+msgid "All calls"
+msgstr "Всі дзвінки"
+
+msgid "Incoming"
+msgstr "Вхідні"
+
+msgid "Outgoing"
+msgstr "Вихідні"
+
+msgid "Internal"
+msgstr "Внутрішні"
+
+msgid "Transit"
+msgstr "Транзитні"
+
+msgid "Unbridged (Peers)"
+msgstr "Без з'єднання (Peers)"
+
+msgid "Unbridged (Users)"
+msgstr "Без з'єднання (Users)"

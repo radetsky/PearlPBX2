@@ -4,14 +4,13 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('reports', '0003_alter_cdr_options'),
+        ("reports", "0003_alter_cdr_options"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='queuelog',
-            index=models.Index(fields=['event'], name='idx_ql_event'),
+            model_name="queuelog",
+            index=models.Index(fields=["event"], name="idx_ql_event"),
         ),
     ]

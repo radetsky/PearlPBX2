@@ -77,7 +77,9 @@ class Callback:
         self._auto_reconnect = AutoReconnect(
             client,
             delay=5,
-            on_disconnect=lambda *a: self.logger.warning("AMI disconnected, reconnecting..."),
+            on_disconnect=lambda *a: self.logger.warning(
+                "AMI disconnected, reconnecting..."
+            ),
             on_reconnect=lambda *a: self.logger.info("AMI reconnected"),
         )
         client.login(username=ami_user, secret=ami_pass)
@@ -104,7 +106,9 @@ class Callback:
                     try:
                         self.update_uniqueid(call_id, dest_uniqueid)
                     except Exception as e:
-                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
+                        self.logger.error(
+                            f"Failed to save uniqueid for call {call_id}: {e}"
+                        )
 
     def select_first_available(self) -> tuple:
         """

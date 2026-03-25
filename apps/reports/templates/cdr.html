@@ -3,6 +3,10 @@
 {% load i18n %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/flatpickr.min.css' %}">
+{% endblock extra_css %}
+
 {% block content %}
     <div class="uk-container uk-container-expand uk-margin-top">
         <h1 class="uk-heading-line uk-text-center"><span>{% trans "Call Detail Report (CDR)" %}</span></h1>
@@ -64,6 +68,12 @@
                             {{ form.min_duration|add_class:"uk-input uk-border-rounded" }}
                         </div>
                     </div>
+                    <div>
+                        <label class="uk-form-label" for="id_call_direction">{{ form.call_direction.label }}</label>
+                        <div class="uk-form-controls">
+                            {{ form.call_direction|add_class:"uk-select uk-border-rounded" }}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="uk-margin-top">
@@ -106,9 +116,6 @@
                                     <th class="uk-table-shrink">
                                         <span uk-icon="phone" class="uk-margin-small-right"></span>{% trans "Destination" %}
                                     </th>
-                                    <th class="uk-table-shrink">
-                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Duration" %}
-                                    </th>
                                     <th class="uk-table-shrink uk-width-small">
                                         <span uk-icon="info" class="uk-margin-small-right"></span>{% trans "Status" %}
                                     </th>
@@ -117,6 +124,9 @@
                                     </th>
                                     <th>
                                         <span uk-icon="link" class="uk-margin-small-right"></span>{% trans "Dst. Channel" %}
+                                    </th>
+                                    <th class="uk-table-shrink">
+                                        <span uk-icon="clock" class="uk-margin-small-right"></span>{% trans "Duration" %}
                                     </th>
                                     <th>
                                         <span uk-icon="link" class="uk-margin-small-right"></span>{% trans "URL" %}
@@ -132,9 +142,6 @@
                                     </td>
                                     <td class="uk-text-bold">{{ cdr.src|default:"-" }}</td>
                                     <td class="uk-text-bold">{{ cdr.dst|default:"-" }}</td>
-                                    <td class="uk-text-small">
-                                        <div>{{ cdr.duration|duration_format }}</div>
-                                    </td>
                                     <td style="max-width: 120px;">
                                         {% if cdr.disposition == 'ANSWERED' %}
                                             <span class="uk-badge uk-badge-answered">{{ cdr.disposition }}</span>
@@ -151,6 +158,9 @@
                                     </td>
                                     <td class="uk-text-truncate uk-text-small" style="max-width: 120px;">
                                         {{ cdr.dstchannel|channel_name|default:"-" }}
+                                    </td>
+                                    <td class="uk-text-small">
+                                        <div>{{ cdr.duration|duration_format }}</div>
                                     </td>
                                     <td class="uk-text-truncate uk-text-small">
                                         {% if cdr.get_audio_url %}
@@ -407,3 +417,48 @@
         });
     </script>
 {% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'js/flatpickr.min.js' %}"></script>
+<script>
+function initDatePicker(inputId) {
+    let savedDate;
+    flatpickr(`#${inputId}`, {
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d H:i',
+        onReady: function (_, __, fp) {
+            savedDate = fp.selectedDates[0];
+
+            const bar = document.createElement('div');
+            bar.className = 'flatpickr-btn-bar';
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.type = 'button';
+            confirmBtn.textContent = '{% trans "Ok" %}';
+            confirmBtn.className = 'uk-button uk-button-primary uk-button-small uk-border-rounded';
+            confirmBtn.addEventListener('click', function () { fp.close(); });
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.textContent = '{% trans "Cancel" %}';
+            cancelBtn.className = 'uk-button uk-button-default uk-button-small uk-border-rounded';
+            cancelBtn.addEventListener('click', function () {
+                fp.setDate(savedDate, false);
+                fp.close();
+            });
+
+            bar.appendChild(confirmBtn);
+            bar.appendChild(cancelBtn);
+            fp.calendarContainer.appendChild(bar);
+        },
+        onOpen: function (_, __, fp) {
+            savedDate = fp.selectedDates[0];
+        }
+    });
+}
+
+initDatePicker('id_start_date');
+initDatePicker('id_end_date');
+</script>
+{% endblock extra_js %}

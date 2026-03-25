@@ -142,6 +142,7 @@ def uline_monitor(request):
     try:
         r = _get_redis()
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc)
 
         dashboard_alive = r.exists("asterisk:channels:all")
@@ -190,19 +191,22 @@ def uline_monitor(request):
             except (ValueError, TypeError):
                 age_seconds = 0
 
-            ulines.append({
-                "n": n,
-                "uniqueid": uniqueid,
-                "channel": data.get("channel", ""),
-                "caller_id": data.get("caller_id", ""),
-                "provider": data.get("provider", ""),
-                "allocated_at": data.get("allocated_at", ""),
-                "age_seconds": age_seconds,
-                "ttl": ttl,
-                "alive": channel_alive,
-            })
+            ulines.append(
+                {
+                    "n": n,
+                    "uniqueid": uniqueid,
+                    "channel": data.get("channel", ""),
+                    "caller_id": data.get("caller_id", ""),
+                    "provider": data.get("provider", ""),
+                    "allocated_at": data.get("allocated_at", ""),
+                    "age_seconds": age_seconds,
+                    "ttl": ttl,
+                    "alive": channel_alive,
+                }
+            )
 
         from django.conf import settings
+
         uline_min = getattr(settings, "PARKING_ULINE_MIN", 1)
         uline_max = getattr(settings, "PARKING_ULINE_MAX", 199)
         total = uline_max - uline_min + 1
@@ -221,7 +225,12 @@ def uline_monitor(request):
 
     except redis.exceptions.ConnectionError:
         logger.error("Redis connection failed in uline_monitor")
-        context = {"ulines": [], "stats": {}, "dashboard_alive": False, "redis_error": True}
+        context = {
+            "ulines": [],
+            "stats": {},
+            "dashboard_alive": False,
+            "redis_error": True,
+        }
 
     return render(request, "dashboard/ulines.html", context)
 
@@ -232,13 +241,11 @@ def uline_flush(request):
     """Flush all ULINEs from Redis (admin only)."""
     if not request.user.is_superuser:
         from django.http import HttpResponseForbidden
+
         return HttpResponseForbidden("Superuser only")
     try:
         r = _get_redis()
-        keys = (
-            list(r.scan_iter("parking:uline:*"))
-            + list(r.scan_iter("parking:uid:*"))
-        )
+        keys = list(r.scan_iter("parking:uline:*")) + list(r.scan_iter("parking:uid:*"))
         if keys:
             r.delete(*keys)
         count = len(keys)

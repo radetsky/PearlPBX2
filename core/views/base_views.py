@@ -78,9 +78,7 @@ class HomepageStatusView(LoginRequiredMixin, View):
             if channels_raw:
                 channels = json.loads(channels_raw)
                 bridges = {
-                    v.get("bridge_id")
-                    for v in channels.values()
-                    if v.get("bridge_id")
+                    v.get("bridge_id") for v in channels.values() if v.get("bridge_id")
                 }
                 result["active_calls"] = len(bridges)
 
@@ -98,12 +96,14 @@ class HomepageStatusView(LoginRequiredMixin, View):
                         if m.get("status") == "1" and not m.get("paused")
                     )
                     calls = q.get("calls", {})
-                    result["queues"].append({
-                        "name": key.split(":")[-1],
-                        "callers": len(calls),
-                        "available_members": available,
-                        "total_members": len(members),
-                    })
+                    result["queues"].append(
+                        {
+                            "name": key.split(":")[-1],
+                            "callers": len(calls),
+                            "available_members": available,
+                            "total_members": len(members),
+                        }
+                    )
         except Exception as e:
             logger.warning("Redis unavailable in HomepageStatusView: %s", e)
 

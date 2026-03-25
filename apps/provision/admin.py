@@ -103,7 +103,10 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
             successful_devices = [r["device_mac"] for r in results["successful"]]
             messages.success(
                 request,
-                _("Successfully generated configurations for %(count)d device(s): %(devices)s") % {
+                _(
+                    "Successfully generated configurations for %(count)d device(s): %(devices)s"
+                )
+                % {
                     "count": success_count,
                     "devices": ", ".join(successful_devices),
                 },
@@ -115,7 +118,8 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
             ]
             messages.error(
                 request,
-                _("Failed to generate configurations: %(errors)s") % {"errors": "; ".join(failed_messages)},
+                _("Failed to generate configurations: %(errors)s")
+                % {"errors": "; ".join(failed_messages)},
             )
 
     def save_model(self, request, obj, form, change):

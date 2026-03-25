@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('callback', '0004_alter_callbackservice_context_outbound'),
+        ("callback", "0004_alter_callbackservice_context_outbound"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='callbacknumber',
-            name='uniqueid',
-            field=models.CharField(blank=True, db_default='', default='', max_length=150),
+            model_name="callbacknumber",
+            name="uniqueid",
+            field=models.CharField(
+                blank=True, db_default="", default="", max_length=150
+            ),
         ),
     ]

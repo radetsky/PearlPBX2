@@ -108,7 +108,9 @@ class SIPTransport(models.Model):
         blank=True,
         max_length=256,
         verbose_name=_("local_net"),
-        help_text=_("List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24"),
+        help_text=_(
+            "List all local networks splitted by comma: 10.0.0.0/16, 192.168.0.0/24"
+        ),
     )
     external_media_address = models.GenericIPAddressField(
         null=True,
@@ -119,7 +121,9 @@ class SIPTransport(models.Model):
     external_signaling_address = models.GenericIPAddressField(
         null=True,
         blank=True,
-        help_text=_("This is much like the external_media_address setting, but for SIP signaling instead of RTP media."),
+        help_text=_(
+            "This is much like the external_media_address setting, but for SIP signaling instead of RTP media."
+        ),
         verbose_name=_("External SIP IP address"),
     )
     method = models.CharField(
@@ -150,7 +154,9 @@ class DialplanContext(models.Model):
         null=False,
         blank=False,
         verbose_name=_("Context name"),
-        help_text=_("Unique name for the context or routing tables, use latin symbols, digits and underscores"),
+        help_text=_(
+            "Unique name for the context or routing tables, use latin symbols, digits and underscores"
+        ),
         validators=[validate_asterisk_context],
     )
     description = models.CharField(
@@ -201,7 +207,9 @@ class RoutingTable(models.Model):
         max_length=80,
         unique=True,
         verbose_name=_("Routing table name"),
-        help_text=_("Unique name for the routing table and dialplan context, use latin symbols, digits and underscores"),
+        help_text=_(
+            "Unique name for the routing table and dialplan context, use latin symbols, digits and underscores"
+        ),
         validators=[validate_asterisk_context],
     )
 
@@ -471,17 +479,23 @@ class SIPPeer(models.Model):
         null=True,
         blank=True,
         default="",
-        help_text=_("Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere."),
+        help_text=_(
+            "Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere."
+        ),
         verbose_name=_("The list of host[:port] separated by commas"),
     )
     registrationHere = models.BooleanField(
         default=False,
-        help_text=_("Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. "),
+        help_text=_(
+            "Should remote peer register here? Used for GSM, E1, T1, FXS, FXO gateways, etc. "
+        ),
         verbose_name=_("Registration here"),
     )
     registrationThere = models.BooleanField(
         default=False,
-        help_text=_("Should we register on remote service? Typically used for providers"),
+        help_text=_(
+            "Should we register on remote service? Typically used for providers"
+        ),
         verbose_name=_("Outbound registration"),
     )
     nat = models.BooleanField(
@@ -490,7 +504,9 @@ class SIPPeer(models.Model):
         verbose_name=_("NAT"),
     )
     callLimit = models.SmallIntegerField(
-        default=0, help_text=_("Maximum calls on the trunk"), verbose_name=_("Call Limit")
+        default=0,
+        help_text=_("Maximum calls on the trunk"),
+        verbose_name=_("Call Limit"),
     )
     transport = models.ForeignKey(
         SIPTransport,
@@ -906,7 +922,11 @@ class Queue(models.Model):
     ]
 
     name = models.CharField(
-        max_length=64, unique=True, null=False, blank=False, verbose_name=_("Queue Name")
+        max_length=64,
+        unique=True,
+        null=False,
+        blank=False,
+        verbose_name=_("Queue Name"),
     )
     music_class = models.ForeignKey(
         MusicOnHold,
@@ -951,7 +971,9 @@ matches an extension within that context, they will be taken out of
 the queue and sent to that extension."""),
     )
 
-    maxlen = models.PositiveIntegerField(default=0, verbose_name=_("Maximum Queue Length"))
+    maxlen = models.PositiveIntegerField(
+        default=0, verbose_name=_("Maximum Queue Length")
+    )
     timeout = models.PositiveIntegerField(default=15, verbose_name=_("Timeout"))
     retry = models.PositiveIntegerField(default=5, verbose_name=_("Retry"))
     timeoutpriority = models.CharField(
@@ -972,14 +994,18 @@ the queue and sent to that extension."""),
     autopausedelay = models.PositiveIntegerField(
         default=60, verbose_name=_("Autopause Delay")
     )
-    reportholdtime = models.BooleanField(default=False, verbose_name=_("Report Hold Time"))
+    reportholdtime = models.BooleanField(
+        default=False, verbose_name=_("Report Hold Time")
+    )
     setinterfacevar = models.BooleanField(
         default=False, verbose_name=_("Set Interface Variable")
     )
     setqueueentryvar = models.BooleanField(
         default=False, verbose_name=_("Set Queue Entry Variable")
     )
-    setqueuevar = models.BooleanField(default=False, verbose_name=_("Set Queue Variable"))
+    setqueuevar = models.BooleanField(
+        default=False, verbose_name=_("Set Queue Variable")
+    )
     announce_frequency = models.PositiveIntegerField(
         default=0, verbose_name=_("Announce Frequency")
     )
@@ -1009,7 +1035,12 @@ the queue and sent to that extension."""),
     announce_position = models.CharField(
         max_length=5,
         default="no",
-        choices=[("yes", _("Yes")), ("no", _("No")), ("more", _("More")), ("limit", _("Limit"))],
+        choices=[
+            ("yes", _("Yes")),
+            ("no", _("No")),
+            ("more", _("More")),
+            ("limit", _("Limit")),
+        ],
         verbose_name=_("Announce Position"),
     )
 
@@ -1037,7 +1068,9 @@ the queue and sent to that extension."""),
     announce_position_only_up = models.BooleanField(
         default=False,
         verbose_name=_("Announce position only up"),
-        help_text=_("Only announce the caller's position if it has improved since the last announcement."),
+        help_text=_(
+            "Only announce the caller's position if it has improved since the last announcement."
+        ),
     )
 
     queue_announcement = models.ForeignKey(
@@ -1051,7 +1084,9 @@ the queue and sent to that extension."""),
         null=True,
         blank=True,
         verbose_name=_("Periodic Announce"),
-        help_text=_("The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait"),
+        help_text=_(
+            "The list of files to announce separated by comma. Example: your-call-is-important-to-us, please-wait"
+        ),
     )
     monitor_format = models.CharField(
         max_length=5,
@@ -1073,7 +1108,9 @@ the queue and sent to that extension."""),
         help_text=_("When to leave empty queue?"),
     )
     ringinuse = models.BooleanField(default=False, verbose_name=_("Ring In Use"))
-    timeoutrestart = models.BooleanField(default=False, verbose_name=_("Timeout Restart"))
+    timeoutrestart = models.BooleanField(
+        default=False, verbose_name=_("Timeout Restart")
+    )
     defaultrule = models.ForeignKey(
         "QueueRule",
         on_delete=models.SET_NULL,
@@ -1195,7 +1232,9 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text=_("Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY"),
+        help_text=_(
+            "Empty=skip, absolute (10) or relative (+3, -2) for QUEUE_MAX_PENALTY"
+        ),
     )
 
     min_penalty = models.CharField(
@@ -1203,7 +1242,9 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text=_("Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY"),
+        help_text=_(
+            "Empty=skip, absolute (0) or relative (+1, -1) for QUEUE_MIN_PENALTY"
+        ),
     )
 
     raise_penalty = models.CharField(
@@ -1211,7 +1252,9 @@ class PenaltyChange(models.Model):
         blank=True,
         default="",
         validators=[validate_penalty_value],
-        help_text=_("Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY"),
+        help_text=_(
+            "Empty=skip, absolute (5) or relative (+1, -1) for QUEUE_RAISE_PENALTY"
+        ),
     )
 
     order = models.PositiveIntegerField(
@@ -1351,14 +1394,18 @@ class CallQueueGlobalSettings(models.Model):
     persistent_members = models.BooleanField(
         default=True,
         verbose_name=_("Persistent Members"),
-        help_text=_("Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues."),
+        help_text=_(
+            "Store each dynamic member in each queue in the astdb so that when Asterisk is restarted, each member will be automatically read into their recorded queues."
+        ),
     )
 
     # AutoFill Behavior
     autofill = models.BooleanField(
         default=False,
         verbose_name=_("AutoFill Behavior"),
-        help_text=_("The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no."),
+        help_text=_(
+            "The old behavior of the queue (autofill=no) is to have a serial type behavior in that the queue will make all waiting callers wait in the queue even if there is more than one available member ready to take calls until the head caller is connected with the member they were trying to get to. The new behavior, enabled by setting autofill=yes makes sure that when the waiting callers are connecting with available members in a parallel fashion until there are no more available members or no more waiting callers. This is probably more along the lines of how a queue should work and in most cases, you will want to enable this behavior. If you do not specify or comment out this option, it will default to no."
+        ),
     )
 
     # Monitor Type
@@ -1366,14 +1413,18 @@ class CallQueueGlobalSettings(models.Model):
         max_length=50,
         default="MixMonitor",
         verbose_name=_("Monitor Type"),
-        help_text=_("By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility."),
+        help_text=_(
+            "By setting monitor-type = MixMonitor, when specifying monitor-format to enable recording of queue member conversations, app_queue will now use the new MixMonitor application instead of Monitor so the concept of 'joining/mixing' the in/out files now goes away when this is enabled. You can set the default type for all queues here, and then also change monitor-type for individual queues within a queue by using the same configuration parameter within a queue configuration block. If you do not specify or comment out this option, it will default to the old 'Monitor' behavior to keep backward compatibility."
+        ),
     )
 
     # Shared Lastcall
     shared_lastcall = models.BooleanField(
         default=False,
         verbose_name=_("Shared Lastcall"),
-        help_text=_("shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no."),
+        help_text=_(
+            "shared_lastcall will make the lastcall and calls received be the same in members logged in more than one queue. This is useful to make the queue respect the wrapuptime of another queue for a shared member. The default value is no."
+        ),
     )
 
     # Negative Penalty Invalid
@@ -1387,14 +1438,18 @@ class CallQueueGlobalSettings(models.Model):
     log_membername_as_agent = models.BooleanField(
         default=False,
         verbose_name=_("Log Membername as Agent"),
-        help_text=_("log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility."),
+        help_text=_(
+            "log_membername_as_agent will cause app_queue to log the membername rather than the interface for the ADDMEMBER and REMOVEMEMBER events when a state_interface is set. The default value (no) maintains backward compatibility."
+        ),
     )
 
     # Force Longest Waiting Caller
     force_longest_waiting_caller = models.BooleanField(
         default=False,
         verbose_name=_("Force Longest Waiting Caller"),
-        help_text=_("force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'."),
+        help_text=_(
+            "force_longest_waiting_caller will cause app_queue to make sure callers are offered in order (longest waiting first), even for callers across multiple queues. Before a call is offered to an agent, an additional check is made to see if the agent is a member of another queue with a call that's been waiting longer. If so, the current call is not offered to the agent. The default value is 'no'."
+        ),
     )
 
     def save(self, *args, **kwargs):
@@ -1502,8 +1557,10 @@ class Blacklist(AuditFields):
     )
     destination = models.CharField(
         max_length=64,
-        help_text=_("Destination number where calls must be blocked. Default="
-        " for whole system blocking."),
+        help_text=_(
+            "Destination number where calls must be blocked. Default="
+            " for whole system blocking."
+        ),
         verbose_name=_("Destination"),
         default="",
         blank=True,
@@ -1518,7 +1575,9 @@ class Blacklist(AuditFields):
     expiration_date = models.DateTimeField(
         null=True,
         blank=True,
-        help_text=_("Expiration date for the blacklist entry. If not set, the entry is permanent."),
+        help_text=_(
+            "Expiration date for the blacklist entry. If not set, the entry is permanent."
+        ),
         verbose_name=_("Expiration Date"),
     )
 
@@ -1540,8 +1599,10 @@ class Whitelist(models.Model):
     )
     destination = models.CharField(
         max_length=64,
-        help_text=_("Destination number where calls must be allowed. Default="
-        " for whole system allowing."),
+        help_text=_(
+            "Destination number where calls must be allowed. Default="
+            " for whole system allowing."
+        ),
         verbose_name=_("Destination"),
         default="",
         blank=True,
@@ -1556,7 +1617,9 @@ class Whitelist(models.Model):
     expiration_date = models.DateTimeField(
         null=True,
         blank=True,
-        help_text=_("Expiration date for the whitelist entry. If not set, the entry is permanent."),
+        help_text=_(
+            "Expiration date for the whitelist entry. If not set, the entry is permanent."
+        ),
         verbose_name=_("Expiration Date"),
     )
 
@@ -1630,7 +1693,9 @@ class SoundFile(models.Model):
         null=False,
         blank=False,
         verbose_name=_("File name used in dialplans"),
-        help_text=_("The file name without extension. You may enter completely different name here."),
+        help_text=_(
+            "The file name without extension. You may enter completely different name here."
+        ),
     )
 
     language = models.CharField(

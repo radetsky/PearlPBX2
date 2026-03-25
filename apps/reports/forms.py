@@ -5,9 +5,10 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
+from core.widgets import ChannelComboboxWidget
 
 ASTERISK_NONE = "NONE"
-DATETIME_LOCAL_FORMAT = "%Y-%m-%dT%H:%M"
+DATETIME_LOCAL_FORMAT = "%Y-%m-%d %H:%M"
 
 
 def _get_queue_choices(empty_label=None):
@@ -32,9 +33,11 @@ class QueueLogReportForm(forms.Form):
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
-            }
+            },
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ),
     )
 
     date_to = forms.DateTimeField(
@@ -45,9 +48,11 @@ class QueueLogReportForm(forms.Form):
             attrs={
                 "type": "datetime-local",
                 "class": "uk-input uk-border-rounded",
-            }
+            },
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ),
     )
 
     # Queue filter
@@ -111,7 +116,9 @@ class QueueLogReportForm(forms.Form):
             .exclude(agent=ASTERISK_NONE)
             .order_by("agent")
         )
-        self.fields["agent"].choices = [("", _("All Agents"))] + [(a, a) for a in agents]
+        self.fields["agent"].choices = [("", _("All Agents"))] + [
+            (a, a) for a in agents
+        ]
 
     def get_queryset(self):
         """Returns filtered data based on form"""
@@ -153,7 +160,10 @@ class MonitorFilenamesReportForm(forms.Form):
         max_length=64,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter destination number")}
+            attrs={
+                "class": "form-control",
+                "placeholder": _("Enter destination number"),
+            }
         ),
     )
     created_start = forms.DateTimeField(
@@ -161,18 +171,22 @@ class MonitorFilenamesReportForm(forms.Form):
         required=False,
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ),
     )
     created_end = forms.DateTimeField(
         label=_("Created to"),
         required=False,
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ),
     )
 
 
@@ -189,18 +203,22 @@ class CDRReportForm(forms.Form):
         label=_("Start date"),
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ),
     )
 
     end_date = forms.DateTimeField(
         label=_("End date"),
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ),
     )
 
     src_number = forms.CharField(
@@ -224,17 +242,11 @@ class CDRReportForm(forms.Form):
         label=_("Source channel"),
         max_length=80,
         required=False,
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter channel")}
-        ),
     )
     dst_channel = forms.CharField(
         label=_("Destination channel"),
         max_length=80,
         required=False,
-        widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter channel")}
-        ),
     )
     disposition = forms.ChoiceField(
         label=_("Call status"),
@@ -254,6 +266,50 @@ class CDRReportForm(forms.Form):
         widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
     )
 
+    DIRECTION_CHOICES = [
+        ("", _("All calls")),
+        ("incoming", _("Incoming")),
+        ("outgoing", _("Outgoing")),
+        ("internal", _("Internal")),
+        ("transit", _("Transit")),
+        ("unbridged_peer", _("Unbridged (Peers)")),
+        ("unbridged_user", _("Unbridged (Users)")),
+    ]
+
+    call_direction = forms.ChoiceField(
+        label=_("Call direction"),
+        choices=DIRECTION_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        channels = self._channel_choices()
+        channel_attrs = {"class": "form-control", "placeholder": _("Enter channel")}
+        self.fields["src_channel"].widget = ChannelComboboxWidget(
+            choices=channels, attrs=channel_attrs
+        )
+        self.fields["dst_channel"].widget = ChannelComboboxWidget(
+            choices=channels, attrs=channel_attrs
+        )
+
+    @staticmethod
+    def _channel_choices():
+        from core.models import SIPUser, SIPPeer
+
+        users = [
+            f"PJSIP/{u}"
+            for u in SIPUser.objects.values_list("username", flat=True).order_by(
+                "username"
+            )
+        ]
+        peers = [
+            f"PJSIP/{p}"
+            for p in SIPPeer.objects.values_list("name", flat=True).order_by("name")
+        ]
+        return sorted(set(users + peers))
+
 
 class _AnalyticsBaseForm(forms.Form):
     date_from = forms.DateTimeField(
@@ -261,9 +317,11 @@ class _AnalyticsBaseForm(forms.Form):
         required=True,
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
+            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ),
     )
 
     date_to = forms.DateTimeField(
@@ -271,9 +329,11 @@ class _AnalyticsBaseForm(forms.Form):
         required=True,
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"}
+            attrs={"type": "datetime-local", "class": "uk-input uk-border-rounded"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ),
     )
 
 
@@ -331,18 +391,22 @@ class CallbackNumberReportForm(forms.Form):
         label=_("Created from"),
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=0, minute=0, second=0, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ),
     )
 
     end_date = forms.DateTimeField(
         label=_("Created to"),
         widget=forms.DateTimeInput(
             format=DATETIME_LOCAL_FORMAT,
-            attrs={"type": "datetime-local", "class": "form-control"}
+            attrs={"type": "datetime-local", "class": "form-control"},
         ),
-        initial=lambda: localtime(timezone.now()).replace(hour=23, minute=59, second=59, microsecond=0),
+        initial=lambda: localtime(timezone.now()).replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ),
     )
 
     src = forms.CharField(
@@ -359,7 +423,10 @@ class CallbackNumberReportForm(forms.Form):
         max_length=16,
         required=False,
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": _("Enter destination number")}
+            attrs={
+                "class": "form-control",
+                "placeholder": _("Enter destination number"),
+            }
         ),
     )
 

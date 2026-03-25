@@ -1,19 +1,26 @@
 import csv
-import json
 import mimetypes
 import os
+import re
 from datetime import timedelta
 
 from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 from django.utils.timezone import localtime
 
 from apps.callback.models import CallbackNumber
-from core.models import Contact, MonitorFilenames, RoutingTable, RoutingRecord
+from core.models import (
+    Contact,
+    MonitorFilenames,
+    RoutingTable,
+    RoutingRecord,
+    SIPUser,
+    SIPPeer,
+)
 
 from apps.reports.mixins import ReportViewPermissionMixin
 from apps.reports.models import CDR
@@ -32,7 +39,7 @@ from apps.reports.forms import (
 
 from django.db.models import Prefetch
 from django.views.generic import FormView
-from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value, Q
+from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField, Value
 from django.db.models.functions import Cast, StrIndex, Substr, TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
@@ -401,24 +408,54 @@ class AudioFileView(ReportViewPermissionMixin, View):
         record = get_object_or_404(MonitorFilenames, id=record_id)
         file_path = record.get_audio_file_path()
 
-        if not os.path.exists(file_path):
+        try:
+            file_size = os.stat(file_path).st_size
+        except FileNotFoundError:
             raise Http404("Audio file does not exist")
 
         content_type, _ = mimetypes.guess_type(file_path)
         if content_type is None:
             content_type = "audio/wav"
 
-        as_attachment = bool(request.GET.get("download"))
-        response = FileResponse(
-            open(file_path, "rb"),
-            content_type=content_type,
-            as_attachment=as_attachment,
-        )
-        response["Cache-Control"] = "private, max-age=3600"
-        if not as_attachment:
-            response["Content-Disposition"] = (
-                f'inline; filename="{os.path.basename(file_path)}"'
+        filename = os.path.basename(file_path)
+
+        if request.GET.get("download"):
+            response = FileResponse(
+                open(file_path, "rb"),
+                content_type=content_type,
+                as_attachment=True,
             )
+        else:
+            range_header = request.META.get("HTTP_RANGE", "").strip()
+            range_match = (
+                re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
+            )
+
+            if range_match:
+                first = int(range_match.group(1))
+                last = (
+                    int(range_match.group(2)) if range_match.group(2) else file_size - 1
+                )
+                last = min(last, file_size - 1)
+                if first >= file_size or first > last:
+                    return HttpResponse(status=416)
+                length = last - first + 1
+                with open(file_path, "rb") as f:
+                    f.seek(first)
+                    data = f.read(length)
+                response = HttpResponse(data, status=206, content_type=content_type)
+                response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
+                response["Content-Length"] = str(length)
+            else:
+                response = FileResponse(
+                    open(file_path, "rb"), content_type=content_type
+                )
+                response["Content-Length"] = str(file_size)
+                response["Content-Disposition"] = f'inline; filename="{filename}"'
+
+            response["Accept-Ranges"] = "bytes"
+
+        response["Cache-Control"] = "private, max-age=3600"
         return response
 
 
@@ -448,15 +485,26 @@ class MonitorReportView(ReportViewPermissionMixin, View):
                 qs = qs.filter(created__lte=dt)
             return qs.order_by("-created")
 
+        cdr_durations = {}
         if form.is_valid():
             recordings = filter_monitor_queryset(form)
             paginator = Paginator(recordings, 50)
             page_number = request.GET.get("page")
             recordings = paginator.get_page(page_number)
 
+            uniqueids = [rec.cdr_uniqueid for rec in recordings if rec.cdr_uniqueid]
+            if uniqueids:
+                cdr_durations = {
+                    row["uniqueid"]: row["duration"]
+                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
+                        "uniqueid", "duration"
+                    )
+                }
+
         context = {
             "form": form,
             "recordings": recordings,
+            "cdr_durations": cdr_durations,
         }
         return render(request, "monitor.html", context)
 
@@ -486,6 +534,38 @@ class CDRReportView(ReportViewPermissionMixin, View):
             qs = qs.filter(duration__gte=data["min_duration"])
         if data.get("max_duration") is not None:
             qs = qs.filter(duration__lte=data["max_duration"])
+        direction = data.get("call_direction")
+        if direction:
+            peer_names = list(SIPPeer.objects.values_list("name", flat=True))
+            user_names = list(SIPUser.objects.values_list("username", flat=True))
+            peer_pattern = (
+                r"^PJSIP/(" + "|".join(re.escape(n) for n in peer_names) + r")-"
+            )
+            user_pattern = (
+                r"^PJSIP/(" + "|".join(re.escape(n) for n in user_names) + r")-"
+            )
+
+            def channel_q(pattern, field):
+                return Q(**{f"{field}__regex": pattern})
+
+            if direction == "incoming":
+                qs = qs.filter(channel_q(peer_pattern, "channel"))
+            elif direction == "outgoing":
+                qs = qs.filter(channel_q(user_pattern, "channel"))
+            elif direction == "internal":
+                qs = qs.filter(
+                    channel_q(user_pattern, "channel")
+                    & channel_q(user_pattern, "dstchannel")
+                )
+            elif direction == "transit":
+                qs = qs.filter(
+                    channel_q(peer_pattern, "channel")
+                    & channel_q(peer_pattern, "dstchannel")
+                )
+            elif direction == "unbridged_peer":
+                qs = qs.filter(channel_q(peer_pattern, "channel"), dstchannel="")
+            elif direction == "unbridged_user":
+                qs = qs.filter(channel_q(user_pattern, "channel"), dstchannel="")
         return qs.order_by("-start")
 
     @staticmethod
@@ -597,8 +677,12 @@ class CDRReportView(ReportViewPermissionMixin, View):
 def _default_analytics_params():
     now = localtime(timezone.now())
     return {
-        "date_from": now.replace(hour=0, minute=0, second=0, microsecond=0).strftime(DATETIME_LOCAL_FORMAT),
-        "date_to": now.replace(hour=23, minute=59, second=59, microsecond=0).strftime(DATETIME_LOCAL_FORMAT),
+        "date_from": now.replace(hour=0, minute=0, second=0, microsecond=0).strftime(
+            DATETIME_LOCAL_FORMAT
+        ),
+        "date_to": now.replace(hour=23, minute=59, second=59, microsecond=0).strftime(
+            DATETIME_LOCAL_FORMAT
+        ),
     }
 
 
@@ -631,9 +715,7 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
                 qs = qs.exclude(callid__in=known_callids)
 
             rows = list(
-                qs.values("queuename")
-                .annotate(total=Count("id"))
-                .order_by("-total")
+                qs.values("queuename").annotate(total=Count("id")).order_by("-total")
             )
 
             if show_unique:
@@ -650,7 +732,10 @@ class AnalyticsQueueCallsView(ReportViewPermissionMixin, View):
                         .values("queuename")
                         .annotate(unique_callers=Count("data2", distinct=True))
                     }
-                table_data = [{**r, "unique_callers": unique_by_queue.get(r["queuename"], 0)} for r in rows]
+                table_data = [
+                    {**r, "unique_callers": unique_by_queue.get(r["queuename"], 0)}
+                    for r in rows
+                ]
             else:
                 table_data = rows
 
@@ -705,9 +790,7 @@ class AnalyticsAgentCallsView(ReportViewPermissionMixin, View):
                 qs = qs.filter(queuename=queuename)
 
             rows = list(
-                qs.values("agent")
-                .annotate(total=Count("id"))
-                .order_by("-total")
+                qs.values("agent").annotate(total=Count("id")).order_by("-total")
             )
 
             labels, values, table_data = [], [], []
@@ -755,7 +838,9 @@ class AnalyticsOutboundCallsView(ReportViewPermissionMixin, View):
                     base_channel=Case(
                         When(
                             channel__contains="-",
-                            then=Substr("channel", 1, StrIndex("channel", Value("-")) - 1),
+                            then=Substr(
+                                "channel", 1, StrIndex("channel", Value("-")) - 1
+                            ),
                         ),
                         default=F("channel"),
                         output_field=CharField(),
@@ -853,13 +938,17 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                         continue
 
                     # Lucky: callerid re-entered same queue after abandon_time and completed
-                    new_callids = QueueLog.objects.filter(
-                        time__gte=abandon_time,
-                        time__lte=date_to,
-                        queuename=queuename,
-                        event="ENTERQUEUE",
-                        data2=callerid,
-                    ).exclude(callid=callid).values("callid")
+                    new_callids = (
+                        QueueLog.objects.filter(
+                            time__gte=abandon_time,
+                            time__lte=date_to,
+                            queuename=queuename,
+                            event="ENTERQUEUE",
+                            data2=callerid,
+                        )
+                        .exclude(callid=callid)
+                        .values("callid")
+                    )
 
                     if QueueLog.objects.filter(
                         callid__in=new_callids,
@@ -879,13 +968,15 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
 
                 labels.append(queuename)
                 values.append(missed)
-                table_data.append({
-                    "queuename": queuename,
-                    "missed": missed,
-                    "called_back": called_back,
-                    "operators": operators,
-                    "remaining": max(0, missed - called_back - operators),
-                })
+                table_data.append(
+                    {
+                        "queuename": queuename,
+                        "missed": missed,
+                        "called_back": called_back,
+                        "operators": operators,
+                        "remaining": max(0, missed - called_back - operators),
+                    }
+                )
 
             chart_data = {"labels": labels, "values": values}
 
@@ -930,7 +1021,9 @@ class AnalyticsMissedByHourView(ReportViewPermissionMixin, View):
             table_data = []
             current = start
             while current <= end:
-                table_data.append({"hour": current, "count": hour_counts.get(current, 0)})
+                table_data.append(
+                    {"hour": current, "count": hour_counts.get(current, 0)}
+                )
                 current += timedelta(hours=1)
 
             label_fmt = "%m-%d %H:%M" if date_from.date() != date_to.date() else "%H:%M"
@@ -971,7 +1064,10 @@ class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
 
             safe_talk_sec = Sum(
                 Case(
-                    When(data2__regex=r"^[0-9]+$", then=Cast(F("data2"), output_field=IntegerField())),
+                    When(
+                        data2__regex=r"^[0-9]+$",
+                        then=Cast(F("data2"), output_field=IntegerField()),
+                    ),
                     default=None,
                     output_field=IntegerField(),
                 )
@@ -990,12 +1086,14 @@ class AnalyticsCallDurationView(ReportViewPermissionMixin, View):
                 count = r["call_count"]
                 total_all += total
                 calls_all += count
-                table_data.append({
-                    "agent": _clean_agent_name(r["agent"]),
-                    "total_fmt": _fmt_duration(total),
-                    "avg_fmt": _fmt_duration(total // count if count else 0),
-                    "call_count": count,
-                })
+                table_data.append(
+                    {
+                        "agent": _clean_agent_name(r["agent"]),
+                        "total_fmt": _fmt_duration(total),
+                        "avg_fmt": _fmt_duration(total // count if count else 0),
+                        "call_count": count,
+                    }
+                )
 
             overall_total_fmt = _fmt_duration(total_all)
             overall_avg_fmt = _fmt_duration(total_all // calls_all if calls_all else 0)
@@ -1044,7 +1142,9 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
                 for row in qs.annotate(period=trunc_fn("time", tzinfo=local_tz))
                 .values("period")
                 .annotate(
-                    answered=Count("id", filter=Q(event__in=["COMPLETECALLER", "COMPLETEAGENT"])),
+                    answered=Count(
+                        "id", filter=Q(event__in=["COMPLETECALLER", "COMPLETEAGENT"])
+                    ),
                     missed=Count("id", filter=Q(event="ABANDON")),
                 )
             }
@@ -1056,10 +1156,13 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
                 start = date_from.replace(minute=0, second=0, microsecond=0)
                 end = date_to.replace(minute=0, second=0, microsecond=0)
                 step = timedelta(hours=1)
-                period_fmt = lambda dt: (
-                    f"{dt.strftime('%Y-%m-%d %H:%M:%S')} - "
-                    f"{(dt + timedelta(hours=1) - timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+
+                def period_fmt(dt):
+                    return (
+                        f"{dt.strftime('%Y-%m-%d %H:%M:%S')} - "
+                        f"{(dt + timedelta(hours=1) - timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
+
                 chart_fmt = "%H"
             else:
                 start = date_from.date()
@@ -1080,13 +1183,15 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
                 total_answered += answered
                 total_missed += missed
                 labels.append(current.strftime(chart_fmt))
-                table_data.append({
-                    "period": period_fmt(current),
-                    "answered": answered,
-                    "missed": missed,
-                    "total": total,
-                    "pct": pct,
-                })
+                table_data.append(
+                    {
+                        "period": period_fmt(current),
+                        "answered": answered,
+                        "missed": missed,
+                        "total": total,
+                        "pct": pct,
+                    }
+                )
                 current += step
 
             totals = {
@@ -1126,7 +1231,9 @@ class RoutingTableReportView(ReportViewPermissionMixin, View):
         ).order_by("name")
 
         context = {
-            "results": [{"table": t, "records": t.routing_records.all()} for t in tables],
+            "results": [
+                {"table": t, "records": t.routing_records.all()} for t in tables
+            ],
             "prefix_filter": prefix_filter,
             "context_filter": context_filter,
         }
@@ -1179,19 +1286,27 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
             return self.export_callback_csv(request, export_queryset)
 
         cdr_audio_urls = {}
+        cdr_durations = {}
         if callbacks:
             uniqueids = [cb.uniqueid for cb in callbacks if cb.uniqueid]
             if uniqueids:
-                for cdr in CDR.objects.filter(uniqueid__in=uniqueids):
-                    url = cdr.get_audio_url()
+                cdr_durations = {
+                    row["uniqueid"]: row["duration"]
+                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
+                        "uniqueid", "duration"
+                    )
+                }
+                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=uniqueids):
+                    url = mf.get_audio_url()
                     if url:
-                        cdr_audio_urls[cdr.uniqueid] = url
+                        cdr_audio_urls[mf.cdr_uniqueid] = url
 
         context = {
             "form": form,
             "callbacks": callbacks,
             "statistics": statistics,
             "cdr_audio_urls": cdr_audio_urls,
+            "cdr_durations": cdr_durations,
         }
 
         return render(request, "callback_report.html", context)

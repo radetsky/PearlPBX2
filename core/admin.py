@@ -277,20 +277,69 @@ class QueueAdmin(admin.ModelAdmin):
             _("Queue Rules"),
             {
                 "fields": ["defaultrule", "rule_link"],
-                "description": _("Select a rule and click the link to edit its penalty changes."),
+                "description": _(
+                    "Select a rule and click the link to edit its penalty changes."
+                ),
             },
         ),
         (
             _("Timeouts"),
-            {"fields": ["timeout", "retry", "maxlen", "wrapuptime", "autopause", "autopausedelay"], "classes": ["collapse"]},
+            {
+                "fields": [
+                    "timeout",
+                    "retry",
+                    "maxlen",
+                    "wrapuptime",
+                    "autopause",
+                    "autopausedelay",
+                ],
+                "classes": ["collapse"],
+            },
         ),
         (
             _("Announcements"),
-            {"fields": ["announce", "queue_announce", "queue_announcement", "announce_frequency", "announce_holdtime", "announce_position"], "classes": ["collapse"]},
+            {
+                "fields": [
+                    "announce",
+                    "queue_announce",
+                    "queue_announcement",
+                    "announce_frequency",
+                    "announce_holdtime",
+                    "announce_position",
+                ],
+                "classes": ["collapse"],
+            },
         ),
         (
             _("Advanced"),
-            {"fields": ["context", "service_level", "weight", "autofill", "ringinuse", "joinempty", "leavewhenempty", "monitor_format", "timeoutpriority", "timeoutrestart", "reportholdtime", "setinterfacevar", "setqueueentryvar", "setqueuevar", "min_announce_frequency", "periodic_announce_frequency", "periodic_announce", "random_periodic_announce", "relative_periodic_announce", "announce_to_first_user", "announce_position_limit", "announce_round_seconds", "announce_position_only_up"], "classes": ["collapse"]},
+            {
+                "fields": [
+                    "context",
+                    "service_level",
+                    "weight",
+                    "autofill",
+                    "ringinuse",
+                    "joinempty",
+                    "leavewhenempty",
+                    "monitor_format",
+                    "timeoutpriority",
+                    "timeoutrestart",
+                    "reportholdtime",
+                    "setinterfacevar",
+                    "setqueueentryvar",
+                    "setqueuevar",
+                    "min_announce_frequency",
+                    "periodic_announce_frequency",
+                    "periodic_announce",
+                    "random_periodic_announce",
+                    "relative_periodic_announce",
+                    "announce_to_first_user",
+                    "announce_position_limit",
+                    "announce_round_seconds",
+                    "announce_position_only_up",
+                ],
+                "classes": ["collapse"],
+            },
         ),
     ]
 
@@ -313,7 +362,9 @@ class QueueAdmin(admin.ModelAdmin):
     def rule_link(self, obj):
         if not obj.defaultrule:
             add_url = reverse("admin:core_queuerule_add")
-            return format_html('<a href="{}" target="_blank">+ Create new rule</a>', add_url)
+            return format_html(
+                '<a href="{}" target="_blank">+ Create new rule</a>', add_url
+            )
         edit_url = reverse("admin:core_queuerule_change", args=[obj.defaultrule.pk])
         list_url = reverse("admin:core_queuerule_changelist")
         return format_html(
@@ -340,6 +391,7 @@ admin.site.register(SoundFile, SoundFileAdmin)
 admin.site.register(QueueRule, QueueRuleAdmin)
 admin.site.register(Queue, QueueAdmin)
 admin.site.register(QueueMember, QueueMemberAdmin)
+
 
 class TrunkGroupAdmin(admin.ModelAdmin):
     list_display = ["name", "peer_count"]
