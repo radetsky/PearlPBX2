@@ -1,0 +1,2151 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Dashboard Live" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── RESET & TOKENS ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0d1117;
+  --bg-card:     #161b22;
+  --bg-card2:    #1c2128;
+  --bg-hover:    rgba(255,255,255,0.025);
+  --border:      #21262d;
+  --border-hi:   #30363d;
+  --accent:      #00d4ff;
+  --accent-glow: rgba(0,212,255,0.18);
+  --accent-dim:  rgba(0,212,255,0.08);
+  --warn:        #f0a500;
+  --warn-glow:   rgba(240,165,0,0.18);
+  --warn-dim:    rgba(240,165,0,0.08);
+  --danger:      #ff4444;
+  --danger-glow: rgba(255,68,68,0.18);
+  --danger-dim:  rgba(255,68,68,0.08);
+  --ok:          #3fb950;
+  --ok-glow:     rgba(63,185,80,0.18);
+  --ok-dim:      rgba(63,185,80,0.08);
+  --txt:         #e6edf3;
+  --txt2:        #8b949e;
+  --txt3:        #484f58;
+  --font:        ui-monospace,'Cascadia Code','Source Code Pro',Menlo,Consolas,'DejaVu Sans Mono',monospace;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body { padding-top: 60px; }
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* CRT scan-line overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px
+  );
+}
+
+/* ── APP SHELL ──────────────────────────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; height: 100%; }
+
+/* ── TOP NAV ────────────────────────────────────────────────────────────────── */
+.topnav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+
+.logo {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-right: 36px;
+  flex-shrink: 0;
+  text-shadow: 0 0 20px var(--accent-glow);
+}
+
+.logo em { color: var(--txt3); font-style: normal; }
+
+.nav-tabs { display: flex; flex: 1; }
+
+.nav-tab {
+  height: 48px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: var(--txt2); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border-hi);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--txt3);
+  background: var(--bg);
+  transition: border-color 0.3s, color 0.3s;
+}
+.conn-pill.connected  { color: var(--ok);     border-color: rgba(63,185,80,0.4);  }
+.conn-pill.connecting { color: var(--warn);   border-color: rgba(240,165,0,0.4); }
+.conn-pill.disconnected { color: var(--danger); border-color: rgba(255,68,68,0.4); }
+
+.conn-led {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--txt3);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.conn-pill.connected    .conn-led { background: var(--ok);     box-shadow: 0 0 6px var(--ok);     }
+.conn-pill.connecting   .conn-led { background: var(--warn);   box-shadow: 0 0 6px var(--warn);   animation: blink 1s infinite; }
+.conn-pill.disconnected .conn-led { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* ── SCROLLABLE MAIN ────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.main::-webkit-scrollbar { width: 5px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+/* ── TAB PANELS ─────────────────────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── STATS ROW ──────────────────────────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 14px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-card:nth-child(1)::after { background: var(--accent); }
+.stat-card:nth-child(2)::after { background: var(--warn); }
+.stat-card:nth-child(3)::after { background: var(--ok); }
+.stat-card:nth-child(4)::after { background: var(--danger); }
+
+.stat-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 6px;
+}
+.stat-val {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1;
+}
+
+/* ── CARD COMPONENT ─────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  flex-shrink: 0;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ok);
+}
+.live-badge::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+  animation: pulse-live 2s ease-in-out infinite;
+}
+@keyframes pulse-live { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+/* ── OVERVIEW GRID ──────────────────────────────────────────────────────────── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: 60fr 40fr;
+  gap: 10px;
+}
+.overview-grid .card { min-height: 200px; }
+
+/* ── BRIDGED TABLE (compact, inside Overview) ───────────────────────────────── */
+.bt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.bt td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.bt tr:last-child td { border-bottom: none; }
+.bt tr:hover td { background: var(--bg-hover); }
+
+.ch-num  { font-size: 13px; font-weight: 600; color: var(--txt); }
+.ch-name { font-size: 11px; color: var(--accent); margin-top: 1px; }
+.ch-sub  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.ch-arrow { color: var(--txt3); font-size: 13px; padding: 0 4px; }
+.ch-dur  {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--warn);
+  text-align: right;
+  white-space: nowrap;
+  padding-right: 14px;
+}
+
+/* ── QUEUE SUMMARY LIST ─────────────────────────────────────────────────────── */
+.qs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.qs-row:last-child { border-bottom: none; }
+.qs-row:hover { background: var(--bg-hover); }
+
+.qs-name  { font-weight: 600; font-size: 12px; color: var(--txt); }
+.qs-meta  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.badge-ok      { background: var(--ok-dim);     color: var(--ok);     border: 1px solid rgba(63,185,80,0.25);  }
+.badge-warn    { background: var(--warn-dim);   color: var(--warn);   border: 1px solid rgba(240,165,0,0.25); }
+.badge-danger  { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,68,68,0.25); }
+.badge-neutral { background: rgba(255,255,255,0.04); color: var(--txt3); border: 1px solid var(--border); }
+
+/* ── QUEUES TAB GRID ────────────────────────────────────────────────────────── */
+.queues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 10px;
+}
+
+.queue-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.queue-card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card2);
+}
+.queue-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.queue-card-body { padding: 12px 14px; }
+
+.section-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 7px;
+  margin-top: 10px;
+}
+.section-lbl:first-child { margin-top: 0; }
+
+/* Members */
+.members-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--txt3);
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.mchip.available { background: var(--ok-dim);     color: var(--ok);     border-color: rgba(63,185,80,0.3);  }
+.mchip.busy      { background: var(--warn-dim);   color: var(--warn);   border-color: rgba(240,165,0,0.3); }
+.mchip.paused    { background: var(--danger-dim); color: var(--danger); border-color: rgba(255,68,68,0.3); }
+.mchip.ringing   {
+  background: var(--warn-dim); color: var(--warn); border-color: rgba(240,165,0,0.4);
+  animation: chip-ring 0.7s ease-in-out infinite alternate;
+}
+@keyframes chip-ring { from { opacity: 0.65; } to { opacity: 1; } }
+
+.mchip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Callers */
+.caller-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.caller-row:last-child { border-bottom: none; }
+.caller-cid  { color: var(--txt); }
+.caller-wait { font-weight: 700; color: var(--danger); font-size: 13px; }
+
+/* ── PJSIP TAB ──────────────────────────────────────────────────────────────── */
+.sub-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.sub-tab {
+  padding: 8px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+.sub-tab:hover { color: var(--txt2); }
+.sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.blf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 7px;
+}
+
+.blf-cell {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 6px;
+  text-align: center;
+  cursor: default;
+  transition: border-color 0.25s, background 0.25s;
+}
+.blf-cell.in-use {
+  border-color: rgba(255,68,68,0.45);
+  background: var(--danger-dim);
+}
+.blf-cell.ringing {
+  border-color: rgba(240,165,0,0.5);
+  background: var(--warn-dim);
+  animation: blf-ring 0.65s ease-in-out infinite alternate;
+}
+.blf-cell.unavailable { opacity: 0.35; }
+.blf-cell.paused {
+  border-color: rgba(255,68,68,0.25);
+  background: rgba(255,68,68,0.04);
+}
+@keyframes blf-ring { from { opacity: 0.65; } to { opacity: 1; } }
+
+.blf-ext   { font-size: 15px; font-weight: 700; color: var(--txt);   line-height: 1.2; }
+.blf-icon  { font-size: 16px; margin: 4px 0; line-height: 1; }
+.blf-state {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--txt3);
+}
+.blf-cell.in-use    .blf-state { color: var(--danger); }
+.blf-cell.ringing   .blf-state { color: var(--warn);   }
+.blf-cell.idle      .blf-state { color: var(--txt3);   }
+.blf-cell.unavailable .blf-state { color: var(--txt3); }
+.blf-cell.paused    .blf-state { color: var(--danger); }
+
+/* ── BRIDGED TAB FULL TABLE ─────────────────────────────────────────────────── */
+.bridged-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bridged-ft {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.bridged-ft thead th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  padding: 9px 14px;
+  background: var(--bg-card2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.bridged-ft tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.bridged-ft tbody tr:last-child td { border-bottom: none; }
+.bridged-ft tbody tr:hover td { background: var(--bg-hover); }
+
+.row-idx { color: var(--txt3); font-size: 11px; }
+.arrow-col { text-align: center; color: var(--txt3); width: 36px; }
+.dur-col {
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+/* ── EMPTY STATE ────────────────────────────────────────────────────────────── */
+.empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--txt3);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* ── SECTION HEADER ─────────────────────────────────────────────────────────── */
+.section-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--txt3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.section-hd::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── EXPAND BUTTON on queue card ────────────────────────────────────────────── */
+.queue-card-hd { cursor: pointer; }
+.queue-card-hd:hover { background: #22303c; }
+.queue-card-hd:hover .expand-btn { opacity: 1; }
+
+.expand-btn {
+  background: none;
+  border: 1px solid var(--border-hi);
+  border-radius: 2px;
+  color: var(--txt3);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: var(--font);
+  opacity: 0.4;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+.expand-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1 !important; }
+
+/* ── QUEUE FULLSCREEN MODAL ─────────────────────────────────────────────────── */
+.qmodal {
+  position: fixed;
+  inset: 60px 0 0 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: qmodal-in 0.18s ease-out;
+}
+@keyframes qmodal-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.qmodal-hd {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 72px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  gap: 24px;
+}
+
+.qmodal-title-block { flex: 1; min-width: 0; }
+
+.qmodal-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 2px;
+}
+
+.qmodal-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 30px var(--accent-glow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qmodal-kpis {
+  display: flex;
+  gap: 28px;
+  flex-shrink: 0;
+}
+
+.qm-kpi {
+  text-align: center;
+  min-width: 64px;
+}
+.qm-kpi-val {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1;
+}
+.qm-kpi-val.danger { color: var(--danger); text-shadow: 0 0 16px var(--danger-glow); }
+.qm-kpi-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-top: 3px;
+}
+
+.qmodal-close {
+  background: none;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  color: var(--txt3);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.qmodal-close:hover { color: var(--danger); border-color: var(--danger); }
+
+.qmodal-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  overflow: hidden;
+}
+
+.qmodal-section {
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+.qmodal-section::-webkit-scrollbar { width: 5px; }
+.qmodal-section::-webkit-scrollbar-track { background: transparent; }
+.qmodal-section::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+.qmodal-section + .qmodal-section {
+  border-left: 1px solid var(--border);
+}
+
+.qmodal-section-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Agent cards in modal — large, wall-display style */
+.qm-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.qm-agent {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px 14px;
+  text-align: center;
+  transition: border-color 0.25s, background 0.25s;
+}
+.qm-agent.available {
+  border-color: rgba(63,185,80,0.45);
+  background: var(--ok-dim);
+}
+.qm-agent.busy {
+  border-color: rgba(240,165,0,0.45);
+  background: var(--warn-dim);
+}
+.qm-agent.ringing {
+  border-color: rgba(240,165,0,0.55);
+  background: var(--warn-dim);
+  animation: qm-ring 0.65s ease-in-out infinite alternate;
+}
+.qm-agent.paused {
+  border-color: rgba(255,68,68,0.35);
+  background: var(--danger-dim);
+}
+.qm-agent.unavailable { opacity: 0.35; }
+@keyframes qm-ring { from { opacity: 0.6; } to { opacity: 1; } }
+
+.qm-agent-ext {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1.1;
+}
+.qm-agent-icon { font-size: 22px; margin: 8px 0 6px; line-height: 1; }
+.qm-agent-state {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 6px;
+}
+.qm-agent.available  .qm-agent-state { color: var(--ok);     }
+.qm-agent.busy       .qm-agent-state { color: var(--warn);   }
+.qm-agent.ringing    .qm-agent-state { color: var(--warn);   }
+.qm-agent.paused     .qm-agent-state { color: var(--danger); }
+
+.qm-agent-meta {
+  font-size: 10px;
+  color: var(--txt3);
+}
+.qm-agent.busy { cursor: pointer; }
+.qm-agent.busy:hover { border-color: rgba(240,165,0,0.75); }
+
+/* Agent active call popup */
+.acp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.acp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  padding: 24px 28px 20px;
+  min-width: 340px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  animation: qmodal-in 0.15s ease-out;
+}
+.acp-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.acp-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+.acp-close-btn {
+  background: none;
+  border: none;
+  color: var(--txt3);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.acp-close-btn:hover { color: var(--danger); }
+.acp-rows { margin-bottom: 20px; }
+.acp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.acp-row:last-child { border-bottom: none; }
+.acp-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.acp-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  word-break: break-all;
+}
+.acp-dur-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--warn);
+}
+.acp-actions {
+  display: flex;
+  gap: 8px;
+}
+.acp-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--txt3);
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Callers list in modal */
+.qm-caller {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qm-caller:last-child { border-bottom: none; }
+
+.qm-caller-pos {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt3);
+  width: 28px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.qm-caller-cid {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--txt);
+}
+.qm-caller-wait {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--danger);
+  text-shadow: 0 0 12px var(--danger-glow);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── CHANNELS TAB ────────────────────────────────────────────────────────────── */
+.channels-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.channels-ft {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.channels-ft thead th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  padding: 9px 12px;
+  background: var(--bg-card2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.channels-ft tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.channels-ft tbody tr:last-child td { border-bottom: none; }
+.channels-ft tbody tr:hover td { background: var(--bg-hover); }
+
+.chan-name { font-size: 12px; font-weight: 600; color: var(--txt); }
+.chan-sub  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.chan-state-up        { color: var(--ok);     font-weight: 700; font-size: 10px; letter-spacing: 0.08em; }
+.chan-state-ringing   { color: var(--warn);   font-weight: 700; font-size: 10px; letter-spacing: 0.08em; }
+.chan-state-other     { color: var(--txt3);   font-size: 10px; }
+.chan-bridged         { color: var(--accent); font-size: 10px; }
+.chan-orphan          { color: var(--danger); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.chan-spy             { color: var(--warn);   font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.chan-no-bridge       { color: var(--txt3);   font-size: 10px; }
+
+/* Row highlight for suspicious channels */
+.channels-ft tbody tr.row-orphan td { background: rgba(255,68,68,0.05); }
+.channels-ft tbody tr.row-orphan:hover td { background: rgba(255,68,68,0.10); }
+.channels-ft tbody tr.row-spy td { background: rgba(240,165,0,0.05); }
+.channels-ft tbody tr.row-spy:hover td { background: rgba(240,165,0,0.10); }
+
+.btn-hangup {
+  padding: 5px 11px;
+  background: none;
+  border: 1px solid rgba(255,68,68,0.5);
+  border-radius: 3px;
+  color: var(--danger);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-hangup:hover {
+  background: rgba(255,68,68,0.12);
+  border-color: var(--danger);
+}
+.btn-hangup:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+{% include 'header.html' %}
+<form id="csrf-form" hidden>{% csrf_token %}</form>
+<div class="app">
+
+  <!-- ── TOP NAV ─────────────────────────────────────────────────────────── -->
+  <nav class="topnav">
+
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-tab="overview">{% trans "Overview" %}</div>
+      <div class="nav-tab" data-tab="queues">{% trans "Queues" %}</div>
+      <div class="nav-tab" data-tab="pjsip">PJSIP</div>
+      <div class="nav-tab" data-tab="bridged">{% trans "Bridged" %}</div>
+      <div class="nav-tab" data-tab="channels">{% trans "Channels" %}</div>
+    </div>
+
+    <div class="nav-right">
+      <div class="conn-pill connecting" id="connPill">
+        <div class="conn-led"></div>
+        <span id="connTxt">{% trans "CONNECTING" %}</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ────────────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- TAB: OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-lbl">{% trans "Active Channels" %}</div>
+          <div class="stat-val" id="s-channels">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">{% trans "Bridged Pairs" %}</div>
+          <div class="stat-val" id="s-bridges">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">{% trans "Queues" %}</div>
+          <div class="stat-val" id="s-queues">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">{% trans "Waiting Callers" %}</div>
+          <div class="stat-val" id="s-waiting">0</div>
+        </div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="card">
+          <div class="card-hd">
+            {% trans "Bridged Channels" %}
+            <span class="live-badge">{% trans "LIVE" %}</span>
+          </div>
+          <div id="ov-bridged"><div class="empty">{% trans "No active bridged calls" %}</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-hd">{% trans "Queue Summary" %}</div>
+          <div id="ov-queues"><div class="empty">{% trans "No queues" %}</div></div>
+        </div>
+      </div>
+
+    </div><!-- /overview -->
+
+    <!-- TAB: QUEUES -->
+    <div class="tab-panel" id="tab-queues">
+      <div class="queues-grid" id="queues-grid">
+        <div class="empty">{% trans "No queues configured" %}</div>
+      </div>
+    </div>
+
+    <!-- TAB: PJSIP -->
+    <div class="tab-panel" id="tab-pjsip">
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-pjsip="external">{% trans "External Channels" %}</button>
+        <button class="sub-tab" data-pjsip="internal">{% trans "Internal Users" %}</button>
+      </div>
+      <div id="pjsip-external">
+        <div class="blf-grid" id="peers-grid"><div class="empty">{% trans "No external channels detected" %}</div></div>
+      </div>
+      <div id="pjsip-internal" style="display:none">
+        <div class="blf-grid" id="users-grid"><div class="empty">{% trans "No internal users detected" %}</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: BRIDGED -->
+    <div class="tab-panel" id="tab-bridged">
+      <div class="bridged-table-wrap">
+        <table class="bridged-ft">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>{% trans "Source" %}</th>
+              <th style="width:36px;text-align:center">→</th>
+              <th>{% trans "Destination" %}</th>
+              <th style="text-align:right">{% trans "Duration" %}</th>
+            </tr>
+          </thead>
+          <tbody id="bridged-tbody">
+            <tr><td colspan="5" class="empty">{% trans "No bridged calls" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: ACTIVE CHANNELS -->
+    <div class="tab-panel" id="tab-channels">
+      <div class="channels-wrap">
+        <table class="channels-ft">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>{% trans "Channel" %}</th>
+              <th>{% trans "CallerID" %}</th>
+              <th>{% trans "State" %}</th>
+              <th>{% trans "Context / Exten" %}</th>
+              <th>{% trans "Application" %}</th>
+              <th>{% trans "Bridge" %}</th>
+              <th style="text-align:right">{% trans "Duration" %}</th>
+              <th style="text-align:center">{% trans "Action" %}</th>
+            </tr>
+          </thead>
+          <tbody id="channels-tbody">
+            <tr><td colspan="9" class="empty">{% trans "No active channels" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── QUEUE FULLSCREEN MODAL ──────────────────────────────────────────────── -->
+<div class="qmodal" id="qmodal" style="display:none">
+  <div class="qmodal-hd">
+    <div class="qmodal-title-block">
+      <div class="qmodal-eyebrow">{% trans "Queue" %}</div>
+      <div class="qmodal-name" id="qm-name">—</div>
+    </div>
+
+    <div class="qmodal-kpis">
+      <div class="qm-kpi">
+        <div class="qm-kpi-val danger" id="qm-waiting">0</div>
+        <div class="qm-kpi-lbl">{% trans "Waiting" %}</div>
+      </div>
+      <div class="qm-kpi">
+        <div class="qm-kpi-val" id="qm-agents-cnt">0</div>
+        <div class="qm-kpi-lbl">{% trans "Agents" %}</div>
+      </div>
+      <div class="qm-kpi">
+        <div class="qm-kpi-val" id="qm-avail-cnt">0</div>
+        <div class="qm-kpi-lbl">{% trans "Available" %}</div>
+      </div>
+    </div>
+
+    <button class="qmodal-close" id="qmodal-close">✕ {% trans "ESC" %}</button>
+  </div>
+
+  <div class="qmodal-body">
+    <!-- Agents (left, main area) -->
+    <div class="qmodal-section">
+      <div class="qmodal-section-lbl">{% trans "Agents" %}</div>
+      <div class="qm-agents-grid" id="qm-agents-grid">
+        <div class="empty">{% trans "No agents" %}</div>
+      </div>
+    </div>
+
+    <!-- Callers (right sidebar) -->
+    <div class="qmodal-section">
+      <div class="qmodal-section-lbl">{% trans "Callers in Queue" %}</div>
+      <div id="qm-callers">
+        <div class="empty">{% trans "Queue is empty" %}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="acp-overlay" id="acp-overlay" style="display:none" onclick="if(event.target===this)closeAgentCall()">
+  <div class="acp-card">
+    <div class="acp-hd">
+      <span class="acp-title">&#9679; {% trans "Active Call — Agent" %} <span id="acp-ext">—</span></span>
+      <button class="acp-close-btn" onclick="closeAgentCall()">✕</button>
+    </div>
+    <div class="acp-rows">
+      <div class="acp-row">
+        <span class="acp-lbl">{% trans "Phone" %}</span>
+        <span class="acp-val" id="acp-phone">—</span>
+      </div>
+      <div class="acp-row" id="acp-name-row" style="display:none">
+        <span class="acp-lbl">{% trans "Name" %}</span>
+        <span class="acp-val" id="acp-name">—</span>
+      </div>
+      <div class="acp-row">
+        <span class="acp-lbl">{% trans "Channel" %}</span>
+        <span class="acp-val" id="acp-chan">—</span>
+      </div>
+      <div class="acp-row">
+        <span class="acp-lbl">{% trans "Duration" %}</span>
+        <span class="acp-dur-val" id="acp-dur" data-created="">—</span>
+      </div>
+    </div>
+    <div class="acp-actions">
+      <button class="acp-btn" disabled title="{% trans "Coming soon" %}">👂 {% trans "Listen to call" %}</button>
+      <button class="acp-btn" disabled title="{% trans "Coming soon" %}">🗣 {% trans "Whisper to agent" %}</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const TRANS = {
+  connected:              '{% trans "CONNECTED"|escapejs %}',
+  connecting:             '{% trans "CONNECTING"|escapejs %}',
+  disconnected:           '{% trans "DISCONNECTED"|escapejs %}',
+  noActiveBridgedCalls:   '{% trans "No active bridged calls"|escapejs %}',
+  noQueues:               '{% trans "No queues"|escapejs %}',
+  noQueuesConfigured:     '{% trans "No queues configured"|escapejs %}',
+  noAgents:               '{% trans "No agents"|escapejs %}',
+  queueIsEmpty:           '{% trans "Queue is empty"|escapejs %}',
+  noExternalChannels:     '{% trans "No external channels detected"|escapejs %}',
+  noInternalUsers:        '{% trans "No internal users detected"|escapejs %}',
+  noBridgedCalls:         '{% trans "No bridged calls"|escapejs %}',
+  noActiveChannels:       '{% trans "No active channels"|escapejs %}',
+  agent:                  '{% trans "agent"|escapejs %}',
+  agents:                 '{% trans "agents"|escapejs %}',
+  waiting:                '{% trans "waiting"|escapejs %}',
+  calls:                  '{% trans "calls"|escapejs %}',
+  openFullscreen:         '{% trans "Open fullscreen"|escapejs %}',
+  agentsSection:          '{% trans "Agents"|escapejs %}',
+  callersSection:         '{% trans "Callers"|escapejs %}',
+  orphan:                 '{% trans "ORPHAN"|escapejs %}',
+  bridged:                '{% trans "BRIDGED"|escapejs %}',
+  hangup:                 '{% trans "HANGUP"|escapejs %}',
+  hangupConfirm:          '{% trans "Hangup channel:"|escapejs %}',
+  hangupFailedHttp:       '{% trans "Hangup failed: HTTP"|escapejs %}',
+  hangupFailedJsonHint:   '{% trans "(Expected JSON, got HTML — check server logs)"|escapejs %}',
+  hangupFailed:           '{% trans "Hangup failed:"|escapejs %}',
+  networkError:           '{% trans "Network error:"|escapejs %}',
+  blfIdle:                '{% trans "IDLE"|escapejs %}',
+  blfRing:                '{% trans "RING"|escapejs %}',
+  blfInUse:               '{% trans "IN USE"|escapejs %}',
+  blfNA:                  '{% trans "N/A"|escapejs %}',
+  blfPaused:              '{% trans "PAUSED"|escapejs %}',
+  memberAvailable:        '{% trans "AVAILABLE"|escapejs %}',
+  memberInCall:           '{% trans "IN CALL"|escapejs %}',
+  memberRinging:          '{% trans "RINGING"|escapejs %}',
+};
+
+let activeModal = null;
+let agentCallOpen = false;
+
+function openAgentCall(ext) {
+  const prefix = ('PJSIP/' + ext + '-').toLowerCase();
+  const chanKey = Object.keys(ST.channels).find(k => k.toLowerCase().startsWith(prefix));
+  const chan = chanKey ? ST.channels[chanKey] : null;
+
+  let otherNum = '—', otherName = '', chanName = '—', createdAt = null;
+
+  if (chan) {
+    chanName = chan.channel || '—';
+    createdAt = chan.bridge_id && ST.bridges[chan.bridge_id]
+      ? ST.bridges[chan.bridge_id].created_at
+      : chan.created_at;
+
+    if (chan.bridge_id && ST.bridges[chan.bridge_id]) {
+      const otherKey = ST.bridges[chan.bridge_id].channels.find(c => c !== chanKey);
+      const other = otherKey ? ST.channels[otherKey] : null;
+      if (other) {
+        otherNum  = other.caller_id_num || other.callerid || '—';
+        otherName = other.caller_id_name || '';
+      }
+    }
+  }
+
+  agentCallOpen = true;
+
+  document.getElementById('acp-ext').textContent   = ext;
+  document.getElementById('acp-phone').textContent = otherNum;
+  document.getElementById('acp-chan').textContent   = chanName;
+
+  const nameRow = document.getElementById('acp-name-row');
+  if (otherName) {
+    document.getElementById('acp-name').textContent = otherName;
+    nameRow.style.display = '';
+  } else {
+    nameRow.style.display = 'none';
+  }
+
+  const durEl = document.getElementById('acp-dur');
+  durEl.dataset.created = createdAt || '';
+  durEl.textContent = createdAt ? fmtDur(durNow(createdAt)) : '—';
+
+  document.getElementById('acp-overlay').style.display = 'flex';
+}
+
+function closeAgentCall() {
+  agentCallOpen = false;
+  document.getElementById('acp-overlay').style.display = 'none';
+}
+
+const BLF_MAP = {
+  idle:        { cls: 'idle',        icon: '○', lbl: TRANS.blfIdle   },
+  ringing:     { cls: 'ringing',     icon: '◉', lbl: TRANS.blfRing   },
+  in_use:      { cls: 'in-use',      icon: '●', lbl: TRANS.blfInUse  },
+  unavailable: { cls: 'unavailable', icon: '⊘', lbl: TRANS.blfNA     },
+  paused:      { cls: 'paused',      icon: '⏸', lbl: TRANS.blfPaused },
+};
+
+const MEMBER_ICONS = { available: '○', busy: '●', ringing: '◉', paused: '⏸', unavailable: '⊘' };
+const MEMBER_LBLS  = {
+  available:   TRANS.memberAvailable,
+  busy:        TRANS.memberInCall,
+  ringing:     TRANS.memberRinging,
+  paused:      TRANS.blfPaused,
+  unavailable: TRANS.blfNA,
+};
+
+const ST = {
+  channels:  {},   // channel_name  → channel object
+  queues:    {},   // queue_name    → { members, calls, stats }
+  bridges:   {},   // bridge_id     → { channels:[], created_at }
+  endpoints: {},   // endpoint_name → { state, type:'external'|'internal' }
+  knownUsers: new Set(),   // SIPUser.username values from DB
+  knownPeers: new Set(),   // SIPPeer.name values from DB
+};
+
+let ws = null;
+let wsTimer = null;
+
+/** Establish a WebSocket connection to the Asterisk events stream.
+ *  Automatically reconnects every 5 s after close or error.
+ */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/asterisk/`);
+
+  ws.onopen = () => {
+    setConn('connected');
+    if (wsTimer) { clearTimeout(wsTimer); wsTimer = null; }
+    loadInitial();
+  };
+
+  ws.onmessage = ev => {
+    try { dispatch(JSON.parse(ev.data)); } catch(e) { console.error('WS parse', e); }
+  };
+
+  ws.onerror = () => setConn('disconnected');
+
+  ws.onclose = () => {
+    setConn('disconnected');
+    if (!wsTimer) wsTimer = setTimeout(() => { wsTimer = null; connectWS(); }, 5000);
+  };
+}
+
+/**
+ * Update the connection status pill in the nav bar.
+ * @param {'connected'|'connecting'|'disconnected'} s
+ */
+function setConn(s) {
+  const pill = document.getElementById('connPill');
+  pill.className = 'conn-pill ' + s;
+  document.getElementById('connTxt').textContent = TRANS[s] || s.toUpperCase();
+}
+
+/**
+ * Fetch initial state from the REST API and populate ST.
+ * On system_reset the SIP endpoint lists are stable, so pass
+ * skipEndpoints=true to avoid an unnecessary DB round-trip.
+ * @param {Object} [opts]
+ * @param {boolean} [opts.skipEndpoints=false]
+ */
+async function loadInitial({ skipEndpoints = false } = {}) {
+  try {
+    const requests = [
+      fetch('/dashboard/api/channels/'),
+      fetch('/dashboard/api/queues/'),
+    ];
+    if (!skipEndpoints) requests.push(fetch('/dashboard/api/endpoints/'));
+
+    const [chR, qR, epR] = await Promise.all(requests);
+
+    if (epR && epR.ok) {
+      const epData = await epR.json();
+      ST.knownUsers = new Set(epData.users || []);
+      ST.knownPeers = new Set(epData.peers || []);
+    }
+    if (chR.ok) {
+      ST.channels = await chR.json();
+      rebuildBridges();
+      rebuildEndpoints();
+    }
+    if (qR.ok) {
+      ST.queues = await qR.json();
+      for (const [, q] of Object.entries(ST.queues)) {
+        if (!q.members) continue;
+        for (const [mname, m] of Object.entries(q.members)) {
+          registerMemberEndpoint(mname, m.status, m.paused);
+        }
+      }
+    }
+    renderAll();
+  } catch(e) {
+    console.error('loadInitial', e);
+  }
+}
+
+/**
+ * Route an incoming WebSocket message to the appropriate state mutation
+ * and trigger the minimal set of re-renders needed.
+ * @param {Object} msg
+ * @param {string} msg.type
+ * @param {object} [msg.data]
+ */
+function dispatch(msg) {
+  const type = msg.type;
+  const d    = msg.data || msg;
+
+  switch (type) {
+
+    case 'channel_new':
+      ST.channels[d.channel] = {
+        channel:       d.channel,
+        uniqueid:      d.uniqueid,
+        caller_id_num: d.caller_id_num || d.callerid || '',
+        caller_id_name:d.caller_id_name || '',
+        state:         d.state,
+        bridge_id:     null,
+        created_at:    toUnixSecs(d.created_at),
+      };
+      updateEpFromChan(d.channel, d.state);
+      renderAll();
+      break;
+
+    case 'channel_state_change':
+      if (ST.channels[d.channel]) {
+        ST.channels[d.channel].state = d.state;
+        updateEpFromChan(d.channel, d.state);
+        renderAll();
+      }
+      break;
+
+    case 'channel_hangup':
+      delete ST.channels[d.channel];
+      { const ep = epFromChan(d.channel);
+        if (ep && ST.endpoints[ep]) ST.endpoints[ep].state = 'idle'; }
+      rebuildBridges();
+      renderAll();
+      break;
+
+    case 'channel_bridge_enter':
+    case 'bridge_enter':
+      if (ST.channels[d.channel]) ST.channels[d.channel].bridge_id = d.bridge_id;
+      if (!ST.bridges[d.bridge_id])
+        ST.bridges[d.bridge_id] = { channels: [], created_at: Date.now() / 1000 };
+      if (!ST.bridges[d.bridge_id].channels.includes(d.channel))
+        ST.bridges[d.bridge_id].channels.push(d.channel);
+      renderAll();
+      break;
+
+    case 'channel_bridge_leave':
+    case 'bridge_leave':
+      if (ST.channels[d.channel]) ST.channels[d.channel].bridge_id = null;
+      if (ST.bridges[d.bridge_id]) {
+        ST.bridges[d.bridge_id].channels =
+          ST.bridges[d.bridge_id].channels.filter(c => c !== d.channel);
+        if (ST.bridges[d.bridge_id].channels.length < 2)
+          delete ST.bridges[d.bridge_id];
+      }
+      renderAll();
+      break;
+
+    case 'queue_member_status':
+      ensureQ(d.queue);
+      ST.queues[d.queue].members[d.name] = {
+        name: d.name, status: d.status, paused: d.paused,
+        calls_taken: d.calls_taken, location: d.location, in_call: d.in_call,
+      };
+      registerMemberEndpoint(d.name, d.status, d.paused);
+      renderQueuesTab(); renderOvQueues(); renderStats(); renderPJSIP();
+      break;
+
+    case 'queue_caller_join':
+      ensureQ(d.queue);
+      ST.queues[d.queue].calls[d.unique_id] = {
+        caller_id: d.caller_id,
+        position:  d.position,
+        wait_start: d.wait_start || Date.now() / 1000,
+      };
+      ST.queues[d.queue].stats.waiting =
+        Object.keys(ST.queues[d.queue].calls).length;
+      renderQueuesTab(); renderOvQueues(); renderStats();
+      break;
+
+    case 'queue_caller_leave':
+    case 'agent_connect':
+      if (ST.queues[d.queue]) {
+        delete ST.queues[d.queue].calls[d.unique_id];
+        ST.queues[d.queue].stats.waiting =
+          Object.keys(ST.queues[d.queue].calls).length;
+        renderQueuesTab(); renderOvQueues(); renderStats();
+      }
+      break;
+
+    case 'system_reset':
+      ST.channels = {}; ST.queues = {}; ST.bridges = {}; ST.endpoints = {};
+      renderAll();
+      loadInitial({ skipEndpoints: true });
+      break;
+  }
+}
+
+/** Create a default queue entry in ST.queues if one does not already exist. */
+function ensureQ(name) {
+  if (!ST.queues[name])
+    ST.queues[name] = { members: {}, calls: {}, stats: { waiting: 0 } };
+}
+
+/**
+ * Extract the PJSIP endpoint name from a full channel string.
+ * e.g. "PJSIP/101-0000a1b2" → "101"
+ * @returns {string|null}
+ */
+function epFromChan(ch) {
+  const m = ch.match(/^PJSIP\/(.+)-[0-9a-f]+$/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * Extract the endpoint name from a queue member location string.
+ * e.g. "PJSIP/101" → "101", "SIP/trunk_a" → "trunk_a"
+ * @returns {string|null}
+ */
+function epFromLoc(loc) {
+  const m = String(loc || '').match(/^(?:PJSIP|SIP)\/(.+)$/i);
+  return m ? m[1] : null;
+}
+
+/** Return true if s consists entirely of decimal digits. */
+function isNum(s) { return /^\d+$/.test(s); }
+
+/**
+ * Map an Asterisk queue member status code and paused flag to a semantic state.
+ * Asterisk codes: 1=Not In Use, 2=In Use, 3=Busy, 4=Invalid,
+ *                 5=Unavailable, 6=Ringing, 7=Ringing+In Use, 8=On Hold.
+ * @returns {'idle'|'in_use'|'ringing'|'paused'|'unavailable'}
+ */
+function memberStateOf(status, paused) {
+  if (paused) return 'paused';
+  const n = parseInt(status, 10);
+  if (n === 1) return 'idle';
+  if (n === 2 || n === 3 || n === 8) return 'in_use';
+  if (n === 4 || n === 5) return 'unavailable';
+  if (n === 6 || n === 7) return 'ringing';
+  return 'idle';
+}
+
+/**
+ * Map an Asterisk channel state numeric code to a simplified endpoint state.
+ * Relevant codes: 4=Ring, 5=Ringing, 6=Up (in call).
+ * @returns {'idle'|'in_use'|'ringing'}
+ */
+function chanStateOf(s) {
+  if (typeof s === 'string') {
+    const l = s.toLowerCase();
+    if (l === 'up') return 'in_use';
+    if (l === 'ringing' || l === 'ring') return 'ringing';
+  }
+  const n = parseInt(s, 10);
+  if (n === 6) return 'in_use';
+  if (n === 4 || n === 5) return 'ringing';
+  return 'idle';
+}
+
+/**
+ * Determine whether an endpoint is internal (SIPUser) or external (SIPPeer).
+ * Checks ST.knownUsers / ST.knownPeers populated from the DB; falls back to a
+ * numeric-name heuristic when the lists are not yet loaded.
+ * @returns {'internal'|'external'}
+ */
+function epType(ep) {
+  if (ST.knownUsers.has(ep)) return 'internal';
+  if (ST.knownPeers.has(ep)) return 'external';
+  // fallback when DB lists not yet loaded: numeric → internal, else external
+  return isNum(ep) ? 'internal' : 'external';
+}
+
+/**
+ * Update (or create) an ST.endpoints entry based on a channel state event.
+ * @param {string} ch  Full channel name, e.g. "PJSIP/101-0000a1b2"
+ * @param {number} s   Asterisk channel state code
+ */
+function updateEpFromChan(ch, s) {
+  const ep = epFromChan(ch);
+  if (!ep) return;
+  if (!ST.endpoints[ep]) ST.endpoints[ep] = { state: 'idle', type: epType(ep) };
+  ST.endpoints[ep].state = chanStateOf(s);
+}
+
+/**
+ * Update (or create) an ST.endpoints entry based on a queue member status event.
+ * @param {string}  name    Queue member name / location (e.g. "PJSIP/101")
+ * @param {number}  status  Asterisk member status code
+ * @param {boolean} paused
+ */
+function registerMemberEndpoint(name, status, paused) {
+  const ep = epFromLoc(name) || name;
+  if (!ST.endpoints[ep]) ST.endpoints[ep] = { state: 'idle', type: epType(ep) };
+  ST.endpoints[ep].state = memberStateOf(status, paused);
+}
+
+/**
+ * Reconstruct ST.bridges from the bridge_id fields of all active channels.
+ * Bridges with fewer than two participants are discarded.
+ */
+function rebuildBridges() {
+  ST.bridges = {};
+  for (const [name, ch] of Object.entries(ST.channels)) {
+    if (!ch.bridge_id) continue;
+    if (!ST.bridges[ch.bridge_id])
+      ST.bridges[ch.bridge_id] = { channels: [], created_at: toUnixSecs(ch.bridged_at || ch.created_at) };
+    if (!ST.bridges[ch.bridge_id].channels.includes(name))
+      ST.bridges[ch.bridge_id].channels.push(name);
+  }
+  for (const bid of Object.keys(ST.bridges))
+    if (ST.bridges[bid].channels.length < 2) delete ST.bridges[bid];
+}
+
+/**
+ * Rebuild ST.endpoints from active PJSIP channels and the DB endpoint lists.
+ * All endpoints in ST.knownUsers / ST.knownPeers are seeded as idle so that
+ * the BLF grid shows every known endpoint, not only currently active ones.
+ * Endpoints no longer in any active channel are reset to 'idle'.
+ */
+function rebuildEndpoints() {
+  const seen = new Set();
+  for (const [name, ch] of Object.entries(ST.channels)) {
+    if (!name.startsWith('PJSIP/')) continue;
+    const ep = epFromChan(name);
+    if (!ep) continue;
+    seen.add(ep);
+    if (!ST.endpoints[ep]) ST.endpoints[ep] = { state: 'idle', type: epType(ep) };
+    ST.endpoints[ep].state = chanStateOf(ch.state);
+    ST.endpoints[ep].type  = epType(ep);
+  }
+  // Also seed all known DB endpoints as idle if not yet in state
+  for (const u of ST.knownUsers)
+    if (!ST.endpoints[u]) ST.endpoints[u] = { state: 'idle', type: 'internal' };
+  for (const p of ST.knownPeers)
+    if (!ST.endpoints[p]) ST.endpoints[p] = { state: 'idle', type: 'external' };
+  // Clear state for endpoints no longer in any active channel
+  for (const ep of Object.keys(ST.endpoints))
+    if (!seen.has(ep)) ST.endpoints[ep].state = 'idle';
+}
+
+/**
+ * Format a duration in seconds as a zero-padded "MM:SS" string.
+ * @param {number} secs
+ * @returns {string}
+ */
+function fmtDur(secs) {
+  const s = Math.max(0, Math.round(secs));
+  return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+}
+/** Normalize a timestamp (Unix seconds, Unix ms, or ISO string) to Unix seconds. */
+function toUnixSecs(ts) {
+  if (!ts) return Date.now() / 1000;
+  const n = Number(ts);
+  if (!isNaN(n)) return n > 1e10 ? n / 1000 : n;
+  const d = new Date(ts);
+  return isNaN(d) ? Date.now() / 1000 : d.getTime() / 1000;
+}
+/** Return the number of seconds elapsed since the given timestamp. */
+function durNow(ts) { return Date.now() / 1000 - toUnixSecs(ts); }
+
+/**
+ * Build a list of active bridge pairs with resolved channel objects, sorted
+ * by bridge creation time ascending (oldest call first).
+ * @returns {{ bid: string, src: object, dst: object, created_at: number }[]}
+ */
+function chanHexSeq(channelName) {
+  const m = channelName && channelName.match(/-([0-9a-f]+)$/i);
+  return m ? parseInt(m[1], 16) : 0;
+}
+
+function bridgePairs() {
+  const out = [];
+  for (const [bid, br] of Object.entries(ST.bridges)) {
+    if (br.channels.length < 2) continue;
+    let a = ST.channels[br.channels[0]];
+    let b = ST.channels[br.channels[1]];
+    if (!a || !b) continue;
+    if (chanHexSeq(a.channel) > chanHexSeq(b.channel)) { [a, b] = [b, a]; }
+    out.push({ bid, src: a, dst: b, created_at: br.created_at });
+  }
+  return out.sort((a, b) => a.created_at - b.created_at);
+}
+
+/**
+ * Extract display-ready fields from a channel object.
+ * Returns safe defaults when ch is null/undefined.
+ * @returns {Object} obj
+ * @returns {string} obj.num
+ * @returns {string} obj.name
+ * @returns {string} obj.chan
+ */
+function callerDisp(ch) {
+  return {
+    num:  ch ? (ch.caller_id_num || ch.callerid || '—') : '—',
+    name: ch ? (ch.caller_id_name || '') : '',
+    chan: ch ? (ch.channel || '') : '',
+  };
+}
+
+/**
+ * Escape a value for safe insertion into an HTML string.
+ * Handles null / undefined by coercing to an empty string.
+ * @param {*} s
+ * @returns {string}
+ */
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/**
+ * Re-render every visible section of the page.
+ * bridgePairs() is computed once here and forwarded to both bridge renderers
+ * to avoid duplicate traversal.
+ */
+function renderAll() {
+  const pairs = bridgePairs();
+  renderStats();
+  renderOvBridged(pairs);
+  renderOvQueues();
+  renderQueuesTab();
+  renderPJSIP();
+  renderBridgedTab(pairs);
+  renderChannelsTab();
+  if (activeModal) renderModal();
+}
+
+/** Update the four top-level KPI counters (channels, bridges, queues, waiting). */
+function renderStats() {
+  document.getElementById('s-channels').textContent = Object.keys(ST.channels).length;
+  document.getElementById('s-bridges').textContent  = Object.keys(ST.bridges).length;
+  document.getElementById('s-queues').textContent   = Object.keys(ST.queues).length;
+  let w = 0;
+  for (const q of Object.values(ST.queues)) w += (q.stats && q.stats.waiting) || 0;
+  document.getElementById('s-waiting').textContent = w;
+}
+
+/**
+ * Render the compact bridged-channels table on the Overview tab.
+ * @param {{ bid, src, dst, created_at }[]} prs  Pre-computed bridge pairs
+ */
+function renderOvBridged(prs) {
+  const el = document.getElementById('ov-bridged');
+  if (!prs.length) { el.innerHTML = `<div class="empty">${TRANS.noActiveBridgedCalls}</div>`; return; }
+
+  let h = '<table class="bt"><tbody>';
+  for (const p of prs) {
+    const s = callerDisp(p.src), d = callerDisp(p.dst);
+    h += `<tr>
+      <td>
+        <div class="ch-num">${esc(s.num)}</div>
+        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
+        <div class="ch-sub">${esc(s.chan)}</div>
+      </td>
+      <td class="ch-arrow">⇄</td>
+      <td>
+        <div class="ch-num">${esc(d.num)}</div>
+        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
+        <div class="ch-sub">${esc(d.chan)}</div>
+      </td>
+      <td class="ch-dur" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
+    </tr>`;
+  }
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+/** Render the queue summary list on the Overview tab (up to 6 queues, alphabetical). */
+function renderOvQueues() {
+  const el = document.getElementById('ov-queues');
+  const sorted = Object.entries(ST.queues).sort(([a],[b]) => a.localeCompare(b));
+  if (!sorted.length) { el.innerHTML = `<div class="empty">${TRANS.noQueues}</div>`; return; }
+
+  let h = '';
+  for (const [name, q] of sorted.slice(0, 6)) {
+    const w   = (q.stats && q.stats.waiting) || 0;
+    const cnt = q.members ? Object.keys(q.members).length : 0;
+    const cls = w > 0 ? 'badge-danger' : 'badge-neutral';
+    h += `<div class="qs-row">
+      <div>
+        <div class="qs-name">${esc(name)}</div>
+        <div class="qs-meta">${cnt} ${cnt !== 1 ? TRANS.agents : TRANS.agent}</div>
+      </div>
+      <span class="badge ${cls}">${w} ${TRANS.waiting}</span>
+    </div>`;
+  }
+  el.innerHTML = h;
+}
+
+/** Render all queue cards in the Queues tab, sorted alphabetically by name. */
+function renderQueuesTab() {
+  const el     = document.getElementById('queues-grid');
+  const sorted = Object.entries(ST.queues).sort(([a],[b]) => a.localeCompare(b));
+
+  if (!sorted.length) {
+    el.innerHTML = `<div class="empty">${TRANS.noQueuesConfigured}</div>`;
+    return;
+  }
+
+  let h = '';
+  for (const [qname, q] of sorted) {
+    const w   = (q.stats && q.stats.waiting) || 0;
+    const bcl = w > 0 ? 'badge-danger' : 'badge-neutral';
+
+    // Members
+    let mh = '';
+    if (q.members && Object.keys(q.members).length) {
+      for (const [, m] of Object.entries(q.members)) {
+        const cls  = memberClass(m.status, m.paused);
+        const disp = epFromLoc(m.location || m.name) || m.name;
+        mh += `<div class="mchip ${cls}"><div class="mchip-dot"></div>${esc(disp)}</div>`;
+      }
+    } else {
+      mh = `<span style="color:var(--txt3);font-size:11px">${TRANS.noAgents}</span>`;
+    }
+
+    // Callers
+    let ch = '';
+    if (q.calls && Object.keys(q.calls).length) {
+      for (const [uid, c] of Object.entries(q.calls)) {
+        const ws = c.wait_start || 0;
+        ch += `<div class="caller-row">
+          <span class="caller-cid">${esc(c.caller_id || '—')}</span>
+          <span class="caller-wait" data-wait="${ws}">${ws ? fmtDur(durNow(ws)) : '—'}</span>
+        </div>`;
+      }
+    } else {
+      ch = `<div style="color:var(--txt3);font-size:11px;padding:4px 0">${TRANS.queueIsEmpty}</div>`;
+    }
+
+    h += `<div class="queue-card">
+      <div class="queue-card-hd" onclick="openModal('${esc(qname)}')">
+        <span class="queue-card-name">${esc(qname)}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge ${bcl}">${w}</span>
+          <button class="expand-btn" title="${TRANS.openFullscreen}">⛶</button>
+        </div>
+      </div>
+      <div class="queue-card-body">
+        <div class="section-lbl">${TRANS.agentsSection}</div>
+        <div class="members-row">${mh}</div>
+        <div class="section-lbl">${TRANS.callersSection}</div>
+        <div>${ch}</div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = h;
+}
+
+/**
+ * Map an Asterisk queue member status code and paused flag to a CSS class name.
+ * @param {string|number} status   Asterisk member status code
+ * @param {boolean}       paused
+ * @param {string}        [fallback='']  Returned for unrecognised status codes
+ * @returns {'available'|'busy'|'ringing'|'paused'|'unavailable'|string}
+ */
+function memberClass(status, paused, fallback = '') {
+  if (paused) return 'paused';
+  const n = parseInt(status, 10);
+  if (n === 1) return 'available';
+  if (n === 2 || n === 3 || n === 8) return 'busy';
+  if (n === 4 || n === 5) return 'unavailable';
+  if (n === 6 || n === 7) return 'ringing';
+  return fallback;
+}
+
+/**
+ * Render the PJSIP BLF grids.
+ * Splits ST.endpoints into External Channels (SIPPeer) and
+ * Internal Users (SIPUser) panels based on the endpoint's stored type.
+ */
+function renderPJSIP() {
+  const external = [], internal = [];
+  for (const [ep, d] of Object.entries(ST.endpoints)) {
+    (d.type === 'internal' ? internal : external).push([ep, d]);
+  }
+  external.sort(([a],[b]) => a.localeCompare(b));
+  internal.sort(([a],[b]) => {
+    const na = parseInt(a,10), nb = parseInt(b,10);
+    return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b);
+  });
+
+  const pg = document.getElementById('peers-grid');
+  const ug = document.getElementById('users-grid');
+
+  pg.innerHTML = external.length
+    ? external.map(([ep,d]) => blfCell(ep, d)).join('')
+    : `<div class="empty">${TRANS.noExternalChannels}</div>`;
+
+  ug.innerHTML = internal.length
+    ? internal.map(([ep,d]) => blfCell(ep, d)).join('')
+    : `<div class="empty">${TRANS.noInternalUsers}</div>`;
+}
+
+/**
+ * Build the HTML string for a single BLF status cell.
+ * @param {string}              ep  Endpoint name (displayed as extension label)
+ * @param {Object} d   Endpoint state object from ST.endpoints
+ * @param {string} d.state
+ * @returns {string}  HTML snippet
+ */
+function blfCell(ep, d) {
+  const m = BLF_MAP[d.state] || BLF_MAP.idle;
+  return `<div class="blf-cell ${m.cls}">
+    <div class="blf-ext">${esc(ep)}</div>
+    <div class="blf-icon">${m.icon}</div>
+    <div class="blf-state">${m.lbl}</div>
+  </div>`;
+}
+
+/**
+ * Render the full bridged-channels table in the Bridged tab.
+ * @param {{ bid, src, dst, created_at }[]} prs  Pre-computed bridge pairs
+ */
+function renderBridgedTab(prs) {
+  const el = document.getElementById('bridged-tbody');
+  if (!prs.length) {
+    el.innerHTML = `<tr><td colspan="5" class="empty">${TRANS.noBridgedCalls}</td></tr>`;
+    return;
+  }
+
+  let h = '';
+  prs.forEach((p, i) => {
+    const s = callerDisp(p.src), d = callerDisp(p.dst);
+    h += `<tr>
+      <td class="row-idx">${i + 1}</td>
+      <td>
+        <div class="ch-num">${esc(s.num)}</div>
+        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
+        <div class="ch-sub">${esc(s.chan)}</div>
+      </td>
+      <td class="arrow-col">→</td>
+      <td>
+        <div class="ch-num">${esc(d.num)}</div>
+        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
+        <div class="ch-sub">${esc(d.chan)}</div>
+      </td>
+      <td class="dur-col" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
+    </tr>`;
+  });
+  el.innerHTML = h;
+}
+
+setInterval(() => {
+  const now = Date.now() / 1000;
+  document.querySelectorAll('[data-created],[data-wait]').forEach(el => {
+    const t = parseFloat(el.dataset.created || el.dataset.wait);
+    if (t) el.textContent = fmtDur(now - t);
+  });
+}, 1000);
+
+/**
+ * Open the fullscreen queue modal for the specified queue.
+ * @param {string} qname  Queue name key from ST.queues
+ */
+function openModal(qname) {
+  activeModal = qname;
+  document.getElementById('qmodal').style.display = 'flex';
+  renderModal();
+}
+
+/** Hide the fullscreen queue modal and clear the active queue reference. */
+function closeModal() {
+  activeModal = null;
+  document.getElementById('qmodal').style.display = 'none';
+}
+
+/**
+ * Re-render all content inside the open queue modal:
+ * KPI counters, agent grid (sorted by extension), and callers list
+ * (sorted by wait time ascending — longest-waiting caller first).
+ * No-op when activeModal is null or the queue no longer exists.
+ */
+function renderModal() {
+  const qname = activeModal;
+  const q = ST.queues[qname];
+  if (!q) return;
+
+  const members = q.members || {};
+  const calls   = q.calls   || {};
+  const waiting = (q.stats && q.stats.waiting) || Object.keys(calls).length;
+  const total   = Object.keys(members).length;
+  const avail   = Object.values(members).filter(m => !m.paused && parseInt(m.status, 10) === 1).length;
+
+  document.getElementById('qm-name').textContent     = qname;
+  document.getElementById('qm-waiting').textContent  = waiting;
+  document.getElementById('qm-agents-cnt').textContent = total;
+  document.getElementById('qm-avail-cnt').textContent  = avail;
+
+  // Agents grid
+  const grid = document.getElementById('qm-agents-grid');
+  if (!total) {
+    grid.innerHTML = `<div class="empty">${TRANS.noAgents}</div>`;
+  } else {
+    const sorted = Object.entries(members).sort(([a],[b]) => {
+      const ea = epFromLoc(a) || a, eb = epFromLoc(b) || b;
+      const na = parseInt(ea, 10), nb = parseInt(eb, 10);
+      return (!isNaN(na) && !isNaN(nb)) ? na - nb : ea.localeCompare(eb);
+    });
+    grid.innerHTML = sorted.map(([, m]) => {
+      const cls  = memberClass(m.status, m.paused, 'available');
+      const disp = epFromLoc(m.location || m.name) || m.name;
+      const click = cls === 'busy' ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
+      return `<div class="qm-agent ${cls}"${click}>
+        <div class="qm-agent-ext">${esc(disp)}</div>
+        <div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>
+        <div class="qm-agent-state">${MEMBER_LBLS[cls] || TRANS.blfIdle}</div>
+        <div class="qm-agent-meta">${m.calls_taken ? m.calls_taken + ' ' + TRANS.calls : ''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Callers list — sorted by wait time descending (longest wait first)
+  const callersEl = document.getElementById('qm-callers');
+  const callList  = Object.entries(calls);
+  if (!callList.length) {
+    callersEl.innerHTML = `<div class="empty">${TRANS.queueIsEmpty}</div>`;
+  } else {
+    callList.sort(([,a],[,b]) => (a.wait_start || 0) - (b.wait_start || 0));
+    callersEl.innerHTML = callList.map(([, c], i) => {
+      const ws = c.wait_start || 0;
+      return `<div class="qm-caller">
+        <div class="qm-caller-pos">#${i + 1}</div>
+        <div class="qm-caller-cid">${esc(c.caller_id || '—')}</div>
+        <div class="qm-caller-wait" data-wait="${ws}">${ws ? fmtDur(durNow(ws)) : '—'}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+document.getElementById('qmodal-close').addEventListener('click', closeModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (agentCallOpen) closeAgentCall();
+    else if (activeModal) closeModal();
+  }
+});
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const panel = document.getElementById('tab-' + tab.dataset.tab);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+document.querySelectorAll('.sub-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pjsip-external').style.display =
+      btn.dataset.pjsip === 'external' ? '' : 'none';
+    document.getElementById('pjsip-internal').style.display =
+      btn.dataset.pjsip === 'internal' ? '' : 'none';
+  });
+});
+
+/** Return the CSRF token from cookies (needed for POST requests). */
+function getCsrfToken() {
+  const el = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]');
+  return el ? el.value : '';
+}
+
+/**
+ * Render the Active Channels tab table from ST.channels.
+ * Sorted by creation time ascending (oldest first).
+ */
+const SPY_APPS = new Set(['chanspy', 'extenspy', 'mixmonitor', 'spylocal']);
+
+function renderChannelsTab() {
+  if (!document.getElementById('tab-channels').classList.contains('active')) return;
+  const el = document.getElementById('channels-tbody');
+  const chans = Object.values(ST.channels);
+  if (!chans.length) {
+    el.innerHTML = `<tr><td colspan="9" class="empty">${TRANS.noActiveChannels}</td></tr>`;
+    return;
+  }
+
+  chans.sort((a, b) => toUnixSecs(a.created_at) - toUnixSecs(b.created_at));
+
+  el.innerHTML = chans.map((ch, i) => {
+    const stateRaw = String(ch.state || '').toLowerCase();
+    const stateLabel = stateRaw ? stateRaw.toUpperCase() : '—';
+    let stateCls = 'chan-state-other';
+    if (stateRaw === 'up')                                  stateCls = 'chan-state-up';
+    else if (stateRaw === 'ringing' || stateRaw === 'ring') stateCls = 'chan-state-ringing';
+
+    const callerNum  = ch.caller_id_num  || '—';
+    const callerName = ch.caller_id_name || '';
+    const context    = ch.context  || '';
+    const exten      = ch.exten    || '';
+    const app        = ch.application || '';
+    const appData    = ch.app_data || '';
+    const bridgeId   = ch.bridge_id;
+    const created    = toUnixSecs(ch.created_at);
+    const appLower   = app.toLowerCase();
+
+    // Detect channel health
+    const isSpy     = SPY_APPS.has(appLower);
+    const livebridge = bridgeId && ST.bridges[bridgeId] &&
+                       ST.bridges[bridgeId].channels.length >= 2;
+    const isOrphan  = bridgeId && !livebridge;   // claims a bridge that is gone/incomplete
+
+    // Row highlight class
+    let rowCls = '';
+    if (isOrphan) rowCls = 'row-orphan';
+    else if (isSpy) rowCls = 'row-spy';
+
+    // Bridge status cell
+    let bridgeCell;
+    if (isOrphan) {
+      bridgeCell = `<span class="chan-orphan" title="Bridge ${esc(bridgeId)} has no live pair">⚠ ${TRANS.orphan}</span>`;
+    } else if (livebridge) {
+      bridgeCell = `<span class="chan-bridged" title="${esc(bridgeId)}">● ${TRANS.bridged}</span>`;
+    } else {
+      bridgeCell = `<span class="chan-no-bridge">—</span>`;
+    }
+
+    // Application cell — highlight spy apps
+    let appCell = '—';
+    if (app) {
+      const appLabel = isSpy
+        ? `<span class="chan-spy">${esc(app)}</span>`
+        : `<div class="chan-name">${esc(app)}</div>`;
+      appCell = appLabel + (appData ? `<div class="chan-sub">${esc(appData)}</div>` : '');
+    }
+
+    const ctxCell = (context || exten)
+      ? `<div class="chan-name">${esc(context)}</div>${exten ? `<div class="chan-sub">${esc(exten)}</div>` : ''}`
+      : '—';
+
+    return `<tr class="${rowCls}">
+      <td class="row-idx">${i + 1}</td>
+      <td>
+        <div class="chan-name">${esc(ch.channel)}</div>
+        ${ch.uniqueid ? `<div class="chan-sub">${esc(ch.uniqueid)}</div>` : ''}
+      </td>
+      <td>
+        <div class="chan-name">${esc(callerNum)}</div>
+        ${callerName ? `<div class="ch-name">${esc(callerName)}</div>` : ''}
+      </td>
+      <td><span class="${stateCls}">${esc(stateLabel)}</span></td>
+      <td>${ctxCell}</td>
+      <td>${appCell}</td>
+      <td>${bridgeCell}</td>
+      <td class="dur-col" data-created="${created}">${fmtDur(durNow(created))}</td>
+      <td style="text-align:center">
+        <button class="btn-hangup" onclick="hangupChannel(this,'${esc(ch.channel)}')">${TRANS.hangup}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/**
+ * Send AMI Hangup for the given channel.
+ * Disables the button while the request is in flight.
+ */
+async function hangupChannel(btn, channel) {
+  if (!confirm(`${TRANS.hangupConfirm}\n${channel}?`)) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const resp = await fetch('/dashboard/api/channels/hangup/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ channel }),
+    });
+
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      // Server returned HTML (403 CSRF, 500 error, redirect, etc.)
+      alert(`${TRANS.hangupFailedHttp} ${resp.status} ${resp.statusText}\n${TRANS.hangupFailedJsonHint}`);
+      btn.disabled = false;
+      btn.textContent = TRANS.hangup;
+      return;
+    }
+
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      alert(`${TRANS.hangupFailed} ${data.error || resp.status}`);
+      btn.disabled = false;
+      btn.textContent = TRANS.hangup;
+    }
+  } catch (e) {
+    alert(`${TRANS.networkError} ${e}`);
+    btn.disabled = false;
+    btn.textContent = TRANS.hangup;
+  }
+}
+
+connectWS();
+</script>
+{% endblock %}

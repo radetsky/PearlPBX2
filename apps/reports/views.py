@@ -551,7 +551,10 @@ class CDRReportView(ReportViewPermissionMixin, View):
             if direction == "incoming":
                 qs = qs.filter(channel_q(peer_pattern, "channel"))
             elif direction == "outgoing":
-                qs = qs.filter(channel_q(user_pattern, "channel"))
+                qs = qs.filter(
+                    channel_q(user_pattern, "channel")
+                    & channel_q(peer_pattern, "dstchannel")
+                )
             elif direction == "internal":
                 qs = qs.filter(
                     channel_q(user_pattern, "channel")

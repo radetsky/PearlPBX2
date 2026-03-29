@@ -160,7 +160,10 @@
                                         {{ cdr.dstchannel|channel_name|default:"-" }}
                                     </td>
                                     <td class="uk-text-small">
-                                        <div>{{ cdr.duration|duration_format }}</div>
+                                        <div>
+                                            {{ cdr.duration|duration_format }}
+                                            <span class="cdr-click-hint">{% trans "click for details" %}</span>
+                                        </div>
                                     </td>
                                     <td class="uk-text-truncate uk-text-small">
                                         {% if cdr.get_audio_url %}
@@ -279,6 +282,18 @@
                 </tbody>
             </table>
     <style>
+    .cdr-click-hint {
+        display: none;
+        font-size: 10px;
+        color: #aaa;
+        font-style: italic;
+        white-space: nowrap;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+    .cdr-row:hover .cdr-click-hint {
+        display: inline;
+    }
     /* Compact modal table for CDR details */
     .cdr-details-mini-table td, .cdr-details-mini-table th {
         padding-top: 2px !important;
@@ -397,6 +412,11 @@
             });
             UIkit.modal('#cdr-details-modal').show();
         }
+
+        // Stop audio when modal is closed
+        UIkit.util.on('#cdr-details-modal', 'hide', function() {
+            stopCurrentAudio();
+        });
 
         // Attach click handler to all CDR rows and links
         document.addEventListener('DOMContentLoaded', function() {

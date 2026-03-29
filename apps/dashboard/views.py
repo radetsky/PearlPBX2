@@ -7,11 +7,16 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
+
+from asterisk.ami import AMIClient, SimpleAction
+
+from core.models import SIPUser, SIPPeer
 
 logger = logging.getLogger(__name__)
 
-_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/]+$")
+_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/@]+$")
 
 
 def _get_redis():
@@ -22,6 +27,25 @@ def _get_redis():
 def operator_panel(request):
     """Operator Dashboard - main page"""
     return render(request, "dashboard/operator_panel.html")
+
+
+@login_required
+def new_dashboard(request):
+    """Render the new dark-theme live operator dashboard."""
+    return render(request, "dashboard/new_dashboard.html")
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_sip_endpoints(request):
+    """Return internal SIP user usernames and external SIP peer names from the DB.
+
+    Used by the frontend to classify PJSIP channel endpoints as internal
+    (registered users) or external (trunks / providers).
+    """
+    users = list(SIPUser.objects.values_list("username", flat=True))
+    peers = list(SIPPeer.objects.values_list("name", flat=True))
+    return JsonResponse({"users": users, "peers": peers})
 
 
 @login_required
@@ -253,6 +277,52 @@ def uline_flush(request):
         return JsonResponse({"deleted": count})
     except redis.exceptions.ConnectionError:
         return JsonResponse({"error": "Redis unavailable"}, status=503)
+
+
+@login_required
+@csrf_protect
+@require_http_methods(["POST"])
+def hangup_channel(request):
+    """Send AMI Hangup action for the given channel."""
+    try:
+        body = json.loads(request.body)
+        channel = body.get("channel", "")
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({"error": "Invalid request body"}, status=400)
+
+    if not channel or not _VALID_NAME_RE.match(channel):
+        return JsonResponse({"error": "Invalid channel name"}, status=400)
+
+    client = None
+    try:
+        client = AMIClient(
+            address=settings.ASTERISK_MANAGER_HOST,
+            port=settings.ASTERISK_MANAGER_PORT,
+        )
+        client.login(
+            username=settings.ASTERISK_MANAGER_USERNAME,
+            secret=settings.ASTERISK_MANAGER_SECRET,
+        )
+        future = client.send_action(SimpleAction("Hangup", Channel=channel))
+        response = future.response
+    except Exception as e:
+        logger.error(f"AMI hangup error for {channel}: {e}")
+        return JsonResponse({"error": str(e)}, status=502)
+    finally:
+        if client is not None:
+            try:
+                client.logoff()
+            except Exception:
+                pass
+
+    if response is None:
+        return JsonResponse({"error": "No response from AMI"}, status=502)
+
+    if response.status == "Success":
+        logger.info(f"Hangup sent for {channel} by {request.user}")
+        return JsonResponse({"ok": True})
+
+    return JsonResponse({"error": response.status}, status=400)
 
 
 @login_required

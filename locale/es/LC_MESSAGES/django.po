@@ -2680,3 +2680,160 @@ msgstr "Sin conexión (Peers)"
 
 msgid "Unbridged (Users)"
 msgstr "Sin conexión (Users)"
+
+
+msgid "Dashboard Live"
+msgstr "Panel en vivo"
+
+msgid "Overview"
+msgstr "Resumen"
+
+msgid "Channels"
+msgstr "Canales"
+
+msgid "CONNECTING"
+msgstr "CONECTANDO"
+
+msgid "CONNECTED"
+msgstr "CONECTADO"
+
+msgid "DISCONNECTED"
+msgstr "DESCONECTADO"
+
+msgid "Bridged Pairs"
+msgstr "Pares conectados"
+
+msgid "Waiting Callers"
+msgstr "Llamantes en espera"
+
+msgid "Bridged Channels"
+msgstr "Canales conectados"
+
+msgid "LIVE"
+msgstr "EN VIVO"
+
+msgid "No active bridged calls"
+msgstr "No hay llamadas conectadas activas"
+
+msgid "Queue Summary"
+msgstr "Resumen de colas"
+
+msgid "No queues"
+msgstr "Sin colas"
+
+msgid "External Channels"
+msgstr "Canales externos"
+
+msgid "Internal Users"
+msgstr "Usuarios internos"
+
+msgid "No external channels detected"
+msgstr "No se detectaron canales externos"
+
+msgid "No internal users detected"
+msgstr "No se detectaron usuarios internos"
+
+msgid "No bridged calls"
+msgstr "No hay llamadas conectadas"
+
+msgid "State"
+msgstr "Estado"
+
+msgid "Context / Exten"
+msgstr "Contexto / Ext."
+
+msgid "Bridge"
+msgstr "Bridge"
+
+msgid "Action"
+msgstr "Acción"
+
+msgid "ESC"
+msgstr "ESC"
+
+msgid "Callers in Queue"
+msgstr "Llamantes en cola"
+
+msgid "Queue is empty"
+msgstr "Cola vacía"
+
+msgid "Active Call — Agent"
+msgstr "Llamada activa — Agente"
+
+msgid "Phone"
+msgstr "Teléfono"
+
+msgid "Coming soon"
+msgstr "Próximamente"
+
+msgid "Listen to call"
+msgstr "Escuchar llamada"
+
+msgid "Whisper to agent"
+msgstr "Susurrar al agente"
+
+msgid "agent"
+msgstr "agente"
+
+msgid "agents"
+msgstr "agentes"
+
+msgid "waiting"
+msgstr "en espera"
+
+msgid "calls"
+msgstr "llamadas"
+
+msgid "Open fullscreen"
+msgstr "Abrir en pantalla completa"
+
+msgid "Callers"
+msgstr "Llamantes"
+
+msgid "ORPHAN"
+msgstr "ORPHAN"
+
+msgid "BRIDGED"
+msgstr "BRIDGED"
+
+msgid "HANGUP"
+msgstr "COLGAR"
+
+msgid "Hangup channel:"
+msgstr "Colgar canal:"
+
+msgid "Hangup failed: HTTP"
+msgstr "Error al colgar: HTTP"
+
+msgid "(Expected JSON, got HTML — check server logs)"
+msgstr "(Se esperaba JSON, se recibió HTML — revise los logs del servidor)"
+
+msgid "Hangup failed:"
+msgstr "Error al colgar:"
+
+msgid "Network error:"
+msgstr "Error de red:"
+
+msgid "IDLE"
+msgstr "LIBRE"
+
+msgid "RING"
+msgstr "LLAMANDO"
+
+msgid "IN USE"
+msgstr "EN USO"
+
+msgid "N/A"
+msgstr "N/D"
+
+msgid "PAUSED"
+msgstr "PAUSADO"
+
+msgid "AVAILABLE"
+msgstr "DISPONIBLE"
+
+msgid "IN CALL"
+msgstr "EN LLAMADA"
+
+msgid "RINGING"
+msgstr "SONANDO"
