@@ -2656,3 +2656,160 @@ msgstr ""
 
 msgid "Unbridged (Users)"
 msgstr ""
+
+
+msgid "Dashboard Live"
+msgstr ""
+
+msgid "Overview"
+msgstr ""
+
+msgid "Channels"
+msgstr ""
+
+msgid "CONNECTING"
+msgstr ""
+
+msgid "CONNECTED"
+msgstr ""
+
+msgid "DISCONNECTED"
+msgstr ""
+
+msgid "Bridged Pairs"
+msgstr ""
+
+msgid "Waiting Callers"
+msgstr ""
+
+msgid "Bridged Channels"
+msgstr ""
+
+msgid "LIVE"
+msgstr ""
+
+msgid "No active bridged calls"
+msgstr ""
+
+msgid "Queue Summary"
+msgstr ""
+
+msgid "No queues"
+msgstr ""
+
+msgid "External Channels"
+msgstr ""
+
+msgid "Internal Users"
+msgstr ""
+
+msgid "No external channels detected"
+msgstr ""
+
+msgid "No internal users detected"
+msgstr ""
+
+msgid "No bridged calls"
+msgstr ""
+
+msgid "State"
+msgstr ""
+
+msgid "Context / Exten"
+msgstr ""
+
+msgid "Bridge"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "ESC"
+msgstr ""
+
+msgid "Callers in Queue"
+msgstr ""
+
+msgid "Queue is empty"
+msgstr ""
+
+msgid "Active Call — Agent"
+msgstr ""
+
+msgid "Phone"
+msgstr ""
+
+msgid "Coming soon"
+msgstr ""
+
+msgid "Listen to call"
+msgstr ""
+
+msgid "Whisper to agent"
+msgstr ""
+
+msgid "agent"
+msgstr ""
+
+msgid "agents"
+msgstr ""
+
+msgid "waiting"
+msgstr ""
+
+msgid "calls"
+msgstr ""
+
+msgid "Open fullscreen"
+msgstr ""
+
+msgid "Callers"
+msgstr ""
+
+msgid "ORPHAN"
+msgstr ""
+
+msgid "BRIDGED"
+msgstr ""
+
+msgid "HANGUP"
+msgstr ""
+
+msgid "Hangup channel:"
+msgstr ""
+
+msgid "Hangup failed: HTTP"
+msgstr ""
+
+msgid "(Expected JSON, got HTML — check server logs)"
+msgstr ""
+
+msgid "Hangup failed:"
+msgstr ""
+
+msgid "Network error:"
+msgstr ""
+
+msgid "IDLE"
+msgstr ""
+
+msgid "RING"
+msgstr ""
+
+msgid "IN USE"
+msgstr ""
+
+msgid "N/A"
+msgstr ""
+
+msgid "PAUSED"
+msgstr ""
+
+msgid "AVAILABLE"
+msgstr ""
+
+msgid "IN CALL"
+msgstr ""
+
+msgid "RINGING"
+msgstr ""

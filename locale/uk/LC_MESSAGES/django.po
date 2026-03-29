@@ -2681,3 +2681,160 @@ msgstr "Без з'єднання (Peers)"
 
 msgid "Unbridged (Users)"
 msgstr "Без з'єднання (Users)"
+
+
+msgid "Dashboard Live"
+msgstr "Панель дзвінків Live"
+
+msgid "Overview"
+msgstr "Огляд"
+
+msgid "Channels"
+msgstr "Канали"
+
+msgid "CONNECTING"
+msgstr "ПІДКЛЮЧЕННЯ"
+
+msgid "CONNECTED"
+msgstr "ПІДКЛЮЧЕНО"
+
+msgid "DISCONNECTED"
+msgstr "ВІДКЛЮЧЕНО"
+
+msgid "Bridged Pairs"
+msgstr "З'єднані пари"
+
+msgid "Waiting Callers"
+msgstr "Абоненти в очікуванні"
+
+msgid "Bridged Channels"
+msgstr "З'єднані канали"
+
+msgid "LIVE"
+msgstr "НАЖИВО"
+
+msgid "No active bridged calls"
+msgstr "Немає активних з'єднаних дзвінків"
+
+msgid "Queue Summary"
+msgstr "Зведення черг"
+
+msgid "No queues"
+msgstr "Немає черг"
+
+msgid "External Channels"
+msgstr "Зовнішні канали"
+
+msgid "Internal Users"
+msgstr "Внутрішні користувачі"
+
+msgid "No external channels detected"
+msgstr "Зовнішніх каналів не виявлено"
+
+msgid "No internal users detected"
+msgstr "Внутрішніх користувачів не виявлено"
+
+msgid "No bridged calls"
+msgstr "Немає з'єднаних дзвінків"
+
+msgid "State"
+msgstr "Стан"
+
+msgid "Context / Exten"
+msgstr "Контекст / Номер"
+
+msgid "Bridge"
+msgstr "Бридж"
+
+msgid "Action"
+msgstr "Дія"
+
+msgid "ESC"
+msgstr "ESC"
+
+msgid "Callers in Queue"
+msgstr "Абоненти в черзі"
+
+msgid "Queue is empty"
+msgstr "Черга порожня"
+
+msgid "Active Call — Agent"
+msgstr "Активний дзвінок — Агент"
+
+msgid "Phone"
+msgstr "Телефон"
+
+msgid "Coming soon"
+msgstr "Незабаром"
+
+msgid "Listen to call"
+msgstr "Прослухати дзвінок"
+
+msgid "Whisper to agent"
+msgstr "Підказати агенту"
+
+msgid "agent"
+msgstr "агент"
+
+msgid "agents"
+msgstr "агентів"
+
+msgid "waiting"
+msgstr "очікують"
+
+msgid "calls"
+msgstr "дзвінків"
+
+msgid "Open fullscreen"
+msgstr "Відкрити на весь екран"
+
+msgid "Callers"
+msgstr "Абоненти"
+
+msgid "ORPHAN"
+msgstr "ORPHAN"
+
+msgid "BRIDGED"
+msgstr "BRIDGED"
+
+msgid "HANGUP"
+msgstr "ВІДБІЙ"
+
+msgid "Hangup channel:"
+msgstr "Завершити дзвінок на каналі:"
+
+msgid "Hangup failed: HTTP"
+msgstr "Помилка відбою: HTTP"
+
+msgid "(Expected JSON, got HTML — check server logs)"
+msgstr "(Очікувався JSON, отримано HTML — перевірте журнали сервера)"
+
+msgid "Hangup failed:"
+msgstr "Помилка відбою:"
+
+msgid "Network error:"
+msgstr "Мережева помилка:"
+
+msgid "IDLE"
+msgstr "ВІЛЬНИЙ"
+
+msgid "RING"
+msgstr "ДЗВОНИТЬ"
+
+msgid "IN USE"
+msgstr "ЗАЙНЯТИЙ"
+
+msgid "N/A"
+msgstr "Н/Д"
+
+msgid "PAUSED"
+msgstr "ПАУЗА"
+
+msgid "AVAILABLE"
+msgstr "ДОСТУПНИЙ"
+
+msgid "IN CALL"
+msgstr "В ДЗВІНКУ"
+
+msgid "RINGING"
+msgstr "ДЗВОНИТЬ"

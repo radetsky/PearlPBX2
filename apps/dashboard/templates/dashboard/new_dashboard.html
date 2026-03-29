@@ -2,7 +2,7 @@
 {% load static %}
 {% load i18n %}
 
-{% block title %}Dashboard Live{% endblock %}
+{% block title %}{% trans "Dashboard Live" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -941,17 +941,17 @@ body::after {
   <nav class="topnav">
 
     <div class="nav-tabs">
-      <div class="nav-tab active" data-tab="overview">Overview</div>
-      <div class="nav-tab" data-tab="queues">Queues</div>
+      <div class="nav-tab active" data-tab="overview">{% trans "Overview" %}</div>
+      <div class="nav-tab" data-tab="queues">{% trans "Queues" %}</div>
       <div class="nav-tab" data-tab="pjsip">PJSIP</div>
-      <div class="nav-tab" data-tab="bridged">Bridged</div>
-      <div class="nav-tab" data-tab="channels">Channels</div>
+      <div class="nav-tab" data-tab="bridged">{% trans "Bridged" %}</div>
+      <div class="nav-tab" data-tab="channels">{% trans "Channels" %}</div>
     </div>
 
     <div class="nav-right">
       <div class="conn-pill connecting" id="connPill">
         <div class="conn-led"></div>
-        <span id="connTxt">CONNECTING</span>
+        <span id="connTxt">{% trans "CONNECTING" %}</span>
       </div>
     </div>
   </nav>
@@ -964,19 +964,19 @@ body::after {
 
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-lbl">Active Channels</div>
+          <div class="stat-lbl">{% trans "Active Channels" %}</div>
           <div class="stat-val" id="s-channels">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-lbl">Bridged Pairs</div>
+          <div class="stat-lbl">{% trans "Bridged Pairs" %}</div>
           <div class="stat-val" id="s-bridges">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-lbl">Queues</div>
+          <div class="stat-lbl">{% trans "Queues" %}</div>
           <div class="stat-val" id="s-queues">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-lbl">Waiting Callers</div>
+          <div class="stat-lbl">{% trans "Waiting Callers" %}</div>
           <div class="stat-val" id="s-waiting">0</div>
         </div>
       </div>
@@ -984,15 +984,15 @@ body::after {
       <div class="overview-grid">
         <div class="card">
           <div class="card-hd">
-            Bridged Channels
-            <span class="live-badge">LIVE</span>
+            {% trans "Bridged Channels" %}
+            <span class="live-badge">{% trans "LIVE" %}</span>
           </div>
-          <div id="ov-bridged"><div class="empty">No active bridged calls</div></div>
+          <div id="ov-bridged"><div class="empty">{% trans "No active bridged calls" %}</div></div>
         </div>
 
         <div class="card">
-          <div class="card-hd">Queue Summary</div>
-          <div id="ov-queues"><div class="empty">No queues</div></div>
+          <div class="card-hd">{% trans "Queue Summary" %}</div>
+          <div id="ov-queues"><div class="empty">{% trans "No queues" %}</div></div>
         </div>
       </div>
 
@@ -1001,21 +1001,21 @@ body::after {
     <!-- TAB: QUEUES -->
     <div class="tab-panel" id="tab-queues">
       <div class="queues-grid" id="queues-grid">
-        <div class="empty">No queues configured</div>
+        <div class="empty">{% trans "No queues configured" %}</div>
       </div>
     </div>
 
     <!-- TAB: PJSIP -->
     <div class="tab-panel" id="tab-pjsip">
       <div class="sub-tabs">
-        <button class="sub-tab active" data-pjsip="external">External Channels</button>
-        <button class="sub-tab" data-pjsip="internal">Internal Users</button>
+        <button class="sub-tab active" data-pjsip="external">{% trans "External Channels" %}</button>
+        <button class="sub-tab" data-pjsip="internal">{% trans "Internal Users" %}</button>
       </div>
       <div id="pjsip-external">
-        <div class="blf-grid" id="peers-grid"><div class="empty">No external channels detected</div></div>
+        <div class="blf-grid" id="peers-grid"><div class="empty">{% trans "No external channels detected" %}</div></div>
       </div>
       <div id="pjsip-internal" style="display:none">
-        <div class="blf-grid" id="users-grid"><div class="empty">No internal users detected</div></div>
+        <div class="blf-grid" id="users-grid"><div class="empty">{% trans "No internal users detected" %}</div></div>
       </div>
     </div>
 
@@ -1026,14 +1026,14 @@ body::after {
           <thead>
             <tr>
               <th style="width:32px">#</th>
-              <th>Source</th>
+              <th>{% trans "Source" %}</th>
               <th style="width:36px;text-align:center">→</th>
-              <th>Destination</th>
-              <th style="text-align:right">Duration</th>
+              <th>{% trans "Destination" %}</th>
+              <th style="text-align:right">{% trans "Duration" %}</th>
             </tr>
           </thead>
           <tbody id="bridged-tbody">
-            <tr><td colspan="5" class="empty">No bridged calls</td></tr>
+            <tr><td colspan="5" class="empty">{% trans "No bridged calls" %}</td></tr>
           </tbody>
         </table>
       </div>
@@ -1046,18 +1046,18 @@ body::after {
           <thead>
             <tr>
               <th style="width:32px">#</th>
-              <th>Channel</th>
-              <th>CallerID</th>
-              <th>State</th>
-              <th>Context / Exten</th>
-              <th>Application</th>
-              <th>Bridge</th>
-              <th style="text-align:right">Duration</th>
-              <th style="text-align:center">Action</th>
+              <th>{% trans "Channel" %}</th>
+              <th>{% trans "CallerID" %}</th>
+              <th>{% trans "State" %}</th>
+              <th>{% trans "Context / Exten" %}</th>
+              <th>{% trans "Application" %}</th>
+              <th>{% trans "Bridge" %}</th>
+              <th style="text-align:right">{% trans "Duration" %}</th>
+              <th style="text-align:center">{% trans "Action" %}</th>
             </tr>
           </thead>
           <tbody id="channels-tbody">
-            <tr><td colspan="9" class="empty">No active channels</td></tr>
+            <tr><td colspan="9" class="empty">{% trans "No active channels" %}</td></tr>
           </tbody>
         </table>
       </div>
@@ -1070,42 +1070,42 @@ body::after {
 <div class="qmodal" id="qmodal" style="display:none">
   <div class="qmodal-hd">
     <div class="qmodal-title-block">
-      <div class="qmodal-eyebrow">Queue</div>
+      <div class="qmodal-eyebrow">{% trans "Queue" %}</div>
       <div class="qmodal-name" id="qm-name">—</div>
     </div>
 
     <div class="qmodal-kpis">
       <div class="qm-kpi">
         <div class="qm-kpi-val danger" id="qm-waiting">0</div>
-        <div class="qm-kpi-lbl">Waiting</div>
+        <div class="qm-kpi-lbl">{% trans "Waiting" %}</div>
       </div>
       <div class="qm-kpi">
         <div class="qm-kpi-val" id="qm-agents-cnt">0</div>
-        <div class="qm-kpi-lbl">Agents</div>
+        <div class="qm-kpi-lbl">{% trans "Agents" %}</div>
       </div>
       <div class="qm-kpi">
         <div class="qm-kpi-val" id="qm-avail-cnt">0</div>
-        <div class="qm-kpi-lbl">Available</div>
+        <div class="qm-kpi-lbl">{% trans "Available" %}</div>
       </div>
     </div>
 
-    <button class="qmodal-close" id="qmodal-close">✕ ESC</button>
+    <button class="qmodal-close" id="qmodal-close">✕ {% trans "ESC" %}</button>
   </div>
 
   <div class="qmodal-body">
     <!-- Agents (left, main area) -->
     <div class="qmodal-section">
-      <div class="qmodal-section-lbl">Agents</div>
+      <div class="qmodal-section-lbl">{% trans "Agents" %}</div>
       <div class="qm-agents-grid" id="qm-agents-grid">
-        <div class="empty">No agents</div>
+        <div class="empty">{% trans "No agents" %}</div>
       </div>
     </div>
 
     <!-- Callers (right sidebar) -->
     <div class="qmodal-section">
-      <div class="qmodal-section-lbl">Callers in Queue</div>
+      <div class="qmodal-section-lbl">{% trans "Callers in Queue" %}</div>
       <div id="qm-callers">
-        <div class="empty">Queue is empty</div>
+        <div class="empty">{% trans "Queue is empty" %}</div>
       </div>
     </div>
   </div>
@@ -1114,30 +1114,30 @@ body::after {
 <div class="acp-overlay" id="acp-overlay" style="display:none" onclick="if(event.target===this)closeAgentCall()">
   <div class="acp-card">
     <div class="acp-hd">
-      <span class="acp-title">&#9679; Active Call — Agent <span id="acp-ext">—</span></span>
+      <span class="acp-title">&#9679; {% trans "Active Call — Agent" %} <span id="acp-ext">—</span></span>
       <button class="acp-close-btn" onclick="closeAgentCall()">✕</button>
     </div>
     <div class="acp-rows">
       <div class="acp-row">
-        <span class="acp-lbl">Phone</span>
+        <span class="acp-lbl">{% trans "Phone" %}</span>
         <span class="acp-val" id="acp-phone">—</span>
       </div>
       <div class="acp-row" id="acp-name-row" style="display:none">
-        <span class="acp-lbl">Name</span>
+        <span class="acp-lbl">{% trans "Name" %}</span>
         <span class="acp-val" id="acp-name">—</span>
       </div>
       <div class="acp-row">
-        <span class="acp-lbl">Channel</span>
+        <span class="acp-lbl">{% trans "Channel" %}</span>
         <span class="acp-val" id="acp-chan">—</span>
       </div>
       <div class="acp-row">
-        <span class="acp-lbl">Duration</span>
+        <span class="acp-lbl">{% trans "Duration" %}</span>
         <span class="acp-dur-val" id="acp-dur" data-created="">—</span>
       </div>
     </div>
     <div class="acp-actions">
-      <button class="acp-btn" disabled title="Coming soon">👂 Listen to call</button>
-      <button class="acp-btn" disabled title="Coming soon">🗣 Whisper to agent</button>
+      <button class="acp-btn" disabled title="{% trans "Coming soon" %}">👂 {% trans "Listen to call" %}</button>
+      <button class="acp-btn" disabled title="{% trans "Coming soon" %}">🗣 {% trans "Whisper to agent" %}</button>
     </div>
   </div>
 </div>
@@ -1146,6 +1146,44 @@ body::after {
 
 {% block extra_js %}
 <script>
+const TRANS = {
+  connected:              '{% trans "CONNECTED" %}',
+  connecting:             '{% trans "CONNECTING" %}',
+  disconnected:           '{% trans "DISCONNECTED" %}',
+  noActiveBridgedCalls:   '{% trans "No active bridged calls" %}',
+  noQueues:               '{% trans "No queues" %}',
+  noQueuesConfigured:     '{% trans "No queues configured" %}',
+  noAgents:               '{% trans "No agents" %}',
+  queueIsEmpty:           '{% trans "Queue is empty" %}',
+  noExternalChannels:     '{% trans "No external channels detected" %}',
+  noInternalUsers:        '{% trans "No internal users detected" %}',
+  noBridgedCalls:         '{% trans "No bridged calls" %}',
+  noActiveChannels:       '{% trans "No active channels" %}',
+  agent:                  '{% trans "agent" %}',
+  agents:                 '{% trans "agents" %}',
+  waiting:                '{% trans "waiting" %}',
+  calls:                  '{% trans "calls" %}',
+  openFullscreen:         '{% trans "Open fullscreen" %}',
+  agentsSection:          '{% trans "Agents" %}',
+  callersSection:         '{% trans "Callers" %}',
+  orphan:                 '{% trans "ORPHAN" %}',
+  bridged:                '{% trans "BRIDGED" %}',
+  hangup:                 '{% trans "HANGUP" %}',
+  hangupConfirm:          '{% trans "Hangup channel:" %}',
+  hangupFailedHttp:       '{% trans "Hangup failed: HTTP" %}',
+  hangupFailedJsonHint:   '{% trans "(Expected JSON, got HTML — check server logs)" %}',
+  hangupFailed:           '{% trans "Hangup failed:" %}',
+  networkError:           '{% trans "Network error:" %}',
+  blfIdle:                '{% trans "IDLE" %}',
+  blfRing:                '{% trans "RING" %}',
+  blfInUse:               '{% trans "IN USE" %}',
+  blfNA:                  '{% trans "N/A" %}',
+  blfPaused:              '{% trans "PAUSED" %}',
+  memberAvailable:        '{% trans "AVAILABLE" %}',
+  memberInCall:           '{% trans "IN CALL" %}',
+  memberRinging:          '{% trans "RINGING" %}',
+};
+
 let activeModal = null;
 let agentCallOpen = false;
 
@@ -1199,15 +1237,21 @@ function closeAgentCall() {
 }
 
 const BLF_MAP = {
-  idle:        { cls: 'idle',        icon: '○', lbl: 'IDLE'   },
-  ringing:     { cls: 'ringing',     icon: '◉', lbl: 'RING'   },
-  in_use:      { cls: 'in-use',      icon: '●', lbl: 'IN USE' },
-  unavailable: { cls: 'unavailable', icon: '⊘', lbl: 'N/A'    },
-  paused:      { cls: 'paused',      icon: '⏸', lbl: 'PAUSED' },
+  idle:        { cls: 'idle',        icon: '○', lbl: TRANS.blfIdle   },
+  ringing:     { cls: 'ringing',     icon: '◉', lbl: TRANS.blfRing   },
+  in_use:      { cls: 'in-use',      icon: '●', lbl: TRANS.blfInUse  },
+  unavailable: { cls: 'unavailable', icon: '⊘', lbl: TRANS.blfNA     },
+  paused:      { cls: 'paused',      icon: '⏸', lbl: TRANS.blfPaused },
 };
 
 const MEMBER_ICONS = { available: '○', busy: '●', ringing: '◉', paused: '⏸', unavailable: '⊘' };
-const MEMBER_LBLS  = { available: 'AVAILABLE', busy: 'IN CALL', ringing: 'RINGING', paused: 'PAUSED', unavailable: 'N/A' };
+const MEMBER_LBLS  = {
+  available:   TRANS.memberAvailable,
+  busy:        TRANS.memberInCall,
+  ringing:     TRANS.memberRinging,
+  paused:      TRANS.blfPaused,
+  unavailable: TRANS.blfNA,
+};
 
 const ST = {
   channels:  {},   // channel_name  → channel object
@@ -1253,7 +1297,7 @@ function connectWS() {
 function setConn(s) {
   const pill = document.getElementById('connPill');
   pill.className = 'conn-pill ' + s;
-  document.getElementById('connTxt').textContent = s.toUpperCase();
+  document.getElementById('connTxt').textContent = TRANS[s] || s.toUpperCase();
 }
 
 /**
@@ -1650,7 +1694,7 @@ function renderStats() {
  */
 function renderOvBridged(prs) {
   const el = document.getElementById('ov-bridged');
-  if (!prs.length) { el.innerHTML = '<div class="empty">No active bridged calls</div>'; return; }
+  if (!prs.length) { el.innerHTML = `<div class="empty">${TRANS.noActiveBridgedCalls}</div>`; return; }
 
   let h = '<table class="bt"><tbody>';
   for (const p of prs) {
@@ -1678,7 +1722,7 @@ function renderOvBridged(prs) {
 function renderOvQueues() {
   const el = document.getElementById('ov-queues');
   const sorted = Object.entries(ST.queues).sort(([a],[b]) => a.localeCompare(b));
-  if (!sorted.length) { el.innerHTML = '<div class="empty">No queues</div>'; return; }
+  if (!sorted.length) { el.innerHTML = `<div class="empty">${TRANS.noQueues}</div>`; return; }
 
   let h = '';
   for (const [name, q] of sorted.slice(0, 6)) {
@@ -1688,9 +1732,9 @@ function renderOvQueues() {
     h += `<div class="qs-row">
       <div>
         <div class="qs-name">${esc(name)}</div>
-        <div class="qs-meta">${cnt} agent${cnt !== 1 ? 's' : ''}</div>
+        <div class="qs-meta">${cnt} ${cnt !== 1 ? TRANS.agents : TRANS.agent}</div>
       </div>
-      <span class="badge ${cls}">${w} waiting</span>
+      <span class="badge ${cls}">${w} ${TRANS.waiting}</span>
     </div>`;
   }
   el.innerHTML = h;
@@ -1702,7 +1746,7 @@ function renderQueuesTab() {
   const sorted = Object.entries(ST.queues).sort(([a],[b]) => a.localeCompare(b));
 
   if (!sorted.length) {
-    el.innerHTML = '<div class="empty">No queues configured</div>';
+    el.innerHTML = `<div class="empty">${TRANS.noQueuesConfigured}</div>`;
     return;
   }
 
@@ -1720,7 +1764,7 @@ function renderQueuesTab() {
         mh += `<div class="mchip ${cls}"><div class="mchip-dot"></div>${esc(disp)}</div>`;
       }
     } else {
-      mh = '<span style="color:var(--txt3);font-size:11px">No agents</span>';
+      mh = `<span style="color:var(--txt3);font-size:11px">${TRANS.noAgents}</span>`;
     }
 
     // Callers
@@ -1734,7 +1778,7 @@ function renderQueuesTab() {
         </div>`;
       }
     } else {
-      ch = '<div style="color:var(--txt3);font-size:11px;padding:4px 0">Queue is empty</div>';
+      ch = `<div style="color:var(--txt3);font-size:11px;padding:4px 0">${TRANS.queueIsEmpty}</div>`;
     }
 
     h += `<div class="queue-card">
@@ -1742,13 +1786,13 @@ function renderQueuesTab() {
         <span class="queue-card-name">${esc(qname)}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="badge ${bcl}">${w}</span>
-          <button class="expand-btn" title="Open fullscreen">⛶</button>
+          <button class="expand-btn" title="${TRANS.openFullscreen}">⛶</button>
         </div>
       </div>
       <div class="queue-card-body">
-        <div class="section-lbl">Agents</div>
+        <div class="section-lbl">${TRANS.agentsSection}</div>
         <div class="members-row">${mh}</div>
-        <div class="section-lbl">Callers</div>
+        <div class="section-lbl">${TRANS.callersSection}</div>
         <div>${ch}</div>
       </div>
     </div>`;
@@ -1794,11 +1838,11 @@ function renderPJSIP() {
 
   pg.innerHTML = external.length
     ? external.map(([ep,d]) => blfCell(ep, d)).join('')
-    : '<div class="empty">No external channels detected</div>';
+    : `<div class="empty">${TRANS.noExternalChannels}</div>`;
 
   ug.innerHTML = internal.length
     ? internal.map(([ep,d]) => blfCell(ep, d)).join('')
-    : '<div class="empty">No internal users detected</div>';
+    : `<div class="empty">${TRANS.noInternalUsers}</div>`;
 }
 
 /**
@@ -1824,7 +1868,7 @@ function blfCell(ep, d) {
 function renderBridgedTab(prs) {
   const el = document.getElementById('bridged-tbody');
   if (!prs.length) {
-    el.innerHTML = '<tr><td colspan="5" class="empty">No bridged calls</td></tr>';
+    el.innerHTML = `<tr><td colspan="5" class="empty">${TRANS.noBridgedCalls}</td></tr>`;
     return;
   }
 
@@ -1899,7 +1943,7 @@ function renderModal() {
   // Agents grid
   const grid = document.getElementById('qm-agents-grid');
   if (!total) {
-    grid.innerHTML = '<div class="empty">No agents</div>';
+    grid.innerHTML = `<div class="empty">${TRANS.noAgents}</div>`;
   } else {
     const sorted = Object.entries(members).sort(([a],[b]) => {
       const ea = epFromLoc(a) || a, eb = epFromLoc(b) || b;
@@ -1913,8 +1957,8 @@ function renderModal() {
       return `<div class="qm-agent ${cls}"${click}>
         <div class="qm-agent-ext">${esc(disp)}</div>
         <div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>
-        <div class="qm-agent-state">${MEMBER_LBLS[cls] || 'IDLE'}</div>
-        <div class="qm-agent-meta">${m.calls_taken ? m.calls_taken + ' calls' : ''}</div>
+        <div class="qm-agent-state">${MEMBER_LBLS[cls] || TRANS.blfIdle}</div>
+        <div class="qm-agent-meta">${m.calls_taken ? m.calls_taken + ' ' + TRANS.calls : ''}</div>
       </div>`;
     }).join('');
   }
@@ -1923,7 +1967,7 @@ function renderModal() {
   const callersEl = document.getElementById('qm-callers');
   const callList  = Object.entries(calls);
   if (!callList.length) {
-    callersEl.innerHTML = '<div class="empty">Queue is empty</div>';
+    callersEl.innerHTML = `<div class="empty">${TRANS.queueIsEmpty}</div>`;
   } else {
     callList.sort(([,a],[,b]) => (a.wait_start || 0) - (b.wait_start || 0));
     callersEl.innerHTML = callList.map(([, c], i) => {
@@ -1983,7 +2027,7 @@ function renderChannelsTab() {
   const el = document.getElementById('channels-tbody');
   const chans = Object.values(ST.channels);
   if (!chans.length) {
-    el.innerHTML = '<tr><td colspan="9" class="empty">No active channels</td></tr>';
+    el.innerHTML = `<tr><td colspan="9" class="empty">${TRANS.noActiveChannels}</td></tr>`;
     return;
   }
 
@@ -2020,9 +2064,9 @@ function renderChannelsTab() {
     // Bridge status cell
     let bridgeCell;
     if (isOrphan) {
-      bridgeCell = `<span class="chan-orphan" title="Bridge ${esc(bridgeId)} has no live pair">⚠ ORPHAN</span>`;
+      bridgeCell = `<span class="chan-orphan" title="Bridge ${esc(bridgeId)} has no live pair">⚠ ${TRANS.orphan}</span>`;
     } else if (livebridge) {
-      bridgeCell = `<span class="chan-bridged" title="${esc(bridgeId)}">● BRIDGED</span>`;
+      bridgeCell = `<span class="chan-bridged" title="${esc(bridgeId)}">● ${TRANS.bridged}</span>`;
     } else {
       bridgeCell = `<span class="chan-no-bridge">—</span>`;
     }
@@ -2056,7 +2100,7 @@ function renderChannelsTab() {
       <td>${bridgeCell}</td>
       <td class="dur-col" data-created="${created}">${fmtDur(durNow(created))}</td>
       <td style="text-align:center">
-        <button class="btn-hangup" onclick="hangupChannel(this,'${esc(ch.channel)}')">HANGUP</button>
+        <button class="btn-hangup" onclick="hangupChannel(this,'${esc(ch.channel)}')">${TRANS.hangup}</button>
       </td>
     </tr>`;
   }).join('');
@@ -2067,7 +2111,7 @@ function renderChannelsTab() {
  * Disables the button while the request is in flight.
  */
 async function hangupChannel(btn, channel) {
-  if (!confirm(`Hangup channel:\n${channel}?`)) return;
+  if (!confirm(`${TRANS.hangupConfirm}\n${channel}?`)) return;
   btn.disabled = true;
   btn.textContent = '…';
   try {
@@ -2083,22 +2127,22 @@ async function hangupChannel(btn, channel) {
     const ct = resp.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
       // Server returned HTML (403 CSRF, 500 error, redirect, etc.)
-      alert(`Hangup failed: HTTP ${resp.status} ${resp.statusText}\n(Expected JSON, got HTML — check server logs)`);
+      alert(`${TRANS.hangupFailedHttp} ${resp.status} ${resp.statusText}\n${TRANS.hangupFailedJsonHint}`);
       btn.disabled = false;
-      btn.textContent = 'HANGUP';
+      btn.textContent = TRANS.hangup;
       return;
     }
 
     const data = await resp.json();
     if (!resp.ok || data.error) {
-      alert(`Hangup failed: ${data.error || resp.status}`);
+      alert(`${TRANS.hangupFailed} ${data.error || resp.status}`);
       btn.disabled = false;
-      btn.textContent = 'HANGUP';
+      btn.textContent = TRANS.hangup;
     }
   } catch (e) {
-    alert(`Network error: ${e}`);
+    alert(`${TRANS.networkError} ${e}`);
     btn.disabled = false;
-    btn.textContent = 'HANGUP';
+    btn.textContent = TRANS.hangup;
   }
 }
 
