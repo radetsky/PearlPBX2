@@ -22,4 +22,5 @@ urlpatterns = [
     path("api/channels/<path:channel_name>/", views.get_channel, name="get_channel"),
     path("api/calls/active/", views.get_active_calls, name="get_active_calls"),
     path("api/endpoints/", views.get_sip_endpoints, name="get_sip_endpoints"),
+    path("api/channels/hangup/", views.hangup_channel, name="hangup_channel"),
 ]

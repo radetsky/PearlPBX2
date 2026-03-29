@@ -218,10 +218,12 @@
 
             const queueList = document.getElementById('queue-list');
             if (data.queues && data.queues.length > 0) {
+                queueList.style.display = 'grid';
+                queueList.style.gridTemplateColumns = '1fr auto auto';
+                queueList.style.gap = '6px 12px';
+                queueList.style.alignItems = 'center';
                 queueList.innerHTML = '';
                 data.queues.forEach(q => {
-                    const div = document.createElement('div');
-                    div.className = 'uk-flex uk-flex-between uk-margin-small-bottom';
                     const name = document.createElement('span');
                     name.className = 'uk-text-bold';
                     name.textContent = q.name;
@@ -230,9 +232,9 @@
                     badge.textContent = q.callers + ' waiting';
                     const agents = document.createElement('span');
                     agents.className = 'uk-text-muted uk-text-small';
+                    agents.style.textAlign = 'right';
                     agents.textContent = q.available_members + '/' + q.total_members + ' agents';
-                    div.append(name, badge, agents);
-                    queueList.appendChild(div);
+                    queueList.append(name, badge, agents);
                 });
             } else {
                 queueList.innerHTML = '<span class="uk-text-muted">{% trans "No active queues" %}</span>';

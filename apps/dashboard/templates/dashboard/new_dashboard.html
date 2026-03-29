@@ -257,6 +257,7 @@ body::after {
 .bt tr:hover td { background: var(--bg-hover); }
 
 .ch-num  { font-size: 13px; font-weight: 600; color: var(--txt); }
+.ch-name { font-size: 11px; color: var(--accent); margin-top: 1px; }
 .ch-sub  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
 .ch-arrow { color: var(--txt3); font-size: 13px; padding: 0 4px; }
 .ch-dur  {
@@ -728,6 +729,108 @@ body::after {
   font-size: 10px;
   color: var(--txt3);
 }
+.qm-agent.busy { cursor: pointer; }
+.qm-agent.busy:hover { border-color: rgba(240,165,0,0.75); }
+
+/* Agent active call popup */
+.acp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.acp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  padding: 24px 28px 20px;
+  min-width: 340px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  animation: qmodal-in 0.15s ease-out;
+}
+.acp-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.acp-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+.acp-close-btn {
+  background: none;
+  border: none;
+  color: var(--txt3);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.acp-close-btn:hover { color: var(--danger); }
+.acp-ext-line {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--txt);
+  margin-bottom: 16px;
+  letter-spacing: 0.04em;
+}
+.acp-rows { margin-bottom: 20px; }
+.acp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.acp-row:last-child { border-bottom: none; }
+.acp-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.acp-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  word-break: break-all;
+}
+.acp-dur-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--warn);
+}
+.acp-actions {
+  display: flex;
+  gap: 8px;
+}
+.acp-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--txt3);
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 
 /* Callers list in modal */
 .qm-caller {
@@ -761,6 +864,78 @@ body::after {
   white-space: nowrap;
   text-align: right;
 }
+
+/* ── CHANNELS TAB ────────────────────────────────────────────────────────────── */
+.channels-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.channels-ft {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.channels-ft thead th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  padding: 9px 12px;
+  background: var(--bg-card2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.channels-ft tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.channels-ft tbody tr:last-child td { border-bottom: none; }
+.channels-ft tbody tr:hover td { background: var(--bg-hover); }
+
+.chan-name { font-size: 12px; font-weight: 600; color: var(--txt); }
+.chan-sub  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.chan-state-up        { color: var(--ok);     font-weight: 700; font-size: 10px; letter-spacing: 0.08em; }
+.chan-state-ringing   { color: var(--warn);   font-weight: 700; font-size: 10px; letter-spacing: 0.08em; }
+.chan-state-other     { color: var(--txt3);   font-size: 10px; }
+.chan-bridged         { color: var(--accent); font-size: 10px; }
+.chan-orphan          { color: var(--danger); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.chan-spy             { color: var(--warn);   font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.chan-no-bridge       { color: var(--txt3);   font-size: 10px; }
+
+/* Row highlight for suspicious channels */
+.channels-ft tbody tr.row-orphan td { background: rgba(255,68,68,0.05); }
+.channels-ft tbody tr.row-orphan:hover td { background: rgba(255,68,68,0.10); }
+.channels-ft tbody tr.row-spy td { background: rgba(240,165,0,0.05); }
+.channels-ft tbody tr.row-spy:hover td { background: rgba(240,165,0,0.10); }
+
+.btn-hangup {
+  padding: 5px 11px;
+  background: none;
+  border: 1px solid rgba(255,68,68,0.5);
+  border-radius: 3px;
+  color: var(--danger);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-hangup:hover {
+  background: rgba(255,68,68,0.12);
+  border-color: var(--danger);
+}
+.btn-hangup:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 </style>
 {% endblock %}
 
@@ -776,6 +951,7 @@ body::after {
       <div class="nav-tab" data-tab="queues">Queues</div>
       <div class="nav-tab" data-tab="pjsip">PJSIP</div>
       <div class="nav-tab" data-tab="bridged">Bridged</div>
+      <div class="nav-tab" data-tab="channels">Channels</div>
     </div>
 
     <div class="nav-right">
@@ -869,6 +1045,30 @@ body::after {
       </div>
     </div>
 
+    <!-- TAB: ACTIVE CHANNELS -->
+    <div class="tab-panel" id="tab-channels">
+      <div class="channels-wrap">
+        <table class="channels-ft">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Channel</th>
+              <th>CallerID</th>
+              <th>State</th>
+              <th>Context / Exten</th>
+              <th>Application</th>
+              <th>Bridge</th>
+              <th style="text-align:right">Duration</th>
+              <th style="text-align:center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="channels-tbody">
+            <tr><td colspan="9" class="empty">No active channels</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -917,11 +1117,94 @@ body::after {
   </div>
 </div>
 
+<div class="acp-overlay" id="acp-overlay" style="display:none" onclick="if(event.target===this)closeAgentCall()">
+  <div class="acp-card">
+    <div class="acp-hd">
+      <span class="acp-title">&#9679; Active Call — Agent <span id="acp-ext">—</span></span>
+      <button class="acp-close-btn" onclick="closeAgentCall()">✕</button>
+    </div>
+    <div class="acp-rows">
+      <div class="acp-row">
+        <span class="acp-lbl">Phone</span>
+        <span class="acp-val" id="acp-phone">—</span>
+      </div>
+      <div class="acp-row" id="acp-name-row" style="display:none">
+        <span class="acp-lbl">Name</span>
+        <span class="acp-val" id="acp-name">—</span>
+      </div>
+      <div class="acp-row">
+        <span class="acp-lbl">Channel</span>
+        <span class="acp-val" id="acp-chan">—</span>
+      </div>
+      <div class="acp-row">
+        <span class="acp-lbl">Duration</span>
+        <span class="acp-dur-val" id="acp-dur" data-created="">—</span>
+      </div>
+    </div>
+    <div class="acp-actions">
+      <button class="acp-btn" disabled title="Coming soon">👂 Listen to call</button>
+      <button class="acp-btn" disabled title="Coming soon">🗣 Whisper to agent</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let activeModal = null;
+let activeAgentPopup = null;
+
+function openAgentCall(ext) {
+  // Find active channel for this extension
+  const chanKey = Object.keys(ST.channels).find(k =>
+    new RegExp('^PJSIP/' + ext + '-', 'i').test(k)
+  );
+  const chan = chanKey ? ST.channels[chanKey] : null;
+
+  let otherNum = '—', otherName = '', chanName = '—', createdAt = null;
+
+  if (chan) {
+    chanName = chan.channel || '—';
+    createdAt = chan.bridge_id && ST.bridges[chan.bridge_id]
+      ? ST.bridges[chan.bridge_id].created_at
+      : chan.created_at;
+
+    if (chan.bridge_id && ST.bridges[chan.bridge_id]) {
+      const otherKey = ST.bridges[chan.bridge_id].channels.find(c => c !== chanKey);
+      const other = otherKey ? ST.channels[otherKey] : null;
+      if (other) {
+        otherNum  = other.caller_id_num || other.callerid || '—';
+        otherName = other.caller_id_name || '';
+      }
+    }
+  }
+
+  activeAgentPopup = { ext, chanKey, createdAt };
+
+  document.getElementById('acp-ext').textContent   = ext;
+  document.getElementById('acp-phone').textContent = otherNum;
+  document.getElementById('acp-chan').textContent   = chanName;
+
+  const nameRow = document.getElementById('acp-name-row');
+  if (otherName) {
+    document.getElementById('acp-name').textContent = otherName;
+    nameRow.style.display = '';
+  } else {
+    nameRow.style.display = 'none';
+  }
+
+  const durEl = document.getElementById('acp-dur');
+  durEl.dataset.created = createdAt || '';
+  durEl.textContent = createdAt ? fmtDur(durNow(createdAt)) : '—';
+
+  document.getElementById('acp-overlay').style.display = 'flex';
+}
+
+function closeAgentCall() {
+  activeAgentPopup = null;
+  document.getElementById('acp-overlay').style.display = 'none';
+}
 
 const BLF_MAP = {
   idle:        { cls: 'idle',        icon: '○', lbl: 'IDLE'   },
@@ -1355,6 +1638,7 @@ function renderAll() {
   renderQueuesTab();
   renderPJSIP();
   renderBridgedTab(pairs);
+  renderChannelsTab();
   if (activeModal) renderModal();
 }
 
@@ -1382,11 +1666,13 @@ function renderOvBridged(prs) {
     h += `<tr>
       <td>
         <div class="ch-num">${esc(s.num)}</div>
+        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
         <div class="ch-sub">${esc(s.chan)}</div>
       </td>
       <td class="ch-arrow">⇄</td>
       <td>
         <div class="ch-num">${esc(d.num)}</div>
+        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
         <div class="ch-sub">${esc(d.chan)}</div>
       </td>
       <td class="ch-dur" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
@@ -1557,11 +1843,13 @@ function renderBridgedTab(prs) {
       <td class="row-idx">${i + 1}</td>
       <td>
         <div class="ch-num">${esc(s.num)}</div>
+        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
         <div class="ch-sub">${esc(s.chan)}</div>
       </td>
       <td class="arrow-col">→</td>
       <td>
         <div class="ch-num">${esc(d.num)}</div>
+        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
         <div class="ch-sub">${esc(d.chan)}</div>
       </td>
       <td class="dur-col" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
@@ -1629,7 +1917,8 @@ function renderModal() {
     grid.innerHTML = sorted.map(([, m]) => {
       const cls  = memberClass(m.status, m.paused, 'available');
       const disp = epFromLoc(m.location || m.name) || m.name;
-      return `<div class="qm-agent ${cls}">
+      const click = cls === 'busy' ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
+      return `<div class="qm-agent ${cls}"${click}>
         <div class="qm-agent-ext">${esc(disp)}</div>
         <div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>
         <div class="qm-agent-state">${MEMBER_LBLS[cls] || 'IDLE'}</div>
@@ -1657,7 +1946,12 @@ function renderModal() {
 }
 
 document.getElementById('qmodal-close').addEventListener('click', closeModal);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && activeModal) closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (activeAgentPopup) closeAgentCall();
+    else if (activeModal) closeModal();
+  }
+});
 
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1679,6 +1973,130 @@ document.querySelectorAll('.sub-tab').forEach(btn => {
       btn.dataset.pjsip === 'internal' ? '' : 'none';
   });
 });
+
+/** Return the CSRF token from cookies (needed for POST requests). */
+function getCsrfToken() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+/**
+ * Render the Active Channels tab table from ST.channels.
+ * Sorted by creation time ascending (oldest first).
+ */
+const SPY_APPS = new Set(['chanspy', 'extenspy', 'mixmonitor', 'spylocal']);
+
+function renderChannelsTab() {
+  const el = document.getElementById('channels-tbody');
+  const chans = Object.values(ST.channels);
+  if (!chans.length) {
+    el.innerHTML = '<tr><td colspan="9" class="empty">No active channels</td></tr>';
+    return;
+  }
+
+  chans.sort((a, b) => toUnixSecs(a.created_at) - toUnixSecs(b.created_at));
+
+  el.innerHTML = chans.map((ch, i) => {
+    const stateRaw = String(ch.state || '').toLowerCase();
+    let stateCls = 'chan-state-other';
+    if (stateRaw === 'up')                                  stateCls = 'chan-state-up';
+    else if (stateRaw === 'ringing' || stateRaw === 'ring') stateCls = 'chan-state-ringing';
+
+    const callerNum  = ch.caller_id_num  || '—';
+    const callerName = ch.caller_id_name || '';
+    const context    = ch.context  || '';
+    const exten      = ch.exten    || '';
+    const app        = ch.application || '';
+    const appData    = ch.app_data || '';
+    const bridgeId   = ch.bridge_id;
+    const created    = toUnixSecs(ch.created_at);
+    const appLower   = app.toLowerCase();
+
+    // Detect channel health
+    const isSpy     = SPY_APPS.has(appLower);
+    const livebridge = bridgeId && ST.bridges[bridgeId] &&
+                       ST.bridges[bridgeId].channels.length >= 2;
+    const isOrphan  = bridgeId && !livebridge;   // claims a bridge that is gone/incomplete
+
+    // Row highlight class
+    let rowCls = '';
+    if (isOrphan) rowCls = 'row-orphan';
+    else if (isSpy) rowCls = 'row-spy';
+
+    // Bridge status cell
+    let bridgeCell;
+    if (isOrphan) {
+      bridgeCell = `<span class="chan-orphan" title="Bridge ${esc(bridgeId)} has no live pair">⚠ ORPHAN</span>`;
+    } else if (livebridge) {
+      bridgeCell = `<span class="chan-bridged" title="${esc(bridgeId)}">● BRIDGED</span>`;
+    } else {
+      bridgeCell = `<span class="chan-no-bridge">—</span>`;
+    }
+
+    // Application cell — highlight spy apps
+    let appCell = '—';
+    if (app) {
+      const appLabel = isSpy
+        ? `<span class="chan-spy">${esc(app)}</span>`
+        : `<div class="chan-name">${esc(app)}</div>`;
+      appCell = appLabel + (appData ? `<div class="chan-sub">${esc(appData)}</div>` : '');
+    }
+
+    const ctxCell = (context || exten)
+      ? `<div class="chan-name">${esc(context)}</div>${exten ? `<div class="chan-sub">${esc(exten)}</div>` : ''}`
+      : '—';
+
+    return `<tr class="${rowCls}">
+      <td class="row-idx">${i + 1}</td>
+      <td>
+        <div class="chan-name">${esc(ch.channel)}</div>
+        ${ch.uniqueid ? `<div class="chan-sub">${esc(ch.uniqueid)}</div>` : ''}
+      </td>
+      <td>
+        <div class="chan-name">${esc(callerNum)}</div>
+        ${callerName ? `<div class="ch-name">${esc(callerName)}</div>` : ''}
+      </td>
+      <td><span class="${stateCls}">${esc(String(ch.state || '—').toUpperCase())}</span></td>
+      <td>${ctxCell}</td>
+      <td>${appCell}</td>
+      <td>${bridgeCell}</td>
+      <td class="dur-col" data-created="${created}">${fmtDur(durNow(created))}</td>
+      <td style="text-align:center">
+        <button class="btn-hangup" onclick="hangupChannel(this,'${esc(ch.channel)}')">HANGUP</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/**
+ * Send AMI Hangup for the given channel.
+ * Disables the button while the request is in flight.
+ */
+async function hangupChannel(btn, channel) {
+  if (!confirm(`Hangup channel:\n${channel}?`)) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const resp = await fetch('/dashboard/api/channels/hangup/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ channel }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      alert(`Hangup failed: ${data.error || resp.status}`);
+      btn.disabled = false;
+      btn.textContent = 'HANGUP';
+    }
+  } catch (e) {
+    alert(`Network error: ${e}`);
+    btn.disabled = false;
+    btn.textContent = 'HANGUP';
+  }
+}
 
 connectWS();
 </script>
