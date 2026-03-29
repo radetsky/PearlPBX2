@@ -981,7 +981,8 @@ function setConn(s) {
  * Fetch initial state from the REST API and populate ST.
  * On system_reset the SIP endpoint lists are stable, so pass
  * skipEndpoints=true to avoid an unnecessary DB round-trip.
- * @param {{ skipEndpoints?: boolean }} [opts]
+ * @param {Object} [opts]
+ * @param {boolean} [opts.skipEndpoints=false]
  */
 async function loadInitial({ skipEndpoints = false } = {}) {
   try {
