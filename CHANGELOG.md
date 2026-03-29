@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] — feature/new_dashboard
+## [2.2.0] — 2026-03-29
 
 ### Added
 
@@ -25,3 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **CDR table**: a "click for details" hint appears on row hover to improve discoverability.
 - **Home page queue list**: rebuilt with CSS Grid (3 columns: name / waiting badge / agents) replacing the previous flex layout.
 - **Media player progress bar**: click target enlarged to 20 px tall while the visible track remains 6 px with a background rail, improving seek accuracy.
+
+## [2.1.4] — 2025-04-01
+
+Previous stable release. See git history for details.

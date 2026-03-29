@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.1.4`
+# PearlPBX2 `v2.2.0`
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
 
@@ -9,7 +9,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Dialplan editor** — contexts and extensions in Asterisk AEL syntax with validation
 - **Call routing** — prefix-based routing tables
 - **Queue management** — queues, members, rules, announcements
-- **Real-time operator dashboard** — live call monitoring via WebSocket
+- **Real-time operator dashboard** — fully rewritten dark-theme live dashboard (`/dashboard/live/`) with five tabs: Overview, Queues, PJSIP, Bridged, Channels; WebSocket status indicator, hangup actions, old dashboard preserved at `/dashboard/old/`
 - **CDR & reports** — call detail records with direction/channel filters, queue logs, callback reports with duration and recordings, call recordings browser
 - **Analytics reports** — queue calls, agent calls, outbound calls, missed calls, missed by hour, call duration, queue activity (hourly/daily) with Chart.js charts
 - **Callback queue** — automated outbound callback system
@@ -117,7 +117,9 @@ Each service has its own `env.sample` and README with setup instructions.
 | `/` | Home — live system status, DB counts, CDR chart, quick links |
 | `/admin/` | Django admin — manage all PBX entities |
 | `/admin/apply` | Apply configuration changes to Asterisk |
-| `/dashboard/` | Real-time operator panel |
+| `/dashboard/` | Redirects to new live operator dashboard |
+| `/dashboard/live/` | New real-time dashboard — Overview, Queues, PJSIP, Bridged, Channels tabs |
+| `/dashboard/old/` | Legacy operator panel (preserved) |
 | `/reports/` | CDR, recordings, queue logs, callback reports |
 | `/reports/analytics/` | Analytics reports with charts (queues, agents, missed calls, etc.) |
 | `/lists/` | Blocklist, Allowlist, Contacts — CRUD UI for Report Viewer group |
