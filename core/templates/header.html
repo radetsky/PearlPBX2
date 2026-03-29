@@ -28,12 +28,14 @@
                 <div class="uk-navbar-dropdown">
                     <ul class="uk-nav uk-navbar-dropdown-nav">
                         {% for item in allowed_header_menu_items %}
-                            <li {% if item.url == selected_header_menu_item.url %}class="uk-active"{% endif %}><a href="{{ item.url }}" class="uk-flex uk-flex-middle">
-                                {% if item.item_icon %}
-                                    <span data-uk-icon="icon: {{ item.item_icon }}"></span>
-                                {% endif %}
-                                {{ item.title }}
-                            </a></li>
+                            <li {% if item.url == selected_header_menu_item.url %}class="uk-active"{% endif %}>
+                                <a href="{{ item.url }}" class="uk-flex uk-flex-middle" style="gap: 8px;">
+                                    {% if item.item_icon %}
+                                        <span data-uk-icon="icon: {{ item.item_icon }}"></span>
+                                    {% endif %}
+                                    {{ item.title }}
+                                </a>
+                            </li>
                         {% endfor %}
                     </ul>
                 </div>

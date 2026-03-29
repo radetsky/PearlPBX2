@@ -248,7 +248,7 @@ HEADER_MENU_PAGES = [
     {
         "title": _("ULINE Monitor"),
         "url": "/dashboard/ulines/",
-        "item_icon": "call_split",
+        "item_icon": "grid",
         "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {

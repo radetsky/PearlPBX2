@@ -8,6 +8,37 @@
     -webkit-backdrop-filter: blur(10px);
 }
 
+/* Mobile nav dropdown: match dark header theme */
+#navbar .uk-navbar-dropdown {
+    background: #2e3e49;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 8px 0;
+    min-width: 200px;
+}
+
+#navbar .uk-navbar-dropdown-nav > li > a {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 8px 20px;
+    gap: 8px;
+}
+
+#navbar .uk-navbar-dropdown-nav > li > a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#navbar .uk-navbar-dropdown-nav > li.uk-active > a {
+    color: #1e87f0;
+}
+
+#navbar .uk-navbar-dropdown-nav > li > a .uk-icon svg {
+    color: inherit;
+    fill: currentColor;
+    stroke: currentColor;
+}
+
 #content {
     margin-top: 52px;
     margin-left: 0;
