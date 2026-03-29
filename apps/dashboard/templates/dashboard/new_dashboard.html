@@ -776,13 +776,6 @@ body::after {
   line-height: 1;
 }
 .acp-close-btn:hover { color: var(--danger); }
-.acp-ext-line {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--txt);
-  margin-bottom: 16px;
-  letter-spacing: 0.04em;
-}
 .acp-rows { margin-bottom: 20px; }
 .acp-row {
   display: flex;
@@ -1153,13 +1146,11 @@ body::after {
 {% block extra_js %}
 <script>
 let activeModal = null;
-let activeAgentPopup = null;
+let agentCallOpen = false;
 
 function openAgentCall(ext) {
-  // Find active channel for this extension
-  const chanKey = Object.keys(ST.channels).find(k =>
-    new RegExp('^PJSIP/' + ext + '-', 'i').test(k)
-  );
+  const prefix = ('PJSIP/' + ext + '-').toLowerCase();
+  const chanKey = Object.keys(ST.channels).find(k => k.toLowerCase().startsWith(prefix));
   const chan = chanKey ? ST.channels[chanKey] : null;
 
   let otherNum = '—', otherName = '', chanName = '—', createdAt = null;
@@ -1180,7 +1171,7 @@ function openAgentCall(ext) {
     }
   }
 
-  activeAgentPopup = { ext, chanKey, createdAt };
+  agentCallOpen = true;
 
   document.getElementById('acp-ext').textContent   = ext;
   document.getElementById('acp-phone').textContent = otherNum;
@@ -1202,7 +1193,7 @@ function openAgentCall(ext) {
 }
 
 function closeAgentCall() {
-  activeAgentPopup = null;
+  agentCallOpen = false;
   document.getElementById('acp-overlay').style.display = 'none';
 }
 
@@ -1948,7 +1939,7 @@ function renderModal() {
 document.getElementById('qmodal-close').addEventListener('click', closeModal);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if (activeAgentPopup) closeAgentCall();
+    if (agentCallOpen) closeAgentCall();
     else if (activeModal) closeModal();
   }
 });
@@ -1987,6 +1978,7 @@ function getCsrfToken() {
 const SPY_APPS = new Set(['chanspy', 'extenspy', 'mixmonitor', 'spylocal']);
 
 function renderChannelsTab() {
+  if (!document.getElementById('tab-channels').classList.contains('active')) return;
   const el = document.getElementById('channels-tbody');
   const chans = Object.values(ST.channels);
   if (!chans.length) {
@@ -1998,6 +1990,7 @@ function renderChannelsTab() {
 
   el.innerHTML = chans.map((ch, i) => {
     const stateRaw = String(ch.state || '').toLowerCase();
+    const stateLabel = stateRaw ? stateRaw.toUpperCase() : '—';
     let stateCls = 'chan-state-other';
     if (stateRaw === 'up')                                  stateCls = 'chan-state-up';
     else if (stateRaw === 'ringing' || stateRaw === 'ring') stateCls = 'chan-state-ringing';
@@ -2056,7 +2049,7 @@ function renderChannelsTab() {
         <div class="chan-name">${esc(callerNum)}</div>
         ${callerName ? `<div class="ch-name">${esc(callerName)}</div>` : ''}
       </td>
-      <td><span class="${stateCls}">${esc(String(ch.state || '—').toUpperCase())}</span></td>
+      <td><span class="${stateCls}">${esc(stateLabel)}</span></td>
       <td>${ctxCell}</td>
       <td>${appCell}</td>
       <td>${bridgeCell}</td>

@@ -151,6 +151,17 @@
 {{ cdr_chart_data|json_script:"cdr-chart-data" }}
 {% endblock content %}
 
+{% block extra_css %}
+<style>
+#queue-list {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px 12px;
+  align-items: center;
+}
+</style>
+{% endblock extra_css %}
+
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -218,10 +229,6 @@
 
             const queueList = document.getElementById('queue-list');
             if (data.queues && data.queues.length > 0) {
-                queueList.style.display = 'grid';
-                queueList.style.gridTemplateColumns = '1fr auto auto';
-                queueList.style.gap = '6px 12px';
-                queueList.style.alignItems = 'center';
                 queueList.innerHTML = '';
                 data.queues.forEach(q => {
                     const name = document.createElement('span');
@@ -231,8 +238,7 @@
                     badge.className = 'uk-badge';
                     badge.textContent = q.callers + ' waiting';
                     const agents = document.createElement('span');
-                    agents.className = 'uk-text-muted uk-text-small';
-                    agents.style.textAlign = 'right';
+                    agents.className = 'uk-text-muted uk-text-small uk-text-right';
                     agents.textContent = q.available_members + '/' + q.total_members + ' agents';
                     queueList.append(name, badge, agents);
                 });

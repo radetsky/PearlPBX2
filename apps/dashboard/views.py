@@ -16,7 +16,7 @@ from core.models import SIPUser, SIPPeer
 
 logger = logging.getLogger(__name__)
 
-_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/]+$")
+_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/@]+$")
 
 
 def _get_redis():
@@ -293,6 +293,7 @@ def hangup_channel(request):
     if not channel or not _VALID_NAME_RE.match(channel):
         return JsonResponse({"error": "Invalid channel name"}, status=400)
 
+    client = None
     try:
         client = AMIClient(
             address=settings.ASTERISK_MANAGER_HOST,
@@ -304,10 +305,15 @@ def hangup_channel(request):
         )
         future = client.send_action(SimpleAction("Hangup", Channel=channel))
         response = future.response
-        client.logoff()
     except Exception as e:
         logger.error(f"AMI hangup error for {channel}: {e}")
         return JsonResponse({"error": str(e)}, status=502)
+    finally:
+        if client is not None:
+            try:
+                client.logoff()
+            except Exception:
+                pass
 
     if response is None:
         return JsonResponse({"error": "No response from AMI"}, status=502)
