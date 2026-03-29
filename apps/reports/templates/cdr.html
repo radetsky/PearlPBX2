@@ -413,6 +413,11 @@
             UIkit.modal('#cdr-details-modal').show();
         }
 
+        // Stop audio when modal is closed
+        UIkit.util.on('#cdr-details-modal', 'hide', function() {
+            stopCurrentAudio();
+        });
+
         // Attach click handler to all CDR rows and links
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.cdr-row, .cdr-details-link').forEach(function(el) {
