@@ -934,6 +934,7 @@ body::after {
 
 {% block body %}
 {% include 'header.html' %}
+<form id="csrf-form" hidden>{% csrf_token %}</form>
 <div class="app">
 
   <!-- ── TOP NAV ─────────────────────────────────────────────────────────── -->
@@ -1967,8 +1968,8 @@ document.querySelectorAll('.sub-tab').forEach(btn => {
 
 /** Return the CSRF token from cookies (needed for POST requests). */
 function getCsrfToken() {
-  const m = document.cookie.match(/csrftoken=([^;]+)/);
-  return m ? m[1] : '';
+  const el = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]');
+  return el ? el.value : '';
 }
 
 /**

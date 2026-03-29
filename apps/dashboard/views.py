@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from asterisk.ami import AMIClient, SimpleAction
@@ -30,7 +30,6 @@ def operator_panel(request):
 
 
 @login_required
-@ensure_csrf_cookie
 def new_dashboard(request):
     """Render the new dark-theme live operator dashboard."""
     return render(request, "dashboard/new_dashboard.html")
