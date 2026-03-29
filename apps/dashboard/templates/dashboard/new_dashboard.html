@@ -1288,14 +1288,20 @@ function durNow(ts) { return Date.now() / 1000 - ts; }
  * by bridge creation time ascending (oldest call first).
  * @returns {{ bid: string, src: object, dst: object, created_at: number }[]}
  */
+function chanHexSeq(channelName) {
+  const m = channelName && channelName.match(/-([0-9a-f]+)$/i);
+  return m ? parseInt(m[1], 16) : 0;
+}
+
 function bridgePairs() {
   const out = [];
   for (const [bid, br] of Object.entries(ST.bridges)) {
     if (br.channels.length < 2) continue;
-    const src = ST.channels[br.channels[0]];
-    const dst = ST.channels[br.channels[1]];
-    if (!src || !dst) continue;
-    out.push({ bid, src, dst, created_at: br.created_at });
+    let a = ST.channels[br.channels[0]];
+    let b = ST.channels[br.channels[1]];
+    if (!a || !b) continue;
+    if (chanHexSeq(a.channel) > chanHexSeq(b.channel)) { [a, b] = [b, a]; }
+    out.push({ bid, src: a, dst: b, created_at: br.created_at });
   }
   return out.sort((a, b) => a.created_at - b.created_at);
 }
