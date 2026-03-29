@@ -1,11 +1,10 @@
+{% extends 'base.html' %}
 {% load static %}
 {% load i18n %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASTERISK_LIVE — PearlPBX2</title>
+
+{% block title %}Dashboard Live{% endblock %}
+
+{% block extra_css %}
 <style>
 /* ── RESET & TOKENS ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,6 +35,7 @@
 }
 
 html, body { height: 100%; overflow: hidden; }
+body { padding-top: 60px; }
 
 body {
   background: var(--bg);
@@ -56,7 +56,7 @@ body::after {
 }
 
 /* ── APP SHELL ──────────────────────────────────────────────────────────────── */
-.app { display: flex; flex-direction: column; height: 100vh; }
+.app { display: flex; flex-direction: column; height: 100%; }
 
 /* ── TOP NAV ────────────────────────────────────────────────────────────────── */
 .topnav {
@@ -762,13 +762,14 @@ body::after {
   text-align: right;
 }
 </style>
-</head>
-<body>
+{% endblock %}
+
+{% block body %}
+{% include 'header.html' %}
 <div class="app">
 
   <!-- ── TOP NAV ─────────────────────────────────────────────────────────── -->
   <nav class="topnav">
-    <div class="logo">ASTERISK<em>_LIVE</em></div>
 
     <div class="nav-tabs">
       <div class="nav-tab active" data-tab="overview">Overview</div>
@@ -916,6 +917,9 @@ body::after {
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
 let activeModal = null;
 
@@ -1659,5 +1663,4 @@ document.querySelectorAll('.sub-tab').forEach(btn => {
 
 connectWS();
 </script>
-</body>
-</html>
+{% endblock %}

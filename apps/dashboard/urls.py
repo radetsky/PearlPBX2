@@ -4,8 +4,9 @@ from . import views
 app_name = "dashboard"
 
 urlpatterns = [
-    path("", views.operator_panel, name="operator_panel"),
+    path("", views.new_dashboard, name="dashboard"),
     path("live/", views.new_dashboard, name="new_dashboard"),
+    path("old/", views.operator_panel, name="operator_panel"),
     path("ulines/", views.uline_monitor, name="uline_monitor"),
     path("ulines/flush/", views.uline_flush, name="uline_flush"),
     # Queues
