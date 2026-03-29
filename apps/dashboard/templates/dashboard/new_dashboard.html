@@ -1022,7 +1022,9 @@ async function loadInitial({ skipEndpoints = false } = {}) {
 /**
  * Route an incoming WebSocket message to the appropriate state mutation
  * and trigger the minimal set of re-renders needed.
- * @param {{ type: string, data?: object }} msg
+ * @param {Object} msg
+ * @param {string} msg.type
+ * @param {object} [msg.data]
  */
 function dispatch(msg) {
   const type = msg.type;
@@ -1292,7 +1294,10 @@ function bridgePairs() {
 /**
  * Extract display-ready fields from a channel object.
  * Returns safe defaults when ch is null/undefined.
- * @returns {{ num: string, name: string, chan: string }}
+ * @returns {Object} obj
+ * @returns {string} obj.num
+ * @returns {string} obj.name
+ * @returns {string} obj.chan
  */
 function callerDisp(ch) {
   return {
@@ -1498,7 +1503,8 @@ function renderPJSIP() {
 /**
  * Build the HTML string for a single BLF status cell.
  * @param {string}              ep  Endpoint name (displayed as extension label)
- * @param {{ state: string }}   d   Endpoint state object from ST.endpoints
+ * @param {Object} d   Endpoint state object from ST.endpoints
+ * @param {string} d.state
  * @returns {string}  HTML snippet
  */
 function blfCell(ep, d) {
