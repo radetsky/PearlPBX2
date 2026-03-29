@@ -549,7 +549,7 @@ body::after {
 /* ── QUEUE FULLSCREEN MODAL ─────────────────────────────────────────────────── */
 .qmodal {
   position: fixed;
-  inset: 0;
+  inset: 60px 0 0 0;
   z-index: 1000;
   background: var(--bg);
   display: flex;
@@ -1044,7 +1044,7 @@ function dispatch(msg) {
         caller_id_name:d.caller_id_name || '',
         state:         d.state,
         bridge_id:     null,
-        created_at:    d.created_at || Date.now() / 1000,
+        created_at:    toUnixSecs(d.created_at),
       };
       updateEpFromChan(d.channel, d.state);
       renderAll();
@@ -1236,7 +1236,7 @@ function rebuildBridges() {
   for (const [name, ch] of Object.entries(ST.channels)) {
     if (!ch.bridge_id) continue;
     if (!ST.bridges[ch.bridge_id])
-      ST.bridges[ch.bridge_id] = { channels: [], created_at: ch.created_at || Date.now()/1000 };
+      ST.bridges[ch.bridge_id] = { channels: [], created_at: toUnixSecs(ch.bridged_at || ch.created_at) };
     if (!ST.bridges[ch.bridge_id].channels.includes(name))
       ST.bridges[ch.bridge_id].channels.push(name);
   }
@@ -1280,8 +1280,16 @@ function fmtDur(secs) {
   const s = Math.max(0, Math.round(secs));
   return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
 }
-/** Return the number of seconds elapsed since the given Unix timestamp. */
-function durNow(ts) { return Date.now() / 1000 - ts; }
+/** Normalize a timestamp (Unix seconds, Unix ms, or ISO string) to Unix seconds. */
+function toUnixSecs(ts) {
+  if (!ts) return Date.now() / 1000;
+  const n = Number(ts);
+  if (!isNaN(n)) return n > 1e10 ? n / 1000 : n;
+  const d = new Date(ts);
+  return isNaN(d) ? Date.now() / 1000 : d.getTime() / 1000;
+}
+/** Return the number of seconds elapsed since the given timestamp. */
+function durNow(ts) { return Date.now() / 1000 - toUnixSecs(ts); }
 
 /**
  * Build a list of active bridge pairs with resolved channel objects, sorted
