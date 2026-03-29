@@ -2078,6 +2078,16 @@ async function hangupChannel(btn, channel) {
       },
       body: JSON.stringify({ channel }),
     });
+
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      // Server returned HTML (403 CSRF, 500 error, redirect, etc.)
+      alert(`Hangup failed: HTTP ${resp.status} ${resp.statusText}\n(Expected JSON, got HTML — check server logs)`);
+      btn.disabled = false;
+      btn.textContent = 'HANGUP';
+      return;
+    }
+
     const data = await resp.json();
     if (!resp.ok || data.error) {
       alert(`Hangup failed: ${data.error || resp.status}`);
