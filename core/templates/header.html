@@ -56,7 +56,7 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="language" value="{{ lang_code }}">
                                         <input type="hidden" name="next" value="{{ request.path }}">
-                                        <button type="submit" class="uk-button uk-button-text" style="min-width: 80px; text-align: left; color: #333; font-size: 14px;">
+                                        <button type="submit" class="uk-button uk-button-text" style="min-width: 80px; text-align: left; color: rgba(255,255,255,0.8); font-size: 14px;">
                                             {{ lang_name }}
                                         </button>
                                     </form>
