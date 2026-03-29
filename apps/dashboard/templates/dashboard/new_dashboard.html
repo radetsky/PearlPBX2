@@ -1179,6 +1179,11 @@ function memberStateOf(status, paused) {
  * @returns {'idle'|'in_use'|'ringing'}
  */
 function chanStateOf(s) {
+  if (typeof s === 'string') {
+    const l = s.toLowerCase();
+    if (l === 'up') return 'in_use';
+    if (l === 'ringing' || l === 'ring') return 'ringing';
+  }
   const n = parseInt(s, 10);
   if (n === 6) return 'in_use';
   if (n === 4 || n === 5) return 'ringing';
