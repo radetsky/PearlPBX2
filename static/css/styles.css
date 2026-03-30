@@ -442,3 +442,13 @@
     border-top: 1px solid #e8e8e8;
     justify-content: flex-end;
 }
+
+/* Large screen navbar font-size overrides (1600px+) */
+@media (min-width: 1600px) {
+    .uk-navbar-nav > li > a {
+        font-size: 15px;
+    }
+    #top-header .uk-navbar-item {
+        font-size: 15px;
+    }
+}

@@ -929,6 +929,38 @@ body::after {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ── LARGE SCREEN (1600px+) font-size overrides ─────────────────────────── */
+@media (min-width: 1600px) {
+  body           { font-size: 15px; padding-top: 64px; }
+  .topnav        { height: 52px; }
+  .logo          { font-size: 16px; }
+  .nav-tab       { font-size: 13px; height: 52px; }
+  .conn-pill     { font-size: 12px; }
+
+  .queue-card-name { font-size: 16px; }
+  .section-lbl     { font-size: 11px; }
+  .mchip           { font-size: 13px; }
+  .empty           { font-size: 13px; }
+  .caller-row      { font-size: 14px; }
+  .caller-wait     { font-size: 15px; }
+
+  .qs-name  { font-size: 14px; }
+  .qs-meta  { font-size: 12px; }
+  .badge    { font-size: 12px; }
+  .ch-num   { font-size: 15px; }
+  .ch-name  { font-size: 13px; }
+  .ch-sub   { font-size: 12px; }
+  .ch-dur   { font-size: 16px; }
+
+  .blf-ext   { font-size: 17px; }
+  .blf-state { font-size: 11px; }
+
+  .chan-name { font-size: 14px; }
+  .chan-sub  { font-size: 12px; }
+  .chan-state-up, .chan-state-ringing, .chan-state-other,
+  .chan-bridged, .chan-orphan, .chan-spy, .chan-no-bridge { font-size: 12px; }
+}
 </style>
 {% endblock %}
 
