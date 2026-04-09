@@ -10,6 +10,8 @@ import time
 from asterisk.ami import AMIClient, AutoReconnect, SimpleAction
 from datetime import datetime, timezone
 
+DEFAULT_AMI_TIMEOUT = 60
+
 
 class CallbackException(Exception):
     pass
@@ -73,7 +75,8 @@ class Callback:
         ami_user = self.params.get("ami_user")
         ami_pass = self.params.get("ami_pass")
 
-        client = AMIClient(address=ami_host, port=ami_port, timeout=30)
+        ami_timeout = int(self.params.get("ami_timeout", DEFAULT_AMI_TIMEOUT))
+        client = AMIClient(address=ami_host, port=ami_port, timeout=ami_timeout)
         self._auto_reconnect = AutoReconnect(
             client,
             delay=5,
@@ -282,6 +285,9 @@ def parse_args():
         "--ami_pass", required=False, help="Asterisk Manager Interface password"
     )
     parser.add_argument(
+        "--ami_timeout", type=int, required=False, help="AMI connection timeout in seconds"
+    )
+    parser.add_argument(
         "--process_count", type=int, required=False, help="Number of processes to spawn"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -303,6 +309,7 @@ def read_env_vars(args):
     ami_port = int(os.getenv("AMI_PORT", "5038"))
     ami_user = os.getenv("AMI_USER", "ami_user")
     ami_pass = os.getenv("AMI_PASS", "ami_pass")
+    ami_timeout = int(os.getenv("AMI_TIMEOUT", str(DEFAULT_AMI_TIMEOUT)))
     process_count = int(os.getenv("VA_PROCESS_COUNT", "1"))
 
     return {
@@ -316,6 +323,7 @@ def read_env_vars(args):
         "ami_port": ami_port,
         "ami_user": ami_user,
         "ami_pass": ami_pass,
+        "ami_timeout": ami_timeout,
         "process_count": process_count,
     }
 
