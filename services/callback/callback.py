@@ -108,7 +108,7 @@ class Callback:
                 if not event.wait(timeout=10):
                     self.logger.error("Health check: no Ping response in 10s, exiting")
                     os._exit(1)
-                self.logger.debug("Health check: OK")
+                self.logger.info("Health check: OK")
             except Exception as e:
                 self.logger.error(f"Health check failed: {e}, exiting")
                 os._exit(1)
