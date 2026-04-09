@@ -760,7 +760,7 @@ def make_manager_conf():
     plaintext += f"secret = {manager_secret}\n"
     plaintext += "read = system,call,log,verbose,command,agent,user\n"
     plaintext += "write = system,call,log,verbose,command,agent,user\n"
-    plaintext += "writetimeout = 100\n"
+    plaintext += "writetimeout = 5000\n"
     plaintext += "eventfilter=!Event: RTCP*|!Event: VarSet|!Event: Cdr\n"
 
     manager_users = ManagerUsers.objects.all()

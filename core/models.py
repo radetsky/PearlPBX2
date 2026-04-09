@@ -646,7 +646,7 @@ class ManagerUsers(models.Model):
         blank=False,
         default="system,call,log,verbose,command,agent,user,config",
     )
-    writetimeout = models.PositiveIntegerField(default=100, null=False, blank=False)
+    writetimeout = models.PositiveIntegerField(default=5000, null=False, blank=False)
     eventfilter = models.CharField(
         max_length=64,
         unique=False,

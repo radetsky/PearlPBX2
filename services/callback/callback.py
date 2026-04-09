@@ -89,6 +89,11 @@ class Callback:
             on_event=self.event_listener,
             white_list=["DialBegin", "DialState", "DialEnd"],
         )
+        client.add_listener(
+            on_response=lambda source, response: self.logger.debug(
+                f"AMI response: status={response.status} keys={response.keys}"
+            )
+        )
         return client
 
     def _pop_call(self, dst: str):
@@ -207,6 +212,13 @@ class Callback:
         )
         self.conn.commit()
 
+    def _on_originate_response(self, id: int, dst: str, response):
+        if response.status == "Error":
+            self.logger.warning(f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}")
+            self._mark_busy(id, dst)
+        else:
+            self.logger.info(f"AMI Originate {dst}: queued")
+
     def call_dst(
         self, id: int, src: str, dst: str, context_outbound: str, context_inbound: str
     ):
@@ -231,28 +243,12 @@ class Callback:
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
         try:
-            future = self.ami.send_action(action)
-            response = future.response
+            self.ami.send_action(action, lambda response: self._on_originate_response(id, dst, response))
         except OSError:
             self._mark_busy(id, dst)
             raise
         except Exception as e:
             self.logger.error(f"AMI send error: {e}")
-            self._mark_busy(id, dst)
-            return
-
-        if response is None:
-            self.logger.error(f"AMI Originate {dst}: no response received")
-            self._mark_busy(id, dst)
-            return
-
-        if response.status == "Success":
-            self.logger.info(f"AMI Originate {dst}: queued")
-            # status will be updated asynchronously by event_listener on DialEnd
-        elif response.status == "Error":
-            self.logger.warning(
-                f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}"
-            )
             self._mark_busy(id, dst)
 
     def process(self):
