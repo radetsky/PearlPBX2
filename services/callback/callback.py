@@ -11,7 +11,7 @@ import time
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime, timezone
 
-DEFAULT_AMI_TIMEOUT = 60
+DEFAULT_AMI_TIMEOUT = 3600
 
 DIAL_STATUS_ANSWERED = "ANSWERED"
 DIAL_STATUS_BUSY = "BUSY"
@@ -31,9 +31,11 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
-        self.active_calls_by_dst = {}       # dst -> [id, ...]
+        self.active_calls_by_dst = {}       # dst -> [(id, context_outbound), ...]
         self.active_calls_by_uniqueid = {}  # uniqueid -> (id, dst)
         self._calls_lock = threading.Lock()
+        t = threading.Thread(target=self._health_check_loop, daemon=True)
+        t.start()
 
     def setup_logging(self):
         logger = logging.getLogger("callback")
@@ -97,16 +99,35 @@ class Callback:
         )
         return client
 
+    def _health_check_loop(self):
+        while True:
+            time.sleep(30)
+            try:
+                event = threading.Event()
+                self.ami.send_action(SimpleAction("Ping"), lambda _, e=event: e.set())
+                if not event.wait(timeout=10):
+                    self.logger.error("Health check: no Ping response in 10s, exiting")
+                    os._exit(1)
+                self.logger.debug("Health check: OK")
+            except Exception as e:
+                self.logger.error(f"Health check failed: {e}, exiting")
+                os._exit(1)
+
+    def _pop_from_dst(self, dst: str, call_id: int) -> tuple | None:
+        """Remove and return (call_id, context_outbound) by call_id. Caller must hold _calls_lock."""
+        entries = self.active_calls_by_dst.get(dst, [])
+        for i, entry in enumerate(entries):
+            if entry[0] == call_id:
+                entries.pop(i)
+                if not entries:
+                    del self.active_calls_by_dst[dst]
+                return entry
+        return None
+
     def _mark_busy(self, id: int, dst: str):
         self.update_call_status(id, dst, DIAL_STATUS_BUSY)
         with self._calls_lock:
-            ids = self.active_calls_by_dst.get(dst, [])
-            try:
-                ids.remove(id)
-            except ValueError:
-                pass
-            if not ids:
-                self.active_calls_by_dst.pop(dst, None)
+            self._pop_from_dst(dst, id)
 
     def event_listener(self, event, **kwargs):
         self.logger.debug(f"AMI event: {event.name} keys={event.keys}")
@@ -114,15 +135,18 @@ class Callback:
         if event.name == "DialBegin":
             dst = event.keys.get("DestExten", "")
             uniqueid = event.keys.get("DestUniqueid", "")
+            channel = event.keys.get("Channel", "")
             if not uniqueid:
                 return
             with self._calls_lock:
-                ids = self.active_calls_by_dst.get(dst, [])
-                if ids:
-                    call_id = ids.pop(0)
-                    if not ids:
-                        del self.active_calls_by_dst[dst]
-                    self.active_calls_by_uniqueid[uniqueid] = (call_id, dst)
+                entries = self.active_calls_by_dst.get(dst, [])
+                for i, (call_id, context_outbound) in enumerate(entries):
+                    if channel.startswith(f"Local/{dst}@{context_outbound}"):
+                        entries.pop(i)
+                        if not entries:
+                            del self.active_calls_by_dst[dst]
+                        self.active_calls_by_uniqueid[uniqueid] = (call_id, dst)
+                        break
 
         elif event.name == "DialEnd" and (
             event.keys["DestChannelStateDesc"] == "Down"
@@ -253,7 +277,7 @@ class Callback:
             kwargs["CallerID"] = src
 
         with self._calls_lock:
-            self.active_calls_by_dst.setdefault(dst, []).append(id)
+            self.active_calls_by_dst.setdefault(dst, []).append((id, context_outbound))
 
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
