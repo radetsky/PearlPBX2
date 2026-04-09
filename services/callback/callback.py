@@ -7,7 +7,7 @@ import psycopg2
 import sys
 import time
 
-from asterisk.ami import AMIClient, AutoReconnect, SimpleAction
+from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime, timezone
 
 DEFAULT_AMI_TIMEOUT = 60
@@ -77,14 +77,6 @@ class Callback:
 
         ami_timeout = int(self.params.get("ami_timeout", DEFAULT_AMI_TIMEOUT))
         client = AMIClient(address=ami_host, port=ami_port, timeout=ami_timeout)
-        self._auto_reconnect = AutoReconnect(
-            client,
-            delay=5,
-            on_disconnect=lambda *a: self.logger.warning(
-                "AMI disconnected, reconnecting..."
-            ),
-            on_reconnect=lambda *a: self.logger.info("AMI reconnected"),
-        )
         client.login(username=ami_user, secret=ami_pass)
         client.add_event_listener(
             on_event=self.event_listener,
@@ -213,6 +205,9 @@ class Callback:
             try:
                 future = self.ami.send_action(action)
                 response = future.response
+            except OSError as e:
+                self.update_call_status(id, dst, "BUSY")
+                raise
             except Exception as e:
                 self.logger.error(f"AMI send error: {e}")
                 self.update_call_status(id, dst, "BUSY")
@@ -247,6 +242,10 @@ class Callback:
 
         except ValueError:
             self.logger.debug("No destinations to call")
+
+        except OSError as e:
+            self.logger.critical(f"AMI connection lost, exiting: {e}")
+            raise
 
         except Exception as e:
             self.logger.error(f"Unexpected error in process loop: {e}")
@@ -379,6 +378,12 @@ if __name__ == "__main__":
         try:
             callback.process()
 
+        except OSError:
+            exit(1)
+
         except (KeyboardInterrupt, SystemExit):
-            callback.ami.logoff()
+            try:
+                callback.ami.logoff()
+            except Exception:
+                pass
             exit(0)
