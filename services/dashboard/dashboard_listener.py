@@ -27,6 +27,7 @@ class EventWrapper:
 REDIS_STATE_TTL = (
     7200  # seconds; health check refreshes every 30s, so 2h gives ample recovery window
 )
+MEMBER_PAUSED_KEY_PREFIX = "asterisk:member_paused:"
 
 
 class DashboardAMIListener:
@@ -129,6 +130,8 @@ class DashboardAMIListener:
         self.queue_state.clear()
         await self.update_channels_state()
         await self.publish_event("system_reset", {})
+        await self.restore_pause_states()
+        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
         self.logger.info("State reinitialized after AMI reconnect")
@@ -582,12 +585,48 @@ class DashboardAMIListener:
         }
         self.logger.debug(f"Queue {queue_name} parameters updated")
 
+    async def persist_member_pause(self, interface, paused):
+        key = f"{MEMBER_PAUSED_KEY_PREFIX}{interface}"
+        try:
+            if paused:
+                await self.redis_client.set(key, "1")
+            else:
+                await self.redis_client.delete(key)
+        except Exception as e:
+            self.logger.error(f"Failed to persist pause state for {interface}: {e}")
+
+    async def load_paused_members(self):
+        paused = []
+        try:
+            async for key in self.redis_client.scan_iter(match=f"{MEMBER_PAUSED_KEY_PREFIX}*"):
+                paused.append(key.removeprefix(MEMBER_PAUSED_KEY_PREFIX))
+        except Exception as e:
+            self.logger.error(f"Failed to load paused members from Redis: {e}")
+        return paused
+
+    async def restore_pause_states(self):
+        paused_interfaces = await self.load_paused_members()
+        for interface in paused_interfaces:
+            try:
+                action = SimpleAction("QueuePause", Interface=interface, Paused="true")
+                self.ami.send_action(action)
+                self.logger.info(f"Restored pause state for {interface}")
+            except Exception as e:
+                self.logger.error(f"Failed to restore pause for {interface}: {e}")
+        if paused_interfaces:
+            self.logger.info(f"Restored pause state for {len(paused_interfaces)} members")
+
     async def _upsert_queue_member(self, queue_name, member_name, event):
         self._ensure_queue_state(queue_name)
         status = event.get("Status")
         paused = event.get("Paused", "0") == "1"
         calls_taken = int(event.get("CallsTaken", "0"))
         last_update = datetime.now().isoformat()
+
+        old_member = self.queue_state[queue_name]["members"].get(member_name, {})
+        location = event.get("Location") or event.get("StateInterface")
+        if location and old_member.get("paused") != paused:
+            await self.persist_member_pause(location, paused)
 
         member = {
             "name": member_name,
@@ -781,6 +820,8 @@ class DashboardAMIListener:
         self.loop = asyncio.get_running_loop()
         self.ami.add_event_listener(on_event=self.event_listener_sync)
 
+        await self.restore_pause_states()
+        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
 
