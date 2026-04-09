@@ -31,7 +31,8 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
-        self.active_calls = {}
+        self.active_calls_by_dst = {}       # dst -> [id, ...]
+        self.active_calls_by_uniqueid = {}  # uniqueid -> (id, dst)
         self._calls_lock = threading.Lock()
 
     def setup_logging(self):
@@ -96,27 +97,46 @@ class Callback:
         )
         return client
 
-    def _pop_call(self, dst: str):
-        with self._calls_lock:
-            return self.active_calls.pop(dst, None)
-
     def _mark_busy(self, id: int, dst: str):
         self.update_call_status(id, dst, DIAL_STATUS_BUSY)
         with self._calls_lock:
-            self.active_calls.pop(dst, None)
+            ids = self.active_calls_by_dst.get(dst, [])
+            try:
+                ids.remove(id)
+            except ValueError:
+                pass
+            if not ids:
+                self.active_calls_by_dst.pop(dst, None)
 
     def event_listener(self, event, **kwargs):
-        if event.name == "DialEnd" and (
+        self.logger.debug(f"AMI event: {event.name} keys={event.keys}")
+
+        if event.name == "DialBegin":
+            dst = event.keys.get("DestExten", "")
+            uniqueid = event.keys.get("DestUniqueid", "")
+            if not uniqueid:
+                return
+            with self._calls_lock:
+                ids = self.active_calls_by_dst.get(dst, [])
+                if ids:
+                    call_id = ids.pop(0)
+                    if not ids:
+                        del self.active_calls_by_dst[dst]
+                    self.active_calls_by_uniqueid[uniqueid] = (call_id, dst)
+
+        elif event.name == "DialEnd" and (
             event.keys["DestChannelStateDesc"] == "Down"
             or event.keys["DestChannelStateDesc"] == "Up"
         ):
             dial_status = event.keys["DialStatus"]
             src = event.keys["DestCallerIDNum"]
-            dst = event.keys["DestExten"]
             dest_uniqueid = event.keys.get("DestUniqueid", "")
 
-            call_id = self._pop_call(dst)
-            if call_id is not None:
+            with self._calls_lock:
+                entry = self.active_calls_by_uniqueid.pop(dest_uniqueid, None)
+
+            if entry is not None:
+                call_id, dst = entry
                 self.logger.info(f"[DialEnd] {src} -> {dst} : {dial_status}")
                 db_status = (
                     DIAL_STATUS_ANSWERED
@@ -126,16 +146,12 @@ class Callback:
                 try:
                     self.update_call_status(call_id, dst, db_status)
                 except Exception as e:
-                    self.logger.error(
-                        f"Failed to update status for call {call_id}: {e}"
-                    )
+                    self.logger.error(f"Failed to update status for call {call_id}: {e}")
                 if dest_uniqueid:
                     try:
                         self.update_uniqueid(call_id, dest_uniqueid)
                     except Exception as e:
-                        self.logger.error(
-                            f"Failed to save uniqueid for call {call_id}: {e}"
-                        )
+                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
 
     def select_first_available(self) -> tuple:
         """
@@ -237,7 +253,7 @@ class Callback:
             kwargs["CallerID"] = src
 
         with self._calls_lock:
-            self.active_calls[dst] = id
+            self.active_calls_by_dst.setdefault(dst, []).append(id)
 
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
