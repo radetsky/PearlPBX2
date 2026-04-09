@@ -290,8 +290,9 @@ def make_pjsip_conf_uplinks():
         result += __section_trunk_aor(trunk)
         # endpoint
         result += __section_trunk_endpoint(trunk)
-        # identify
-        result += __section_trunk_identify(trunk)
+        # identify (only if host_port is set)
+        if trunk.host_port and trunk.host_port.strip():
+            result += __section_trunk_identify(trunk)
 
         result += "\n"
 
