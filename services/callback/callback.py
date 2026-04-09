@@ -5,12 +5,17 @@ import os
 import signal
 import psycopg2
 import sys
+import threading
 import time
 
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime, timezone
 
 DEFAULT_AMI_TIMEOUT = 60
+
+DIAL_STATUS_ANSWERED = "ANSWERED"
+DIAL_STATUS_BUSY = "BUSY"
+AMI_DIAL_STATUS_ANSWER = "ANSWER"
 
 
 class CallbackException(Exception):
@@ -27,6 +32,7 @@ class Callback:
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
         self.active_calls = {}
+        self._calls_lock = threading.Lock()
 
     def setup_logging(self):
         logger = logging.getLogger("callback")
@@ -78,25 +84,46 @@ class Callback:
         ami_timeout = int(self.params.get("ami_timeout", DEFAULT_AMI_TIMEOUT))
         client = AMIClient(address=ami_host, port=ami_port, timeout=ami_timeout)
         client.login(username=ami_user, secret=ami_pass)
+        self.logger.info(f"AMI connected to {ami_host}:{ami_port}")
         client.add_event_listener(
             on_event=self.event_listener,
             white_list=["DialBegin", "DialState", "DialEnd"],
         )
         return client
 
+    def _pop_call(self, dst: str):
+        with self._calls_lock:
+            return self.active_calls.pop(dst, None)
+
+    def _mark_busy(self, id: int, dst: str):
+        self.update_call_status(id, dst, DIAL_STATUS_BUSY)
+        with self._calls_lock:
+            self.active_calls.pop(dst, None)
+
     def event_listener(self, event, **kwargs):
         if event.name == "DialEnd" and (
             event.keys["DestChannelStateDesc"] == "Down"
             or event.keys["DestChannelStateDesc"] == "Up"
         ):
-            status = event.keys["DialStatus"]
+            dial_status = event.keys["DialStatus"]
             src = event.keys["DestCallerIDNum"]
             dst = event.keys["DestExten"]
             dest_uniqueid = event.keys.get("DestUniqueid", "")
 
-            call_id = self.active_calls.get(dst)
+            call_id = self._pop_call(dst)
             if call_id is not None:
-                self.logger.info(f"[DialEnd] {src} -> {dst} : {status}")
+                self.logger.info(f"[DialEnd] {src} -> {dst} : {dial_status}")
+                db_status = (
+                    DIAL_STATUS_ANSWERED
+                    if dial_status == AMI_DIAL_STATUS_ANSWER
+                    else DIAL_STATUS_BUSY
+                )
+                try:
+                    self.update_call_status(call_id, dst, db_status)
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to update status for call {call_id}: {e}"
+                    )
                 if dest_uniqueid:
                     try:
                         self.update_uniqueid(call_id, dest_uniqueid)
@@ -154,7 +181,7 @@ class Callback:
             raise ValueError("No available callback entry found.")
 
         update_query = """UPDATE callback_number
-               SET dial_status = 'PENDING'
+               SET dial_status = 'PENDING', updated = NOW()
                WHERE id = %s;"""
         cursor.execute(update_query, (result[0],))
         self.conn.commit()
@@ -192,39 +219,41 @@ class Callback:
             "Exten": dst,
             "Priority": 1,
             "Timeout": 60000,
+            "Async": "true",
         }
         if src and src != "":
             kwargs["Variable"] = f'ORIGCID="{src}"'
             kwargs["CallerID"] = src
 
-        self.active_calls[dst] = id
+        with self._calls_lock:
+            self.active_calls[dst] = id
 
+        action = SimpleAction("Originate", **kwargs)
+        self.logger.debug(action)
         try:
-            action = SimpleAction("Originate", **kwargs)
-            self.logger.debug(action)
-            try:
-                future = self.ami.send_action(action)
-                response = future.response
-            except OSError as e:
-                self.update_call_status(id, dst, "BUSY")
-                raise
-            except Exception as e:
-                self.logger.error(f"AMI send error: {e}")
-                self.update_call_status(id, dst, "BUSY")
-                return
+            future = self.ami.send_action(action)
+            response = future.response
+        except OSError:
+            self._mark_busy(id, dst)
+            raise
+        except Exception as e:
+            self.logger.error(f"AMI send error: {e}")
+            self._mark_busy(id, dst)
+            return
 
-            if response is None:
-                self.logger.error("AMI Originate timeout: no response received")
-                self.update_call_status(id, dst, "BUSY")
-                return
+        if response is None:
+            self.logger.error(f"AMI Originate {dst}: no response received")
+            self._mark_busy(id, dst)
+            return
 
-            self.logger.info(response)
-            if response.status == "Success":
-                self.update_call_status(id, dst, "ANSWERED")
-            elif response.status == "Error":
-                self.update_call_status(id, dst, "BUSY")
-        finally:
-            del self.active_calls[dst]
+        if response.status == "Success":
+            self.logger.info(f"AMI Originate {dst}: queued")
+            # status will be updated asynchronously by event_listener on DialEnd
+        elif response.status == "Error":
+            self.logger.warning(
+                f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}"
+            )
+            self._mark_busy(id, dst)
 
     def process(self):
         """
@@ -284,7 +313,10 @@ def parse_args():
         "--ami_pass", required=False, help="Asterisk Manager Interface password"
     )
     parser.add_argument(
-        "--ami_timeout", type=int, required=False, help="AMI connection timeout in seconds"
+        "--ami_timeout",
+        type=int,
+        required=False,
+        help="AMI connection timeout in seconds",
     )
     parser.add_argument(
         "--process_count", type=int, required=False, help="Number of processes to spawn"
