@@ -225,7 +225,6 @@ class Callback:
         self.logger.info(f"Calling from {src} to {dst}")
 
         kwargs = {
-            "ActionID": dst,
             "Channel": f"Local/{dst}@{context_outbound}/n",
             "Context": context_inbound,
             "Exten": dst,
