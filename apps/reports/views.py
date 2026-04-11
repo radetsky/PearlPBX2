@@ -1128,6 +1128,7 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
             date_from = form.cleaned_data["date_from"]
             date_to = form.cleaned_data["date_to"]
             queuename = form.cleaned_data["queuename"]
+            exclude_contacts = form.cleaned_data.get("exclude_contacts", False)
 
             is_hourly = date_from.date() == date_to.date()
             local_tz = timezone.get_current_timezone()
@@ -1139,6 +1140,16 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
             ).exclude(queuename=ASTERISK_NONE)
             if queuename:
                 qs = qs.filter(queuename=queuename)
+
+            if exclude_contacts:
+                known_callids = QueueLog.objects.filter(
+                    event="ENTERQUEUE",
+                    time__range=(date_from, date_to),
+                    data2__in=Contact.objects.values_list("callerid", flat=True),
+                ).values("callid")
+                # Exclude contacts only from missed (ABANDON) events,
+                # so answered call counts remain unaffected.
+                qs = qs.exclude(Q(event="ABANDON") & Q(callid__in=known_callids))
 
             period_data = {
                 row["period"]: row

@@ -31,7 +31,7 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
-        self.active_calls_by_dst = {}       # dst -> [(id, context_outbound), ...]
+        self.active_calls_by_dst = {}  # dst -> [(id, context_outbound), ...]
         self.active_calls_by_uniqueid = {}  # uniqueid -> (id, dst)
         self._calls_lock = threading.Lock()
         t = threading.Thread(target=self._health_check_loop, daemon=True)
@@ -170,12 +170,16 @@ class Callback:
                 try:
                     self.update_call_status(call_id, dst, db_status)
                 except Exception as e:
-                    self.logger.error(f"Failed to update status for call {call_id}: {e}")
+                    self.logger.error(
+                        f"Failed to update status for call {call_id}: {e}"
+                    )
                 if dest_uniqueid:
                     try:
                         self.update_uniqueid(call_id, dest_uniqueid)
                     except Exception as e:
-                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
+                        self.logger.error(
+                            f"Failed to save uniqueid for call {call_id}: {e}"
+                        )
 
     def select_first_available(self) -> tuple:
         """
@@ -254,7 +258,9 @@ class Callback:
 
     def _on_originate_response(self, id: int, dst: str, response):
         if response.status == "Error":
-            self.logger.warning(f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}")
+            self.logger.warning(
+                f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}"
+            )
             self._mark_busy(id, dst)
         else:
             self.logger.info(f"AMI Originate {dst}: queued")
@@ -282,7 +288,9 @@ class Callback:
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
         try:
-            self.ami.send_action(action, lambda response: self._on_originate_response(id, dst, response))
+            self.ami.send_action(
+                action, lambda response: self._on_originate_response(id, dst, response)
+            )
         except OSError:
             self._mark_busy(id, dst)
             raise

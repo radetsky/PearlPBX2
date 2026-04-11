@@ -131,7 +131,9 @@ class DashboardAMIListener:
         await self.update_channels_state()
         await self.publish_event("system_reset", {})
         await self.restore_pause_states()
-        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
+        await asyncio.sleep(
+            1
+        )  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
         self.logger.info("State reinitialized after AMI reconnect")
@@ -598,7 +600,9 @@ class DashboardAMIListener:
     async def load_paused_members(self):
         paused = []
         try:
-            async for key in self.redis_client.scan_iter(match=f"{MEMBER_PAUSED_KEY_PREFIX}*"):
+            async for key in self.redis_client.scan_iter(
+                match=f"{MEMBER_PAUSED_KEY_PREFIX}*"
+            ):
                 paused.append(key.removeprefix(MEMBER_PAUSED_KEY_PREFIX))
         except Exception as e:
             self.logger.error(f"Failed to load paused members from Redis: {e}")
@@ -614,7 +618,9 @@ class DashboardAMIListener:
             except Exception as e:
                 self.logger.error(f"Failed to restore pause for {interface}: {e}")
         if paused_interfaces:
-            self.logger.info(f"Restored pause state for {len(paused_interfaces)} members")
+            self.logger.info(
+                f"Restored pause state for {len(paused_interfaces)} members"
+            )
 
     async def _upsert_queue_member(self, queue_name, member_name, event):
         self._ensure_queue_state(queue_name)
@@ -821,7 +827,9 @@ class DashboardAMIListener:
         self.ami.add_event_listener(on_event=self.event_listener_sync)
 
         await self.restore_pause_states()
-        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
+        await asyncio.sleep(
+            1
+        )  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
 

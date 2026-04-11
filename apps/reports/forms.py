@@ -1,10 +1,12 @@
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.utils.translation import gettext_lazy as _
 
 from apps.reports.models import QueueLog
 from apps.callback.models import CallbackService
+from core.models import Contact
 from core.widgets import ChannelComboboxWidget
 
 ASTERISK_NONE = "NONE"
@@ -88,6 +90,12 @@ class QueueLogReportForm(forms.Form):
         ],
     )
 
+    exclude_contacts = forms.BooleanField(
+        label=_("Exclude known numbers (Contacts)"),
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
+    )
+
     # Report type
     REPORT_TYPES = [
         ("summary", _("Summary Statistics")),
@@ -126,12 +134,14 @@ class QueueLogReportForm(forms.Form):
 
         if self.is_valid():
             cleaned_data = self.cleaned_data
+            date_from = cleaned_data.get("date_from")
+            date_to = cleaned_data.get("date_to")
 
-            if cleaned_data.get("date_from"):
-                queryset = queryset.filter(time__gte=cleaned_data["date_from"])
+            if date_from:
+                queryset = queryset.filter(time__gte=date_from)
 
-            if cleaned_data.get("date_to"):
-                queryset = queryset.filter(time__lte=cleaned_data["date_to"])
+            if date_to:
+                queryset = queryset.filter(time__lte=date_to)
 
             if cleaned_data.get("queuename"):
                 queryset = queryset.filter(queuename=cleaned_data["queuename"])
@@ -141,6 +151,21 @@ class QueueLogReportForm(forms.Form):
 
             if cleaned_data.get("event"):
                 queryset = queryset.filter(event__in=cleaned_data["event"])
+
+            if cleaned_data.get("exclude_contacts"):
+                known_qs = QueueLog.objects.filter(
+                    event="ENTERQUEUE",
+                    data2__in=Contact.objects.values_list("callerid", flat=True),
+                )
+                if date_from:
+                    known_qs = known_qs.filter(time__gte=date_from)
+                if date_to:
+                    known_qs = known_qs.filter(time__lte=date_to)
+                # Exclude contacts only from missed (ABANDON) events,
+                # so answered call counts remain unaffected.
+                queryset = queryset.exclude(
+                    Q(event="ABANDON") & Q(callid__in=known_qs.values("callid"))
+                )
 
         return queryset
 
@@ -375,7 +400,11 @@ class AnalyticsCallDurationForm(_AnalyticsQueueFilterForm):
 
 
 class AnalyticsQueueActivityForm(_AnalyticsQueueFilterForm):
-    pass
+    exclude_contacts = forms.BooleanField(
+        label=_("Exclude known numbers (Contacts)"),
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
+    )
 
 
 class CallbackNumberReportForm(forms.Form):
