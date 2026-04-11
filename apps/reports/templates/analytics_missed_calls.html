@@ -55,7 +55,11 @@
                             <tbody>
                                 {% for row in table_data %}
                                 <tr>
-                                    <td>{{ row.queuename }}</td>
+                                    <td>
+                                        <a href="{% url 'queuelog_report' %}?date_from={{ date_from|date:'Y-m-d H:i' }}&amp;date_to={{ date_to|date:'Y-m-d H:i' }}&amp;queuename={{ row.queuename }}&amp;event=ABANDON&amp;report_type=lost_and_found">
+                                            {{ row.queuename }}
+                                        </a>
+                                    </td>
                                     <td class="uk-text-right">{{ row.missed }}</td>
                                     <td class="uk-text-right">{{ row.called_back }}</td>
                                     <td class="uk-text-right">{{ row.operators }}</td>

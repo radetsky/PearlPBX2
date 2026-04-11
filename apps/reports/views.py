@@ -877,6 +877,8 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
         form = AnalyticsDateRangeForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
+        date_from = None
+        date_to = None
 
         if form.is_valid():
             date_from = form.cleaned_data["date_from"]
@@ -987,6 +989,8 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
             "form": form,
             "table_data": table_data,
             "chart_data": chart_data,
+            "date_from": date_from,
+            "date_to": date_to,
         }
         return render(request, self.template_name, context)
 
