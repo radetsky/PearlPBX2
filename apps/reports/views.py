@@ -7,7 +7,7 @@ from datetime import timedelta
 from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Max, Q, Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 from django.utils.timezone import localtime
@@ -1308,12 +1308,12 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
         if callbacks:
             uniqueids = {cb.uniqueid for cb in callbacks if cb.uniqueid}
             if uniqueids:
-                cdr_durations = {
-                    row["uniqueid"]: row["duration"]
-                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
-                        "uniqueid", "duration"
-                    )
-                }
+                cdr_durations = dict(
+                    CDR.objects.filter(uniqueid__in=uniqueids)
+                    .values("uniqueid")
+                    .annotate(max_duration=Max("duration"))
+                    .values_list("uniqueid", "max_duration")
+                )
                 # Map linked CDR legs back to their callback uniqueid (linkedid = callback uniqueid)
                 linked_leg_to_callback = {
                     row["uniqueid"]: row["linkedid"]
