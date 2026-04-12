@@ -227,7 +227,7 @@ class DashboardAMIListener:
             "exten": event.get("Exten"),
             "created_at": datetime.now().isoformat(),
             "duration": 0,
-            "bridged_channel": None,
+            "bridge_id": event.get("BridgeId"),
             "application": event.get("Application"),
         }
 
@@ -549,7 +549,8 @@ class DashboardAMIListener:
     async def handle_core_show_channels_complete(self, event):
         """Flush aggregate channel state to Redis once CoreShowChannels bulk is done."""
         await self.update_channels_state()
-        self.logger.debug("CoreShowChannels complete, aggregate state updated")
+        await self.publish_event("channels_ready", {})
+        self.logger.debug("CoreShowChannels complete, snapshot published to browser")
 
     # ============ QUEUE EVENT HANDLERS ============
 

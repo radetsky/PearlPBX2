@@ -467,7 +467,7 @@ body::after {
   max-width: 100%;
   letter-spacing: 0;
 }
-.blf-dur {
+.call-dur {
   font-size: 10px;
   color: var(--txt3);
   font-variant-numeric: tabular-nums;
@@ -787,6 +787,17 @@ body::after {
   font-size: 10px;
   color: var(--txt3);
 }
+.qm-agent-call-info {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt2);
+  margin: 6px 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.qm-agent-dur { margin-bottom: 4px; }
 .qm-agent.busy { cursor: pointer; }
 .qm-agent.busy:hover { border-color: rgba(240,165,0,0.75); }
 
@@ -1573,6 +1584,28 @@ function dispatch(msg) {
       renderAll();
       loadInitial({ skipEndpoints: true });
       break;
+
+    case 'channels_ready':
+      fetch('/dashboard/api/channels/')
+        .then(r => r.ok ? r.json() : {})
+        .then(data => {
+          ST.channels = data;
+          rebuildBridges();
+          for (const [name, ch] of Object.entries(ST.channels)) {
+            if (!name.startsWith('PJSIP/')) continue;
+            const ep = epFromChan(name);
+            if (!ep) continue;
+            const chanSt = chanStateOf(ch.state);
+            if (!ST.endpoints[ep]) {
+              ST.endpoints[ep] = { state: chanSt, type: epType(ep) };
+            } else if (ST.endpoints[ep].state === 'idle') {
+              ST.endpoints[ep].state = chanSt;
+            }
+          }
+          renderAll();
+        })
+        .catch(e => console.error('channels_ready fetch failed', e));
+      break;
   }
 }
 
@@ -2081,7 +2114,7 @@ function blfCell(ep, d, callsTakenMap) {
     const info = getCallInfoForEndpoint(ep);
     const dirNum = info ? `${info.direction} ${esc(info.remoteNum || '—')}` : m.icon;
     const durHtml = info
-      ? `<div class="blf-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`
+      ? `<div class="call-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`
       : '';
     mid = `<div class="blf-call-info">${dirNum}</div>${durHtml}`;
   } else {
@@ -2233,14 +2266,29 @@ function renderModal() {
       return (!isNaN(na) && !isNaN(nb)) ? na - nb : ea.localeCompare(eb);
     });
     grid.innerHTML = sorted.map(([, m]) => {
-      const cls  = memberClass(m.status, m.paused, 'available');
-      const disp = epFromLoc(m.location || m.name) || m.name;
-      const click = cls === 'busy' ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
+      const cls    = memberClass(m.status, m.paused, 'available');
+      const disp   = epFromLoc(m.location || m.name) || m.name;
+      const isActive = cls === 'busy' || cls === 'ringing';
+      const click  = cls === 'busy' ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
+
+      let mid = '';
+      if (isActive) {
+        const info = getCallInfoForEndpoint(disp);
+        if (info) {
+          const dur = `<div class="call-dur qm-agent-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`;
+          mid = `<div class="qm-agent-call-info">${info.direction} ${esc(info.remoteNum || '—')}</div>${dur}`;
+        } else {
+          mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>`;
+        }
+      } else {
+        const ct = m.calls_taken ? `<div class="qm-agent-meta">${m.calls_taken} ${TRANS.calls}</div>` : '';
+        mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>${ct}`;
+      }
+
       return `<div class="qm-agent ${cls}"${click}>
         <div class="qm-agent-ext">${esc(disp)}</div>
-        <div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>
+        ${mid}
         <div class="qm-agent-state">${MEMBER_LBLS[cls] || TRANS.blfIdle}</div>
-        <div class="qm-agent-meta">${m.calls_taken ? m.calls_taken + ' ' + TRANS.calls : ''}</div>
       </div>`;
     }).join('');
   }
