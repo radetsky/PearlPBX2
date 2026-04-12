@@ -1308,7 +1308,6 @@ function openAgentCall(ext) {
   let otherNum = '—', otherName = '', chanName = '—', createdAt = null;
 
   if (chan) {
-    chanName = chan.channel || '—';
     createdAt = chan.bridge_id && ST.bridges[chan.bridge_id]
       ? ST.bridges[chan.bridge_id].created_at
       : chan.created_at;
@@ -1319,6 +1318,7 @@ function openAgentCall(ext) {
       if (other) {
         otherNum  = resolveCallerNum(other.caller_id_num || other.callerid, other.caller_id_name) || '—';
         otherName = other.caller_id_name || '';
+        chanName  = otherKey;
       }
     }
   }
@@ -1824,7 +1824,7 @@ function callerDisp(ch) {
  * Prefer whichever field looks like a real number (3/9-10 digits or E.164).
  */
 function resolveCallerNum(num, name) {
-  const VALID = /^(\d{3}|\d{9,10}|\+\d{7,15})$/;
+  const VALID = /^(\d{3}|\d{9,15}|\+\d{7,15})$/;
   const n = (num  || '').trim().replace(/^<unknown>$/i, '');
   const a = (name || '').trim().replace(/^<unknown>$/i, '');
   if (VALID.test(n)) return n;
