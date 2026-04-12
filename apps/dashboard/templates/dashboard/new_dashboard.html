@@ -256,9 +256,10 @@ body::after {
 .bt tr:last-child td { border-bottom: none; }
 .bt tr:hover td { background: var(--bg-hover); }
 
-.ch-num  { font-size: 13px; font-weight: 600; color: var(--txt); }
-.ch-name { font-size: 11px; color: var(--accent); margin-top: 1px; }
-.ch-sub  { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.ch-num      { font-size: 13px; font-weight: 600; color: var(--txt); }
+.ch-name     { font-size: 11px; color: var(--accent); margin-top: 1px; }
+.ch-sub      { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.ch-autodial { color: var(--txt3); font-style: italic; }
 .ch-arrow { color: var(--txt3); font-size: 13px; padding: 0 4px; }
 .ch-dur  {
   font-size: 14px;
@@ -456,6 +457,27 @@ body::after {
 .blf-cell.idle      .blf-state { color: var(--txt3);   }
 .blf-cell.unavailable .blf-state { color: var(--txt3); }
 .blf-cell.paused    .blf-state { color: var(--danger); }
+.blf-call-info {
+  font-size: 10px;
+  color: var(--txt2);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: 0;
+}
+.blf-dur {
+  font-size: 10px;
+  color: var(--txt3);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+.blf-calls-taken {
+  font-size: 9px;
+  color: var(--txt3);
+  margin-top: 2px;
+}
 
 /* ── BRIDGED TAB FULL TABLE ─────────────────────────────────────────────────── */
 .bridged-table-wrap {
@@ -657,6 +679,42 @@ body::after {
 
 .qmodal-section + .qmodal-section {
   border-left: 1px solid var(--border);
+}
+.qmodal-right-sidebar {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+.qmodal-sub-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+.qmodal-sub-section::-webkit-scrollbar { width: 5px; }
+.qmodal-sub-section::-webkit-scrollbar-track { background: transparent; }
+.qmodal-sub-section::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+.qmodal-sub-section + .qmodal-sub-section {
+  border-top: 1px solid var(--border);
+}
+.qm-missed-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qm-missed-entry:last-child { border-bottom: none; }
+.qm-missed-cid {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+  font-family: var(--font);
+}
+.qm-missed-time {
+  font-size: 11px;
+  color: var(--txt3);
+  font-variant-numeric: tabular-nums;
 }
 
 .qmodal-section-lbl {
@@ -1079,7 +1137,6 @@ body::after {
             <tr>
               <th style="width:32px">#</th>
               <th>{% trans "Channel" %}</th>
-              <th>{% trans "CallerID" %}</th>
               <th>{% trans "State" %}</th>
               <th>{% trans "Context / Exten" %}</th>
               <th>{% trans "Application" %}</th>
@@ -1089,7 +1146,7 @@ body::after {
             </tr>
           </thead>
           <tbody id="channels-tbody">
-            <tr><td colspan="9" class="empty">{% trans "No active channels" %}</td></tr>
+            <tr><td colspan="8" class="empty">{% trans "No active channels" %}</td></tr>
           </tbody>
         </table>
       </div>
@@ -1133,11 +1190,19 @@ body::after {
       </div>
     </div>
 
-    <!-- Callers (right sidebar) -->
-    <div class="qmodal-section">
-      <div class="qmodal-section-lbl">{% trans "Callers in Queue" %}</div>
-      <div id="qm-callers">
-        <div class="empty">{% trans "Queue is empty" %}</div>
+    <!-- Callers + Missed Calls (right sidebar) -->
+    <div class="qmodal-right-sidebar">
+      <div class="qmodal-sub-section">
+        <div class="qmodal-section-lbl">{% trans "Callers in Queue" %}</div>
+        <div id="qm-callers">
+          <div class="empty">{% trans "Queue is empty" %}</div>
+        </div>
+      </div>
+      <div class="qmodal-sub-section">
+        <div class="qmodal-section-lbl">{% trans "Missed Calls" %}</div>
+        <div id="qm-missed">
+          <div class="empty">{% trans "No missed calls" %}</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1178,6 +1243,8 @@ body::after {
 
 {% block extra_js %}
 <script>
+const IS_STAFF = {{ request.user.is_staff|yesno:"true,false" }} || {{ request.user.is_superuser|yesno:"true,false" }};
+
 const TRANS = {
   connected:              '{% trans "CONNECTED"|escapejs %}',
   connecting:             '{% trans "CONNECTING"|escapejs %}',
@@ -1214,6 +1281,9 @@ const TRANS = {
   memberAvailable:        '{% trans "AVAILABLE"|escapejs %}',
   memberInCall:           '{% trans "IN CALL"|escapejs %}',
   memberRinging:          '{% trans "RINGING"|escapejs %}',
+  missedCalls:            '{% trans "Missed Calls"|escapejs %}',
+  noMissedCalls:          '{% trans "No missed calls"|escapejs %}',
+  autoDial:               '{% trans "Auto dial"|escapejs %}',
 };
 
 let activeModal = null;
@@ -1236,7 +1306,7 @@ function openAgentCall(ext) {
       const otherKey = ST.bridges[chan.bridge_id].channels.find(c => c !== chanKey);
       const other = otherKey ? ST.channels[otherKey] : null;
       if (other) {
-        otherNum  = other.caller_id_num || other.callerid || '—';
+        otherNum  = resolveCallerNum(other.caller_id_num || other.callerid, other.caller_id_name) || '—';
         otherName = other.caller_id_name || '';
       }
     }
@@ -1389,13 +1459,16 @@ function dispatch(msg) {
 
     case 'channel_new':
       ST.channels[d.channel] = {
-        channel:       d.channel,
-        uniqueid:      d.uniqueid,
-        caller_id_num: d.caller_id_num || d.callerid || '',
-        caller_id_name:d.caller_id_name || '',
-        state:         d.state,
-        bridge_id:     null,
-        created_at:    toUnixSecs(d.created_at),
+        channel:            d.channel,
+        uniqueid:           d.uniqueid,
+        caller_id_num:      d.caller_id_num || d.callerid || '',
+        caller_id_name:     d.caller_id_name || '',
+        connected_line_num: d.connected_line_num || '',
+        context:            d.context || '',
+        exten:              d.exten || '',
+        state:              d.state,
+        bridge_id:          null,
+        created_at:         toUnixSecs(d.created_at),
       };
       updateEpFromChan(d.channel, d.state);
       renderAll();
@@ -1461,6 +1534,17 @@ function dispatch(msg) {
       renderQueuesTab(); renderOvQueues(); renderStats();
       break;
 
+    case 'channel_dial_begin':
+      if (ST.channels[d.channel]) {
+        ST.channels[d.channel].dialing_to = d.destination;
+        ST.channels[d.channel].dest_caller_id_num = d.dest_caller_id_num;
+      }
+      if (ST.channels[d.destination]) {
+        ST.channels[d.destination].dialed_by = d.channel;
+      }
+      renderAll();
+      break;
+
     case 'queue_caller_leave':
     case 'agent_connect':
       if (ST.queues[d.queue]) {
@@ -1469,6 +1553,19 @@ function dispatch(msg) {
           Object.keys(ST.queues[d.queue].calls).length;
         renderQueuesTab(); renderOvQueues(); renderStats();
       }
+      if (type === 'agent_connect' && activeModal === d.queue) {
+        debouncedFetchMissed(d.queue);
+      }
+      break;
+
+    case 'queue_caller_abandon':
+      if (ST.queues[d.queue]) {
+        delete ST.queues[d.queue].calls[d.unique_id];
+        ST.queues[d.queue].stats.waiting =
+          Object.keys(ST.queues[d.queue].calls).length;
+      }
+      if (activeModal === d.queue) debouncedFetchMissed(d.queue);
+      renderQueuesTab(); renderOvQueues(); renderStats();
       break;
 
     case 'system_reset':
@@ -1674,11 +1771,31 @@ function bridgePairs() {
  * @returns {string} obj.chan
  */
 function callerDisp(ch) {
-  return {
-    num:  ch ? (ch.caller_id_num || ch.callerid || '—') : '—',
-    name: ch ? (ch.caller_id_name || '') : '',
-    chan: ch ? (ch.channel || '') : '',
-  };
+  if (!ch) return { num: '—', name: '', chan: '', isLocal: false };
+
+  const isLocal = /^Local\//i.test(ch.channel || '');
+  let num  = resolveCallerNum(ch.caller_id_num || ch.callerid, ch.caller_id_name);
+  let name = (ch.caller_id_name || '').replace(/^<unknown>$/i, '');
+
+  if (isLocal && !num) {
+    const m = ch.channel.match(/^Local\/(\d+)@/i);
+    if (m) { num = m[1]; name = TRANS.autoDial; }
+  }
+
+  return { num: num || '—', name, chan: ch.channel || '', isLocal };
+}
+
+/**
+ * Some external SIP peers swap callerid(num) and callerid(name).
+ * Prefer whichever field looks like a real number (3/9-10 digits or E.164).
+ */
+function resolveCallerNum(num, name) {
+  const VALID = /^(\d{3}|\d{9,10}|\+\d{7,15})$/;
+  const n = (num  || '').trim().replace(/^<unknown>$/i, '');
+  const a = (name || '').trim().replace(/^<unknown>$/i, '');
+  if (VALID.test(n)) return n;
+  if (VALID.test(a)) return a;
+  return n || a;
 }
 
 /**
@@ -1721,6 +1838,17 @@ function renderStats() {
 }
 
 /**
+ * Returns { chanHtml, nameCls } for one side of a bridged pair.
+ * Centralises the IS_STAFF / isLocal rendering decision.
+ */
+function chanSide(disp) {
+  return {
+    chanHtml: IS_STAFF ? `<div class="ch-sub">${esc(disp.chan)}</div>` : '',
+    nameCls:  disp.isLocal ? 'ch-name ch-autodial' : 'ch-name',
+  };
+}
+
+/**
  * Render the compact bridged-channels table on the Overview tab.
  * @param {{ bid, src, dst, created_at }[]} prs  Pre-computed bridge pairs
  */
@@ -1731,17 +1859,18 @@ function renderOvBridged(prs) {
   let h = '<table class="bt"><tbody>';
   for (const p of prs) {
     const s = callerDisp(p.src), d = callerDisp(p.dst);
+    const sc = chanSide(s), dc = chanSide(d);
     h += `<tr>
       <td>
         <div class="ch-num">${esc(s.num)}</div>
-        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
-        <div class="ch-sub">${esc(s.chan)}</div>
+        ${s.name ? `<div class="${sc.nameCls}">${esc(s.name)}</div>` : ''}
+        ${sc.chanHtml}
       </td>
       <td class="ch-arrow">⇄</td>
       <td>
         <div class="ch-num">${esc(d.num)}</div>
-        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
-        <div class="ch-sub">${esc(d.chan)}</div>
+        ${d.name ? `<div class="${dc.nameCls}">${esc(d.name)}</div>` : ''}
+        ${dc.chanHtml}
       </td>
       <td class="ch-dur" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
     </tr>`;
@@ -1868,12 +1997,14 @@ function renderPJSIP() {
   const pg = document.getElementById('peers-grid');
   const ug = document.getElementById('users-grid');
 
+  const ctMap = buildCallsTakenMap();
+
   pg.innerHTML = external.length
-    ? external.map(([ep,d]) => blfCell(ep, d)).join('')
+    ? external.map(([ep,d]) => blfCell(ep, d, ctMap)).join('')
     : `<div class="empty">${TRANS.noExternalChannels}</div>`;
 
   ug.innerHTML = internal.length
-    ? internal.map(([ep,d]) => blfCell(ep, d)).join('')
+    ? internal.map(([ep,d]) => blfCell(ep, d, ctMap)).join('')
     : `<div class="empty">${TRANS.noInternalUsers}</div>`;
 }
 
@@ -1884,11 +2015,84 @@ function renderPJSIP() {
  * @param {string} d.state
  * @returns {string}  HTML snippet
  */
-function blfCell(ep, d) {
+function getCallInfoForEndpoint(ep) {
+  const prefix = ('PJSIP/' + ep + '-').toLowerCase();
+  const chanKey = Object.keys(ST.channels).find(k =>
+    k.toLowerCase().startsWith(prefix) &&
+    ST.channels[k].state &&
+    ST.channels[k].state.toLowerCase() !== 'down'
+  );
+  if (!chanKey) return null;
+  const chan = ST.channels[chanKey];
+
+  let direction = '↑';
+  let remoteNum = '';
+
+  if (chan.bridge_id && ST.bridges[chan.bridge_id]) {
+    const otherKey = ST.bridges[chan.bridge_id].channels.find(c => c !== chanKey);
+    const other = otherKey ? ST.channels[otherKey] : null;
+    if (other) {
+      const otherEp = epFromChan(otherKey);
+      if (otherEp && ST.knownUsers.has(otherEp) && ST.knownUsers.has(ep)) {
+        direction = '↔';
+        remoteNum = otherEp;
+      } else if (chan.dialed_by) {
+        direction = '↓';
+        remoteNum = resolveCallerNum(other.caller_id_num || chan.caller_id_num, other.caller_id_name || chan.caller_id_name);
+      } else {
+        direction = '↑';
+        remoteNum = resolveCallerNum(other.caller_id_num || chan.connected_line_num, other.caller_id_name || chan.caller_id_name);
+      }
+    }
+  } else if (chan.dialing_to) {
+    const destEp = epFromChan(chan.dialing_to);
+    direction = (destEp && ST.knownUsers.has(destEp)) ? '↔' : '↑';
+    remoteNum = resolveCallerNum(chan.dest_caller_id_num, chan.caller_id_name);
+  } else if (chan.dialed_by) {
+    direction = '↓';
+    remoteNum = resolveCallerNum(chan.caller_id_num, chan.caller_id_name);
+  }
+
+  const ts = (chan.bridge_id && ST.bridges[chan.bridge_id])
+    ? ST.bridges[chan.bridge_id].created_at
+    : chan.created_at;
+
+  return { direction, remoteNum, created_at: ts };
+}
+
+function buildCallsTakenMap() {
+  const map = {};
+  for (const q of Object.values(ST.queues)) {
+    for (const m of Object.values(q.members || {})) {
+      const loc = (m.location || m.name || '');
+      const ep = epFromChan(loc) || loc.replace(/^PJSIP\//i, '');
+      if (ep && m.calls_taken && !map[ep]) map[ep] = parseInt(m.calls_taken, 10);
+    }
+  }
+  return map;
+}
+
+function blfCell(ep, d, callsTakenMap) {
   const m = BLF_MAP[d.state] || BLF_MAP.idle;
+  const isActive = d.state === 'in_use' || d.state === 'ringing';
+
+  let mid = '';
+  if (isActive) {
+    const info = getCallInfoForEndpoint(ep);
+    const dirNum = info ? `${info.direction} ${esc(info.remoteNum || '—')}` : m.icon;
+    const durHtml = info
+      ? `<div class="blf-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`
+      : '';
+    mid = `<div class="blf-call-info">${dirNum}</div>${durHtml}`;
+  } else {
+    const ct = (d.state === 'idle') ? ((callsTakenMap && callsTakenMap[ep]) || 0) : 0;
+    const ctHtml = ct > 0 ? `<div class="blf-calls-taken">${ct} ${TRANS.calls}</div>` : '';
+    mid = `<div class="blf-icon">${m.icon}</div>${ctHtml}`;
+  }
+
   return `<div class="blf-cell ${m.cls}">
     <div class="blf-ext">${esc(ep)}</div>
-    <div class="blf-icon">${m.icon}</div>
+    ${mid}
     <div class="blf-state">${m.lbl}</div>
   </div>`;
 }
@@ -1907,18 +2111,19 @@ function renderBridgedTab(prs) {
   let h = '';
   prs.forEach((p, i) => {
     const s = callerDisp(p.src), d = callerDisp(p.dst);
+    const sc = chanSide(s), dc = chanSide(d);
     h += `<tr>
       <td class="row-idx">${i + 1}</td>
       <td>
         <div class="ch-num">${esc(s.num)}</div>
-        ${s.name ? `<div class="ch-name">${esc(s.name)}</div>` : ''}
-        <div class="ch-sub">${esc(s.chan)}</div>
+        ${s.name ? `<div class="${sc.nameCls}">${esc(s.name)}</div>` : ''}
+        ${sc.chanHtml}
       </td>
       <td class="arrow-col">→</td>
       <td>
         <div class="ch-num">${esc(d.num)}</div>
-        ${d.name ? `<div class="ch-name">${esc(d.name)}</div>` : ''}
-        <div class="ch-sub">${esc(d.chan)}</div>
+        ${d.name ? `<div class="${dc.nameCls}">${esc(d.name)}</div>` : ''}
+        ${dc.chanHtml}
       </td>
       <td class="dur-col" data-created="${p.created_at}">${fmtDur(durNow(p.created_at))}</td>
     </tr>`;
@@ -1938,14 +2143,59 @@ setInterval(() => {
  * Open the fullscreen queue modal for the specified queue.
  * @param {string} qname  Queue name key from ST.queues
  */
+const _missedCache = {};
+let _missedDebounceTimer = null;
+let _missedRefreshInterval = null;
+
+async function fetchMissedCalls(qname) {
+  try {
+    const resp = await fetch(`/dashboard/api/missed-calls/?queue=${encodeURIComponent(qname)}`);
+    if (resp.ok) {
+      _missedCache[qname] = await resp.json();
+      renderMissedCalls(qname);
+    }
+  } catch (e) {
+    // network error — keep showing cached data
+  }
+}
+
+function debouncedFetchMissed(qname) {
+  if (_missedDebounceTimer) clearTimeout(_missedDebounceTimer);
+  _missedDebounceTimer = setTimeout(() => fetchMissedCalls(qname), 2000);
+}
+
+function renderMissedCalls(qname) {
+  const el = document.getElementById('qm-missed');
+  if (!el) return;
+  const list = _missedCache[qname] || [];
+  if (!list.length) {
+    el.innerHTML = `<div class="empty">${TRANS.noMissedCalls}</div>`;
+    return;
+  }
+  el.innerHTML = list.map(m =>
+    `<div class="qm-missed-entry">
+      <div class="qm-missed-cid">${esc(m.caller_id)}</div>
+      <div class="qm-missed-time">${esc(m.time_hhmm)}</div>
+    </div>`
+  ).join('');
+}
+
 function openModal(qname) {
+  if (_missedRefreshInterval) { clearInterval(_missedRefreshInterval); _missedRefreshInterval = null; }
   activeModal = qname;
   document.getElementById('qmodal').style.display = 'flex';
   renderModal();
+  fetchMissedCalls(qname);
+  _missedRefreshInterval = setInterval(() => fetchMissedCalls(qname), 30000);
 }
 
 /** Hide the fullscreen queue modal and clear the active queue reference. */
 function closeModal() {
+  if (_missedRefreshInterval) {
+    clearInterval(_missedRefreshInterval);
+    _missedRefreshInterval = null;
+  }
+  if (activeModal) delete _missedCache[activeModal];
   activeModal = null;
   document.getElementById('qmodal').style.display = 'none';
 }
@@ -2028,6 +2278,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.classList.add('active');
     const panel = document.getElementById('tab-' + tab.dataset.tab);
     if (panel) panel.classList.add('active');
+    if (tab.dataset.tab === 'channels') renderChannelsTab();
   });
 });
 
@@ -2072,8 +2323,6 @@ function renderChannelsTab() {
     if (stateRaw === 'up')                                  stateCls = 'chan-state-up';
     else if (stateRaw === 'ringing' || stateRaw === 'ring') stateCls = 'chan-state-ringing';
 
-    const callerNum  = ch.caller_id_num  || '—';
-    const callerName = ch.caller_id_name || '';
     const context    = ch.context  || '';
     const exten      = ch.exten    || '';
     const app        = ch.application || '';
@@ -2121,10 +2370,6 @@ function renderChannelsTab() {
       <td>
         <div class="chan-name">${esc(ch.channel)}</div>
         ${ch.uniqueid ? `<div class="chan-sub">${esc(ch.uniqueid)}</div>` : ''}
-      </td>
-      <td>
-        <div class="chan-name">${esc(callerNum)}</div>
-        ${callerName ? `<div class="ch-name">${esc(callerName)}</div>` : ''}
       </td>
       <td><span class="${stateCls}">${esc(stateLabel)}</span></td>
       <td>${ctxCell}</td>

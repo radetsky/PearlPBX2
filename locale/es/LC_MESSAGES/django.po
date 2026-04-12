@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-11 17:34+0300\n"
+"POT-Creation-Date: 2026-04-12 12:37+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Spanish\n"
@@ -19,13 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
 
-#: apps/callback/models.py:36 apps/reports/forms.py:414
+#: apps/callback/models.py:36 apps/reports/forms.py:413
 #: apps/reports/templates/callback_report.html:233
 msgid "New"
 msgstr "Nuevo"
 
-#: apps/callback/models.py:37 apps/reports/forms.py:222
-#: apps/reports/forms.py:415
+#: apps/callback/models.py:37 apps/reports/forms.py:221
+#: apps/reports/forms.py:414
 #: apps/reports/templates/analytics_queue_activity.html:52
 #: apps/reports/templates/callback_report.html:240
 #: apps/reports/templates/cdr.html:242 apps/reports/templates/queue.html:119
@@ -36,12 +36,12 @@ msgstr "Respondidas"
 
 #: apps/callback/models.py:38
 #: apps/dashboard/templates/dashboard/operator_panel.html:649
-#: apps/reports/forms.py:223 apps/reports/forms.py:416
+#: apps/reports/forms.py:222 apps/reports/forms.py:415
 #: apps/reports/templates/callback_report.html:247
 msgid "Busy"
 msgstr "Ocupado"
 
-#: apps/callback/models.py:39 apps/reports/forms.py:417
+#: apps/callback/models.py:39 apps/reports/forms.py:416
 #: apps/reports/templates/callback_report.html:254
 msgid "Pending"
 msgstr "Pendiente"
@@ -50,99 +50,99 @@ msgstr "Pendiente"
 msgid "Dashboard Live"
 msgstr "Panel en vivo"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:976
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1033
 msgid "Overview"
 msgstr "Resumen"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:977
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1007
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1034
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1064
 #: apps/dashboard/templates/dashboard/operator_panel.html:594
 #: core/templates/home.html:30 core/templates/home.html:137
 msgid "Queues"
 msgstr "Colas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:979
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1036
 #: apps/dashboard/templates/dashboard/operator_panel.html:642
 msgid "Bridged"
 msgstr "En conferencia"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:980
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1037
 msgid "Channels"
 msgstr "Canales"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:986
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1183
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1043
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1248
 msgid "CONNECTING"
 msgstr "CONECTANDO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:999
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1056
 #: apps/dashboard/templates/dashboard/operator_panel.html:586
 #: apps/dashboard/templates/dashboard/operator_panel.html:604
 msgid "Active Channels"
 msgstr "Canales activos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1003
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1060
 msgid "Bridged Pairs"
 msgstr "Pares conectados"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1011
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1068
 msgid "Waiting Callers"
 msgstr "Llamantes en espera"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1019
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1076
 msgid "Bridged Channels"
 msgstr "Canales conectados"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1020
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1077
 msgid "LIVE"
 msgstr "EN VIVO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1022
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1185
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1079
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1250
 msgid "No active bridged calls"
 msgstr "No hay llamadas conectadas activas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1026
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1083
 msgid "Queue Summary"
 msgstr "Resumen de colas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1027
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1186
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1084
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1251
 msgid "No queues"
 msgstr "Sin colas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1036
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1187
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1093
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1252
 #: apps/dashboard/templates/dashboard/operator_panel.html:614
 #: apps/dashboard/templates/dashboard/operator_panel.html:636
 msgid "No queues configured"
 msgstr "No hay colas configuradas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1043
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1100
 msgid "External Channels"
 msgstr "Canales externos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1044
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1101
 msgid "Internal Users"
 msgstr "Usuarios internos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1047
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1190
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1104
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1255
 msgid "No external channels detected"
 msgstr "No se detectaron canales externos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1050
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1191
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1107
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1256
 msgid "No internal users detected"
 msgstr "No se detectaron usuarios internos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1061
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1118
 #: apps/reports/templates/callback_report.html:95
 #: apps/reports/templates/cdr.html:114 apps/reports/templates/monitor.html:80
 msgid "Source"
 msgstr "Origen"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1063
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1120
 #: apps/lists/templates/lists/allowlist.html:40
 #: apps/lists/templates/lists/allowlist.html:126
 #: apps/lists/templates/lists/blocklist.html:40
@@ -153,61 +153,61 @@ msgstr "Origen"
 msgid "Destination"
 msgstr "Destino"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1064
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1087
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1166
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1121
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1144
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1231
 #: apps/reports/templates/callback_report.html:113
 #: apps/reports/templates/cdr.html:129 apps/reports/templates/monitor.html:86
 msgid "Duration"
 msgstr "Duración"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1068
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1192
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1125
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1257
 msgid "No bridged calls"
 msgstr "No hay llamadas conectadas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1081
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1162
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1138
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1227
 #: apps/dashboard/templates/dashboard/ulines.html:230
 #: apps/reports/templates/cdr.html:123
 msgid "Channel"
 msgstr "Canal"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1082
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1139
 #: apps/dashboard/templates/dashboard/ulines.html:232
 msgid "CallerID"
 msgstr "CallerID"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1083
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1140
 msgid "State"
 msgstr "Estado"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1084
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1141
 msgid "Context / Exten"
 msgstr "Contexto / Ext."
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1085
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1142
 #: core/models.py:982
 msgid "Application"
 msgstr "Aplicación"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1086
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1143
 msgid "Bridge"
 msgstr "Bridge"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1088
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1145
 msgid "Action"
 msgstr "Acción"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1092
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1193
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1149
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1258
 #: apps/dashboard/templates/dashboard/operator_panel.html:606
 #: apps/dashboard/templates/dashboard/operator_panel.html:635
 msgid "No active channels"
 msgstr "No hay canales activos"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1105
-#: apps/reports/forms.py:60 apps/reports/forms.py:381
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1162
+#: apps/reports/forms.py:62 apps/reports/forms.py:380
 #: apps/reports/templates/analytics_missed_calls.html:48
 #: apps/reports/templates/analytics_queue_calls.html:68
 #: apps/reports/templates/queue.html:246 apps/reports/templates/queue.html:310
@@ -215,51 +215,64 @@ msgstr "No hay canales activos"
 msgid "Queue"
 msgstr "Cola"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1112
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1169
 #: apps/dashboard/templates/dashboard/operator_panel.html:645
 msgid "Waiting"
 msgstr "En espera"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1116
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1130
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1199
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1173
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1187
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1264
 #: apps/dashboard/templates/dashboard/operator_panel.html:644
 msgid "Agents"
 msgstr "Agentes"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1120
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1177
 #: apps/dashboard/templates/dashboard/operator_panel.html:647
 msgid "Available"
 msgstr "Disponible"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1124
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1181
 msgid "ESC"
 msgstr "ESC"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1132
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1188
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1189
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1253
 #: apps/dashboard/templates/dashboard/operator_panel.html:637
 msgid "No agents"
 msgstr "Sin agentes"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1138
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1196
 msgid "Callers in Queue"
 msgstr "Llamantes en cola"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1140
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1189
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1198
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1254
 msgid "Queue is empty"
 msgstr "Cola vacía"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1149
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1202
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1282
+msgid "Missed Calls"
+msgstr "Llamadas perdidas"
+
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1204
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1283
+msgid "No missed calls"
+msgstr "No hay llamadas perdidas"
+
+msgid "Auto dial"
+msgstr "Marcación automática"
+
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1214
 msgid "Active Call — Agent"
 msgstr "Llamada activa — Agente"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1154
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1219
 msgid "Phone"
 msgstr "Teléfono"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1158
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1223
 #: apps/dashboard/templates/dashboard/operator_panel.html:639
 #: apps/lists/templates/lists/contacts.html:40
 #: apps/lists/templates/lists/contacts.html:120
@@ -268,112 +281,112 @@ msgstr "Teléfono"
 msgid "Name"
 msgstr "Nombre"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1171
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1172
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1236
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1237
 msgid "Coming soon"
 msgstr "Próximamente"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1171
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1236
 msgid "Listen to call"
 msgstr "Escuchar llamada"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1172
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1237
 msgid "Whisper to agent"
 msgstr "Susurrar al agente"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1182
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1247
 msgid "CONNECTED"
 msgstr "CONECTADO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1184
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1249
 msgid "DISCONNECTED"
 msgstr "DESCONECTADO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1194
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1259
 msgid "agent"
 msgstr "agente"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1195
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1260
 msgid "agents"
 msgstr "agentes"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1196
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1261
 msgid "waiting"
 msgstr "en espera"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1197
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1262
 msgid "calls"
 msgstr "llamadas"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1198
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1263
 msgid "Open fullscreen"
 msgstr "Abrir en pantalla completa"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1200
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1265
 msgid "Callers"
 msgstr "Llamantes"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1201
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1266
 msgid "ORPHAN"
 msgstr "ORPHAN"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1202
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1267
 msgid "BRIDGED"
 msgstr "BRIDGED"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1203
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1268
 msgid "HANGUP"
 msgstr "COLGAR"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1204
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1269
 msgid "Hangup channel:"
 msgstr "Colgar canal:"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1205
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1270
 msgid "Hangup failed: HTTP"
 msgstr "Error al colgar: HTTP"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1206
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1271
 msgid "(Expected JSON, got HTML — check server logs)"
 msgstr "(Se esperaba JSON, se recibió HTML — revise los logs del servidor)"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1207
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1272
 msgid "Hangup failed:"
 msgstr "Error al colgar:"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1208
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1273
 msgid "Network error:"
 msgstr "Error de red:"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1209
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1274
 msgid "IDLE"
 msgstr "LIBRE"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1210
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1275
 msgid "RING"
 msgstr "LLAMANDO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1211
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1276
 msgid "IN USE"
 msgstr "EN USO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1212
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1277
 msgid "N/A"
 msgstr "N/D"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1213
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1278
 msgid "PAUSED"
 msgstr "PAUSADO"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1214
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1279
 msgid "AVAILABLE"
 msgstr "DISPONIBLE"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1215
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1280
 msgid "IN CALL"
 msgstr "EN LLAMADA"
 
-#: apps/dashboard/templates/dashboard/new_dashboard.html:1216
+#: apps/dashboard/templates/dashboard/new_dashboard.html:1281
 msgid "RINGING"
 msgstr "SONANDO"
 
@@ -404,7 +417,7 @@ msgid "Call Queues"
 msgstr "Colas de llamadas"
 
 #: apps/dashboard/templates/dashboard/operator_panel.html:632
-#: apps/reports/forms.py:83
+#: apps/reports/forms.py:85
 msgid "Connected"
 msgstr "Conectado"
 
@@ -717,7 +730,7 @@ msgid "Edit Contact"
 msgstr "Editar contacto"
 
 #: apps/lists/templates/lists/index.html:8 core/templates/home.html:112
-#: pbx/settings.py:261
+#: pbx/settings.py:264
 msgid "Lists"
 msgstr "Listas"
 
@@ -818,210 +831,210 @@ msgstr ""
 "¿Está seguro de que desea aplicar configuraciones a TODOS los dispositivos "
 "telefónicos?"
 
-#: apps/reports/forms.py:16 apps/reports/forms.py:63
+#: apps/reports/forms.py:18 apps/reports/forms.py:65
 msgid "All Queues"
 msgstr "Todas las colas"
 
-#: apps/reports/forms.py:29 apps/reports/forms.py:342
+#: apps/reports/forms.py:31 apps/reports/forms.py:341
 msgid "Date From"
 msgstr "Desde"
 
-#: apps/reports/forms.py:44 apps/reports/forms.py:354
+#: apps/reports/forms.py:46 apps/reports/forms.py:353
 msgid "Date To"
 msgstr "Hasta"
 
-#: apps/reports/forms.py:68
+#: apps/reports/forms.py:70
 #: apps/reports/templates/_analytics_chart_panel.html:10
 #: apps/reports/templates/queue.html:198 apps/reports/templates/queue.html:311
 #: apps/reports/templates/queue.html:430
 msgid "Agent"
 msgstr "Agente"
 
-#: apps/reports/forms.py:71 apps/reports/forms.py:126
+#: apps/reports/forms.py:73 apps/reports/forms.py:127
 msgid "All Agents"
 msgstr "Todos los agentes"
 
-#: apps/reports/forms.py:76
+#: apps/reports/forms.py:78
 msgid "Events"
 msgstr "Eventos"
 
-#: apps/reports/forms.py:80 apps/reports/templates/queue.html:126
+#: apps/reports/forms.py:82 apps/reports/templates/queue.html:126
 #: apps/reports/templates/queue.html:159 apps/reports/templates/queue.html:249
 msgid "Abandoned"
 msgstr "Abandonadas"
 
-#: apps/reports/forms.py:81
+#: apps/reports/forms.py:83
 msgid "Completed by Agent"
 msgstr "Completada por agente"
 
-#: apps/reports/forms.py:82
+#: apps/reports/forms.py:84
 msgid "Completed by Caller"
 msgstr "Completada por llamante"
 
-#: apps/reports/forms.py:84
+#: apps/reports/forms.py:86
 msgid "Enter Queue"
 msgstr "Entrar en cola"
 
-#: apps/reports/forms.py:85
+#: apps/reports/forms.py:87
 msgid "Exit with Key"
 msgstr "Salir con tecla"
 
-#: apps/reports/forms.py:86
+#: apps/reports/forms.py:88
 msgid "Exit with Timeout"
 msgstr "Salir por tiempo de espera"
 
-#: apps/reports/forms.py:87 apps/reports/templates/queue.html:202
+#: apps/reports/forms.py:89 apps/reports/templates/queue.html:202
 msgid "Ring No Answer"
 msgstr "Llamada sin respuesta"
 
-#: apps/reports/forms.py:93 apps/reports/forms.py:368 apps/reports/forms.py:405
+#: apps/reports/forms.py:94 apps/reports/forms.py:367 apps/reports/forms.py:404
 msgid "Exclude known numbers (Contacts)"
 msgstr "Excluir números conocidos (Contactos)"
 
-#: apps/reports/forms.py:100
+#: apps/reports/forms.py:101
 msgid "Summary Statistics"
 msgstr "Estadísticas resumidas"
 
-#: apps/reports/forms.py:101
+#: apps/reports/forms.py:102
 msgid "Detailed Report"
 msgstr "Informe detallado"
 
-#: apps/reports/forms.py:102 apps/reports/templates/queue.html:191
+#: apps/reports/forms.py:103 apps/reports/templates/queue.html:191
 msgid "Agent Performance"
 msgstr "Rendimiento de agentes"
 
-#: apps/reports/forms.py:103 apps/reports/templates/queue.html:239
+#: apps/reports/forms.py:104 apps/reports/templates/queue.html:239
 msgid "Queue Performance"
 msgstr "Rendimiento de colas"
 
-#: apps/reports/forms.py:104
+#: apps/reports/forms.py:105
 msgid "Lost and Found"
 msgstr "Llamadas perdidas y recuperadas"
 
-#: apps/reports/forms.py:108
+#: apps/reports/forms.py:109
 msgid "Report Type"
 msgstr "Tipo de informe"
 
-#: apps/reports/forms.py:177 apps/reports/forms.py:251
-#: apps/reports/forms.py:443
+#: apps/reports/forms.py:176 apps/reports/forms.py:250
+#: apps/reports/forms.py:442
 msgid "Source number"
 msgstr "Número de origen"
 
-#: apps/reports/forms.py:181 apps/reports/forms.py:447
+#: apps/reports/forms.py:180 apps/reports/forms.py:446
 msgid "Enter source number"
 msgstr "Ingrese el número de origen"
 
-#: apps/reports/forms.py:185 apps/reports/forms.py:260
-#: apps/reports/forms.py:452
+#: apps/reports/forms.py:184 apps/reports/forms.py:259
+#: apps/reports/forms.py:451
 msgid "Destination number"
 msgstr "Número de destino"
 
-#: apps/reports/forms.py:191 apps/reports/forms.py:458
+#: apps/reports/forms.py:190 apps/reports/forms.py:457
 msgid "Enter destination number"
 msgstr "Ingrese el número de destino"
 
-#: apps/reports/forms.py:196 apps/reports/forms.py:421
+#: apps/reports/forms.py:195 apps/reports/forms.py:420
 msgid "Created from"
 msgstr "Creado desde"
 
-#: apps/reports/forms.py:207 apps/reports/forms.py:432
+#: apps/reports/forms.py:206 apps/reports/forms.py:431
 msgid "Created to"
 msgstr "Creado hasta"
 
-#: apps/reports/forms.py:221 apps/reports/forms.py:413
-#: apps/reports/forms.py:474 apps/reports/forms.py:481 core/models.py:991
+#: apps/reports/forms.py:220 apps/reports/forms.py:412
+#: apps/reports/forms.py:473 apps/reports/forms.py:480 core/models.py:991
 msgid "All"
 msgstr "Todos"
 
-#: apps/reports/forms.py:224
+#: apps/reports/forms.py:223
 msgid "No answer"
 msgstr "Sin respuesta"
 
-#: apps/reports/forms.py:225
+#: apps/reports/forms.py:224
 msgid "Failed"
 msgstr "Fallida"
 
-#: apps/reports/forms.py:229
+#: apps/reports/forms.py:228
 msgid "Start date"
 msgstr "Fecha de inicio"
 
-#: apps/reports/forms.py:240
+#: apps/reports/forms.py:239
 msgid "End date"
 msgstr "Fecha de fin"
 
-#: apps/reports/forms.py:255 apps/reports/forms.py:264
+#: apps/reports/forms.py:254 apps/reports/forms.py:263
 msgid "Enter number"
 msgstr "Ingrese número"
 
-#: apps/reports/forms.py:268
+#: apps/reports/forms.py:267
 msgid "Source channel"
 msgstr "Canal de origen"
 
-#: apps/reports/forms.py:273
+#: apps/reports/forms.py:272
 msgid "Destination channel"
 msgstr "Canal de destino"
 
-#: apps/reports/forms.py:278
+#: apps/reports/forms.py:277
 msgid "Call status"
 msgstr "Estado de llamada"
 
-#: apps/reports/forms.py:285
+#: apps/reports/forms.py:284
 msgid "Min. duration (sec)"
 msgstr "Duración mín. (seg)"
 
-#: apps/reports/forms.py:290
+#: apps/reports/forms.py:289
 msgid "Max. duration (sec)"
 msgstr "Duración máx. (seg)"
 
-#: apps/reports/forms.py:296
+#: apps/reports/forms.py:295
 msgid "All calls"
 msgstr "Todas las llamadas"
 
-#: apps/reports/forms.py:297
+#: apps/reports/forms.py:296
 msgid "Incoming"
 msgstr "Entrantes"
 
-#: apps/reports/forms.py:298
+#: apps/reports/forms.py:297
 msgid "Outgoing"
 msgstr "Salientes"
 
-#: apps/reports/forms.py:299
+#: apps/reports/forms.py:298
 msgid "Internal"
 msgstr "Internas"
 
-#: apps/reports/forms.py:300
+#: apps/reports/forms.py:299
 msgid "Transit"
 msgstr "Tránsito"
 
-#: apps/reports/forms.py:301
+#: apps/reports/forms.py:300
 msgid "Unbridged (Peers)"
 msgstr "Sin conexión (Peers)"
 
-#: apps/reports/forms.py:302
+#: apps/reports/forms.py:301
 msgid "Unbridged (Users)"
 msgstr "Sin conexión (Users)"
 
-#: apps/reports/forms.py:306
+#: apps/reports/forms.py:305
 msgid "Call direction"
 msgstr "Dirección de llamada"
 
-#: apps/reports/forms.py:315
+#: apps/reports/forms.py:314
 msgid "Enter channel"
 msgstr "Ingrese canal"
 
-#: apps/reports/forms.py:373
+#: apps/reports/forms.py:372
 msgid "Show unique callers"
 msgstr "Mostrar llamantes únicos"
 
-#: apps/reports/forms.py:388
+#: apps/reports/forms.py:387
 msgid "All queues"
 msgstr "Todas las colas"
 
-#: apps/reports/forms.py:464
+#: apps/reports/forms.py:463
 msgid "Dial status"
 msgstr "Estado de marcación"
 
-#: apps/reports/forms.py:471 apps/reports/templates/callback_report.html:110
+#: apps/reports/forms.py:470 apps/reports/templates/callback_report.html:110
 msgid "Service"
 msgstr "Servicio"
 
@@ -1037,7 +1050,7 @@ msgstr "Tabla"
 #: apps/reports/templates/_analytics_chart_panel.html:27
 #: apps/reports/templates/analytics_call_duration.html:77
 #: apps/reports/templates/analytics_missed_by_hour.html:66
-#: apps/reports/templates/analytics_missed_calls.html:71
+#: apps/reports/templates/analytics_missed_calls.html:75
 #: apps/reports/templates/analytics_queue_activity.html:83
 #: apps/reports/templates/analytics_queue_calls.html:87
 msgid "Chart"
@@ -1107,7 +1120,7 @@ msgid "Missed"
 msgstr "Perdidas"
 
 #: apps/reports/templates/analytics_missed_by_hour.html:113
-#: apps/reports/templates/analytics_missed_calls.html:119
+#: apps/reports/templates/analytics_missed_calls.html:123
 msgid "No missed calls found for the selected period."
 msgstr "No se encontraron llamadas perdidas para el período seleccionado."
 
@@ -2961,12 +2974,12 @@ msgstr "No se encontraron llamadas para el período seleccionado."
 msgid "Quick Links"
 msgstr ""
 
-#: core/templates/home.html:100 pbx/settings.py:243
+#: core/templates/home.html:100 pbx/settings.py:246
 msgid "Dashboard"
 msgstr "Panel de control"
 
 #: core/templates/home.html:106 core/templates/reports.html:6
-#: pbx/settings.py:255
+#: pbx/settings.py:258
 msgid "Reports"
 msgstr "Informes"
 
@@ -3103,11 +3116,11 @@ msgstr "Inglés"
 msgid "Spanish"
 msgstr "Español"
 
-#: pbx/settings.py:249
+#: pbx/settings.py:252
 msgid "ULINE Monitor"
 msgstr "Monitor ULINE"
 
-#: pbx/settings.py:267
+#: pbx/settings.py:270
 msgid "Admin panel"
 msgstr "Panel de administración"
 

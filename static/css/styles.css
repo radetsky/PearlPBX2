@@ -207,6 +207,7 @@
     font-size: 12px;
     cursor: pointer;
     transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .compact-player:hover {
