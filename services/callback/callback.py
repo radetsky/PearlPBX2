@@ -32,7 +32,7 @@ class Callback:
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
         self.active_calls_by_dst = {}  # dst -> [(id, context_outbound), ...]
-        self.active_calls_by_uniqueid = {}  # uniqueid -> (id, dst)
+        self.active_calls_by_uniqueid = {}  # dest_uniqueid -> (id, dst, channel_uniqueid)
         self._calls_lock = threading.Lock()
         t = threading.Thread(target=self._health_check_loop, daemon=True)
         t.start()
@@ -135,6 +135,7 @@ class Callback:
         if event.name == "DialBegin":
             dst = event.keys.get("DestExten", "")
             uniqueid = event.keys.get("DestUniqueid", "")
+            channel_uniqueid = event.keys.get("Uniqueid", "")  # Local;1 uniqueid — same as linkedid for all legs
             channel = event.keys.get("Channel", "")
             if not uniqueid:
                 return
@@ -145,7 +146,7 @@ class Callback:
                         entries.pop(i)
                         if not entries:
                             del self.active_calls_by_dst[dst]
-                        self.active_calls_by_uniqueid[uniqueid] = (call_id, dst)
+                        self.active_calls_by_uniqueid[uniqueid] = (call_id, dst, channel_uniqueid)
                         break
 
         elif event.name == "DialEnd" and (
@@ -160,7 +161,7 @@ class Callback:
                 entry = self.active_calls_by_uniqueid.pop(dest_uniqueid, None)
 
             if entry is not None:
-                call_id, dst = entry
+                call_id, dst, channel_uniqueid = entry
                 self.logger.info(f"[DialEnd] {src} -> {dst} : {dial_status}")
                 db_status = (
                     DIAL_STATUS_ANSWERED
@@ -173,9 +174,9 @@ class Callback:
                     self.logger.error(
                         f"Failed to update status for call {call_id}: {e}"
                     )
-                if dest_uniqueid:
+                if channel_uniqueid:
                     try:
-                        self.update_uniqueid(call_id, dest_uniqueid)
+                        self.update_uniqueid(call_id, channel_uniqueid)
                     except Exception as e:
                         self.logger.error(
                             f"Failed to save uniqueid for call {call_id}: {e}"
