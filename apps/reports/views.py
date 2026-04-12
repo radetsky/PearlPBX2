@@ -1306,7 +1306,7 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
         cdr_audio_urls = {}
         cdr_durations = {}
         if callbacks:
-            uniqueids = [cb.uniqueid for cb in callbacks if cb.uniqueid]
+            uniqueids = {cb.uniqueid for cb in callbacks if cb.uniqueid}
             if uniqueids:
                 cdr_durations = {
                     row["uniqueid"]: row["duration"]
@@ -1314,10 +1314,23 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
                         "uniqueid", "duration"
                     )
                 }
-                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=uniqueids):
+                # Map linked CDR legs back to their callback uniqueid (linkedid = callback uniqueid)
+                linked_leg_to_callback = {
+                    row["uniqueid"]: row["linkedid"]
+                    for row in CDR.objects.filter(linkedid__in=uniqueids).exclude(
+                        uniqueid__in=uniqueids
+                    ).values("uniqueid", "linkedid")
+                }
+                all_cdr_uniqueids = uniqueids | linked_leg_to_callback.keys()
+                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=all_cdr_uniqueids):
                     url = mf.get_audio_url()
                     if url:
-                        cdr_audio_urls[mf.cdr_uniqueid] = url
+                        cdr_uid = mf.cdr_uniqueid
+                        if cdr_uid in uniqueids:
+                            cdr_audio_urls[cdr_uid] = url
+                        elif cdr_uid in linked_leg_to_callback:
+                            callback_uid = linked_leg_to_callback[cdr_uid]
+                            cdr_audio_urls.setdefault(callback_uid, url)
 
         context = {
             "form": form,
