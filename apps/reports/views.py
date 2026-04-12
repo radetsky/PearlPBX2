@@ -7,7 +7,7 @@ from datetime import timedelta
 from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Max, Q, Sum
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 from django.utils.timezone import localtime
@@ -877,6 +877,8 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
         form = AnalyticsDateRangeForm(request.GET or _default_analytics_params())
         table_data = None
         chart_data = None
+        date_from = None
+        date_to = None
 
         if form.is_valid():
             date_from = form.cleaned_data["date_from"]
@@ -987,6 +989,8 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
             "form": form,
             "table_data": table_data,
             "chart_data": chart_data,
+            "date_from": date_from,
+            "date_to": date_to,
         }
         return render(request, self.template_name, context)
 
@@ -1128,6 +1132,7 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
             date_from = form.cleaned_data["date_from"]
             date_to = form.cleaned_data["date_to"]
             queuename = form.cleaned_data["queuename"]
+            exclude_contacts = form.cleaned_data.get("exclude_contacts", False)
 
             is_hourly = date_from.date() == date_to.date()
             local_tz = timezone.get_current_timezone()
@@ -1139,6 +1144,16 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
             ).exclude(queuename=ASTERISK_NONE)
             if queuename:
                 qs = qs.filter(queuename=queuename)
+
+            if exclude_contacts:
+                known_callids = QueueLog.objects.filter(
+                    event="ENTERQUEUE",
+                    time__range=(date_from, date_to),
+                    data2__in=Contact.objects.values_list("callerid", flat=True),
+                ).values("callid")
+                # Exclude contacts only from missed (ABANDON) events,
+                # so answered call counts remain unaffected.
+                qs = qs.exclude(Q(event="ABANDON") & Q(callid__in=known_callids))
 
             period_data = {
                 row["period"]: row
@@ -1291,18 +1306,31 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
         cdr_audio_urls = {}
         cdr_durations = {}
         if callbacks:
-            uniqueids = [cb.uniqueid for cb in callbacks if cb.uniqueid]
+            uniqueids = {cb.uniqueid for cb in callbacks if cb.uniqueid}
             if uniqueids:
-                cdr_durations = {
-                    row["uniqueid"]: row["duration"]
-                    for row in CDR.objects.filter(uniqueid__in=uniqueids).values(
-                        "uniqueid", "duration"
-                    )
+                cdr_durations = dict(
+                    CDR.objects.filter(uniqueid__in=uniqueids)
+                    .values("uniqueid")
+                    .annotate(max_duration=Max("duration"))
+                    .values_list("uniqueid", "max_duration")
+                )
+                # Map linked CDR legs back to their callback uniqueid (linkedid = callback uniqueid)
+                linked_leg_to_callback = {
+                    row["uniqueid"]: row["linkedid"]
+                    for row in CDR.objects.filter(linkedid__in=uniqueids).exclude(
+                        uniqueid__in=uniqueids
+                    ).values("uniqueid", "linkedid")
                 }
-                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=uniqueids):
+                all_cdr_uniqueids = uniqueids | linked_leg_to_callback.keys()
+                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=all_cdr_uniqueids):
                     url = mf.get_audio_url()
                     if url:
-                        cdr_audio_urls[mf.cdr_uniqueid] = url
+                        cdr_uid = mf.cdr_uniqueid
+                        if cdr_uid in uniqueids:
+                            cdr_audio_urls[cdr_uid] = url
+                        elif cdr_uid in linked_leg_to_callback:
+                            callback_uid = linked_leg_to_callback[cdr_uid]
+                            cdr_audio_urls.setdefault(callback_uid, url)
 
         context = {
             "form": form,

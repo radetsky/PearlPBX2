@@ -66,7 +66,7 @@ class DashboardAMIListener:
             "QueueMember": self.handle_queue_member,
             "QueueCallerJoin": self.handle_queue_caller_join,
             "QueueCallerLeave": self.handle_queue_caller_leave,
-            "QueueCallerAbandon": self.handle_queue_caller_leave,
+            "QueueCallerAbandon": self.handle_queue_caller_abandon,
             "AgentConnect": self.handle_agent_connect,
         }
         return event_handlers
@@ -131,7 +131,9 @@ class DashboardAMIListener:
         await self.update_channels_state()
         await self.publish_event("system_reset", {})
         await self.restore_pause_states()
-        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
+        await asyncio.sleep(
+            1
+        )  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
         self.logger.info("State reinitialized after AMI reconnect")
@@ -225,7 +227,7 @@ class DashboardAMIListener:
             "exten": event.get("Exten"),
             "created_at": datetime.now().isoformat(),
             "duration": 0,
-            "bridged_channel": None,
+            "bridge_id": event.get("BridgeId"),
             "application": event.get("Application"),
         }
 
@@ -547,7 +549,8 @@ class DashboardAMIListener:
     async def handle_core_show_channels_complete(self, event):
         """Flush aggregate channel state to Redis once CoreShowChannels bulk is done."""
         await self.update_channels_state()
-        self.logger.debug("CoreShowChannels complete, aggregate state updated")
+        await self.publish_event("channels_ready", {})
+        self.logger.debug("CoreShowChannels complete, snapshot published to browser")
 
     # ============ QUEUE EVENT HANDLERS ============
 
@@ -598,7 +601,9 @@ class DashboardAMIListener:
     async def load_paused_members(self):
         paused = []
         try:
-            async for key in self.redis_client.scan_iter(match=f"{MEMBER_PAUSED_KEY_PREFIX}*"):
+            async for key in self.redis_client.scan_iter(
+                match=f"{MEMBER_PAUSED_KEY_PREFIX}*"
+            ):
                 paused.append(key.removeprefix(MEMBER_PAUSED_KEY_PREFIX))
         except Exception as e:
             self.logger.error(f"Failed to load paused members from Redis: {e}")
@@ -614,7 +619,9 @@ class DashboardAMIListener:
             except Exception as e:
                 self.logger.error(f"Failed to restore pause for {interface}: {e}")
         if paused_interfaces:
-            self.logger.info(f"Restored pause state for {len(paused_interfaces)} members")
+            self.logger.info(
+                f"Restored pause state for {len(paused_interfaces)} members"
+            )
 
     async def _upsert_queue_member(self, queue_name, member_name, event):
         self._ensure_queue_state(queue_name)
@@ -703,28 +710,37 @@ class DashboardAMIListener:
             f"Queue {queue_name}: Caller {caller_id} joined (position {position})"
         )
 
+    async def _remove_caller_from_queue(self, queue_name, uniqueid):
+        call = self.queue_state.get(queue_name, {}).get("calls", {}).pop(uniqueid, None)
+        if call is not None:
+            self.queue_state[queue_name]["stats"]["waiting"] = len(
+                self.queue_state[queue_name]["calls"]
+            )
+            await self.update_queue_state(queue_name)
+        return call
+
     async def handle_queue_caller_leave(self, event):
         """Handle caller leaving a queue."""
         queue_name = event.get("Queue")
         uniqueid = event.get("Uniqueid")
-
-        if (
-            queue_name in self.queue_state
-            and uniqueid in self.queue_state[queue_name]["calls"]
-        ):
-            del self.queue_state[queue_name]["calls"][uniqueid]
-
-            self.queue_state[queue_name]["stats"]["waiting"] = len(
-                self.queue_state[queue_name]["calls"]
-            )
-
-            await self.update_queue_state(queue_name)
-
+        await self._remove_caller_from_queue(queue_name, uniqueid)
         await self.publish_event(
             "queue_caller_leave", {"queue": queue_name, "unique_id": uniqueid}
         )
-
         self.logger.info(f"Queue {queue_name}: Call {uniqueid} left")
+
+    async def handle_queue_caller_abandon(self, event):
+        queue_name = event.get("Queue")
+        uniqueid = event.get("Uniqueid")
+        call = await self._remove_caller_from_queue(queue_name, uniqueid)
+        caller_id = call.get("caller_id") if call else None
+        await self.publish_event(
+            "queue_caller_abandon",
+            {"queue": queue_name, "unique_id": uniqueid, "caller_id": caller_id},
+        )
+        self.logger.info(
+            f"Queue {queue_name}: Call {uniqueid} abandoned (caller: {caller_id})"
+        )
 
     async def handle_agent_connect(self, event):
         """Handle agent connecting to a call."""
@@ -821,7 +837,9 @@ class DashboardAMIListener:
         self.ami.add_event_listener(on_event=self.event_listener_sync)
 
         await self.restore_pause_states()
-        await asyncio.sleep(1)  # allow QueuePause actions to propagate before state refresh
+        await asyncio.sleep(
+            1
+        )  # allow QueuePause actions to propagate before state refresh
         self.initialize_queue_state()
         self.initialize_channels_state()
 

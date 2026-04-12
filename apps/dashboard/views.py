@@ -1,18 +1,21 @@
 import re
 import json
 import logging
+from datetime import timedelta
 
 import redis
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from asterisk.ami import AMIClient, SimpleAction
 
 from core.models import SIPUser, SIPPeer
+from apps.reports.models import CDR, QueueLog
 
 logger = logging.getLogger(__name__)
 
@@ -323,6 +326,88 @@ def hangup_channel(request):
         return JsonResponse({"ok": True})
 
     return JsonResponse({"error": response.status}, status=400)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_missed_calls(request):
+    """Return today's unresolved missed calls (ABANDON without callback) for a queue."""
+    queue = request.GET.get("queue", "").strip()
+    if not queue:
+        return JsonResponse({"error": "queue parameter required"}, status=400)
+
+    minutes = getattr(settings, "DASHBOARD_MISSED_CALL_WINDOW_MINUTES", 0)
+    now = timezone.now()
+    if minutes:
+        since = now - timedelta(minutes=minutes)
+    else:
+        local_now = timezone.localtime(now)
+        since = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    abandons = list(
+        QueueLog.objects.filter(queuename=queue, event="ABANDON", time__gte=since)
+        .order_by("-time")
+        .values("callid", "time")
+    )
+    if not abandons:
+        return JsonResponse([], safe=False)
+
+    callids = [a["callid"] for a in abandons]
+
+    callerid_map = dict(
+        QueueLog.objects.filter(event="ENTERQUEUE", callid__in=callids).values_list(
+            "callid", "data2"
+        )
+    )
+
+    all_callerids = [v for v in callerid_map.values() if v]
+    re_entry_callids = set(
+        QueueLog.objects.filter(
+            queuename=queue,
+            event="ENTERQUEUE",
+            data2__in=all_callerids,
+            time__gte=since,
+        )
+        .exclude(callid__in=callids)
+        .values_list("callid", flat=True)
+    )
+    completed_via_reentry = set(
+        QueueLog.objects.filter(
+            callid__in=re_entry_callids,
+            event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+        ).values_list("callid", flat=True)
+    )
+    reentry_callerids = set(
+        QueueLog.objects.filter(
+            callid__in=completed_via_reentry, event="ENTERQUEUE"
+        ).values_list("data2", flat=True)
+    )
+
+    earliest_abandon = abandons[-1]["time"]
+    operator_called_back = set(
+        CDR.objects.filter(
+            start__gte=earliest_abandon,
+            disposition="ANSWERED",
+            dst__in=all_callerids,
+        ).values_list("dst", flat=True)
+    )
+
+    result = []
+    for a in abandons:
+        cid = callerid_map.get(a["callid"], "")
+        if not cid:
+            continue
+        if cid in reentry_callerids or cid in operator_called_back:
+            continue
+        result.append(
+            {
+                "caller_id": cid,
+                "time_hhmm": timezone.localtime(a["time"]).strftime("%H:%M"),
+                "abandon_time": a["time"].isoformat(),
+            }
+        )
+
+    return JsonResponse(result, safe=False)
 
 
 @login_required

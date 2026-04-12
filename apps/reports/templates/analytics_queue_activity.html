@@ -27,6 +27,12 @@
                 </div>
             </div>
             <div class="uk-margin-top">
+                <label>
+                    {{ form.exclude_contacts }}
+                    {{ form.exclude_contacts.label }}
+                </label>
+            </div>
+            <div class="uk-margin-top">
                 <button type="submit" class="uk-button uk-button-primary uk-border-rounded">
                     <span uk-icon="search"></span> {% trans "Search" %}
                 </button>

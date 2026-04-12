@@ -31,8 +31,8 @@ class Callback:
         self.conn = self.db_connect()
         self.ami = self.ami_connect()
         self.dbtable = self.params.get("db_table", "callback_number")
-        self.active_calls_by_dst = {}       # dst -> [(id, context_outbound), ...]
-        self.active_calls_by_uniqueid = {}  # uniqueid -> (id, dst)
+        self.active_calls_by_dst = {}  # dst -> [(id, context_outbound), ...]
+        self.active_calls_by_channel_uid = {}  # channel_uniqueid -> (id, dst)
         self._calls_lock = threading.Lock()
         t = threading.Thread(target=self._health_check_loop, daemon=True)
         t.start()
@@ -90,7 +90,7 @@ class Callback:
         self.logger.info(f"AMI connected to {ami_host}:{ami_port}")
         client.add_event_listener(
             on_event=self.event_listener,
-            white_list=["DialBegin", "DialState", "DialEnd"],
+            white_list=["DialBegin", "DialState", "DialEnd", "Hangup"],
         )
         client.add_listener(
             on_response=lambda source, response: self.logger.debug(
@@ -134,46 +134,60 @@ class Callback:
 
         if event.name == "DialBegin":
             dst = event.keys.get("DestExten", "")
-            uniqueid = event.keys.get("DestUniqueid", "")
+            channel_uniqueid = event.keys.get("Uniqueid", "")
             channel = event.keys.get("Channel", "")
-            if not uniqueid:
+            if not channel_uniqueid:
                 return
             with self._calls_lock:
+                if channel_uniqueid in self.active_calls_by_channel_uid:
+                    return  # Already tracking — subsequent retry on the same channel
                 entries = self.active_calls_by_dst.get(dst, [])
                 for i, (call_id, context_outbound) in enumerate(entries):
                     if channel.startswith(f"Local/{dst}@{context_outbound}"):
                         entries.pop(i)
                         if not entries:
                             del self.active_calls_by_dst[dst]
-                        self.active_calls_by_uniqueid[uniqueid] = (call_id, dst)
+                        self.active_calls_by_channel_uid[channel_uniqueid] = (call_id, dst)
                         break
 
-        elif event.name == "DialEnd" and (
-            event.keys["DestChannelStateDesc"] == "Down"
-            or event.keys["DestChannelStateDesc"] == "Up"
-        ):
-            dial_status = event.keys["DialStatus"]
-            src = event.keys["DestCallerIDNum"]
-            dest_uniqueid = event.keys.get("DestUniqueid", "")
+        elif event.name == "DialEnd":
+            dial_status = event.keys.get("DialStatus", "")
+            channel_uniqueid = event.keys.get("Uniqueid", "")
+            if dial_status != AMI_DIAL_STATUS_ANSWER:
+                return  # Retry in progress; Hangup will handle final BUSY
 
             with self._calls_lock:
-                entry = self.active_calls_by_uniqueid.pop(dest_uniqueid, None)
+                entry = self.active_calls_by_channel_uid.pop(channel_uniqueid, None)
 
             if entry is not None:
                 call_id, dst = entry
-                self.logger.info(f"[DialEnd] {src} -> {dst} : {dial_status}")
-                db_status = (
-                    DIAL_STATUS_ANSWERED
-                    if dial_status == AMI_DIAL_STATUS_ANSWER
-                    else DIAL_STATUS_BUSY
-                )
+                src = event.keys.get("DestCallerIDNum", "")
+                self.logger.info(f"[DialEnd ANSWERED] {src} -> {dst}")
                 try:
-                    self.update_call_status(call_id, dst, db_status)
+                    self.update_call_status(call_id, dst, DIAL_STATUS_ANSWERED)
                 except Exception as e:
                     self.logger.error(f"Failed to update status for call {call_id}: {e}")
-                if dest_uniqueid:
+                if channel_uniqueid:
                     try:
-                        self.update_uniqueid(call_id, dest_uniqueid)
+                        self.update_uniqueid(call_id, channel_uniqueid)
+                    except Exception as e:
+                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
+
+        elif event.name == "Hangup":
+            channel_uniqueid = event.keys.get("Uniqueid", "")
+            with self._calls_lock:
+                entry = self.active_calls_by_channel_uid.pop(channel_uniqueid, None)
+
+            if entry is not None:
+                call_id, dst = entry
+                self.logger.info(f"[Hangup] {dst}: all retries exhausted, marking BUSY")
+                try:
+                    self.update_call_status(call_id, dst, DIAL_STATUS_BUSY)
+                except Exception as e:
+                    self.logger.error(f"Failed to update BUSY status for call {call_id}: {e}")
+                if channel_uniqueid:
+                    try:
+                        self.update_uniqueid(call_id, channel_uniqueid)
                     except Exception as e:
                         self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
 
@@ -254,7 +268,9 @@ class Callback:
 
     def _on_originate_response(self, id: int, dst: str, response):
         if response.status == "Error":
-            self.logger.warning(f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}")
+            self.logger.warning(
+                f"AMI Originate {dst}: Error — {response.keys.get('Message', '')}"
+            )
             self._mark_busy(id, dst)
         else:
             self.logger.info(f"AMI Originate {dst}: queued")
@@ -282,7 +298,9 @@ class Callback:
         action = SimpleAction("Originate", **kwargs)
         self.logger.debug(action)
         try:
-            self.ami.send_action(action, lambda response: self._on_originate_response(id, dst, response))
+            self.ami.send_action(
+                action, lambda response: self._on_originate_response(id, dst, response)
+            )
         except OSError:
             self._mark_busy(id, dst)
             raise

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0064_add_new_permissions'),
+        ("core", "0064_add_new_permissions"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='managerusers',
-            name='writetimeout',
+            model_name="managerusers",
+            name="writetimeout",
             field=models.PositiveIntegerField(default=5000),
         ),
     ]
