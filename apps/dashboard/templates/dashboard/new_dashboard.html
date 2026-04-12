@@ -1531,6 +1531,7 @@ function dispatch(msg) {
       };
       registerMemberEndpoint(d.name, d.status, d.paused);
       renderQueuesTab(); renderOvQueues(); renderStats(); renderPJSIP();
+      if (activeModal) renderModal();
       break;
 
     case 'queue_caller_join':
