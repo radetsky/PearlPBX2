@@ -383,14 +383,22 @@ def get_missed_calls(request):
         ).values_list("data2", flat=True)
     )
 
-    earliest_abandon = abandons[-1]["time"]
-    operator_called_back = set(
-        CDR.objects.filter(
-            start__gte=earliest_abandon,
+    # For each caller_id, record the time of their latest abandon (abandons is newest-first).
+    callerid_abandon_time = {}
+    for a in abandons:
+        cid = callerid_map.get(a["callid"], "")
+        if cid and cid not in callerid_abandon_time:
+            callerid_abandon_time[cid] = a["time"]
+
+    # A callback counts as resolved only when it was answered AFTER that caller's own abandon.
+    operator_called_back = set()
+    for cid, abandon_time in callerid_abandon_time.items():
+        if CDR.objects.filter(
+            start__gte=abandon_time,
             disposition="ANSWERED",
-            dst__in=all_callerids,
-        ).values_list("dst", flat=True)
-    )
+            dst=cid,
+        ).exclude(dstchannel="").exists():
+            operator_called_back.add(cid)
 
     result = []
     for a in abandons:
