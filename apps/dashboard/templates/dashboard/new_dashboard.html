@@ -1297,6 +1297,13 @@ const TRANS = {
   autoDial:               '{% trans "Auto dial"|escapejs %}',
 };
 
+const PHONE_CFG = {
+  countryCode: '{{ PHONE_COUNTRY_CODE|escapejs }}'.trim(),
+  localCode:   '{{ PHONE_LOCAL_CODE|escapejs }}'.trim(),
+  requiredLen:  {{ PHONE_REQUIRED_LEN }},
+  cityCodeLen:  {{ PHONE_CITYCODE_LEN }},
+};
+
 let activeModal = null;
 let agentCallOpen = false;
 
@@ -1823,6 +1830,20 @@ function callerDisp(ch) {
   return { num: num || '—', name, chan: ch.channel || '', isLocal };
 }
 
+function normalizePhone(str) {
+  const digits = (str || '').replace(/\D/g, '');
+  if (!digits) return str;
+  const len = digits.length;
+  const { countryCode, localCode, requiredLen, cityCodeLen } = PHONE_CFG;
+  if (len === requiredLen) return digits;
+  if (len > requiredLen && digits.startsWith(countryCode)) {
+    return digits.slice(len - requiredLen);
+  }
+  if (len === cityCodeLen) return localCode + digits;
+  if (len === requiredLen - 1) return '0' + digits;
+  return digits;
+}
+
 /**
  * Some external SIP peers swap callerid(num) and callerid(name).
  * Prefer whichever field looks like a real number (3/9-10 digits or E.164).
@@ -1831,9 +1852,9 @@ function resolveCallerNum(num, name) {
   const VALID = /^(\d{3}|\d{9,15}|\+\d{7,15})$/;
   const n = (num  || '').trim().replace(/^<unknown>$/i, '');
   const a = (name || '').trim().replace(/^<unknown>$/i, '');
-  if (VALID.test(n)) return n;
-  if (VALID.test(a)) return a;
-  return n || a;
+  if (VALID.test(n)) return normalizePhone(n);
+  if (VALID.test(a)) return normalizePhone(a);
+  return normalizePhone(n || a);
 }
 
 /**

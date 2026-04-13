@@ -9,6 +9,10 @@ def template_config_context_processor(request: HttpRequest):
         "TEMPLATE_DATETIME_FORMAT": settings.TEMPLATE_DATETIME_FORMAT,
         "TEMPLATE_MOMENT_DATETIME_FORMAT": settings.TEMPLATE_MOMENT_DATETIME_FORMAT,
         "TEMPLATE_POPUP_TIMEOUT_MS": settings.TEMPLATE_POPUP_TIMEOUT_MS,
+        "PHONE_COUNTRY_CODE": settings.PHONE_COUNTRY_CODE,
+        "PHONE_LOCAL_CODE": settings.PHONE_LOCAL_CODE,
+        "PHONE_REQUIRED_LEN": settings.PHONE_REQUIRED_LEN,
+        "PHONE_CITYCODE_LEN": settings.PHONE_CITYCODE_LEN,
     }
 
 
