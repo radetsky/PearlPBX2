@@ -1836,7 +1836,7 @@ function normalizePhone(str) {
   const len = digits.length;
   const { countryCode, localCode, requiredLen, cityCodeLen } = PHONE_CFG;
   if (len === requiredLen) return digits;
-  if (len > requiredLen && digits.startsWith(countryCode)) {
+  if (len > requiredLen && (digits.startsWith(countryCode) || digits.startsWith('00' + countryCode))) {
     return digits.slice(len - requiredLen);
   }
   if (len === cityCodeLen) return localCode + digits;
@@ -2100,13 +2100,15 @@ function getCallInfoForEndpoint(ep) {
         remoteNum = resolveCallerNum(other.caller_id_num || chan.caller_id_num, other.caller_id_name || chan.caller_id_name);
       } else {
         direction = '↑';
-        remoteNum = resolveCallerNum(other.caller_id_num || chan.connected_line_num, other.caller_id_name || chan.caller_id_name);
+        const dialedNum = (otherKey.match(/^PJSIP\/([^@]+)@/i) || [])[1] || '';
+        remoteNum = resolveCallerNum(dialedNum || other.caller_id_num || chan.connected_line_num, other.caller_id_name);
       }
     }
   } else if (chan.dialing_to) {
     const destEp = epFromChan(chan.dialing_to);
     direction = (destEp && ST.knownUsers.has(destEp)) ? '↔' : '↑';
-    remoteNum = resolveCallerNum(chan.dest_caller_id_num, chan.caller_id_name);
+    const dialedNum = (chan.dialing_to.match(/^PJSIP\/([^@]+)@/i) || [])[1] || '';
+    remoteNum = resolveCallerNum(dialedNum || chan.dest_caller_id_num, chan.caller_id_name);
   } else if (chan.dialed_by) {
     direction = '↓';
     remoteNum = resolveCallerNum(chan.caller_id_num, chan.caller_id_name);
@@ -2300,17 +2302,15 @@ function renderModal() {
       const cls    = memberClass(m.status, m.paused, 'available');
       const disp   = epFromLoc(m.location || m.name) || m.name;
       const isActive = cls === 'busy' || cls === 'ringing';
-      const click  = cls === 'busy' ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
+      const info   = (isActive || cls === 'paused') ? getCallInfoForEndpoint(disp) : null;
+      const click  = (isActive || info) ? ` onclick="openAgentCall('${esc(disp)}')"` : '';
 
       let mid = '';
-      if (isActive) {
-        const info = getCallInfoForEndpoint(disp);
-        if (info) {
-          const dur = `<div class="call-dur qm-agent-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`;
-          mid = `<div class="qm-agent-call-info">${info.direction} ${esc(info.remoteNum || '—')}</div>${dur}`;
-        } else {
-          mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>`;
-        }
+      if (info) {
+        const dur = `<div class="call-dur qm-agent-dur" data-created="${info.created_at}">${fmtDur(durNow(info.created_at))}</div>`;
+        mid = `<div class="qm-agent-call-info">${info.direction} ${esc(info.remoteNum || '—')}</div>${dur}`;
+      } else if (isActive) {
+        mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>`;
       } else {
         const ct = m.calls_taken ? `<div class="qm-agent-meta">${m.calls_taken} ${TRANS.calls}</div>` : '';
         mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>${ct}`;
