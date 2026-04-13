@@ -1317,12 +1317,14 @@ class CallbackNumberReportView(ReportViewPermissionMixin, View):
                 # Map linked CDR legs back to their callback uniqueid (linkedid = callback uniqueid)
                 linked_leg_to_callback = {
                     row["uniqueid"]: row["linkedid"]
-                    for row in CDR.objects.filter(linkedid__in=uniqueids).exclude(
-                        uniqueid__in=uniqueids
-                    ).values("uniqueid", "linkedid")
+                    for row in CDR.objects.filter(linkedid__in=uniqueids)
+                    .exclude(uniqueid__in=uniqueids)
+                    .values("uniqueid", "linkedid")
                 }
                 all_cdr_uniqueids = uniqueids | linked_leg_to_callback.keys()
-                for mf in MonitorFilenames.objects.filter(cdr_uniqueid__in=all_cdr_uniqueids):
+                for mf in MonitorFilenames.objects.filter(
+                    cdr_uniqueid__in=all_cdr_uniqueids
+                ):
                     url = mf.get_audio_url()
                     if url:
                         cdr_uid = mf.cdr_uniqueid

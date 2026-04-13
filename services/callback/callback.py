@@ -147,7 +147,10 @@ class Callback:
                         entries.pop(i)
                         if not entries:
                             del self.active_calls_by_dst[dst]
-                        self.active_calls_by_channel_uid[channel_uniqueid] = (call_id, dst)
+                        self.active_calls_by_channel_uid[channel_uniqueid] = (
+                            call_id,
+                            dst,
+                        )
                         break
 
         elif event.name == "DialEnd":
@@ -166,12 +169,16 @@ class Callback:
                 try:
                     self.update_call_status(call_id, dst, DIAL_STATUS_ANSWERED)
                 except Exception as e:
-                    self.logger.error(f"Failed to update status for call {call_id}: {e}")
+                    self.logger.error(
+                        f"Failed to update status for call {call_id}: {e}"
+                    )
                 if channel_uniqueid:
                     try:
                         self.update_uniqueid(call_id, channel_uniqueid)
                     except Exception as e:
-                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
+                        self.logger.error(
+                            f"Failed to save uniqueid for call {call_id}: {e}"
+                        )
 
         elif event.name == "Hangup":
             channel_uniqueid = event.keys.get("Uniqueid", "")
@@ -184,12 +191,16 @@ class Callback:
                 try:
                     self.update_call_status(call_id, dst, DIAL_STATUS_BUSY)
                 except Exception as e:
-                    self.logger.error(f"Failed to update BUSY status for call {call_id}: {e}")
+                    self.logger.error(
+                        f"Failed to update BUSY status for call {call_id}: {e}"
+                    )
                 if channel_uniqueid:
                     try:
                         self.update_uniqueid(call_id, channel_uniqueid)
                     except Exception as e:
-                        self.logger.error(f"Failed to save uniqueid for call {call_id}: {e}")
+                        self.logger.error(
+                            f"Failed to save uniqueid for call {call_id}: {e}"
+                        )
 
     def select_first_available(self) -> tuple:
         """

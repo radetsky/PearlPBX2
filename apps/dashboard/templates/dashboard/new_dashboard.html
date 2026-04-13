@@ -1303,6 +1303,7 @@ const PHONE_CFG = {
   requiredLen:  {{ PHONE_REQUIRED_LEN }},
   cityCodeLen:  {{ PHONE_CITYCODE_LEN }},
 };
+const PHONE_INT_PREFIX = '00' + PHONE_CFG.countryCode;
 
 let activeModal = null;
 let agentCallOpen = false;
@@ -1647,6 +1648,12 @@ function epFromLoc(loc) {
   return m ? m[1] : null;
 }
 
+/** Extract the dialed number from a PJSIP outgoing channel name, e.g. "PJSIP/0671234567@trunk-00ab" → "0671234567". */
+function dialedFromChan(ch) {
+  const m = (ch || '').match(/^PJSIP\/([^@]+)@/i);
+  return m ? m[1] : '';
+}
+
 /** Return true if s consists entirely of decimal digits. */
 function isNum(s) { return /^\d+$/.test(s); }
 
@@ -1836,7 +1843,7 @@ function normalizePhone(str) {
   const len = digits.length;
   const { countryCode, localCode, requiredLen, cityCodeLen } = PHONE_CFG;
   if (len === requiredLen) return digits;
-  if (len > requiredLen && (digits.startsWith(countryCode) || digits.startsWith('00' + countryCode))) {
+  if (len > requiredLen && (digits.startsWith(countryCode) || digits.startsWith(PHONE_INT_PREFIX))) {
     return digits.slice(len - requiredLen);
   }
   if (len === cityCodeLen) return localCode + digits;
@@ -2100,14 +2107,14 @@ function getCallInfoForEndpoint(ep) {
         remoteNum = resolveCallerNum(other.caller_id_num || chan.caller_id_num, other.caller_id_name || chan.caller_id_name);
       } else {
         direction = '↑';
-        const dialedNum = (otherKey.match(/^PJSIP\/([^@]+)@/i) || [])[1] || '';
+        const dialedNum = dialedFromChan(otherKey);
         remoteNum = resolveCallerNum(dialedNum || other.caller_id_num || chan.connected_line_num, other.caller_id_name);
       }
     }
   } else if (chan.dialing_to) {
     const destEp = epFromChan(chan.dialing_to);
     direction = (destEp && ST.knownUsers.has(destEp)) ? '↔' : '↑';
-    const dialedNum = (chan.dialing_to.match(/^PJSIP\/([^@]+)@/i) || [])[1] || '';
+    const dialedNum = dialedFromChan(chan.dialing_to);
     remoteNum = resolveCallerNum(dialedNum || chan.dest_caller_id_num, chan.caller_id_name);
   } else if (chan.dialed_by) {
     direction = '↓';
@@ -2508,7 +2515,7 @@ function getAudioCtx() {
   return _audioCtx;
 }
 
-function playQueueSound() {
+function playTone(freq1, freq2, freqAt, duration) {
   try {
     const ctx = getAudioCtx();
     const osc  = ctx.createOscillator();
@@ -2516,31 +2523,17 @@ function playQueueSound() {
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.12);
+    osc.frequency.setValueAtTime(freq1, ctx.currentTime);
+    osc.frequency.setValueAtTime(freq2, ctx.currentTime + freqAt);
     gain.gain.setValueAtTime(0.28, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
+    osc.stop(ctx.currentTime + duration);
   } catch (_) {}
 }
 
-function playMissedSound() {
-  try {
-    const ctx = getAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    osc.frequency.setValueAtTime(440, ctx.currentTime + 0.18);
-    gain.gain.setValueAtTime(0.28, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.5);
-  } catch (_) {}
-}
+function playQueueSound()  { playTone(880, 1100, 0.12, 0.4); }
+function playMissedSound() { playTone(660,  440, 0.18, 0.5); }
 
 connectWS();
 </script>
