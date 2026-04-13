@@ -1300,6 +1300,9 @@ const TRANS = {
 let activeModal = null;
 let agentCallOpen = false;
 
+let _audioCtx = null;
+let _seenMissedIds = new Set();
+
 function openAgentCall(ext) {
   const prefix = ('PJSIP/' + ext + '-').toLowerCase();
   const chanKey = Object.keys(ST.channels).find(k => k.toLowerCase().startsWith(prefix));
@@ -1544,6 +1547,7 @@ function dispatch(msg) {
       ST.queues[d.queue].stats.waiting =
         Object.keys(ST.queues[d.queue].calls).length;
       renderQueuesTab(); renderOvQueues(); renderStats();
+      if (activeModal === d.queue) playQueueSound();
       break;
 
     case 'channel_dial_begin':
@@ -2206,6 +2210,9 @@ function renderMissedCalls(qname) {
     el.innerHTML = `<div class="empty">${TRANS.noMissedCalls}</div>`;
     return;
   }
+  const hasNew = list.some(m => !_seenMissedIds.has(m.caller_id));
+  list.forEach(m => _seenMissedIds.add(m.caller_id));
+  if (hasNew && activeModal === qname) playMissedSound();
   el.innerHTML = list.map(m =>
     `<div class="qm-missed-entry">
       <div class="qm-missed-cid">${esc(m.caller_id)}</div>
@@ -2216,6 +2223,8 @@ function renderMissedCalls(qname) {
 
 function openModal(qname) {
   if (_missedRefreshInterval) { clearInterval(_missedRefreshInterval); _missedRefreshInterval = null; }
+  getAudioCtx();
+  _seenMissedIds = new Set((_missedCache[qname] || []).map(m => m.caller_id));
   activeModal = qname;
   document.getElementById('qmodal').style.display = 'flex';
   renderModal();
@@ -2229,8 +2238,8 @@ function closeModal() {
     clearInterval(_missedRefreshInterval);
     _missedRefreshInterval = null;
   }
-  if (activeModal) delete _missedCache[activeModal];
   activeModal = null;
+  _seenMissedIds = new Set();
   document.getElementById('qmodal').style.display = 'none';
 }
 
@@ -2470,6 +2479,46 @@ async function hangupChannel(btn, channel) {
     btn.disabled = false;
     btn.textContent = TRANS.hangup;
   }
+}
+
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playQueueSound() {
+  try {
+    const ctx = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.28, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (_) {}
+}
+
+function playMissedSound() {
+  try {
+    const ctx = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, ctx.currentTime);
+    osc.frequency.setValueAtTime(440, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.28, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch (_) {}
 }
 
 connectWS();
