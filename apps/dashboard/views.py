@@ -401,12 +401,16 @@ def get_missed_calls(request):
             operator_called_back.add(cid)
 
     result = []
+    seen_callerids = set()
     for a in abandons:
         cid = callerid_map.get(a["callid"], "")
         if not cid:
             continue
         if cid in reentry_callerids or cid in operator_called_back:
             continue
+        if cid in seen_callerids:
+            continue
+        seen_callerids.add(cid)
         result.append(
             {
                 "caller_id": cid,
