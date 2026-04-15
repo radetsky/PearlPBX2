@@ -43,6 +43,7 @@ from django.db.models import CharField, Count, Avg, F, Case, When, IntegerField,
 from django.db.models.functions import Cast, StrIndex, Substr, TruncDate, TruncHour
 from .forms import QueueLogReportForm
 from .models import QueueLog
+from .services.lost_and_found import build_lost_and_found
 
 CONTENT_TYPE_CSV = "text/csv"
 
@@ -135,51 +136,12 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
 
         return {}
 
-    def _get_callerid_for_lost_call(self, lost, CDR):
-        """Extract callerid from CDR or fallback to queue log fields."""
-        if lost.callid:
-            cdr = CDR.objects.filter(uniqueid=lost.callid).first()
-            if cdr:
-                return cdr.src
-        return lost.agent or lost.data1 or lost.callid
-
     def get_lost_and_found_data(self, queryset):
         """Lost and Found report: For each ABANDON, find callerid, then in CDR find calls from/to this number after ABANDON."""
-        from apps.reports.models import CDR
-
-        lost_calls = queryset.filter(event="ABANDON").order_by("-time")[:50]
-        results = []
-        for lost in lost_calls:
-            callerid = self._get_callerid_for_lost_call(lost, CDR)
-            abandon_time = lost.time
-
-            incoming = (
-                CDR.objects.filter(
-                    src=callerid, start__gt=abandon_time, disposition="ANSWERED"
-                )
-                .order_by("start")
-                .first()
-            )
-            outgoing = (
-                CDR.objects.filter(
-                    dst=callerid, start__gt=abandon_time, disposition="ANSWERED"
-                )
-                .order_by("start")
-                .first()
-            )
-            results.append(
-                {
-                    "abandon_time": abandon_time,
-                    "callerid": callerid,
-                    "incoming_time": incoming.start if incoming else None,
-                    "incoming_dstchannel": incoming.dstchannel if incoming else None,
-                    "outgoing_time": outgoing.start if outgoing else None,
-                    "outgoing_channel": outgoing.channel if outgoing else None,
-                }
-            )
+        rows = build_lost_and_found(queryset, limit=50)
         return {
-            "lost_and_found": results,
-            "total_lost_calls": lost_calls.count(),
+            "lost_and_found": rows,
+            "total_lost_calls": len(rows),
         }
 
     def get_summary_data(self, queryset):
