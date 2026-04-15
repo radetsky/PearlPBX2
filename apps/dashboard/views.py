@@ -15,6 +15,7 @@ from django.views.decorators.http import require_http_methods
 from asterisk.ami import AMIClient, SimpleAction
 
 from core.models import SIPUser, SIPPeer
+from core.utils import normalize_phone
 from apps.reports.models import CDR, QueueLog
 
 logger = logging.getLogger(__name__)
@@ -354,23 +355,31 @@ def get_missed_calls(request):
 
     callids = [a["callid"] for a in abandons]
 
-    callerid_map = dict(
-        QueueLog.objects.filter(event="ENTERQUEUE", callid__in=callids).values_list(
-            "callid", "data2"
-        )
-    )
+    callerid_map = {
+        callid: normalize_phone(data2)
+        for callid, data2 in QueueLog.objects.filter(
+            event="ENTERQUEUE", callid__in=callids
+        ).values_list("callid", "data2")
+    }
 
-    all_callerids = [v for v in callerid_map.values() if v]
-    re_entry_callids = set(
+    all_callerids = set(v for v in callerid_map.values() if v)
+
+    # Fetch re-entry candidates and normalize data2 in Python to handle format differences.
+    reentry_candidates = list(
         QueueLog.objects.filter(
             queuename=queue,
             event="ENTERQUEUE",
-            data2__in=all_callerids,
             time__gte=since,
         )
         .exclude(callid__in=callids)
-        .values_list("callid", flat=True)
+        .values("callid", "data2")
     )
+    re_entry_callids = set(
+        r["callid"]
+        for r in reentry_candidates
+        if normalize_phone(r["data2"]) in all_callerids
+    )
+
     completed_via_reentry = set(
         QueueLog.objects.filter(
             callid__in=re_entry_callids,
@@ -378,7 +387,8 @@ def get_missed_calls(request):
         ).values_list("callid", flat=True)
     )
     reentry_callerids = set(
-        QueueLog.objects.filter(
+        normalize_phone(d)
+        for d in QueueLog.objects.filter(
             callid__in=completed_via_reentry, event="ENTERQUEUE"
         ).values_list("data2", flat=True)
     )
@@ -391,14 +401,23 @@ def get_missed_calls(request):
             callerid_abandon_time[cid] = a["time"]
 
     # A callback counts as resolved only when it was answered AFTER that caller's own abandon.
+    # Fetch all candidate CDRs in one query and normalize dst in Python to handle format differences.
     operator_called_back = set()
-    for cid, abandon_time in callerid_abandon_time.items():
-        if CDR.objects.filter(
-            start__gte=abandon_time,
-            disposition="ANSWERED",
-            dst=cid,
-        ).exclude(dstchannel="").exists():
-            operator_called_back.add(cid)
+    if callerid_abandon_time:
+        min_abandon = min(callerid_abandon_time.values())
+        callback_cdrs = list(
+            CDR.objects.filter(
+                start__gte=min_abandon,
+                disposition="ANSWERED",
+            )
+            .exclude(dstchannel="")
+            .values("dst", "start")
+        )
+        for cid, abandon_time in callerid_abandon_time.items():
+            for cdr in callback_cdrs:
+                if cdr["start"] >= abandon_time and normalize_phone(cdr["dst"]) == cid:
+                    operator_called_back.add(cid)
+                    break
 
     result = []
     seen_callerids = set()

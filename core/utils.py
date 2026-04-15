@@ -1,9 +1,36 @@
 import os
+import re
 import string
 import secrets
 import shutil
-
 from os import makedirs
+
+from django.conf import settings
+
+
+def normalize_phone(phone: str) -> str:
+    """Normalize a phone number to a consistent local format.
+
+    Mirrors the JS normalizePhone() in new_dashboard.html.
+    Uses PHONE_* settings for country/local codes and length constants.
+    """
+    digits = re.sub(r'\D', '', phone or '')
+    if not digits:
+        return phone
+    country_code = getattr(settings, 'PHONE_COUNTRY_CODE', '380')
+    local_code = getattr(settings, 'PHONE_LOCAL_CODE', '044')
+    required_len = getattr(settings, 'PHONE_REQUIRED_LEN', 10)
+    city_code_len = getattr(settings, 'PHONE_CITYCODE_LEN', 7)
+    n = len(digits)
+    if n == required_len:
+        return digits
+    if n > required_len and digits.startswith(country_code):
+        return digits[n - required_len:]
+    if n == city_code_len:
+        return local_code + digits
+    if n == required_len - 1:
+        return '0' + digits
+    return digits
 
 
 def generate_password():

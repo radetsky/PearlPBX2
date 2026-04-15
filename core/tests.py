@@ -1045,3 +1045,73 @@ class TestValidateAsteriskExtensionPrefix(TestCase):
             self.fail(
                 "validate_asterisk_extension_prefix raised ValidationError for 'h'"
             )
+
+
+class TestNormalizePhone(TestCase):
+    """Tests for core.utils.normalize_phone with default Ukraine settings."""
+
+    def _n(self, phone):
+        from core.utils import normalize_phone
+        return normalize_phone(phone)
+
+    # --- already correct 10-digit local format ---
+    def test_10digit_passthrough(self):
+        self.assertEqual(self._n("0671234567"), "0671234567")
+
+    def test_10digit_passthrough_operator_50(self):
+        self.assertEqual(self._n("0501234567"), "0501234567")
+
+    # --- E.164 with plus ---
+    def test_e164_plus_380(self):
+        self.assertEqual(self._n("+380671234567"), "0671234567")
+
+    def test_e164_plus_380_operator_50(self):
+        self.assertEqual(self._n("+380501234567"), "0501234567")
+
+    # --- country code without plus ---
+    def test_380_prefix_no_plus(self):
+        self.assertEqual(self._n("380671234567"), "0671234567")
+
+    def test_380_prefix_no_plus_operator_50(self):
+        self.assertEqual(self._n("380501234567"), "0501234567")
+
+    # --- 9-digit (missing leading zero) ---
+    def test_9digit_prepend_zero(self):
+        self.assertEqual(self._n("671234567"), "0671234567")
+
+    def test_9digit_prepend_zero_operator_50(self):
+        self.assertEqual(self._n("501234567"), "0501234567")
+
+    # --- 7-digit city code (Kyiv local) ---
+    def test_7digit_kyiv_citycode(self):
+        self.assertEqual(self._n("4441234"), "0444441234")
+
+    def test_7digit_citycode_another(self):
+        self.assertEqual(self._n("2345678"), "0442345678")
+
+    # --- internal short extensions --- must pass through unchanged ---
+    def test_internal_3digit(self):
+        self.assertEqual(self._n("101"), "101")
+
+    def test_internal_3digit_200(self):
+        self.assertEqual(self._n("223"), "223")
+
+    # --- non-digit characters stripped ---
+    def test_formatted_with_dashes(self):
+        self.assertEqual(self._n("067-123-45-67"), "0671234567")
+
+    def test_formatted_with_spaces(self):
+        self.assertEqual(self._n("067 123 4567"), "0671234567")
+
+    def test_e164_with_spaces(self):
+        self.assertEqual(self._n("+38 067 123 4567"), "0671234567")
+
+    # --- edge cases ---
+    def test_empty_string(self):
+        self.assertEqual(self._n(""), "")
+
+    def test_none_like_empty(self):
+        self.assertEqual(self._n(None), None)
+
+    def test_no_digits(self):
+        self.assertEqual(self._n("---"), "---")
