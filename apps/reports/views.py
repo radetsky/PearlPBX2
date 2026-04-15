@@ -962,7 +962,17 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                         called_back += 1
                         continue
 
-                    # Done: operator dialed callerid after abandon_time (only if not lucky)
+                    # Called back: callerid called in via CDR after abandon_time (not through queue)
+                    if CDR.objects.filter(
+                        start__gte=abandon_time,
+                        start__lte=date_to,
+                        disposition="ANSWERED",
+                        src=callerid,
+                    ).exists():
+                        called_back += 1
+                        continue
+
+                    # Done: operator dialed callerid after abandon_time (only if not lucky/called_back)
                     if CDR.objects.filter(
                         start__gte=abandon_time,
                         start__lte=date_to,
