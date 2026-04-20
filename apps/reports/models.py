@@ -1,4 +1,8 @@
+import os
+
+from django.conf import settings
 from django.db import models
+from django.urls import reverse
 
 from core.models import MonitorFilenames
 
@@ -81,8 +85,11 @@ class CDR(models.Model):
     def get_audio_url(self):
         try:
             filename_object = MonitorFilenames.objects.get(cdr_uniqueid=self.uniqueid)
-            if not filename_object:
-                return None
             return filename_object.get_audio_url()
         except MonitorFilenames.DoesNotExist:
-            return None
+            pass
+        for ext in (".mp3", ".wav"):
+            path = os.path.join(settings.ASTERISK_MONITOR_DIR, self.uniqueid + ext)
+            if os.path.exists(path):
+                return reverse("audio_file_by_uniqueid", kwargs={"uniqueid": self.uniqueid})
+        return None

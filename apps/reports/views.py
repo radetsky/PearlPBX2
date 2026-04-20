@@ -4,6 +4,7 @@ import os
 import re
 from datetime import timedelta
 
+from django.conf import settings
 from django.views import View
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
@@ -412,6 +413,69 @@ class AudioFileView(ReportViewPermissionMixin, View):
                 response = FileResponse(
                     open(file_path, "rb"), content_type=content_type
                 )
+                response["Content-Length"] = str(file_size)
+                response["Content-Disposition"] = f'inline; filename="{filename}"'
+
+            response["Accept-Ranges"] = "bytes"
+
+        response["Cache-Control"] = "private, max-age=3600"
+        return response
+
+
+class AudioFileByUniqueidView(ReportViewPermissionMixin, View):
+    def get(self, request, uniqueid):
+        if not re.match(r"^[\d.]+$", uniqueid):
+            raise Http404("Invalid uniqueid")
+
+        file_path = None
+        for ext in (".mp3", ".wav"):
+            candidate = os.path.join(settings.ASTERISK_MONITOR_DIR, uniqueid + ext)
+            if os.path.exists(candidate):
+                file_path = candidate
+                break
+
+        if not file_path:
+            raise Http404("Audio file does not exist")
+
+        try:
+            file_size = os.stat(file_path).st_size
+        except FileNotFoundError:
+            raise Http404("Audio file does not exist")
+
+        content_type, _ = mimetypes.guess_type(file_path)
+        if content_type is None:
+            content_type = "audio/mpeg" if file_path.endswith(".mp3") else "audio/wav"
+
+        filename = os.path.basename(file_path)
+
+        if request.GET.get("download"):
+            response = FileResponse(
+                open(file_path, "rb"),
+                content_type=content_type,
+                as_attachment=True,
+            )
+        else:
+            range_header = request.META.get("HTTP_RANGE", "").strip()
+            range_match = (
+                re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
+            )
+            if range_match:
+                first = int(range_match.group(1))
+                last = (
+                    int(range_match.group(2)) if range_match.group(2) else file_size - 1
+                )
+                last = min(last, file_size - 1)
+                if first >= file_size or first > last:
+                    return HttpResponse(status=416)
+                length = last - first + 1
+                with open(file_path, "rb") as f:
+                    f.seek(first)
+                    data = f.read(length)
+                response = HttpResponse(data, status=206, content_type=content_type)
+                response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
+                response["Content-Length"] = str(length)
+            else:
+                response = FileResponse(open(file_path, "rb"), content_type=content_type)
                 response["Content-Length"] = str(file_size)
                 response["Content-Disposition"] = f'inline; filename="{filename}"'
 

@@ -9,6 +9,7 @@ from apps.reports.views import (
     AnalyticsQueueCallsView,
     CDRReportView,
     MonitorReportView,
+    AudioFileByUniqueidView,
     AudioFileView,
     QueueLogReportView,
     QueueLogRecordsByCallIdView,
@@ -20,6 +21,7 @@ urlpatterns = [
     path("cdr/", CDRReportView.as_view(), name="cdr_report"),
     path("monitor/", MonitorReportView.as_view(), name="monitor_report"),
     path("audio/<uuid:record_id>/", AudioFileView.as_view(), name="audio_file"),
+    path("audio/uid/<str:uniqueid>/", AudioFileByUniqueidView.as_view(), name="audio_file_by_uniqueid"),
     path("queuelog/", QueueLogReportView.as_view(), name="queuelog_report"),
     path(
         "queuelog/records/<str:callid>/",
