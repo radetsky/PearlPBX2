@@ -449,11 +449,11 @@ class FastAGIHandler:
         - existence of record in Monitor table
         - allow monitor on the global settings.
         """
-        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
-        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        caller_id = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8") or "anonymous"
+        destination = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8") or "anonymous"
         unique_id = self.agi.variables.get(b"agi_uniqueid", b"").decode("utf-8")
-        if not caller_id or not destination or not unique_id:
-            logger.error("Missing parameters for MixMonitor")
+        if not unique_id:
+            logger.error("Missing unique_id for MixMonitor")
             self.sequence.append(self.agi.setVariable, "MIXMONITOR", "0")
             self.sequence.append(self.agi.finish)
             return self.sequence()

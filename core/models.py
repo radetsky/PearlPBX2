@@ -1823,28 +1823,34 @@ class MonitorFilenames(models.Model):
     def monitor_filename(self) -> str:
         return self.filename
 
+    def _candidate_paths(self, ext: Optional[str] = None) -> list[str]:
+        exts = [ext] if ext else [".mp3", ".wav"]
+        base_dirs = [settings.ASTERISK_MONITOR_DIR]
+        backup_dir = getattr(settings, "ASTERISK_BACKUP_MONITOR_DIR", None)
+        if backup_dir:
+            base_dirs.append(backup_dir)
+
+        candidates = []
+        for base in base_dirs:
+            for e in exts:
+                candidates.append(os.path.join(base, self.monitor_filename() + e))
+        if self.cdr_uniqueid:
+            for e in exts:
+                candidates.append(
+                    os.path.join(settings.ASTERISK_MONITOR_DIR, self.cdr_uniqueid + e)
+                )
+        return candidates
+
     def get_audio_file_path(self, ext: Optional[str] = None) -> str:
-        """Return the full path to the audio file, optionally for a given extension."""
-        if ext is None:
-            # Default to .mp3, fallback to .wav if .mp3 does not exist
-            mp3_path = os.path.join(
-                settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ".mp3"
-            )
-            wav_path = os.path.join(
-                settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ".wav"
-            )
-            if os.path.exists(mp3_path):
-                return mp3_path
-            return wav_path
+        for path in self._candidate_paths(ext):
+            if os.path.exists(path):
+                return path
         return os.path.join(
-            settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + ext
+            settings.ASTERISK_MONITOR_DIR, self.monitor_filename() + (ext or ".wav")
         )
 
     def audio_file_exists(self) -> bool:
-        """Check if the audio file exists (either .mp3 or .wav)."""
-        return os.path.exists(self.get_audio_file_path(ext=".mp3")) or os.path.exists(
-            self.get_audio_file_path(ext=".wav")
-        )
+        return any(os.path.exists(p) for p in self._candidate_paths())
 
     def get_audio_url(self) -> str | None:
         """Return the URL for accessing the audio file, or None if not found."""
