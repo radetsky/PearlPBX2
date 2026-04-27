@@ -580,8 +580,8 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     output.append(_opt("monitor-format", queue.monitor_format))
     output.append(f"joinempty={queue.joinempty}")
     output.append(f"leavewhenempty={queue.leavewhenempty}")
-    output.append(f"ringinuse={queue.ringinuse}")
-    output.append(f"timeoutrestart={queue.timeoutrestart}")
+    output.append(f"ringinuse={queue.__ringinuse__()}")
+    output.append(f"timeoutrestart={queue.__timeoutrestart__()}")
     output.append(
         _opt("defaultrule", queue.defaultrule.name if queue.defaultrule else None)
     )

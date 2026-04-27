@@ -1127,6 +1127,12 @@ the queue and sent to that extension."""),
     def __str__(self):
         return self.name
 
+    def __ringinuse__(self):
+        return "yes" if self.ringinuse else "no"
+
+    def __timeoutrestart__(self):
+        return "yes" if self.timeoutrestart else "no"
+
 
 class QueueMember(models.Model):
     queue = models.ForeignKey(
