@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.3.2] - 2026-04-27
+
+### Fixed 
+- **Queues.conf** generation - ringinuse and timeoutrestart was generated incorrect. 
+
+
 ## [2.3.0] — 2026-04-12
 
 ### Added
