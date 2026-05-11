@@ -17,7 +17,7 @@ table inet filter {
         ip6 nexthdr icmpv6 accept
 
         # SSH
-        tcp dport 22 accept
+        tcp dport {{ ssh_port }} accept
 
         # HTTP (redirect to HTTPS)
         tcp dport 80 accept

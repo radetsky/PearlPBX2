@@ -5,6 +5,30 @@
     state: present
     update_cache: yes
 
+- name: Detect SSH port from sshd_config
+  shell: awk '/^Port /{print $2}' /etc/ssh/sshd_config
+  register: sshd_port_result
+  changed_when: false
+  failed_when: false
+
+- name: Set SSH port fact
+  set_fact:
+    ssh_port: "{{ sshd_port_result.stdout | trim if sshd_port_result.stdout | trim else '22' }}"
+
+- name: Confirm SSH port before applying firewall
+  pause:
+    prompt: |
+
+      ============================================================
+       FIREWALL: SSH port detected as {{ ssh_port }}
+       This port will be opened in nftables rules.
+
+       If this is WRONG — press Ctrl+C now, then fix Port in
+       /etc/ssh/sshd_config and re-run the installer.
+
+       Press Enter to continue...
+      ============================================================
+
 - name: Deploy nftables ruleset
   template:
     src: nftables.conf.j2
