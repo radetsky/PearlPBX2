@@ -38,7 +38,13 @@
     dest: /etc/systemd/system/asterisk.service
     mode: '0644'
     remote_src: yes
-  notify: Restart asterisk
+
+- name: Enable and start Asterisk
+  systemd:
+    name: asterisk
+    enabled: yes
+    state: started
+    daemon_reload: yes
 
 - name: Set ownership of application directory
   file:

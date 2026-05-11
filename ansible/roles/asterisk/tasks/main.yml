@@ -142,9 +142,3 @@
     - { path: /usr/lib/asterisk,   mode: "0750" }
     - { path: /etc/asterisk,       mode: "0750" }
 
-- name: Enable and start Asterisk
-  systemd:
-    name: asterisk
-    enabled: yes
-    state: started
-    daemon_reload: yes
