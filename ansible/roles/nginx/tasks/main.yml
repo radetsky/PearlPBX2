@@ -1,0 +1,63 @@
+---
+- name: Install nginx and openssl
+  apt:
+    name:
+      - nginx
+      - openssl
+    state: present
+    update_cache: yes
+
+- name: Create SSL directory
+  file:
+    path: "{{ ssl_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check if SSL certificate exists
+  stat:
+    path: "{{ ssl_dir }}/fullchain.pem"
+  register: ssl_cert_stat
+
+- name: Generate self-signed SSL certificate
+  command: >
+    openssl req -x509 -newkey rsa:4096 -days {{ ssl_days }} -nodes
+    -keyout {{ ssl_dir }}/privkey.pem
+    -out {{ ssl_dir }}/fullchain.pem
+    -subj "/CN={{ ansible_hostname }}/O=PearlPBX2/C=UA"
+  when: not ssl_cert_stat.stat.exists
+
+- name: Set SSL certificate permissions
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ ssl_dir }}/privkey.pem", mode: "0600" }
+    - { path: "{{ ssl_dir }}/fullchain.pem", mode: "0644" }
+
+- name: Deploy PearlPBX2 nginx site config
+  template:
+    src: pearlpbx2.nginx.j2
+    dest: /etc/nginx/sites-available/pearlpbx2
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Enable PearlPBX2 nginx site
+  file:
+    src: /etc/nginx/sites-available/pearlpbx2
+    dest: /etc/nginx/sites-enabled/pearlpbx2
+    state: link
+  notify: Reload nginx
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Start and enable nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes

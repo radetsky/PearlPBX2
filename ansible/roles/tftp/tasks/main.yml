@@ -1,0 +1,27 @@
+---
+- name: Install tftpd-hpa
+  apt:
+    name: tftpd-hpa
+    state: present
+    update_cache: yes
+
+- name: Create TFTP root directory
+  file:
+    path: "{{ tftp_dir }}"
+    state: directory
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0755'
+
+- name: Configure tftpd-hpa
+  template:
+    src: tftpd-hpa.j2
+    dest: /etc/default/tftpd-hpa
+    mode: '0644'
+  notify: Restart tftpd-hpa
+
+- name: Enable and start tftpd-hpa
+  service:
+    name: tftpd-hpa
+    state: started
+    enabled: yes

@@ -1,0 +1,164 @@
+---
+- name: Ensure install directory exists
+  file:
+    path: "{{ pearlpbx2_install_dir }}"
+    state: directory
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0755'
+
+- name: Sync application code to install directory
+  synchronize:
+    src: "{{ playbook_dir }}/../"
+    dest: "{{ pearlpbx2_install_dir }}/"
+    delete: no
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=__pycache__"
+      - "--exclude=.python-venv"
+      - "--exclude=.venv"
+      - "--exclude=ansible"
+      - "--exclude=*.pyc"
+      - "--exclude=staticfiles"
+  delegate_to: localhost
+
+- name: Set ownership of application directory
+  file:
+    path: "{{ pearlpbx2_install_dir }}"
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    recurse: yes
+
+- name: Create Python virtual environment
+  command: python3 -m venv {{ pearlpbx2_install_dir }}/.venv
+  args:
+    creates: "{{ pearlpbx2_install_dir }}/.venv/bin/python"
+  become_user: "{{ pearlpbx2_user }}"
+
+- name: Install Python dependencies
+  pip:
+    requirements: "{{ pearlpbx2_install_dir }}/requirements.txt"
+    virtualenv: "{{ pearlpbx2_install_dir }}/.venv"
+    state: present
+  become_user: "{{ pearlpbx2_user }}"
+
+- name: Check if env file already exists
+  stat:
+    path: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+  register: pearlpbx2_env_stat
+
+- name: Generate Django secret key
+  command: >
+    {{ pearlpbx2_install_dir }}/.venv/bin/python -c
+    "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+  register: django_key_result
+  changed_when: false
+  no_log: true
+  become_user: "{{ pearlpbx2_user }}"
+  when: not pearlpbx2_env_stat.stat.exists
+
+- name: Set Django secret key fact
+  set_fact:
+    pearlpbx2_django_secret_key: "{{ django_key_result.stdout }}"
+  no_log: true
+  when: not pearlpbx2_env_stat.stat.exists
+
+- name: Write PearlPBX2 env file (skip if already exists)
+  template:
+    src: pearlpbx2.env.j2
+    dest: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+    owner: root
+    group: "{{ pearlpbx2_group }}"
+    mode: '0640'
+  when: not pearlpbx2_env_stat.stat.exists
+  notify: Restart pearlpbx2
+
+- name: Build Django environment dict for management commands
+  set_fact:
+    pearlpbx2_django_env:
+      DB_NAME: "{{ db_name }}"
+      DB_USER: "{{ db_user }}"
+      DB_PASS: "{{ pearlpbx2_db_pass }}"
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      REDIS_URL: "redis://localhost:6379"
+      DJANGO_SECRET_KEY: "{{ pearlpbx2_django_secret_key | default('placeholder') }}"
+      ASTERISK_CONFIG_DIR: /etc/asterisk
+      ASTERISK_BACKUP_DIR: /var/backups/asterisk
+      DEVMODE: Production
+      DEBUG: "False"
+      ALLOWED_HOSTS: "{{ ansible_hostname }},127.0.0.1"
+      TFTP_DIR: "{{ tftp_dir }}"
+  no_log: true
+
+- name: Run database migrations
+  command: >
+    {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate --noinput
+  args:
+    chdir: "{{ pearlpbx2_install_dir }}"
+  environment: "{{ pearlpbx2_django_env | combine({
+    'ASTERISK_MANAGER_HOST': '127.0.0.1',
+    'ASTERISK_MANAGER_PORT': '5038',
+    'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
+    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+  }) }}"
+  become_user: "{{ pearlpbx2_user }}"
+  no_log: true
+
+- name: Collect static files
+  command: >
+    {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput
+  args:
+    chdir: "{{ pearlpbx2_install_dir }}"
+  environment: "{{ pearlpbx2_django_env }}"
+  become_user: "{{ pearlpbx2_user }}"
+  no_log: true
+
+- name: Install PearlPBX2 systemd unit
+  template:
+    src: pearlpbx2.service.j2
+    dest: /etc/systemd/system/PearlPBX2.service
+    mode: '0644'
+  notify: Restart pearlpbx2
+
+- name: Enable and start PearlPBX2
+  systemd:
+    name: PearlPBX2
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Install pg_backup_asterisk to cron.daily
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/bin/pg_backup_asterisk.sh"
+    dest: /etc/cron.daily/pg_backup_asterisk
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: Install system_monitor cron job (every 15 minutes)
+  cron:
+    name: pearlpbx2_system_monitor
+    minute: "*/15"
+    user: root
+    job: "{{ pearlpbx2_install_dir }}/bin/system_monitor.sh"
+    state: present
+
+- name: Install wav2mp3_monitor cron job (every 15 minutes)
+  cron:
+    name: pearlpbx2_wav2mp3_monitor
+    minute: "*/15"
+    user: "{{ pearlpbx2_user }}"
+    job: "{{ pearlpbx2_install_dir }}/bin/wav2mp3_monitor.sh"
+    state: present
+
+- name: Install syncmp3 cron job (daily at 03:00)
+  cron:
+    name: pearlpbx2_syncmp3
+    minute: "0"
+    hour: "3"
+    user: root
+    job: "{{ pearlpbx2_install_dir }}/bin/syncmp3.sh"
+    state: present

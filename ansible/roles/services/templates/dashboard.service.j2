@@ -1,0 +1,26 @@
+[Unit]
+Description=Dashboard Listener Service for PearlPBX2
+After=network.target redis.service asterisk.service PearlPBX2.service
+Wants=asterisk.service redis.service PearlPBX2.service
+
+[Service]
+Type=simple
+User={{ pearlpbx2_user }}
+Group={{ pearlpbx2_group }}
+WorkingDirectory={{ pearlpbx2_install_dir }}/services/dashboard
+Environment="PATH={{ pearlpbx2_install_dir }}/services/dashboard/.python-venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile={{ pearlpbx2_etc_dir }}/dashboard/env
+ExecStart={{ pearlpbx2_install_dir }}/services/dashboard/.python-venv/bin/python {{ pearlpbx2_install_dir }}/services/dashboard/dashboard_listener.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pearlpbx-dashboard
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

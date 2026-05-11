@@ -1,0 +1,49 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Accept established/related connections
+        ct state established,related accept
+
+        # Accept loopback
+        iif "lo" accept
+
+        # ICMP
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # SSH
+        tcp dport 22 accept
+
+        # HTTP (redirect to HTTPS)
+        tcp dport 80 accept
+
+        # HTTPS
+        tcp dport 443 accept
+
+        # SIP
+        tcp dport 5060 accept
+        udp dport 5060 accept
+
+        # RTP media
+        udp dport 10000-20000 accept
+
+        # FastAGI - localhost only
+        ip saddr 127.0.0.1 tcp dport 4573 accept
+
+        # Asterisk AMI - localhost only
+        ip saddr 127.0.0.1 tcp dport 5038 accept
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

@@ -1,0 +1,16 @@
+pearlpbx2_install_dir: /usr/local/PearlPBX2
+pearlpbx2_etc_dir: /etc/PearlPBX
+pearlpbx2_secrets_dir: /etc/PearlPBX/.secrets
+pearlpbx2_user: asterisk
+pearlpbx2_group: asterisk
+
+asterisk_version: "22-current"
+asterisk_src_dir: /usr/src
+
+db_name: pearlpbx2
+db_user: pearlpbx2
+
+ssl_dir: /etc/ssl/pearlpbx2
+ssl_days: 3650
+
+tftp_dir: /var/lib/tftpboot

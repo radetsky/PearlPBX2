@@ -1,0 +1,76 @@
+---
+- name: Install base system packages
+  apt:
+    name:
+      - locales
+      - tzdata
+      - less
+      - git
+      - curl
+      - build-essential
+      - python3
+      - python3-venv
+      - python3-pip
+      - libpq-dev
+      - vim
+      - screen
+      - wget
+      - rsync
+    state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Generate en_US.UTF-8 locale
+  locale_gen:
+    name: en_US.UTF-8
+    state: present
+
+- name: Create asterisk group
+  group:
+    name: "{{ pearlpbx2_group }}"
+    system: yes
+
+- name: Create asterisk user
+  user:
+    name: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    groups:
+      - audio
+      - dialout
+    system: yes
+    home: /var/lib/asterisk
+    shell: /usr/sbin/nologin
+    create_home: yes
+
+- name: Create /etc/PearlPBX directory tree
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ pearlpbx2_etc_dir }}", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_secrets_dir }}", owner: root, group: root, mode: "0700" }
+    - { path: "{{ pearlpbx2_etc_dir }}/PearlPBX2", owner: "{{ pearlpbx2_user }}", group: "{{ pearlpbx2_group }}", mode: "0750" }
+    - { path: "{{ pearlpbx2_etc_dir }}/PearlPBX2/cfg", owner: "{{ pearlpbx2_user }}", group: "{{ pearlpbx2_group }}", mode: "0750" }
+    - { path: "{{ pearlpbx2_etc_dir }}/callback", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_etc_dir }}/dashboard", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_etc_dir }}/fastagi", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_etc_dir }}/system_monitor", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_etc_dir }}/syncmp3", owner: root, group: root, mode: "0755" }
+    - { path: /var/backups/asterisk, owner: "{{ pearlpbx2_user }}", group: "{{ pearlpbx2_group }}", mode: "0750" }
+    - { path: /var/lib/pearlpbx2/monitor-state, owner: root, group: root, mode: "0755" }
+
+- name: Deploy env placeholders (skip if already exist)
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ pearlpbx2_etc_dir }}/{{ item.dir }}/env"
+    owner: root
+    group: root
+    mode: '0600'
+    force: no
+  loop:
+    - { src: syncmp3.env.j2,        dir: syncmp3 }
+    - { src: system_monitor.env.j2, dir: system_monitor }

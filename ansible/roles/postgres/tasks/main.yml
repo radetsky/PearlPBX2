@@ -1,0 +1,71 @@
+---
+- name: Install PostgreSQL
+  apt:
+    name:
+      - postgresql
+      - python3-psycopg2
+    state: present
+    update_cache: yes
+
+- name: Start and enable PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Generate DB password (idempotent — saved to file)
+  set_fact:
+    pearlpbx2_db_pass: "{{ lookup('password', pearlpbx2_secrets_dir + '/db_pass length=48 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Generate AMI manager secret (idempotent — saved to file)
+  set_fact:
+    pearlpbx2_ami_secret: "{{ lookup('password', pearlpbx2_secrets_dir + '/ami_secret length=64 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Generate AMI callback password
+  set_fact:
+    pearlpbx2_ami_callback_pass: "{{ lookup('password', pearlpbx2_secrets_dir + '/ami_callback_pass length=48 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Generate AMI dashboard password
+  set_fact:
+    pearlpbx2_ami_dashboard_pass: "{{ lookup('password', pearlpbx2_secrets_dir + '/ami_dashboard_pass length=48 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Generate AMI fastagi password
+  set_fact:
+    pearlpbx2_ami_fastagi_pass: "{{ lookup('password', pearlpbx2_secrets_dir + '/ami_fastagi_pass length=48 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Create PostgreSQL user pearlpbx2
+  become_user: postgres
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ pearlpbx2_db_pass }}"
+    state: present
+  no_log: true
+
+- name: Create PostgreSQL database pearlpbx2
+  become_user: postgres
+  postgresql_db:
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    state: present
+
+- name: Find pg_hba.conf
+  find:
+    paths: /etc/postgresql
+    patterns: pg_hba.conf
+    recurse: yes
+  register: pg_hba_files
+
+- name: Ensure pg_hba.conf allows md5 for pearlpbx2
+  postgresql_pg_hba:
+    dest: "{{ pg_hba_files.files[0].path }}"
+    contype: local
+    databases: "{{ db_name }}"
+    users: "{{ db_user }}"
+    method: md5
+    state: present
+  notify: Restart postgresql

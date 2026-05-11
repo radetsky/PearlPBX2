@@ -1,0 +1,14 @@
+---
+- name: Install PearlPBX2
+  hosts: localhost
+  become: true
+  roles:
+    - system
+    - postgres
+    - redis
+    - asterisk
+    - pearlpbx2
+    - services
+    - nginx
+    - tftp
+    - firewall

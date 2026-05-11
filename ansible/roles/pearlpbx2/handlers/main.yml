@@ -1,0 +1,6 @@
+---
+- name: Restart pearlpbx2
+  systemd:
+    name: PearlPBX2
+    state: restarted
+    daemon_reload: yes

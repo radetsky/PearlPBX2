@@ -1,21 +1,15 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
-# ================================================================
-# Configuration
-# ================================================================
-ENV_FILE="/etc/PearlPBX/monitor/env"
+ENV_FILE="/etc/PearlPBX/system_monitor/env"
+STATE_DIR="/var/lib/pearlpbx2/monitor-state"
+REPEAT_HOURS=4
+
 if [[ ! -f "$ENV_FILE" ]]; then
     echo "ERROR: config file not found: ${ENV_FILE}" >&2
-    echo "" >&2
-    echo "Create it with the following content:" >&2
-    echo "" >&2
-    echo "  mkdir -p $(dirname "$ENV_FILE")" >&2
-    echo "  cat > ${ENV_FILE} <<EOF" >&2
-    echo "  SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../xxx" >&2
+    echo "Create it with:" >&2
+    echo "  SLACK_WEBHOOK_URL=https://hooks.slack.com/services/..." >&2
     echo "  SLACK_CHANNEL=#alerts-server" >&2
-    echo "  EOF" >&2
-    echo "  chmod 600 ${ENV_FILE}" >&2
     exit 1
 fi
 # shellcheck source=/dev/null
@@ -30,31 +24,50 @@ SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
 HOSTNAME=$(hostname)
 
 SERVICES=(
-    "asterisk" "postgresql" "redis"
-    "PearlPBX2" "Callback" "Express" "Dashboard" "FastAGI"
+    "asterisk"
+    "postgresql"
+    "redis-server"
+    "PearlPBX2"
+    "pearlpbx2-callback"
+    "pearlpbx2-dashboard"
+    "pearlpbx2-fastagi"
 )
 
-WARN_THRESHOLD=80
-CRIT_THRESHOLD=90
+DISK_WARN_THRESHOLD=80
+DISK_CRIT_THRESHOLD=90
+CPU_WARN_THRESHOLD=2
+CPU_CRIT_THRESHOLD=4
+MEM_WARN_THRESHOLD=80
+MEM_CRIT_THRESHOLD=90
 
-CPU_WARN_THRESHOLD=2      # load average warn: N x CPU cores
-CPU_CRIT_THRESHOLD=4      # load average crit: N x CPU cores
-MEM_WARN_THRESHOLD=80     # memory used %
-MEM_CRIT_THRESHOLD=90     # memory used %
-
-# Filesystems to ignore
 IGNORE_FS="tmpfs|devtmpfs|udev|overlay|squashfs"
 
-# ================================================================
-# Slack
-# ================================================================
-slack_send() {
-    local color="$1"
-    local title="$2"
-    local message="$3"
-    local emoji="$4"
+mkdir -p "$STATE_DIR"
 
-    curl -s -X POST \
+should_send() {
+    local check="$1" current="$2"
+    local state_file="${STATE_DIR}/${check}.state"
+    local last_state="ok" last_sent=0
+
+    if [[ -f "$state_file" ]]; then
+        { read -r last_state; read -r last_sent; } < "$state_file"
+    fi
+
+    local now repeat_sec
+    now=$(date +%s)
+    repeat_sec=$(( REPEAT_HOURS * 3600 ))
+
+    if [[ "$current" != "$last_state" ]] || \
+       [[ "$current" != "ok" && $(( now - last_sent )) -ge $repeat_sec ]]; then
+        printf '%s\n%s\n' "$current" "$now" > "$state_file"
+        return 0
+    fi
+    return 1
+}
+
+slack_send() {
+    local color="$1" title="$2" message="$3" emoji="$4"
+    curl -s --max-time 10 -X POST \
         -H 'Content-type: application/json' \
         --data "{
             \"channel\": \"${SLACK_CHANNEL}\",
@@ -67,118 +80,102 @@ slack_send() {
                 \"footer\": \"${HOSTNAME} • $(date '+%Y-%m-%d %H:%M:%S')\"
             }]
         }" \
-        "$SLACK_WEBHOOK_URL" > /dev/null
+        "$SLACK_WEBHOOK_URL" > /dev/null || \
+        echo "WARNING: failed to send Slack alert (webhook unavailable)" >&2
 }
 
 slack_warning()  { slack_send "#ffcc00" "$1" "$2" ":warning:"; }
 slack_critical() { slack_send "#ff0000" "$1" "$2" ":red_circle:"; }
 slack_ok()       { slack_send "#36a64f" "$1" "$2" ":white_check_mark:"; }
 
-# ================================================================
-# Service status
-# ================================================================
 check_services() {
     local failed=()
-
-    for SERVICE in "${SERVICES[@]}"; do
-        if ! systemctl is-active --quiet "$SERVICE"; then
-            failed+=("$SERVICE")
-        fi
+    for svc in "${SERVICES[@]}"; do
+        systemctl is-active --quiet "$svc" || failed+=("$svc")
     done
 
     if [[ ${#failed[@]} -gt 0 ]]; then
         local list
         list=$(printf '`%s`\n' "${failed[@]}")
-        slack_critical \
-            "Services are down" \
-            "Failed services on \`${HOSTNAME}\`:\n${list}\n\nDiagnostics:\n\`journalctl -u <service> -n 30 --no-pager\`"
+        if should_send "services" "critical"; then
+            slack_critical "Services are down" \
+                "Failed on \`${HOSTNAME}\`:\n${list}\n\n\`journalctl -u <service> -n 30 --no-pager\`"
+        fi
+    else
+        should_send "services" "ok" && \
+            slack_ok "Services recovered" "All services are running on \`${HOSTNAME}\`"
     fi
 }
 
-# ================================================================
-# Filesystems
-# ================================================================
 check_disks() {
-    local warnings=()
-    local criticals=()
+    local warnings=() criticals=()
 
-    while IFS= read -r line; do
-        local usage mount
-        usage=$(echo "$line" | awk '{print $5}' | tr -d '%')
-        mount=$(echo "$line" | awk '{print $6}')
-
-        if [[ "$usage" -ge "$CRIT_THRESHOLD" ]]; then
+    while read -r usage mount; do
+        if [[ "$usage" -ge "$DISK_CRIT_THRESHOLD" ]]; then
             criticals+=("${mount} — *${usage}%*")
-        elif [[ "$usage" -ge "$WARN_THRESHOLD" ]]; then
+        elif [[ "$usage" -ge "$DISK_WARN_THRESHOLD" ]]; then
             warnings+=("${mount} — *${usage}%*")
         fi
-    done < <(LC_ALL=C df -h | grep -vE "^Filesystem|${IGNORE_FS}")
+    done < <(LC_ALL=C df -h | grep -vE "^Filesystem|${IGNORE_FS}" | awk '{gsub(/%/,"",$5); print $5, $6}')
 
     if [[ ${#criticals[@]} -gt 0 ]]; then
-        local list
-        list=$(printf '%s\n' "${criticals[@]}")
-        slack_critical \
-            "Disk usage critical" \
-            "Critical disk usage on \`${HOSTNAME}\` (>=${CRIT_THRESHOLD}%):\n${list}\n\n\`du -sh /var/spool/asterisk/monitor/* 2>/dev/null | sort -rh | head -10\`"
-    fi
-
-    if [[ ${#warnings[@]} -gt 0 ]]; then
-        local list
-        list=$(printf '%s\n' "${warnings[@]}")
-        slack_warning \
-            "Disk usage warning" \
-            "High disk usage on \`${HOSTNAME}\` (>=${WARN_THRESHOLD}%):\n${list}"
+        local list; list=$(printf '%s\n' "${criticals[@]}")
+        should_send "disks" "critical" && \
+            slack_critical "Disk usage critical" \
+                "On \`${HOSTNAME}\` (>=${DISK_CRIT_THRESHOLD}%):\n${list}\n\n\`du -sh /var/spool/asterisk/monitor/* 2>/dev/null | sort -rh | head -10\`"
+    elif [[ ${#warnings[@]} -gt 0 ]]; then
+        local list; list=$(printf '%s\n' "${warnings[@]}")
+        should_send "disks" "warning" && \
+            slack_warning "Disk usage warning" \
+                "On \`${HOSTNAME}\` (>=${DISK_WARN_THRESHOLD}%):\n${list}"
+    else
+        should_send "disks" "ok" && \
+            slack_ok "Disk usage normal" "All filesystems OK on \`${HOSTNAME}\`"
     fi
 }
 
-# ================================================================
-# CPU load
-# ================================================================
 check_cpu() {
     local cores load1 load_int threshold_warn threshold_crit
     cores=$(nproc)
     load1=$(LC_ALL=C uptime | awk -F'load average:' '{print $2}' | awk -F',' '{print $1}' | tr -d ' ')
-    # Convert float to integer * 100 for comparison (e.g. 1.75 -> 175)
     load_int=$(echo "$load1" | awk '{printf "%d", $1 * 100}')
     threshold_warn=$(( cores * CPU_WARN_THRESHOLD * 100 ))
     threshold_crit=$(( cores * CPU_CRIT_THRESHOLD * 100 ))
 
     if [[ "$load_int" -ge "$threshold_crit" ]]; then
-        slack_critical \
-            "CPU load critical" \
-            "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_CRIT_THRESHOLD}x)\n\`top -bn1 | head -20\`"
+        should_send "cpu" "critical" && \
+            slack_critical "CPU load critical" \
+                "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_CRIT_THRESHOLD}x)\n\`top -bn1 | head -20\`"
     elif [[ "$load_int" -ge "$threshold_warn" ]]; then
-        slack_warning \
-            "CPU load warning" \
-            "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_WARN_THRESHOLD}x)"
+        should_send "cpu" "warning" && \
+            slack_warning "CPU load warning" \
+                "Load average on \`${HOSTNAME}\`: *${load1}* (${cores} cores, threshold: ${CPU_WARN_THRESHOLD}x)"
+    else
+        should_send "cpu" "ok" && \
+            slack_ok "CPU load normal" "Load average on \`${HOSTNAME}\`: *${load1}*"
     fi
 }
 
-# ================================================================
-# Memory
-# ================================================================
 check_memory() {
     local total used pct
-    total=$(LC_ALL=C free -m | awk '/^Mem:/ {print $2}')
-    used=$(LC_ALL=C free -m  | awk '/^Mem:/ {print $3}')
+    read -r total used < <(LC_ALL=C free -m | awk '/^Mem:/ {print $2, $3}')
     pct=$(( used * 100 / total ))
 
     if [[ "$pct" -ge "$MEM_CRIT_THRESHOLD" ]]; then
-        slack_critical \
-            "Memory usage critical" \
-            "Memory on \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)\n\`ps aux --sort=-%mem | head -10\`"
+        should_send "memory" "critical" && \
+            slack_critical "Memory usage critical" \
+                "On \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)\n\`ps aux --sort=-%mem | head -10\`"
     elif [[ "$pct" -ge "$MEM_WARN_THRESHOLD" ]]; then
-        slack_warning \
-            "Memory usage warning" \
-            "Memory on \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)"
+        should_send "memory" "warning" && \
+            slack_warning "Memory usage warning" \
+                "On \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)"
+    else
+        should_send "memory" "ok" && \
+            slack_ok "Memory usage normal" "On \`${HOSTNAME}\`: *${pct}%* used (${used}MB / ${total}MB)"
     fi
 }
 
-# ================================================================
-# Main
-# ================================================================
 check_services
 check_disks
 check_cpu
 check_memory
-

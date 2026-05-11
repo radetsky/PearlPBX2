@@ -1,0 +1,23 @@
+---
+- name: Install nftables
+  apt:
+    name: nftables
+    state: present
+    update_cache: yes
+
+- name: Deploy nftables ruleset
+  template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: '0644'
+    validate: nft -c -f %s
+
+- name: Enable and start nftables
+  service:
+    name: nftables
+    state: started
+    enabled: yes
+
+- name: Reload nftables rules
+  command: nft -f /etc/nftables.conf
+  changed_when: false

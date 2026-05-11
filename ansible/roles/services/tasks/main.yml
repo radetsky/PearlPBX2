@@ -1,0 +1,72 @@
+---
+- name: Define services list
+  set_fact:
+    pearlpbx2_services:
+      - name: dashboard
+        unit: pearlpbx2-dashboard
+        venv: "{{ pearlpbx2_install_dir }}/services/dashboard/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/dashboard/requirements.txt"
+        env_template: dashboard.env.j2
+        service_template: dashboard.service.j2
+      - name: callback
+        unit: pearlpbx2-callback
+        venv: "{{ pearlpbx2_install_dir }}/services/callback/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/callback/requirements.txt"
+        env_template: callback.env.j2
+        service_template: callback.service.j2
+      - name: fastagi
+        unit: pearlpbx2-fastagi
+        venv: "{{ pearlpbx2_install_dir }}/services/fastagi/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/fastagi/requirements.txt"
+        env_template: fastagi.env.j2
+        service_template: fastagi.service.j2
+
+- name: Create virtual environment for each service
+  command: python3 -m venv {{ item.venv }}
+  args:
+    creates: "{{ item.venv }}/bin/python"
+  loop: "{{ pearlpbx2_services }}"
+  become_user: "{{ pearlpbx2_user }}"
+
+- name: Install service Python dependencies
+  pip:
+    requirements: "{{ item.requirements }}"
+    virtualenv: "{{ item.venv }}"
+    state: present
+  loop: "{{ pearlpbx2_services }}"
+  become_user: "{{ pearlpbx2_user }}"
+
+- name: Check if service env files exist
+  stat:
+    path: "{{ pearlpbx2_etc_dir }}/{{ item.name }}/env"
+  register: service_env_stats
+  loop: "{{ pearlpbx2_services }}"
+
+- name: Write service env files (skip if already exist)
+  template:
+    src: "{{ item.item.env_template }}"
+    dest: "{{ pearlpbx2_etc_dir }}/{{ item.item.name }}/env"
+    owner: root
+    group: "{{ pearlpbx2_group }}"
+    mode: '0640'
+  when: not item.stat.exists
+  loop: "{{ service_env_stats.results }}"
+  no_log: true
+
+- name: Install service systemd units
+  template:
+    src: "{{ item.service_template }}"
+    dest: "/etc/systemd/system/{{ item.unit }}.service"
+    mode: '0644'
+  loop: "{{ pearlpbx2_services }}"
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start services
+  systemd:
+    name: "{{ item.unit }}"
+    enabled: yes
+    state: started
+  loop: "{{ pearlpbx2_services }}"

@@ -1,0 +1,168 @@
+---
+- name: Install Asterisk build dependencies
+  apt:
+    name:
+      - pkg-config
+      - build-essential
+      - libedit-dev
+      - uuid-dev
+      - libxml2-dev
+      - libsqlite3-dev
+      - libspandsp-dev
+      - libpq-dev
+      - postgresql-client
+      - libnewt-dev
+      - libssl-dev
+      - subversion
+      - libspeex-dev
+      - libspeexdsp-dev
+      - libogg-dev
+      - libvorbis-dev
+      - libasound2-dev
+      - portaudio19-dev
+      - libcurl4-openssl-dev
+      - xmlstarlet
+      - bison
+      - flex
+      - unixodbc-dev
+      - libneon27-dev
+      - libgmime-3.0-dev
+      - liblua5.2-dev
+      - liburiparser-dev
+      - libxslt1-dev
+      - freetds-dev
+      - libosptk-dev
+      - libjack-jackd2-dev
+      - libcap-dev
+      - libsnmp-dev
+      - libiksemel-dev
+      - libcorosync-common-dev
+      - libcpg-dev
+      - libcfg-dev
+      - libpopt-dev
+      - libical-dev
+      - libresample1-dev
+      - binutils-dev
+      - libsrtp2-dev
+      - libgsm1-dev
+      - zlib1g-dev
+      - libldap2-dev
+      - libcodec2-dev
+      - libfftw3-dev
+      - libsndfile1-dev
+      - libunbound-dev
+      - libopus-dev
+    state: present
+    update_cache: yes
+
+- name: Check if Asterisk is already installed
+  stat:
+    path: /usr/sbin/asterisk
+  register: asterisk_binary
+
+- name: Build and install Asterisk from source
+  when: not asterisk_binary.stat.exists
+  block:
+    - name: Download Asterisk 22 source
+      get_url:
+        url: "https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-{{ asterisk_version }}.tar.gz"
+        dest: "{{ asterisk_src_dir }}/asterisk-{{ asterisk_version }}.tar.gz"
+        mode: '0644'
+
+    - name: Extract Asterisk source
+      unarchive:
+        src: "{{ asterisk_src_dir }}/asterisk-{{ asterisk_version }}.tar.gz"
+        dest: "{{ asterisk_src_dir }}"
+        remote_src: yes
+
+    - name: Find extracted Asterisk directory
+      find:
+        paths: "{{ asterisk_src_dir }}"
+        patterns: "asterisk-22.*"
+        file_type: directory
+      register: asterisk_dirs
+
+    - name: Set Asterisk source path fact
+      set_fact:
+        asterisk_build_dir: "{{ asterisk_dirs.files[0].path }}"
+
+    - name: Download MP3 source
+      command: ./contrib/scripts/get_mp3_source.sh
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Configure Asterisk
+      command: >
+        ./configure
+        --prefix=/
+        --with-crypto
+        --with-postgres
+        --with-spandsp
+        --with-jansson-bundled
+        --with-opus
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Generate menuselect options
+      command: make menuselect.makeopts
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Enable codec_opus in menuselect
+      command: ./menuselect/menuselect --enable codec_opus menuselect.makeopts
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Compile Asterisk
+      command: make -j{{ ansible_processor_vcpus | default(2) }}
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Install Asterisk
+      command: make install
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+    - name: Install basic-pbx sample configs
+      command: make basic-pbx
+      args:
+        chdir: "{{ asterisk_build_dir }}"
+
+- name: Copy contrib configs to /etc/asterisk (do not overwrite existing)
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/contrib/configs/"
+    dest: /etc/asterisk/
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0640'
+    force: no
+    remote_src: yes
+
+- name: Set ownership and permissions on Asterisk dirs
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: "{{ item.mode }}"
+    recurse: yes
+  loop:
+    - { path: /var/lib/asterisk,   mode: "0750" }
+    - { path: /var/log/asterisk,   mode: "0750" }
+    - { path: /var/spool/asterisk, mode: "0750" }
+    - { path: /usr/lib/asterisk,   mode: "0750" }
+    - { path: /etc/asterisk,       mode: "0750" }
+
+- name: Install Asterisk systemd unit
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/services/asterisk.service"
+    dest: /etc/systemd/system/asterisk.service
+    mode: '0644'
+    remote_src: yes
+  notify: Restart asterisk
+
+- name: Enable and start Asterisk
+  systemd:
+    name: asterisk
+    enabled: yes
+    state: started
+    daemon_reload: yes

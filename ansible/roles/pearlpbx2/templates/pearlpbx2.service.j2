@@ -1,0 +1,18 @@
+[Unit]
+Description=PearlPBX2 ASGI Uvicorn
+After=network.target
+
+[Service]
+User={{ pearlpbx2_user }}
+Group={{ pearlpbx2_group }}
+WorkingDirectory={{ pearlpbx2_install_dir }}
+EnvironmentFile={{ pearlpbx2_etc_dir }}/PearlPBX2/env
+ExecStart={{ pearlpbx2_install_dir }}/.venv/bin/uvicorn pbx.asgi:application \
+          --host 127.0.0.1 \
+          --port 8000 \
+          --workers 3
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

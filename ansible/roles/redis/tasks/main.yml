@@ -1,0 +1,19 @@
+---
+- name: Install Redis
+  apt:
+    name: redis-server
+    state: present
+    update_cache: yes
+
+- name: Bind Redis to localhost only
+  lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^bind '
+    line: 'bind 127.0.0.1 -::1'
+  notify: Restart redis
+
+- name: Start and enable Redis
+  service:
+    name: redis-server
+    state: started
+    enabled: yes
