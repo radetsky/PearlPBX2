@@ -22,6 +22,24 @@
       - "--exclude=staticfiles"
   delegate_to: localhost
 
+- name: Copy contrib configs to /etc/asterisk (do not overwrite existing)
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/contrib/configs/"
+    dest: /etc/asterisk/
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0640'
+    force: no
+    remote_src: yes
+
+- name: Install Asterisk systemd unit
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/services/asterisk.service"
+    dest: /etc/systemd/system/asterisk.service
+    mode: '0644'
+    remote_src: yes
+  notify: Restart asterisk
+
 - name: Set ownership of application directory
   file:
     path: "{{ pearlpbx2_install_dir }}"

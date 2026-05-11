@@ -38,7 +38,7 @@ dpkg --configure -a 2>/dev/null || true
 apt-get update -qq
 apt-get install -y ansible
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 ansible-playbook $ANSIBLE_VERBOSITY \
   -i "$SCRIPT_DIR/ansible/inventory/localhost.yml" \

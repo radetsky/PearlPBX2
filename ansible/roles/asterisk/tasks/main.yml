@@ -128,16 +128,6 @@
       args:
         chdir: "{{ asterisk_build_dir }}"
 
-- name: Copy contrib configs to /etc/asterisk (do not overwrite existing)
-  copy:
-    src: "{{ pearlpbx2_install_dir }}/contrib/configs/"
-    dest: /etc/asterisk/
-    owner: "{{ pearlpbx2_user }}"
-    group: "{{ pearlpbx2_group }}"
-    mode: '0640'
-    force: no
-    remote_src: yes
-
 - name: Set ownership and permissions on Asterisk dirs
   file:
     path: "{{ item.path }}"
@@ -151,14 +141,6 @@
     - { path: /var/spool/asterisk, mode: "0750" }
     - { path: /usr/lib/asterisk,   mode: "0750" }
     - { path: /etc/asterisk,       mode: "0750" }
-
-- name: Install Asterisk systemd unit
-  copy:
-    src: "{{ pearlpbx2_install_dir }}/services/asterisk.service"
-    dest: /etc/systemd/system/asterisk.service
-    mode: '0644'
-    remote_src: yes
-  notify: Restart asterisk
 
 - name: Enable and start Asterisk
   systemd:
