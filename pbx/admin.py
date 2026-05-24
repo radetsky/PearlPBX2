@@ -20,6 +20,7 @@ from core.conf import (
     make_extensions_ael,
     make_manager_conf,
     make_musiconhold_conf,
+    write_tls_cert_files,
 )
 
 from core.models import ConfigurationFile, SystemConfiguration
@@ -126,6 +127,7 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
         system_configuration = SystemConfiguration.objects.create()
         system_configuration.configuration_files.set(created_configuration_files)
         self.backup_dir()
+        write_tls_cert_files()
         self.apply_to_fs(system_configuration)
 
     def apply_to_fs(self, system_configuration):

@@ -89,6 +89,7 @@ class SIPTransport(models.Model):
         null=False,
         blank=False,
         default="",
+        validators=[validate_asterisk_context],
         help_text=_("Example: transport-udp-nat"),
         verbose_name=_("Name"),
     )
@@ -134,8 +135,18 @@ class SIPTransport(models.Model):
         blank=False,
     )
 
+    verify_server = models.BooleanField(
+        default=False,
+        verbose_name=_("Verify server certificate"),
+        help_text=_("Require and verify the server TLS certificate (verify_server=yes)"),
+    )
+    allow_reload = models.BooleanField(
+        default=True,
+        verbose_name=_("Allow reload"),
+        help_text=_("Allow transport to be reloaded (allow_reload=yes)"),
+    )
+
     # Contents of files, not names. We will generate filenames later. It doesn't matter.
-    # TODO: реализовать форму под них.
     cert_file = models.TextField(blank=True, null=False)
     priv_key_file = models.TextField(blank=True, null=False)
     ca_list_file = models.TextField(blank=True, null=False)

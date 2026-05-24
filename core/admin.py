@@ -81,7 +81,7 @@ class SIPTransportAdmin(admin.ModelAdmin):
         ),
         (
             _("TLS Settings (only if TLS protocol is used)"),
-            {"fields": ["method", "cert_file", "priv_key_file", "ca_list_file"]},
+            {"fields": ["method", "verify_server", "allow_reload", "cert_file", "priv_key_file", "ca_list_file"]},
         ),
     ]
     list_display = ("name", "description")

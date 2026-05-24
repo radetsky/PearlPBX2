@@ -1,5 +1,6 @@
 import textwrap
 import logging
+import os
 
 from core.models import (
     SIPPeer,
@@ -29,8 +30,32 @@ AUTO_GENERATED_HEADER = "; === This is auto generated file. Do not edit it! ===\
 GENERAL_SECTION = "[general]\n"
 
 
+def _write_cert_file(write_dir: str, filename: str, content: str) -> None:
+    """Write certificate content to file under ASTERISK_ROOT_DIR."""
+    os.makedirs(write_dir, exist_ok=True)
+    safe_name = os.path.basename(filename)
+    path = os.path.join(write_dir, safe_name)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o640)
+    with open(fd, "w") as f:
+        f.write(content)
+
+
+def write_tls_cert_files() -> None:
+    """Write TLS certificate files to disk. Call only during apply, not preview."""
+    cert_dir = os.path.join(settings.ASTERISK_CONFIG_DIR, "certificate")
+    cert_write_dir = os.path.normpath(settings.ASTERISK_ROOT_DIR + cert_dir)
+    for transport in SIPTransport.objects.filter(protocol="tls"):
+        if transport.ca_list_file.strip():
+            _write_cert_file(cert_write_dir, f"{transport.name}-ca.crt", transport.ca_list_file)
+        if transport.cert_file.strip():
+            _write_cert_file(cert_write_dir, f"{transport.name}.crt", transport.cert_file)
+        if transport.priv_key_file.strip():
+            _write_cert_file(cert_write_dir, f"{transport.name}.key", transport.priv_key_file)
+
+
 def make_pjsip_conf_transports() -> str:
     result = "; ==== Transports section ====\n"
+    cert_dir = os.path.join(settings.ASTERISK_CONFIG_DIR, "certificate")
     transports = SIPTransport.objects.all()
     for transport in transports:
         description = "; " + transport.description + "\n"
@@ -60,6 +85,19 @@ def make_pjsip_conf_transports() -> str:
             for net in nets:
                 local_nets += "local_net = " + net + "\n"
 
+        tls_settings = ""
+        if transport.protocol == "tls":
+            tls_settings += "; TLS Settings\n"
+            tls_settings += "allow_reload = " + ("yes" if transport.allow_reload else "no") + "\n"
+            tls_settings += "verify_server = " + ("yes" if transport.verify_server else "no") + "\n"
+            tls_settings += "method = " + transport.method + "\n"
+            if transport.ca_list_file.strip():
+                tls_settings += f"ca_list_file = {os.path.join(cert_dir, transport.name + '-ca.crt')}\n"
+            if transport.cert_file.strip():
+                tls_settings += f"cert_file = {os.path.join(cert_dir, transport.name + '.crt')}\n"
+            if transport.priv_key_file.strip():
+                tls_settings += f"priv_key_file = {os.path.join(cert_dir, transport.name + '.key')}\n"
+
         result += (
             description
             + section_name
@@ -70,6 +108,7 @@ def make_pjsip_conf_transports() -> str:
             + external_media_address
             + external_signaling_address
             + local_nets
+            + tls_settings
         )
 
         result += "\n"
