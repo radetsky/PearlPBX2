@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.3.3] - 2026-05-24
+
+### Security
+
+- **TLS private key TOCTOU race fixed** — `_write_cert_file` now creates files with `0o640` permissions atomically via `os.open()`, eliminating the window where a private key was world-readable between `open()` and `chmod()`.
+- **Path traversal in cert filenames blocked** — `SIPTransport.name` now validates against `[a-zA-Z_][a-zA-Z0-9_-]*` (migration `0068`); `_write_cert_file` also strips path components with `os.path.basename()` as a second line of defence.
+
+### Fixed
+
+- **TLS cert writes no longer trigger on config preview** — `make_pjsip_conf_transports()` is now a pure function (string only); cert files are written by the new `write_tls_cert_files()` called exclusively during Apply Changes (POST), not on the preview GET request.
+- **`cert_write_dir` path normalisation** — replaced raw string concatenation with `os.path.normpath()` to handle trailing slashes in `ASTERISK_ROOT_DIR` correctly.
+
+### Added
+
+- **`verify_server` and `allow_reload` TLS transport options** — new boolean fields on `SIPTransport` (migration `0067`) emitted to `pjsip.conf` for TLS transports.
+- **TLS certificate content stored in DB** — `cert_file`, `priv_key_file`, `ca_list_file` contents are now written to `ASTERISK_CONFIG_DIR/certificate/` on Apply Changes.
+
 ## [2.3.2] - 2026-04-27
 
 ### Fixed 
