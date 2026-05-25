@@ -63,6 +63,44 @@ class SIPPeerAdmin(admin.ModelAdmin):
     ordering = ["name", "description"]
     search_fields = ["name", "description"]
 
+    def save_model(self, request, obj, form, change):
+        obj.full_clean()
+        super().save_model(request, obj, form, change)
+
+    fieldsets = [
+        (_("Generic"), {"fields": ["name", "description", "transport", "routing_table"]}),
+        (
+            _("Authentication"),
+            {"fields": ["username", "secret", "custom_auth_settings"]},
+        ),
+        (
+            _("Connection"),
+            {
+                "fields": [
+                    "registration_uri",
+                    "contact_uri",
+                    "match_hosts",
+                ],
+                "description": _(
+                    "registration_uri — where to register; "
+                    "contact_uri — where to send calls; "
+                    "match_hosts — comma-separated IPs/hostnames to match incoming calls"
+                ),
+            },
+        ),
+        (
+            _("Registration"),
+            {"fields": ["registrationHere", "registrationThere"]},
+        ),
+        (
+            _("Advanced"),
+            {
+                "fields": ["nat", "custom_aor_settings"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
 
 class SIPTransportAdmin(admin.ModelAdmin):
     fieldsets = [

@@ -51,6 +51,28 @@ def validate_asterisk_context(value):
         raise ValidationError("Context name is too long (max 80 characters).")
 
 
+def validate_match_hosts(value):
+    """Validate comma-separated list of hosts/IPs without ports for pjsip identify match=."""
+    if not value:
+        return
+    for entry in value.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # Reject host:port (bare colon = port separator)
+        if ":" in entry and not entry.startswith("["):
+            raise ValidationError(
+                _("'%(value)s' must not contain a port — use plain IP or hostname (for IPv6 use bracket notation, e.g. [::1])"),
+                params={"value": entry},
+            )
+        # Reject [ipv6]:port — bracket prefix alone is not enough
+        if entry.startswith("[") and "]:" in entry:
+            raise ValidationError(
+                _("'%(value)s' must not contain a port — use [::1] without port suffix"),
+                params={"value": entry},
+            )
+
+
 def validate_asterisk_extension_prefix(value):
     """
     Validator for Asterisk extension prefix (dialplan pattern).

@@ -177,7 +177,8 @@ class TestMakePjsipConfUplinks(TestCase):
             name="test-trunk1",
             transport=self.transport,
             routing_table=self.routing_table,
-            host_port="sip.provider.com:5060",
+            contact_uri="sip.provider.com:5060",
+            match_hosts="sip.provider.com",
             username="user1",
             secret="secret1",
             registrationHere=False,
@@ -197,7 +198,8 @@ class TestMakePjsipConfUplinks(TestCase):
             name="test-trunk-reg",
             transport=self.transport,
             routing_table=self.routing_table,
-            host_port="sip.provider.com:5060",
+            registration_uri="sip.provider.com:5060",
+            match_hosts="sip.provider.com",
             username="myuser",
             secret="mysecret",
             registrationHere=False,
@@ -218,7 +220,7 @@ class TestMakePjsipConfUplinks(TestCase):
             name="test-trunk-nat",
             transport=self.transport,
             routing_table=self.routing_table,
-            host_port="sip.provider.com",
+            match_hosts="sip.provider.com",
             username="user",
             secret="pass",
             nat=True,
@@ -235,7 +237,6 @@ class TestMakePjsipConfUplinks(TestCase):
             name="test-trunk-custom",
             transport=self.transport,
             routing_table=self.routing_table,
-            host_port="sip.example.com",
             custom_aor_settings="max_contacts=5\nqualify_frequency=60",
         )
         self.created_peers.append(trunk)
@@ -249,7 +250,7 @@ class TestMakePjsipConfUplinks(TestCase):
             name="test-trunk-no-transport",
             transport=None,
             routing_table=self.routing_table,
-            host_port="sip.example.com",
+            match_hosts="sip.example.com",
         )
         self.created_peers.append(trunk)
         result = make_pjsip_conf_uplinks()

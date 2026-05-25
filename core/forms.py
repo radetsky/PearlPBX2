@@ -190,6 +190,24 @@ class SIPPeerForm(forms.ModelForm):
         queryset=RoutingTable.objects.all(),
         empty_label=None,
     )
+    registration_uri = forms.CharField(
+        label=_("Registration URI"),
+        required=False,
+        help_text=_("Host[:port] of the registration server (e.g. reg.provider.com or reg.provider.com:5060)"),
+    )
+
+    contact_uri = forms.CharField(
+        label=_("Contact URI"),
+        required=False,
+        help_text=_("Host[:port] for AOR contact (e.g. sbc.provider.com or sbc.provider.com:5061)"),
+    )
+
+    match_hosts = forms.CharField(
+        label=_("Match hosts"),
+        required=False,
+        help_text=_("Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com, 192.0.2.1)"),
+    )
+
     custom_auth_settings = forms.CharField(
         label=_("Auth Settings"),
         widget=forms.Textarea,

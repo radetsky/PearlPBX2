@@ -117,28 +117,23 @@ def make_pjsip_conf_transports() -> str:
 
 
 def __section_trunk_remote_registration(trunk: SIPPeer):
-    host_port: str | None = trunk.host_port
-    if not host_port:
+    reg_host: str | None = (trunk.registration_uri or "").split(",")[0].strip()
+    if not reg_host:
         logger.warning(
-            f"Trunk {trunk.name} has no host_port defined. Skipping remote registration section."
+            f"Trunk {trunk.name} has no registration_uri defined. Skipping remote registration section."
         )
-        return (
-            "; No host_port defined for trunk. Skipping remote registration section.\n"
-        )
-    hosts_and_ports = host_port.split(",")
-    if len(hosts_and_ports) == 0:
+        return "; No registration_uri defined for trunk. Skipping remote registration section.\n"
+    if not trunk.username:
         logger.warning(
-            f"Trunk {trunk.name} has no valid host_port defined. Skipping remote registration section."
+            f"Trunk {trunk.name} has no username defined. Skipping remote registration section."
         )
-        return "; No valid host_port defined for trunk. Skipping remote registration section.\n"
+        return "; No username defined for trunk. Skipping remote registration section.\n"
     transport: SIPTransport | None = trunk.transport
     if not transport:
         logger.warning(
             f"Trunk {trunk.name} has no transport defined. Skipping remote registration section."
         )
-        return (
-            "; No transport defined for trunk. Skipping remote registration section.\n"
-        )
+        return "; No transport defined for trunk. Skipping remote registration section.\n"
     if transport.protocol not in ["udp", "tcp", "tls"]:
         logger.warning(
             f"Trunk {trunk.name} has unsupported transport protocol {transport.protocol}. Skipping remote registration section."
@@ -149,8 +144,8 @@ def __section_trunk_remote_registration(trunk: SIPPeer):
     result += f"[{trunk.name}]\n"
     result += "type=registration\n"
     result += f"outbound_auth={trunk.name}\n"
-    result += f"server_uri=sip:{hosts_and_ports[0]};transport={transport.protocol}\n"
-    result += f"client_uri=sip:{trunk.username}@{hosts_and_ports[0]};transport={transport.protocol}\n"
+    result += f"server_uri=sip:{reg_host};transport={transport.protocol}\n"
+    result += f"client_uri=sip:{trunk.username}@{reg_host};transport={transport.protocol}\n"
     result += f"contact_user={trunk.username}\n"
     result += "retry_interval=60\n"
     result += "forbidden_retry_interval=600\n"
@@ -187,18 +182,11 @@ def __section_trunk_auth_userpass(trunk: SIPPeer):
 
 
 def __build_aor_contact_line(trunk: SIPPeer, transport: SIPTransport) -> str:
-    """Build the contact line for AOR section if host_port is defined."""
-    host_port = trunk.host_port
-    if not host_port:
+    host = (trunk.contact_uri or "").split(",")[0].strip()
+    if not host:
         return ""
-    hosts_and_ports = host_port.split(",")
-    if not hosts_and_ports:
-        return ""
-    username = f"{trunk.username}@" if trunk.username else ""
     sip = "sips" if transport.protocol in ["wss", "tls"] else "sip"
-    return (
-        f"contact={sip}:{username}{hosts_and_ports[0]};transport={transport.protocol}\n"
-    )
+    return f"contact={sip}:{host}\n"
 
 
 def __section_trunk_aor(trunk: SIPPeer):
@@ -264,7 +252,7 @@ def __section_trunk_endpoint(trunk: SIPPeer) -> str:
 
     lines.append(f"aors={trunk.name}")
 
-    if not trunk.registrationHere:
+    if not trunk.registrationHere and trunk.match_hosts and trunk.match_hosts.strip():
         lines.append("identify_by=ip")
 
     if (
@@ -299,10 +287,9 @@ def __section_trunk_identify(trunk: SIPPeer) -> str:
         f"endpoint={trunk.name}",
     ]
 
-    host_port = trunk.host_port
-    if host_port:
-        hosts_and_ports = [hp.strip() for hp in host_port.split(",") if hp.strip()]
-        for hp in hosts_and_ports:
+    match_src = trunk.match_hosts
+    if match_src:
+        for hp in [h.strip() for h in match_src.split(",") if h.strip()]:
             result.append(f"match={hp}")
 
     result.append("")  # Add a blank line at the end
@@ -329,8 +316,7 @@ def make_pjsip_conf_uplinks():
         result += __section_trunk_aor(trunk)
         # endpoint
         result += __section_trunk_endpoint(trunk)
-        # identify (only if host_port is set)
-        if trunk.host_port and trunk.host_port.strip():
+        if trunk.match_hosts and trunk.match_hosts.strip():
             result += __section_trunk_identify(trunk)
 
         result += "\n"

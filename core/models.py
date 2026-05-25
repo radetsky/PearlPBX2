@@ -27,6 +27,7 @@ from core.validators import (
     validate_bind_ip,
     validate_asterisk_context,
     validate_asterisk_extension_prefix,
+    validate_match_hosts,
     validate_penalty_value,
 )
 
@@ -485,15 +486,30 @@ class SIPPeer(models.Model):
         help_text=_("Clear text password for the connection used for remote side"),
         verbose_name=_("Password"),
     )
-    host_port = models.CharField(
+    registration_uri = models.CharField(
         max_length=256,
         null=True,
         blank=True,
         default="",
-        help_text=_(
-            "Host:Port of the peer. Optional field. If not set registration will be allowed from anywhere."
-        ),
-        verbose_name=_("The list of host[:port] separated by commas"),
+        help_text=_("Host[:port] of the registration server (e.g. reg.provider.com:5060)"),
+        verbose_name=_("Registration URI host[:port]"),
+    )
+    contact_uri = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        default="",
+        help_text=_("Host[:port] for AOR contact (e.g. sbc.provider.com:5061)"),
+        verbose_name=_("Contact URI host[:port]"),
+    )
+    match_hosts = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        default="",
+        validators=[validate_match_hosts],
+        help_text=_("Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com, 192.0.2.1)"),
+        verbose_name=_("Match hosts"),
     )
     registrationHere = models.BooleanField(
         default=False,
@@ -513,11 +529,6 @@ class SIPPeer(models.Model):
         default=False,
         help_text=_("Enable NAT traversal for this peer"),
         verbose_name=_("NAT"),
-    )
-    callLimit = models.SmallIntegerField(
-        default=0,
-        help_text=_("Maximum calls on the trunk"),
-        verbose_name=_("Call Limit"),
     )
     transport = models.ForeignKey(
         SIPTransport,
