@@ -341,21 +341,21 @@ class SIPUser(models.Model):
     )
     custom_auth_settings = models.TextField(
         null=True,
-        blank=False,
+        blank=True,
         default="",
         help_text=_("Custom user [auth] section"),
         verbose_name=_("Auth Settings"),
     )
     custom_aor_settings = models.TextField(
         null=True,
-        blank=False,
+        blank=True,
         default="",
         help_text=_("Custom user [aor] section"),
         verbose_name=_("AOR Settings"),
     )
     custom_extension = models.TextField(
         null=True,
-        blank=False,
+        blank=True,
         default="",
         help_text=_("Custom user extension section for incoming calls"),
         verbose_name=_("Extension Settings"),
@@ -546,14 +546,14 @@ class SIPPeer(models.Model):
     )
     custom_auth_settings = models.TextField(
         null=True,
-        blank=False,
+        blank=True,
         default="",
         help_text=_("Custom peer [auth] section"),
         verbose_name=_("Auth Settings"),
     )
     custom_aor_settings = models.TextField(
         null=True,
-        blank=False,
+        blank=True,
         default="",
         help_text=_("Custom peer [aor] section"),
         verbose_name=_("AOR Settings"),
