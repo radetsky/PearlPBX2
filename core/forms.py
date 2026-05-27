@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
@@ -36,6 +38,16 @@ def validate_alphanumeric(value):
     if not value.isalnum():
         raise ValidationError(
             _("This value: %(value)s must contain only English letters and digits."),
+            params={"value": value},
+        )
+
+
+def validate_sip_username(value):
+    if value == "":
+        return True
+    if not re.match(r'^[A-Za-z0-9._\-]+$', value):
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters, digits, hyphens, dots or underscores."),
             params={"value": value},
         )
 
@@ -171,7 +183,7 @@ class SIPPeerForm(forms.ModelForm):
     username = forms.CharField(
         label=_("Username"),
         required=False,
-        validators=[validate_alphanumeric, min3len],
+        validators=[validate_sip_username],
         help_text=_("Optional username for the connection used for remote side."),
     )
 
