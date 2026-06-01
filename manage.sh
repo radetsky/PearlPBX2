@@ -1,8 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+if [ "$(id -un)" != "asterisk" ]; then
+    exec sudo -u asterisk "$0" "$@"
+fi
+
 INSTALL_DIR="/usr/local/PearlPBX2"
-ENV_FILE="${INSTALL_DIR}/.env"
+ENV_FILE="/etc/PearlPBX/PearlPBX2/env"
 PYTHON="${INSTALL_DIR}/.venv/bin/python3"
 
 if [ ! -f "${ENV_FILE}" ]; then

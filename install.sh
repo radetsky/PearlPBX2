@@ -1,9 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Run as root: sudo bash install.sh" >&2
-  exit 1
+if [ "$(id -un)" != "root" ]; then
+    exec sudo "$0" "$@"
 fi
 
 LOG_FILE="/var/log/pearlpbx2-install.log"
@@ -59,8 +58,7 @@ echo "======================================================"
 echo ""
 echo " Next step — create the admin user:"
 echo ""
-echo "   sudo -u asterisk /usr/local/PearlPBX2/.venv/bin/python \\"
-echo "     /usr/local/PearlPBX2/manage.py createsuperuser"
+echo "   ./manage.sh createsuperuser"
 echo ""
 echo " Then open: https://$(hostname)/admin/"
 echo "======================================================"
