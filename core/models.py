@@ -456,6 +456,11 @@ class SIPUser(models.Model):
 
 
 class SIPPeer(models.Model):
+    AUTHTYPE_CHOICES = [
+        ("userpass", _("Plaintext")),
+        ("md5", _("MD5")),
+    ]
+
     description = models.CharField(
         default="",
         max_length=64,
@@ -477,6 +482,23 @@ class SIPPeer(models.Model):
         blank=True,
         help_text=_("Username for the connection used for remote side"),
         verbose_name=_("Username"),
+    )
+    contact_user = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        default="",
+        help_text=_("Contact user for registration (overrides username if set, e.g. the part after / in user:pass@host/contact_user)"),
+        verbose_name=_("Contact user"),
+    )
+    auth_type = models.CharField(
+        max_length=32,
+        null=True,
+        blank=True,
+        choices=AUTHTYPE_CHOICES,
+        default="userpass",
+        help_text=_("Type of authentication"),
+        verbose_name=_("Auth type"),
     )
     secret = models.CharField(
         max_length=32,
@@ -558,6 +580,18 @@ class SIPPeer(models.Model):
         help_text=_("Custom peer [aor] section"),
         verbose_name=_("AOR Settings"),
     )
+
+    @property
+    def auth_realm(self):
+        if self.registration_uri:
+            return self.registration_uri.split(":")[0].strip()
+        return "asterisk"
+
+    @property
+    def md5_cred(self):
+        return md5(
+            f"{self.username}:{self.auth_realm}:{self.secret}".encode("utf-8")
+        ).hexdigest()
 
     class Meta:
         verbose_name_plural = _("03. SIP Uplinks and Peers")

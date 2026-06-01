@@ -146,7 +146,8 @@ def __section_trunk_remote_registration(trunk: SIPPeer):
     result += f"outbound_auth={trunk.name}\n"
     result += f"server_uri=sip:{reg_host};transport={transport.protocol}\n"
     result += f"client_uri=sip:{trunk.username}@{reg_host};transport={transport.protocol}\n"
-    result += f"contact_user={trunk.username}\n"
+    effective_contact_user = (trunk.contact_user or "").strip() or trunk.username
+    result += f"contact_user={effective_contact_user}\n"
     result += "retry_interval=60\n"
     result += "forbidden_retry_interval=600\n"
     result += "expiration=3600\n"
@@ -169,15 +170,18 @@ def __section_trunk_auth_userpass(trunk: SIPPeer):
             f"{custom_auth_settings}\n"
         )
     if getattr(trunk, "username", None) and getattr(trunk, "secret", None):
-        return (
-            f"; Authentication\n"
-            f"[{trunk.name}]\n"
-            "type=auth\n"
-            "auth_type=userpass\n"
-            f"username={trunk.username}\n"
-            f"password={trunk.secret}\n"
-            "\n"
-        )
+        result = f"; Authentication\n[{trunk.name}]\ntype=auth\n"
+        if trunk.auth_type == "md5":
+            result += "auth_type=md5\n"
+            result += f"md5_cred={trunk.md5_cred}\n"
+            result += f"username={trunk.username}\n"
+            result += f"realm={trunk.auth_realm}\n"
+        else:
+            result += "auth_type=userpass\n"
+            result += f"username={trunk.username}\n"
+            result += f"password={trunk.secret}\n"
+        result += "\n"
+        return result
     return ""
 
 

@@ -1,0 +1,104 @@
+---
+- name: Update PearlPBX2 code and restart services
+  hosts: localhost
+  become: true
+
+  vars:
+    services:
+      - name: dashboard
+        unit: pearlpbx2-dashboard
+        venv: "{{ pearlpbx2_install_dir }}/services/dashboard/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/dashboard/requirements.txt"
+      - name: callback
+        unit: pearlpbx2-callback
+        venv: "{{ pearlpbx2_install_dir }}/services/callback/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/callback/requirements.txt"
+      - name: fastagi
+        unit: pearlpbx2-fastagi
+        venv: "{{ pearlpbx2_install_dir }}/services/fastagi/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/fastagi/requirements.txt"
+
+  tasks:
+    - name: Sync application code
+      synchronize:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ pearlpbx2_install_dir }}/"
+        delete: no
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=.github"
+          - "--exclude=__pycache__"
+          - "--exclude=.python-venv"
+          - "--exclude=.venv"
+          - "--exclude=ansible"
+          - "--exclude=*.pyc"
+          - "--exclude=staticfiles"
+          - "--exclude=CLAUDE.md"
+      delegate_to: localhost
+
+    - name: Set ownership of application directory
+      file:
+        path: "{{ pearlpbx2_install_dir }}"
+        owner: "{{ pearlpbx2_user }}"
+        group: "{{ pearlpbx2_group }}"
+        recurse: yes
+
+    - name: Update main Python dependencies
+      pip:
+        requirements: "{{ pearlpbx2_install_dir }}/requirements.txt"
+        virtualenv: "{{ pearlpbx2_install_dir }}/.venv"
+        state: present
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Update service Python dependencies
+      pip:
+        requirements: "{{ item.requirements }}"
+        virtualenv: "{{ item.venv }}"
+        state: present
+      loop: "{{ services }}"
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Read env file for Django management commands
+      slurp:
+        src: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+      register: pearlpbx2_env_raw
+      no_log: true
+
+    - name: Parse env file into dict
+      set_fact:
+        pearlpbx2_django_env: >-
+          {{
+            dict(
+              pearlpbx2_env_raw.content | b64decode
+              | regex_findall('^([A-Z_]+)=(.*)$', multiline=True)
+            )
+          }}
+      no_log: true
+
+    - name: Run database migrations
+      command: >
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate --noinput
+      args:
+        chdir: "{{ pearlpbx2_install_dir }}"
+      environment: "{{ pearlpbx2_django_env }}"
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Collect static files
+      command: >
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput
+      args:
+        chdir: "{{ pearlpbx2_install_dir }}"
+      environment: "{{ pearlpbx2_django_env }}"
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Restart PearlPBX2
+      systemd:
+        name: PearlPBX2
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart auxiliary services
+      systemd:
+        name: "{{ item.unit }}"
+        state: restarted
+      loop: "{{ services }}"

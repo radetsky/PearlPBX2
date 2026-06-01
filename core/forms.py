@@ -187,6 +187,21 @@ class SIPPeerForm(forms.ModelForm):
         help_text=_("Optional username for the connection used for remote side."),
     )
 
+    contact_user = forms.CharField(
+        label=_("Contact user"),
+        required=False,
+        validators=[validate_sip_username],
+        help_text=_("Overrides username as contact_user in registration (the part after / in user:pass@host/contact_user)."),
+    )
+
+    auth_type = forms.ChoiceField(
+        label=_("Auth type"),
+        required=False,
+        choices=[("userpass", _("Plaintext")), ("md5", _("MD5"))],
+        initial="userpass",
+        help_text=_("Authentication type: Plaintext (userpass) or MD5."),
+    )
+
     transport = SIPTransportChoiceField(
         label=_("Transport"),
         required=True,

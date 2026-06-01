@@ -71,7 +71,7 @@ class SIPPeerAdmin(admin.ModelAdmin):
         (_("Generic"), {"fields": ["name", "description", "transport", "routing_table"]}),
         (
             _("Authentication"),
-            {"fields": ["username", "secret", "custom_auth_settings"]},
+            {"fields": ["username", "contact_user", "auth_type", "secret", "custom_auth_settings"]},
         ),
         (
             _("Connection"),
