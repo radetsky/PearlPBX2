@@ -16,9 +16,13 @@ fi
 
 cd "${INSTALL_DIR}"
 
-set -a
-# shellcheck source=/dev/null
-source "${ENV_FILE}"
-set +a
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    printf -v "$key" '%s' "$value"
+    export "$key"
+done < "${ENV_FILE}"
 
 exec "${PYTHON}" manage.py "$@"
