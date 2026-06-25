@@ -2337,10 +2337,10 @@ function renderModal() {
   if (!total) {
     grid.innerHTML = `<div class="empty">${TRANS.noAgents}</div>`;
   } else {
-    const sorted = Object.entries(members).sort(([a],[b]) => {
-      const ea = epFromLoc(a) || a, eb = epFromLoc(b) || b;
-      const na = parseInt(ea, 10), nb = parseInt(eb, 10);
-      return (!isNaN(na) && !isNaN(nb)) ? na - nb : ea.localeCompare(eb);
+    const sorted = Object.entries(members).sort(([, ma], [, mb]) => {
+      const a = ma.location || ma.name || '';
+      const b = mb.location || mb.name || '';
+      return a.localeCompare(b, undefined, { numeric: true });
     });
     grid.innerHTML = sorted.map(([, m]) => {
       const cls    = memberClass(m.status, m.paused, 'available');
