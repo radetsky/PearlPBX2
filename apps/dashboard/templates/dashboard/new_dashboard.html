@@ -2022,7 +2022,12 @@ function renderQueuesTab() {
     // Members
     let mh = '';
     if (q.members && Object.keys(q.members).length) {
-      for (const [, m] of Object.entries(q.members)) {
+      const sortedM = Object.values(q.members).sort((ma, mb) => {
+        const a = ma.location || ma.name || '';
+        const b = mb.location || mb.name || '';
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+      for (const m of sortedM) {
         const cls  = memberClass(m.status, m.paused);
         const disp = epFromLoc(m.location || m.name) || m.name;
         mh += `<div class="mchip ${cls}"><div class="mchip-dot"></div>${esc(disp)}</div>`;
