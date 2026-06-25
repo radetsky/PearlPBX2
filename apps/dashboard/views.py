@@ -344,10 +344,10 @@ def pause_queue_member(request):
     logger.info(f"QueuePause request: interface={interface!r} paused={paused!r} user={request.user}")
 
     if not interface or not _VALID_NAME_RE.match(interface):
-        return JsonResponse({"error": "Invalid interface name"}, status=400)
+        return JsonResponse({"error": "Invalid interface name", "received": repr(interface)}, status=400)
 
     if not isinstance(paused, bool):
-        return JsonResponse({"error": "paused must be a boolean"}, status=400)
+        return JsonResponse({"error": "paused must be a boolean", "received": repr(paused), "type": type(paused).__name__}, status=400)
 
     client = None
     try:

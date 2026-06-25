@@ -177,10 +177,15 @@ LOGGING = {
             "level": "INFO",  # Keep this as INFO for Django-related logging
         },
         # Add this to configure your logger
-        "core": {  # Assuming your module is named 'core'
+        "core": {
             "handlers": ["console"],
-            "level": "DEBUG",  # Ensure it's set to DEBUG
+            "level": "DEBUG",
             "propagate": True,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
         },
         "__main__": {  # If the logger name is __main__
             "handlers": ["console"],
