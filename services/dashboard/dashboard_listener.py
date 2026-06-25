@@ -637,6 +637,7 @@ class DashboardAMIListener:
         if location and old_member.get("paused") != paused:
             await self.persist_member_pause(location, paused)
 
+        existing = self.queue_state[queue_name]["members"].get(member_name, {})
         member = {
             "name": member_name,
             "status": status,
@@ -644,8 +645,8 @@ class DashboardAMIListener:
             "calls_taken": calls_taken,
             "last_update": last_update,
             "logintime": event.get("LoginTime"),
-            "location": event.get("Location"),
-            "state_interface": event.get("StateInterface"),
+            "location": event.get("Location") or event.get("Interface") or existing.get("location"),
+            "state_interface": event.get("StateInterface") or existing.get("state_interface"),
             "membership": event.get("Membership"),
             "penalty": event.get("Penalty"),
             "last_call": event.get("LastCall"),
