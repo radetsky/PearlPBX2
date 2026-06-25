@@ -1,4 +1,9 @@
 ---
+- name: Restart asterisk
+  systemd:
+    name: asterisk
+    state: restarted
+
 - name: Restart pearlpbx2
   systemd:
     name: PearlPBX2

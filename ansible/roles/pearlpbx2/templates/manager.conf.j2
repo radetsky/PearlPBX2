@@ -1,0 +1,35 @@
+; Managed by Ansible - do not edit manually
+[general]
+enabled = yes
+port = 5038
+bindaddr = 127.0.0.1
+authtimeout = 30
+authlimit = 50
+
+[PearlPBX2]
+secret = {{ pearlpbx2_ami_secret }}
+deny = 0.0.0.0/0.0.0.0
+permit = 127.0.0.1/255.255.255.255
+read = system,call,log,verbose,agent,user,config,dtmf,reporting,cdr,dialplan
+write = system,call,agent,user,config,command,reporting,originate,message
+
+[callback]
+secret = {{ pearlpbx2_ami_callback_pass }}
+deny = 0.0.0.0/0.0.0.0
+permit = 127.0.0.1/255.255.255.255
+read = system,call,agent
+write = system,call,originate
+
+[dashboard_listener]
+secret = {{ pearlpbx2_ami_dashboard_pass }}
+deny = 0.0.0.0/0.0.0.0
+permit = 127.0.0.1/255.255.255.255
+read = system,call,log,agent,user,reporting,cdr,dialplan
+write = system,call,agent,reporting
+
+[fastagi]
+secret = {{ pearlpbx2_ami_fastagi_pass }}
+deny = 0.0.0.0/0.0.0.0
+permit = 127.0.0.1/255.255.255.255
+read = system,call,agent,reporting
+write = reporting
