@@ -63,6 +63,8 @@ class DashboardAMIListener:
             # Queue events
             "QueueParams": self.handle_queue_params,
             "QueueMemberStatus": self.handle_queue_member_status,
+            "QueueMemberPause": self.handle_queue_member_status,
+            "QueueMemberUnpause": self.handle_queue_member_status,
             "QueueMember": self.handle_queue_member,
             "QueueCallerJoin": self.handle_queue_caller_join,
             "QueueCallerLeave": self.handle_queue_caller_leave,

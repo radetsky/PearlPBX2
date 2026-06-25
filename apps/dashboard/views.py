@@ -347,6 +347,8 @@ def pause_queue_member(request):
     if not isinstance(paused, bool):
         return JsonResponse({"error": "paused must be a boolean"}, status=400)
 
+    logger.info(f"QueuePause request: interface={interface!r} paused={paused} user={request.user}")
+
     client = None
     try:
         client = AMIClient(
@@ -373,6 +375,8 @@ def pause_queue_member(request):
 
     if response is None:
         return JsonResponse({"error": "No response from AMI"}, status=502)
+
+    logger.info(f"QueuePause AMI response: status={response.status!r} headers={dict(response.headers) if hasattr(response, 'headers') else response}")
 
     if response.status == "Success":
         action = "paused" if paused else "unpaused"
