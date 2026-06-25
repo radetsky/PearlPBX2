@@ -3117,8 +3117,8 @@ msgid "Spanish"
 msgstr "Español"
 
 #: pbx/settings.py:252
-msgid "ULINE Monitor"
-msgstr "Monitor ULINE"
+msgid "Parking"
+msgstr "Aparcamiento"
 
 #: pbx/settings.py:270
 msgid "Admin panel"

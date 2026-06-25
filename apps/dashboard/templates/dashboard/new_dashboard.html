@@ -998,6 +998,40 @@ body::after {
   opacity: 0.35;
   cursor: not-allowed;
 }
+.btn-pause {
+  display: block;
+  margin: 4px auto 0;
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid rgba(255,200,0,0.45);
+  border-radius: 3px;
+  color: var(--text-dim, #aaa);
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-pause:hover {
+  background: rgba(255,200,0,0.12);
+  border-color: rgba(255,200,0,0.8);
+  color: #ffc800;
+}
+.btn-pause--paused {
+  border-color: rgba(100,200,100,0.45);
+  color: var(--success, #4caf50);
+}
+.btn-pause--paused:hover {
+  background: rgba(100,200,100,0.12);
+  border-color: rgba(100,200,100,0.8);
+}
+.btn-pause:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
 /* ── LARGE SCREEN (1600px+) font-size overrides ─────────────────────────── */
 @media (min-width: 1600px) {
@@ -1284,6 +1318,9 @@ const TRANS = {
   hangupFailedJsonHint:   '{% trans "(Expected JSON, got HTML — check server logs)"|escapejs %}',
   hangupFailed:           '{% trans "Hangup failed:"|escapejs %}',
   networkError:           '{% trans "Network error:"|escapejs %}',
+  pause:                  '{% trans "Pause"|escapejs %}',
+  unpause:                '{% trans "Unpause"|escapejs %}',
+  pauseFailed:            '{% trans "Pause failed:"|escapejs %}',
   blfIdle:                '{% trans "IDLE"|escapejs %}',
   blfRing:                '{% trans "RING"|escapejs %}',
   blfInUse:               '{% trans "IN USE"|escapejs %}',
@@ -2323,10 +2360,16 @@ function renderModal() {
         mid = `<div class="qm-agent-icon">${MEMBER_ICONS[cls] || '○'}</div>${ct}`;
       }
 
+      const iface = m.location || m.name;
+      const isPaused = !!m.paused;
+      const pauseLbl = isPaused ? TRANS.unpause : TRANS.pause;
+      const pauseBtn = `<button class="btn-pause${isPaused ? ' btn-pause--paused' : ''}" onclick="pauseMember(event,this,'${esc(iface)}',${!isPaused})">${pauseLbl}</button>`;
+
       return `<div class="qm-agent ${cls}"${click}>
         <div class="qm-agent-ext">${esc(disp)}</div>
         ${mid}
         <div class="qm-agent-state">${MEMBER_LBLS[cls] || TRANS.blfIdle}</div>
+        ${pauseBtn}
       </div>`;
     }).join('');
   }
@@ -2506,6 +2549,46 @@ async function hangupChannel(btn, channel) {
     alert(`${TRANS.networkError} ${e}`);
     btn.disabled = false;
     btn.textContent = TRANS.hangup;
+  }
+}
+
+/**
+ * Send AMI QueuePause/QueueUnpause for the given queue member interface.
+ * The button state is not updated manually — the WS QueueMemberStatus event
+ * will re-render the modal automatically after Asterisk processes the action.
+ */
+async function pauseMember(event, btn, iface, pause) {
+  event.stopPropagation();
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const resp = await fetch('/dashboard/api/queues/pause/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ interface: iface, paused: pause }),
+    });
+
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      alert(`${TRANS.pauseFailed} HTTP ${resp.status} ${resp.statusText}`);
+      btn.disabled = false;
+      btn.textContent = pause ? TRANS.pause : TRANS.unpause;
+      return;
+    }
+
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      alert(`${TRANS.pauseFailed} ${data.error || resp.status}`);
+      btn.disabled = false;
+      btn.textContent = pause ? TRANS.pause : TRANS.unpause;
+    }
+  } catch (e) {
+    alert(`${TRANS.networkError} ${e}`);
+    btn.disabled = false;
+    btn.textContent = pause ? TRANS.pause : TRANS.unpause;
   }
 }
 

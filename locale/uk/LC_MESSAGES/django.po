@@ -3100,8 +3100,8 @@ msgid "Spanish"
 msgstr "Español"
 
 #: pbx/settings.py:252
-msgid "ULINE Monitor"
-msgstr "Монітор ліній"
+msgid "Parking"
+msgstr "Паркування"
 
 #: pbx/settings.py:270
 msgid "Admin panel"

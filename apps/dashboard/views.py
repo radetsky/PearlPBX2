@@ -330,6 +330,59 @@ def hangup_channel(request):
 
 
 @login_required
+@csrf_protect
+@require_http_methods(["POST"])
+def pause_queue_member(request):
+    """Send AMI QueuePause/QueueUnpause action for the given interface."""
+    try:
+        body = json.loads(request.body)
+        interface = body.get("interface", "")
+        paused = body.get("paused")
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({"error": "Invalid request body"}, status=400)
+
+    if not interface or not _VALID_NAME_RE.match(interface):
+        return JsonResponse({"error": "Invalid interface name"}, status=400)
+
+    if not isinstance(paused, bool):
+        return JsonResponse({"error": "paused must be a boolean"}, status=400)
+
+    client = None
+    try:
+        client = AMIClient(
+            address=settings.ASTERISK_MANAGER_HOST,
+            port=settings.ASTERISK_MANAGER_PORT,
+        )
+        client.login(
+            username=settings.ASTERISK_MANAGER_USERNAME,
+            secret=settings.ASTERISK_MANAGER_SECRET,
+        )
+        future = client.send_action(
+            SimpleAction("QueuePause", Interface=interface, Paused="true" if paused else "false")
+        )
+        response = future.response
+    except Exception as e:
+        logger.error(f"AMI QueuePause error for {interface}: {e}")
+        return JsonResponse({"error": str(e)}, status=502)
+    finally:
+        if client is not None:
+            try:
+                client.logoff()
+            except Exception:
+                pass
+
+    if response is None:
+        return JsonResponse({"error": "No response from AMI"}, status=502)
+
+    if response.status == "Success":
+        action = "paused" if paused else "unpaused"
+        logger.info(f"Queue member {interface} {action} by {request.user}")
+        return JsonResponse({"ok": True})
+
+    return JsonResponse({"error": response.status}, status=400)
+
+
+@login_required
 @require_http_methods(["GET"])
 def get_missed_calls(request):
     """Return today's unresolved missed calls (ABANDON without callback) for a queue."""

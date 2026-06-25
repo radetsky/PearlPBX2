@@ -258,7 +258,7 @@ HEADER_MENU_PAGES = [
         "allowed_roles": ["admin", "superuser", "Report Viewer"],
     },
     {
-        "title": _("ULINE Monitor"),
+        "title": _("Parking"),
         "url": "/dashboard/ulines/",
         "item_icon": "grid",
         "allowed_roles": ["admin", "superuser", "Report Viewer"],

@@ -11,6 +11,7 @@ urlpatterns = [
     path("ulines/flush/", views.uline_flush, name="uline_flush"),
     # Queues
     path("api/queues/", views.get_all_queues, name="get_all_queues"),
+    path("api/queues/pause/", views.pause_queue_member, name="pause_queue_member"),
     path("api/queues/<str:queue_name>/", views.get_queue_state, name="get_queue_state"),
     # Channels — literal paths must come before <path:...>
     path("api/channels/", views.get_all_channels, name="get_all_channels"),

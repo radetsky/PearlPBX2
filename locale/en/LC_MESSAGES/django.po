@@ -2997,7 +2997,7 @@ msgid "Spanish"
 msgstr ""
 
 #: pbx/settings.py:252
-msgid "ULINE Monitor"
+msgid "Parking"
 msgstr ""
 
 #: pbx/settings.py:270
