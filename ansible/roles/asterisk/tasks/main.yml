@@ -128,6 +128,14 @@
       args:
         chdir: "{{ asterisk_build_dir }}"
 
+- name: Install asterisk log rotation script
+  copy:
+    src: "{{ playbook_dir }}/../bin/asterisk_logrotate.sh"
+    dest: /etc/cron.daily/asterisk_logrotate
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Set ownership and permissions on Asterisk dirs
   file:
     path: "{{ item.path }}"
