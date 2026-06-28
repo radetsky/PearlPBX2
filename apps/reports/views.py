@@ -602,7 +602,9 @@ class CDRReportView(ReportViewPermissionMixin, View):
         if not dt:
             return None
         try:
-            return timezone.localtime(dt).strftime("%d.%m.%Y %H:%M:%S")
+            if timezone.is_aware(dt):
+                return timezone.localtime(dt).strftime("%d.%m.%Y %H:%M:%S")
+            return dt.strftime("%d.%m.%Y %H:%M:%S")
         except Exception:
             return str(dt)
 
