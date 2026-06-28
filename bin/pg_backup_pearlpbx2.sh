@@ -10,11 +10,12 @@ fi
 # shellcheck source=/dev/null
 source "$ENV_FILE"
 
-DB_USER="${DB_USER:-asterisk}"
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/postgresql/asterisk}"
+DB_USER="${DB_USER:-postgres}"
+DB_NAME="${DB_NAME:-pearlpbx2}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/postgresql/pearlpbx2}"
 RETENTION_DAYS="${RETENTION_DAYS:-30}"
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
-BACKUP_FILE="${BACKUP_DIR}/asterisk_${DATE}.sql.gz"
+BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${DATE}.sql.gz"
 HOSTNAME=$(hostname)
 
 log() {
@@ -41,7 +42,7 @@ slack_error() {
 
 cleanup_old_backups() {
     log "Deleting backups older than ${RETENTION_DAYS} days..."
-    find "$BACKUP_DIR" -name "asterisk_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+    find "$BACKUP_DIR" -name "${DB_NAME}_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
     log "Cleanup complete."
 }
 
@@ -50,13 +51,13 @@ mkdir -p "$BACKUP_DIR"
 log "====== Backup started ======"
 log "File: ${BACKUP_FILE}"
 
-if sudo -u "$DB_USER" pg_dump -d asterisk | gzip > "$BACKUP_FILE"; then
+if sudo -u "$DB_USER" pg_dump -d "$DB_NAME" | gzip > "$BACKUP_FILE"; then
     SIZE=$(du -sh "$BACKUP_FILE" | cut -f1)
     log "Backup created successfully. Size: ${SIZE}"
 else
     log "ERROR: backup failed!"
     rm -f "$BACKUP_FILE"
-    slack_error "Failed to create Asterisk DB backup on \`${HOSTNAME}\`"
+    slack_error "Failed to create ${DB_NAME} DB backup on \`${HOSTNAME}\`"
     exit 1
 fi
 
