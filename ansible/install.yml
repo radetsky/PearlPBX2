@@ -1,4 +1,20 @@
 ---
+- name: Preflight checks
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Detect current system timezone
+      command: timedatectl show --property=Timezone --value
+      register: detected_timezone
+      changed_when: false
+
+    - name: Confirm system timezone before proceeding
+      pause:
+        prompt: |
+          Detected system timezone: {{ detected_timezone.stdout }}
+          Is this correct? Press Enter to continue or Ctrl+C to abort and run:
+            timedatectl set-timezone <your/timezone>
+
 - name: Install PearlPBX2
   hosts: localhost
   become: true
