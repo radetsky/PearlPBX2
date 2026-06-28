@@ -5,7 +5,6 @@ set -euo pipefail
 # Configuration
 # ================================================================
 MONITOR_DIR="/var/spool/asterisk/monitor"
-LOG_FILE="/var/log/wav2mp3_monitor.log"
 LAME_OPTS=(-b 64 -m m)   # 64kbps, mono (sufficient for telephony)
 MIN_AGE_SECONDS=10        # skip files modified within the last N seconds
 
@@ -13,7 +12,7 @@ MIN_AGE_SECONDS=10        # skip files modified within the last N seconds
 # Functions
 # ================================================================
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE" || true
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 # ================================================================

@@ -6,7 +6,6 @@ set -euo pipefail
 # ================================================================
 DB_USER="asterisk"
 BACKUP_DIR="/var/backups/postgresql/asterisk"
-LOG_FILE="/var/log/pg_backup_asterisk.log"
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
 BACKUP_FILE="${BACKUP_DIR}/asterisk_${DATE}.sql.gz"
 
@@ -20,7 +19,7 @@ NOTIFY_EMAIL=""
 # Functions
 # ================================================================
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 notify() {
     local status="$1"

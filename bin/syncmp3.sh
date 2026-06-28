@@ -21,11 +21,10 @@ LOCAL_MP3_DAYS="${LOCAL_MP3_DAYS:-5}"
 LOCAL_WAV_DAYS="${LOCAL_WAV_DAYS:-1}"
 BACKUP_MP3_DAYS="${BACKUP_MP3_DAYS:-30}"
 SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
-LOG_FILE="/var/log/syncmp3.log"
 HOSTNAME=$(hostname)
 
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 slack_error() {
