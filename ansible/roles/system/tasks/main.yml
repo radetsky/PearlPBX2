@@ -16,10 +16,16 @@
       - screen
       - wget
       - rsync
+      - lame
+      - lsof
     state: present
     update_cache: yes
   environment:
     DEBIAN_FRONTEND: noninteractive
+
+- name: Set system timezone
+  timezone:
+    name: Europe/Kyiv
 
 - name: Generate en_US.UTF-8 locale
   locale_gen:

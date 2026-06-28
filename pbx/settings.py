@@ -95,6 +95,7 @@ DATABASES = {
         "PASSWORD": env.str("DB_PASS", "rad"),
         "HOST": env.str("DB_HOST", "localhost"),
         "PORT": env.int("DB_PORT", 5432),
+        "TIME_ZONE": env.str("DB_TIME_ZONE", "Europe/Kyiv"),
     }
 }
 
