@@ -20,7 +20,6 @@ MONITOR_DIR="${MONITOR_DIR:-/var/spool/asterisk/monitor}"
 LOCAL_MP3_DAYS="${LOCAL_MP3_DAYS:-5}"
 LOCAL_WAV_DAYS="${LOCAL_WAV_DAYS:-1}"
 BACKUP_MP3_DAYS="${BACKUP_MP3_DAYS:-30}"
-SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
 HOSTNAME=$(hostname)
 
 log() {
@@ -32,7 +31,6 @@ slack_error() {
     curl -s --max-time 10 -X POST \
         -H 'Content-type: application/json' \
         --data "{
-            \"channel\": \"${SLACK_CHANNEL}\",
             \"username\": \"ServerBot\",
             \"icon_emoji\": \":robot_face:\",
             \"attachments\": [{

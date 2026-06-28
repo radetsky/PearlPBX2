@@ -20,7 +20,6 @@ if [[ -z "${SLACK_WEBHOOK_URL:-}" ]]; then
     exit 1
 fi
 
-SLACK_CHANNEL="${SLACK_CHANNEL:-#alerts-server}"
 HOSTNAME=$(hostname)
 
 SERVICES=(
@@ -70,7 +69,6 @@ slack_send() {
     curl -s --max-time 10 -X POST \
         -H 'Content-type: application/json' \
         --data "{
-            \"channel\": \"${SLACK_CHANNEL}\",
             \"username\": \"ServerBot\",
             \"icon_emoji\": \":robot_face:\",
             \"attachments\": [{
@@ -183,7 +181,6 @@ check_startup_test() {
     if curl -s --max-time 10 -X POST \
         -H 'Content-type: application/json' \
         --data "{
-            \"channel\": \"${SLACK_CHANNEL}\",
             \"username\": \"ServerBot\",
             \"icon_emoji\": \":robot_face:\",
             \"attachments\": [{
