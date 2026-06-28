@@ -175,6 +175,33 @@ check_memory() {
     fi
 }
 
+check_startup_test() {
+    local state_file="${STATE_DIR}/startup_test.state"
+    [[ -f "$state_file" ]] && return 0
+
+    echo "First run detected, sending test alert to Slack..."
+    if curl -s --max-time 10 -X POST \
+        -H 'Content-type: application/json' \
+        --data "{
+            \"channel\": \"${SLACK_CHANNEL}\",
+            \"username\": \"ServerBot\",
+            \"icon_emoji\": \":robot_face:\",
+            \"attachments\": [{
+                \"color\": \"#36a64f\",
+                \"title\": \":white_check_mark: system_monitor started\",
+                \"text\": \"Monitoring is active on \`${HOSTNAME}\`\",
+                \"footer\": \"${HOSTNAME} • $(date '+%Y-%m-%d %H:%M:%S')\"
+            }]
+        }" \
+        "$SLACK_WEBHOOK_URL" > /dev/null; then
+        echo "ok" > "$state_file"
+        echo "Test alert sent successfully."
+    else
+        echo "ERROR: failed to send test alert to Slack. Will retry on next run." >&2
+    fi
+}
+
+check_startup_test
 check_services
 check_disks
 check_cpu
