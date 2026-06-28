@@ -1,6 +1,7 @@
 import csv
 import os
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -24,8 +25,12 @@ class Command(BaseCommand):
         parser.add_argument(
             "--routing-table",
             type=str,
-            default=None,
-            help="RoutingTable name to assign (optional)",
+            default=settings.PEARLPBX_DEFAULT_ROUTING_TABLE,
+            help=(
+                "RoutingTable name to assign to all imported users. "
+                "Defaults to PEARLPBX_DEFAULT_ROUTING_TABLE "
+                f"(currently '{settings.PEARLPBX_DEFAULT_ROUTING_TABLE}')."
+            ),
         )
         parser.add_argument(
             "--dry-run",
@@ -57,16 +62,14 @@ class Command(BaseCommand):
                 f"Available: {available}"
             )
 
-        routing_table = None
-        if routing_table_name:
-            try:
-                routing_table = RoutingTable.objects.get(name=routing_table_name)
-            except RoutingTable.DoesNotExist:
-                available = list(RoutingTable.objects.values_list("name", flat=True))
-                raise CommandError(
-                    f"RoutingTable '{routing_table_name}' not found. "
-                    f"Available: {available}"
-                )
+        try:
+            routing_table = RoutingTable.objects.get(name=routing_table_name)
+        except RoutingTable.DoesNotExist:
+            available = list(RoutingTable.objects.values_list("name", flat=True))
+            raise CommandError(
+                f"RoutingTable '{routing_table_name}' not found. "
+                f"Available: {available}"
+            )
 
         with open(file_path, newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)

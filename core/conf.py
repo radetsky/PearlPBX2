@@ -2,6 +2,8 @@ import textwrap
 import logging
 import os
 
+from django.db.models import Q
+
 from core.models import (
     SIPPeer,
     SIPTransport,
@@ -403,12 +405,16 @@ def __make_pjsip_conf_webrtc_user(user: SIPUser):
     return result
 
 
+def get_users_excluded_from_pjsip():
+    """Return SIPUsers that will be skipped during pjsip.conf generation."""
+    return SIPUser.objects.filter(Q(transport__isnull=True) | Q(routing_table__isnull=True))
+
+
 def make_pjsip_conf_users():
     result = "; ==== Users section ====\n"
-    users = SIPUser.objects.all()
+    excluded_ids = get_users_excluded_from_pjsip().values_list("pk", flat=True)
+    users = SIPUser.objects.exclude(pk__in=excluded_ids)
     for user in users:
-        if not user.transport or not user.routing_table:
-            continue
 
         if user.transport.protocol == "wss":
             result += __make_pjsip_conf_webrtc_user(user)

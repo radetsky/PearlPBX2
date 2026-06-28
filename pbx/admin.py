@@ -21,6 +21,7 @@ from core.conf import (
     make_manager_conf,
     make_musiconhold_conf,
     write_tls_cert_files,
+    get_users_excluded_from_pjsip,
 )
 
 from core.models import ConfigurationFile, SystemConfiguration
@@ -72,6 +73,7 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["form"] = ApplyChangesForm()
         context["cfgfiles"] = self._build_cfgfiles()
+        context["skipped_users"] = get_users_excluded_from_pjsip()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -88,6 +90,17 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
                     else:
                         ami.restart()
                 messages.success(request, _("Configurations files saved successfully."))
+
+                skipped = get_users_excluded_from_pjsip()
+                if skipped.exists():
+                    names = ", ".join(u.username for u in skipped)
+                    messages.warning(
+                        request,
+                        _(
+                            "%(count)d user(s) were skipped in pjsip.conf "
+                            "(missing transport or routing table): %(names)s"
+                        ) % {"count": skipped.count(), "names": names},
+                    )
 
                 return redirect("admin:index")
             except Exception as e:
