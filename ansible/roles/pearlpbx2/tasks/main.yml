@@ -22,6 +22,27 @@
       - "--exclude=staticfiles"
   delegate_to: localhost
 
+- name: Ensure Asterisk agi-bin directory exists
+  file:
+    path: /var/lib/asterisk/agi-bin
+    state: directory
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0750'
+
+- name: Install AGI scripts to agi-bin
+  copy:
+    src: "{{ pearlpbx2_install_dir }}/services/agi/{{ item }}"
+    dest: /var/lib/asterisk/agi-bin/{{ item }}
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: '0755'
+    remote_src: yes
+  loop:
+    - agi_common.py
+    - unmatched_call.py
+    - missed_call.py
+
 - name: Copy contrib configs to /etc/asterisk (do not overwrite existing)
   copy:
     src: "{{ pearlpbx2_install_dir }}/contrib/configs/"

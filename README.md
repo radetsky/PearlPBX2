@@ -41,6 +41,7 @@ Callback daemon ─────────────► Asterisk AMI (outboun
 - `services/callback/` — standalone daemon: monitors DB, initiates calls via AMI
 - `services/dashboard/` — standalone daemon: AMI event listener → Redis
 - `services/fastagi/` — standalone FastAGI server (blacklist, recording, routing)
+- `services/agi/` — classic AGI scripts called directly by Asterisk dialplan (missed call, unmatched DID → Slack)
 
 ## Requirements
 
@@ -104,9 +105,10 @@ Each service under `services/` runs as a separate process with its own virtual e
 
 | Service | Description |
 |---|---|
-| `services/dashboard/` | AMI event listener → Redis (required for operator dashboard) |
+| `services/dashboard/` | AMI event listener → Redis (required for operator dashboard); optional Slack notifications for missed queue calls |
 | `services/callback/` | Callback queue daemon — initiates outbound calls via AMI |
 | `services/fastagi/` | FastAGI server — blacklist checks, recording, queue status |
+| `services/agi/` | Classic AGI scripts (per-call Slack: missed call, unmatched DID); no daemon, Asterisk spawns per call |
 
 Each service has its own `env.sample` and README with setup instructions.
 

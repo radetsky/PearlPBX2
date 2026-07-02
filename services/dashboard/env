@@ -6,3 +6,11 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 LOGLEVEL=10
 
+# Slack notifications for missed queue calls (optional).
+# Leave SLACK_MISSED_CALL_WEBHOOK_URL empty to disable.
+SLACK_MISSED_CALL_WEBHOOK_URL=
+SLACK_TIMEOUT=4
+SLACK_USERNAME=PearlPBX2
+# Aggregate all abandons within this window (seconds) into a single Slack message.
+MISSED_CALL_DEBOUNCE_SECONDS=60
+

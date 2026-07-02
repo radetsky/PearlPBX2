@@ -43,6 +43,19 @@
         group: "{{ pearlpbx2_group }}"
         recurse: yes
 
+    - name: Update AGI scripts in agi-bin
+      copy:
+        src: "{{ pearlpbx2_install_dir }}/services/agi/{{ item }}"
+        dest: /var/lib/asterisk/agi-bin/{{ item }}
+        owner: "{{ pearlpbx2_user }}"
+        group: "{{ pearlpbx2_group }}"
+        mode: '0755'
+        remote_src: yes
+      loop:
+        - agi_common.py
+        - unmatched_call.py
+        - missed_call.py
+
     - name: Update main Python dependencies
       pip:
         requirements: "{{ pearlpbx2_install_dir }}/requirements.txt"

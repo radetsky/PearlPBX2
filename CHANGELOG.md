@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Slack notifications for missed queue calls** — the dashboard listener (`services/dashboard/`) can now optionally send an aggregated Slack message when callers abandon a queue. All abandons within a configurable debounce window (default 60 s) are grouped into a single message per queue. Configure via `SLACK_MISSED_CALL_WEBHOOK_URL` and `MISSED_CALL_DEBOUNCE_SECONDS` in `services/dashboard/env`. Feature is off by default (empty webhook URL).
+- **Classic AGI scripts** — `services/agi/` now ships `missed_call.py` and `unmatched_call.py` for per-call Slack notifications from Asterisk dialplan, plus a shared `agi_common.py` library with `notify_slack()` helper. Config at `/etc/PearlPBX/AGI/env`.
+
 ## [2.3.3] - 2026-05-24
 
 ### Security

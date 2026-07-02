@@ -7,6 +7,8 @@ import logging
 import signal
 import sys
 import time
+import urllib.request
+from collections import defaultdict
 
 import threading
 
@@ -14,6 +16,31 @@ import redis.asyncio as redis
 
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime
+
+
+def _post_to_slack(webhook_url, text, username, timeout):
+    """Send a plain-text message to a Slack incoming webhook."""
+    payload = json.dumps({"text": text, "username": username}).encode("utf-8")
+    req = urllib.request.Request(
+        webhook_url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.status
+
+
+def _build_missed_slack_text(entries):
+    """Format a list of missed-call buffer entries into a Slack message string."""
+    by_queue = defaultdict(list)
+    for e in entries:
+        by_queue[e["queue"]].append((e["caller_id"], e["time_hhmm"]))
+    sections = []
+    for q, calls in by_queue.items():
+        lines = "\n".join(f"• {cid}  {t}" for cid, t in calls)
+        sections.append(f"*Missed calls (queue: {q})*\n{lines}")
+    return "\n\n".join(sections)
 
 
 class EventWrapper:
@@ -43,6 +70,13 @@ class DashboardAMIListener:
         self.queue_state = {}
         self.channels_state = {}  # State of all active channels
         self.event_handlers = self.set_event_handlers()
+
+        self.slack_webhook_url = self.params.get("slack_missed_call_webhook_url", "")
+        self.slack_timeout = int(self.params.get("slack_timeout", 4))
+        self.slack_username = self.params.get("slack_username", "PearlPBX2")
+        self.missed_debounce = int(self.params.get("missed_call_debounce_seconds", 60))
+        self._missed_buffer = []
+        self._missed_flush_task = None
 
     def set_event_handlers(self):
         event_handlers = {
@@ -745,6 +779,41 @@ class DashboardAMIListener:
             f"Queue {queue_name}: Call {uniqueid} abandoned (caller: {caller_id})"
         )
 
+        if self.slack_webhook_url:
+            self._missed_buffer.append({
+                "queue": queue_name or "unknown",
+                "caller_id": caller_id or "unknown",
+                "time_hhmm": datetime.now().strftime("%H:%M"),
+            })
+            if self._missed_flush_task is None or self._missed_flush_task.done():
+                self._missed_flush_task = asyncio.create_task(
+                    self._flush_missed_after_window()
+                )
+
+    async def _flush_missed_after_window(self):
+        """Wait for debounce window, then send aggregated missed-call message to Slack."""
+        try:
+            await asyncio.sleep(self.missed_debounce)
+
+            entries, self._missed_buffer = self._missed_buffer, []
+            if not entries:
+                return
+
+            text = _build_missed_slack_text(entries)
+            try:
+                status = await asyncio.to_thread(
+                    _post_to_slack,
+                    self.slack_webhook_url,
+                    text,
+                    self.slack_username,
+                    self.slack_timeout,
+                )
+                self.logger.info(f"Slack missed-call notification sent (HTTP {status})")
+            except Exception as e:
+                self.logger.error(f"Failed to send Slack missed-call notification: {e}")
+        finally:
+            self._missed_flush_task = None
+
     async def handle_agent_connect(self, event):
         """Handle agent connecting to a call."""
         queue_name = event.get("Queue")
@@ -820,6 +889,19 @@ class DashboardAMIListener:
         """Graceful shutdown"""
         self.logger.info("Shutting down...")
         self.running = False
+
+        if self._missed_flush_task and not self._missed_flush_task.done():
+            self._missed_flush_task.cancel()
+        if self.slack_webhook_url and self._missed_buffer:
+            entries, self._missed_buffer = self._missed_buffer, []
+            text = _build_missed_slack_text(entries)
+            try:
+                await asyncio.to_thread(
+                    _post_to_slack, self.slack_webhook_url, text, self.slack_username, self.slack_timeout
+                )
+                self.logger.info("Slack flush on shutdown: sent")
+            except Exception as e:
+                self.logger.error(f"Slack flush on shutdown failed: {e}")
 
         if self.ami:
             self.ami.logoff()
@@ -904,6 +986,10 @@ def read_env_vars(args):
     redis_host = os.getenv("REDIS_HOST", "localhost")
     redis_port = int(os.getenv("REDIS_PORT", "6379"))
     loglevel = int(os.getenv("LOGLEVEL", str(logging.INFO)))
+    slack_missed_call_webhook_url = os.getenv("SLACK_MISSED_CALL_WEBHOOK_URL", "")
+    slack_timeout = int(os.getenv("SLACK_TIMEOUT", "4"))
+    slack_username = os.getenv("SLACK_USERNAME", "PearlPBX2")
+    missed_call_debounce_seconds = int(os.getenv("MISSED_CALL_DEBOUNCE_SECONDS", "60"))
 
     return {
         "ami_host": ami_host,
@@ -913,6 +999,10 @@ def read_env_vars(args):
         "redis_host": redis_host,
         "redis_port": redis_port,
         "loglevel": loglevel,
+        "slack_missed_call_webhook_url": slack_missed_call_webhook_url,
+        "slack_timeout": slack_timeout,
+        "slack_username": slack_username,
+        "missed_call_debounce_seconds": missed_call_debounce_seconds,
     }
 
 
