@@ -108,7 +108,7 @@ class Database:
             result = session.execute(
                 text(
                     """SELECT 1
-                        FROM custom_list_entries cle, custom_lists_names cln
+                        FROM custom_list_entries cle, custom_list_names cln
                         WHERE cle.callerid = :caller_id
                         AND (cle.destination = :destination OR cle.destination = '')
                         AND (cle.expiration_date > NOW() OR cle.expiration_date IS NULL)
@@ -238,7 +238,7 @@ class Database:
             session.execute(
                 text(
                     """INSERT INTO callback_number (src, dst, service_id, schedule_time)
-                        VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name), now() + interval ':delay_seconds seconds');"""
+                        VALUES (:src, :dst, (SELECT id FROM callback_service WHERE name = :service_name), now() + make_interval(secs => :delay_seconds));"""
                 ),
                 {
                     "src": src,

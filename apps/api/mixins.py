@@ -19,10 +19,13 @@ class AllowedHostsIPMixin:
 
     @staticmethod
     def get_client_ip(request):
-        # Handles X-Forwarded-For if behind a proxy
+        # Only trust X-Forwarded-For when the direct peer is a configured trusted
+        # proxy. Otherwise the header is client-controlled and would let anyone
+        # spoof an allowed IP.
+        remote_addr = request.META.get("REMOTE_ADDR")
+        if remote_addr not in getattr(settings, "PEARLPBX_API_TRUSTED_PROXIES", []):
+            return remote_addr
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(",")[0].strip()
-        else:
-            ip = request.META.get("REMOTE_ADDR")
-        return ip
+            return x_forwarded_for.split(",")[0].strip()
+        return remote_addr

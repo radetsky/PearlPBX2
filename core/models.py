@@ -22,7 +22,7 @@ from hashlib import md5
 from django.urls import reverse
 
 from core.storages import MOHFileSystemStorage, SoundsFileSystemStorage
-from core.utils import generate_32_char_password, generate_64_char_password
+from core.utils import generate_64_char_password
 from core.validators import (
     validate_bind_ip,
     validate_asterisk_context,
@@ -375,8 +375,9 @@ class SIPUser(models.Model):
 
     @property
     def md5_cred(self):
+        # RFC 2617 HA1 = MD5(username:realm:password)
         return md5(
-            f"{self.username}:{self.secret}:{self.realm}".encode("utf-8")
+            f"{self.username}:{self.realm}:{self.secret}".encode("utf-8")
         ).hexdigest()
 
     @property
@@ -386,25 +387,6 @@ class SIPUser(models.Model):
     @property
     def standard_extension(self):
         return f"Dial({self.standard_pjsip_user}, 120, rtT);"
-
-    @staticmethod
-    def create_webrtc_account(username: str, user: User, context: DialplanContext):
-        """
-        Create WebRTC account for user
-        :param username: username for account
-        :param user: django user
-        :return: SIPUser object
-        """
-        sip_user = SIPUser.objects.create(
-            name=f"WebRTC account for {user.username}",
-            username=username,
-            secret=generate_32_char_password,
-            transport=SIPTransport.objects.get(name="webrtc"),
-            extension=username,
-            context=context,
-            master=user,  # Link to the Django user
-        )
-        return sip_user
 
     @transaction.atomic
     def save(
@@ -1064,9 +1046,6 @@ the queue and sent to that extension."""),
     )
     announce_frequency = models.PositiveIntegerField(
         default=0, verbose_name=_("Announce Frequency")
-    )
-    announce_holdtime = models.BooleanField(
-        default=False, verbose_name=_("Announce Hold Time")
     )
     min_announce_frequency = models.PositiveIntegerField(
         default=0, verbose_name=_("Minimum Announce Frequency")

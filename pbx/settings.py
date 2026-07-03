@@ -1,5 +1,6 @@
 import environ
 
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 from pathlib import Path
 
@@ -221,10 +222,17 @@ ASTERISK_MANAGER_PORT = env.int("ASTERISK_MANAGER_PORT", 5038)
 ASTERISK_MANAGER_HOST = env.str("ASTERISK_MANAGER_HOST", "127.0.0.1")
 ASTERISK_MANAGER_BIND = env.str("ASTERISK_MANAGER_BIND", "127.0.0.1")
 ASTERISK_MANAGER_USERNAME = env.str("ASTERISK_MANAGER_USERNAME", "django")
-ASTERISK_MANAGER_SECRET = env.str(
-    "ASTERISK_MANAGER_SECRET",
-    "lFDccdsjqPWPe7ah7OJqLDxdtY6KM1VeTsS8V027msBpulwZHLmeaWnA-hWbpgkz3PZfdQ5GeCE63-lWTgqx3Q",
-)
+# No default secret: it would end up in manager.conf with full AMI rights.
+# Require it explicitly for network-reachable deployments, fall back to an obvious
+# placeholder only for local dev.
+ASTERISK_MANAGER_SECRET = env.str("ASTERISK_MANAGER_SECRET", "")
+if not ASTERISK_MANAGER_SECRET:
+    if DEVMODE in (DEVMODE_PRODUCTION, DEVMODE_STAGING):
+        raise ImproperlyConfigured(
+            "ASTERISK_MANAGER_SECRET must be set in Production/Staging. "
+            "Generate one with: openssl rand -base64 48"
+        )
+    ASTERISK_MANAGER_SECRET = "dev-insecure-ami-secret-change-me"
 
 ASTERISK_MONITOR_DIR = env.str(
     "ASTERISK_MONITOR_DIR", default="/var/spool/asterisk/monitor"
@@ -233,6 +241,10 @@ ASTERISK_MONITOR_DIR = env.str(
 ASTERISK_BACKUP_MONITOR_DIR = env.str("ASTERISK_BACKUP_MONITOR_DIR", default="")
 
 TFTP_DIR = env.str("TFTP_DIR", default="/var/lib/tftpboot/")
+
+# IPs of reverse proxies whose X-Forwarded-For header may be trusted by the
+# /api/v1/ IP allowlist. Empty by default — direct REMOTE_ADDR is used.
+PEARLPBX_API_TRUSTED_PROXIES = env.list("PEARLPBX_API_TRUSTED_PROXIES", default=[])
 
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"

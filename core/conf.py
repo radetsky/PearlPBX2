@@ -594,7 +594,7 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     output.append(_bool_opt("setqueueentryvar", queue.setqueueentryvar))
 
     output.append(f"announce-frequency={queue.announce_frequency}")
-    output.append(_bool_opt("announce-holdtime", queue.announce_holdtime))
+    output.append(f"announce-holdtime={queue.announce_holdtime}")
     output.append(f"min-announce-frequency={queue.min_announce_frequency}")
     output.append(f"periodic-announce-frequency={queue.periodic_announce_frequency}")
     output.append(
