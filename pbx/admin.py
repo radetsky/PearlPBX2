@@ -1,10 +1,13 @@
+import os
 from os import makedirs
 import tarfile
 import datetime
+from contextlib import suppress
 
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+from django.core.exceptions import SuspiciousOperation
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext_lazy as _
@@ -53,13 +56,14 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
 
     def _build_cfgfiles(self):
         """Build dictionary of configuration files to be generated."""
+        config_dir = settings.ASTERISK_CONFIG_DIR
         cfgfiles = {}
-        cfgfiles["/etc/asterisk/extensions.ael"] = make_extensions_ael()
-        cfgfiles["/etc/asterisk/pjsip.conf"] = make_pjsip_conf()
-        cfgfiles["/etc/asterisk/queues.conf"] = make_queues_conf()
-        cfgfiles["/etc/asterisk/queuerules.conf"] = make_queuerules_conf()
-        cfgfiles["/etc/asterisk/manager.conf"] = make_manager_conf()
-        cfgfiles["/etc/asterisk/musiconhold.conf"] = make_musiconhold_conf()
+        cfgfiles[os.path.join(config_dir, "extensions.ael")] = make_extensions_ael()
+        cfgfiles[os.path.join(config_dir, "pjsip.conf")] = make_pjsip_conf()
+        cfgfiles[os.path.join(config_dir, "queues.conf")] = make_queues_conf()
+        cfgfiles[os.path.join(config_dir, "queuerules.conf")] = make_queuerules_conf()
+        cfgfiles[os.path.join(config_dir, "manager.conf")] = make_manager_conf()
+        cfgfiles[os.path.join(config_dir, "musiconhold.conf")] = make_musiconhold_conf()
         for cfg in self.get_latest_configuration_files():
             if cfg.path not in cfgfiles:
                 cfgfiles[cfg.path] = cfg.content
@@ -85,10 +89,14 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
                 self.apply_changes(cfgfiles)
                 if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
                     ami = AsteriskManagementInterface()
-                    if request.POST.get("reload_type") == "soft":
-                        ami.soft_reload()
-                    else:
-                        ami.restart()
+                    try:
+                        if request.POST.get("reload_type") == "soft":
+                            ami.soft_reload()
+                        else:
+                            ami.restart()
+                    finally:
+                        with suppress(Exception):
+                            ami.logoff()
                 messages.success(request, _("Configurations files saved successfully."))
 
                 skipped = get_users_excluded_from_pjsip()
@@ -150,15 +158,22 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
         except FileExistsError:
             pass
 
+        root = os.path.abspath(settings.ASTERISK_ROOT_DIR)
         for cfg in system_configuration.configuration_files.all():
-            directory = settings.ASTERISK_ROOT_DIR + "/".join(cfg.path.split("/")[:-1])
+            # cfg.path is admin-controlled; keep it inside ASTERISK_ROOT_DIR so a
+            # crafted path (e.g. ../../etc/passwd) cannot escape the sandbox.
+            target = os.path.normpath(root + cfg.path)
+            if root != os.path.commonpath([root, target]):
+                raise SuspiciousOperation(
+                    f"Configuration path escapes ASTERISK_ROOT_DIR: {cfg.path}"
+                )
+
             try:
-                makedirs(directory, exist_ok=True)
+                makedirs(os.path.dirname(target), exist_ok=True)
             except FileExistsError:
                 pass
 
-            path = settings.ASTERISK_ROOT_DIR + cfg.path
-            with open(path, "w") as f:
+            with open(target, "w") as f:
                 f.write(cfg.content)
 
     def backup_dir(self):
@@ -169,10 +184,15 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
             pass
 
         # archive all files from ASTERISK_ROOT_DIR to ASTERISK_BACKUP_DIR/asterisk-<timestamp>.tar.gz
+        source_dir = settings.ASTERISK_ROOT_DIR + settings.ASTERISK_CONFIG_DIR
+        if not os.path.isdir(source_dir):
+            # Nothing to back up yet (e.g. first apply on a fresh install).
+            return
+
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         backup_file = f"{settings.ASTERISK_BACKUP_DIR}/asterisk-{timestamp}.tar.gz"
         with tarfile.open(backup_file, "w:gz") as tar:
-            tar.add(settings.ASTERISK_ROOT_DIR + settings.ASTERISK_CONFIG_DIR)
+            tar.add(source_dir)
 
     def create_configuration_file(self, name, path, content):
         # fetch previous versions of the file

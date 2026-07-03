@@ -425,11 +425,13 @@ def read_env_vars(args):
 
 def merge_args_env(args, env_vars):
     """Merge command line arguments with environment variables.
-    Environment variables are used in priority if command line argument is not provided.
+    Command line arguments take priority; environment variables (which always carry a
+    default) are used only when the corresponding CLI argument was not provided.
     """
     merged = {}
     for key in env_vars:
-        merged[key] = env_vars[key] if env_vars[key] is not None else getattr(args, key)
+        arg_val = getattr(args, key, None)
+        merged[key] = arg_val if arg_val is not None else env_vars[key]
     return merged
 
 

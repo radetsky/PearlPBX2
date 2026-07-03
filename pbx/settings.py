@@ -158,7 +158,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
-if DEVMODE != DEVMODE_PRODUCTION:
+if DEVMODE not in (DEVMODE_PRODUCTION, DEVMODE_STAGING):
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
@@ -169,7 +169,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {
         "console": {
-            "level": "DEBUG",  # Set this to DEBUG
+            "level": "INFO",
             "class": "logging.StreamHandler",
         },
     },
@@ -178,20 +178,21 @@ LOGGING = {
             "handlers": ["console"],
             "level": "INFO",  # Keep this as INFO for Django-related logging
         },
-        # Add this to configure your logger
+        # Keep application logs at INFO by default to avoid flooding journald with
+        # AMI event payloads (which contain caller IDs / PII).
         "core": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         },
         "apps": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
         "__main__": {  # If the logger name is __main__
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         },
     },

@@ -2,6 +2,7 @@ import re
 import json
 import logging
 from datetime import timedelta
+from functools import wraps
 
 import redis
 from django.conf import settings
@@ -25,6 +26,18 @@ _VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_.\-/@]+$")
 
 def _get_redis():
     return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+def staff_required_json(view_func):
+    """Restrict a JSON control endpoint to staff users (403 JSON otherwise)."""
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            return JsonResponse({"error": "forbidden"}, status=403)
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
 
 
 @login_required
@@ -286,6 +299,7 @@ def uline_flush(request):
 @login_required
 @csrf_protect
 @require_http_methods(["POST"])
+@staff_required_json
 def hangup_channel(request):
     """Send AMI Hangup action for the given channel."""
     try:
@@ -332,6 +346,7 @@ def hangup_channel(request):
 @login_required
 @csrf_protect
 @require_http_methods(["POST"])
+@staff_required_json
 def pause_queue_member(request):
     """Send AMI QueuePause/QueueUnpause action for the given interface."""
     try:

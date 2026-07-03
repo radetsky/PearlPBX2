@@ -26,10 +26,11 @@ class PasswordWithToggleInput(forms.PasswordInput):
             const input = document.getElementById("id_{name}");
             const length = 12;  // Length of the generated password
             const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+            const randomValues = new Uint32Array(length);
+            crypto.getRandomValues(randomValues);
             let password = "";
             for (let i = 0; i < length; i++) {{
-                const randomIndex = Math.floor(Math.random() * charset.length);
-                password += charset[randomIndex];
+                password += charset[randomValues[i] % charset.length];
             }}
             input.value = password;
             input.type = "text";
@@ -44,11 +45,18 @@ class PasswordWithToggleInput(forms.PasswordInput):
         super().__init__(attrs=attrs, render_value=render_value)
 
     def render(self, name, value, attrs=None, renderer=None):
+        # render_value=True keeps the stored plaintext SIP secret editable (with the
+        # reveal toggle); escape it so a value containing " or < cannot break markup
+        # or inject script.
         final_attrs = self.build_attrs(
             attrs, extra_attrs={"type": "password", "class": "vTextField"}
         )
-        final_attrs_str = " ".join([f'{k}="{v}"' for k, v in final_attrs.items()])
-        html = self.template.format(name=name, value=value or "", attrs=final_attrs_str)
+        final_attrs_str = " ".join(
+            f'{escape(k)}="{escape(v)}"' for k, v in final_attrs.items()
+        )
+        html = self.template.format(
+            name=escape(name), value=escape(value or ""), attrs=final_attrs_str
+        )
         return mark_safe(html)
 
 

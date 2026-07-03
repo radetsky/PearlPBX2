@@ -280,7 +280,6 @@ class SIPUser(models.Model):
     )
     secret = models.CharField(
         max_length=32,
-        unique=True,
         null=False,
         blank=False,
         help_text=_("Password for the connection"),
@@ -663,7 +662,6 @@ class ManagerUsers(models.Model):
     )
     secret = models.CharField(
         max_length=128,
-        unique=True,
         null=False,
         blank=False,
         default=generate_64_char_password,

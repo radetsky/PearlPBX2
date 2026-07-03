@@ -372,6 +372,14 @@ def make_pjsip_conf_users_auth_template():
     return result
 
 
+def _with_trailing_newline(value: str | None) -> str:
+    """Return the text with a trailing newline, or "" when empty."""
+    text = value or ""
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text
+
+
 def __make_pjsip_conf_webrtc_user(user: SIPUser):
     assert user.transport is not None
     result = "; ==== WebRTC user ====\n"
@@ -382,25 +390,16 @@ def __make_pjsip_conf_webrtc_user(user: SIPUser):
     result += f"auth={user.username}\n"
     result += f"aors={user.username}\n"
     result += f"callerid= {user.name} <{user.extension}>\n"
-    custom_settings = user.custom_settings
-    if custom_settings and not custom_settings.endswith("\n"):
-        custom_settings += "\n"
-        result += custom_settings
+    result += _with_trailing_newline(user.custom_settings)
     result += "\n"
 
     result += f"[{user.username}](webrtc-template-auth)\n"
     result += f"md5_cred = {user.md5_cred}\nusername = {user.username}\n"
     result += f"realm = {user.realm}\n"
-    custom_auth_settings = user.custom_auth_settings
-    if custom_auth_settings and not custom_auth_settings.endswith("\n"):
-        custom_auth_settings += "\n"
-        result += custom_auth_settings + "\n"
+    result += _with_trailing_newline(user.custom_auth_settings) + "\n"
 
     result += f"[{user.username}](webrtc-template-aor)\n"
-    custom_aor_settings = user.custom_aor_settings
-    if custom_aor_settings and not custom_aor_settings.endswith("\n"):
-        custom_aor_settings += "\n"
-        result += custom_aor_settings + "\n"
+    result += _with_trailing_newline(user.custom_aor_settings) + "\n"
 
     return result
 
