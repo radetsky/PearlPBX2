@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "channels",
+    "rest_framework",
+    "rest_framework.authtoken",
     "core",
     "apps.api",
     "apps.callback",
@@ -200,6 +202,17 @@ LOGGING = {
 
 ASGI_APPLICATION = "pbx.asgi.application"
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
+}
+
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")
 
 CHANNEL_LAYERS = {
@@ -242,10 +255,6 @@ ASTERISK_MONITOR_DIR = env.str(
 ASTERISK_BACKUP_MONITOR_DIR = env.str("ASTERISK_BACKUP_MONITOR_DIR", default="")
 
 TFTP_DIR = env.str("TFTP_DIR", default="/var/lib/tftpboot/")
-
-# IPs of reverse proxies whose X-Forwarded-For header may be trusted by the
-# /api/v1/ IP allowlist. Empty by default — direct REMOTE_ADDR is used.
-PEARLPBX_API_TRUSTED_PROXIES = env.list("PEARLPBX_API_TRUSTED_PROXIES", default=[])
 
 PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"

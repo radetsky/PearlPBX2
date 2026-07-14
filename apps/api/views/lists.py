@@ -1,282 +1,101 @@
-import json
-
-from django.http import JsonResponse
-from django.views import View
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 from apps.api.models import CustomListNames, CustomListEntries
-from apps.api.mixins import AllowedHostsIPMixin
-
+from apps.api.serializers import (
+    CustomListNameSerializer,
+    CustomListEntrySerializer,
+    BlacklistSerializer,
+    WhitelistSerializer,
+    ContactSerializer,
+)
 from core.models import Blacklist, Whitelist, Contact
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListsView(AllowedHostsIPMixin, View):
-    def get(self, request):
-        lists = CustomListNames.objects.all().values("id", "name")
-        return JsonResponse(list(lists), safe=False)
+class AuditMixin:
+    """Set created_by / modified_by from the authenticated user."""
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(created_by=user, modified_by=user)
+
+    def perform_update(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(modified_by=user)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListAddView(AllowedHostsIPMixin, View):
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            name = data.get("name", "").strip()
-            if not name:
-                return JsonResponse({"error": 'Missing "name"'}, status=400)
-            item = CustomListNames.objects.create(name=name)
-            return JsonResponse({"id": str(item.id), "name": item.name}, status=201)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+class UpsertCreateMixin:
+    """POST performs update_or_create; 201 on create, 200 on update.
+
+    Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+    validated data becomes `defaults`.
+    """
+
+    upsert_lookup_fields: list[str] = []
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        lookup = {f: data.pop(f) for f in self.upsert_lookup_fields}
+        user = request.user if request.user.is_authenticated else None
+        obj, created = self.get_queryset().model.objects.update_or_create(
+            **lookup,
+            defaults={**data, "modified_by": user},
+        )
+        if created:
+            obj.created_by = user
+            obj.save(update_fields=["created_by"])
+        out = self.get_serializer(obj)
+        return Response(
+            out.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListUpdateView(AllowedHostsIPMixin, View):
-    def post(self, request, pk):
-        try:
-            obj = CustomListNames.objects.get(pk=pk)
-        except CustomListNames.DoesNotExist:
-            return JsonResponse({"error": "List not found"}, status=404)
-
-        try:
-            data = json.loads(request.body)
-            name = data.get("name", "").strip()
-            if not name:
-                return JsonResponse({"error": 'Missing "name"'}, status=400)
-            obj.name = name
-            obj.save()
-            return JsonResponse({"id": str(obj.id), "name": obj.name})
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+class BlacklistViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
+    queryset = Blacklist.objects.all().order_by("callerid")
+    serializer_class = BlacklistSerializer
+    upsert_lookup_fields = ["callerid", "destination"]
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListRevokeView(AllowedHostsIPMixin, View):
-    def delete(self, request, pk):
-        try:
-            obj = CustomListNames.objects.get(pk=pk)
-            obj.delete()
-            return JsonResponse({"status": "deleted", "id": str(pk)})
-        except CustomListNames.DoesNotExist:
-            return JsonResponse({"error": "List not found"}, status=404)
+class WhitelistViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
+    queryset = Whitelist.objects.all().order_by("callerid")
+    serializer_class = WhitelistSerializer
+    upsert_lookup_fields = ["callerid", "destination"]
 
 
-# Custom List Entries View -----------------------------------------------
+class ContactViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
+    queryset = Contact.objects.all().order_by("callerid")
+    serializer_class = ContactSerializer
+    upsert_lookup_fields = ["callerid"]
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListEntriesView(AllowedHostsIPMixin, View):
-    def get(self, request, pk):
-        try:
-            obj = CustomListEntries.objects.filter(list_name__id=pk).values(
-                "id", "callerid", "destination", "reason", "expiration_date"
-            )
-            return JsonResponse(list(obj), safe=False)
-        except CustomListEntries.DoesNotExist:
-            return JsonResponse({"error": "List entries not found"}, status=404)
+class CustomListViewSet(AuditMixin, viewsets.ModelViewSet):
+    queryset = CustomListNames.objects.all().order_by("name")
+    serializer_class = CustomListNameSerializer
+
+    @action(detail=True, methods=["get", "post"])
+    def entries(self, request, pk=None):
+        parent = self.get_object()
+        if request.method == "GET":
+            qs = parent.entries.all().order_by("callerid")
+            page = self.paginate_queryset(qs)
+            serializer = CustomListEntrySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = CustomListEntrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user if request.user.is_authenticated else None
+        serializer.save(list_name=parent, created_by=user, modified_by=user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListEntryAddView(AllowedHostsIPMixin, View):
-    def post(self, request, pk):
-        try:
-            list_name = CustomListNames.objects.get(pk=pk)
-        except CustomListNames.DoesNotExist:
-            return JsonResponse({"error": "List not found"}, status=404)
+class CustomListEntryDetailView(APIView):
+    """Delete a single entry scoped to its parent list."""
 
-        try:
-            data = json.loads(request.body)
-            callerid = data.get("callerid", "").strip()
-            destination = data.get("destination", "").strip()
-            reason = data.get("reason", "").strip()
-            expiration_date = data.get("expiration_date")
-
-            if not callerid:
-                return JsonResponse({"error": "Missing required fields"}, status=400)
-
-            entry = CustomListEntries.objects.create(
-                list_name=list_name,
-                callerid=callerid,
-                destination=destination,
-                reason=reason,
-                expiration_date=expiration_date,
-            )
-            return JsonResponse(
-                {
-                    "id": str(entry.id),
-                    "callerid": entry.callerid,
-                    "destination": entry.destination,
-                    "reason": entry.reason,
-                    "expiration_date": entry.expiration_date,
-                },
-                status=201,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-
-@method_decorator(csrf_exempt, name="dispatch")
-class ListEntryRevokeView(AllowedHostsIPMixin, View):
     def delete(self, request, pk, entry_pk):
-        try:
-            entry = CustomListEntries.objects.get(pk=entry_pk, list_name__id=pk)
-            entry.delete()
-            return JsonResponse({"status": "deleted", "id": str(entry_pk)})
-        except CustomListEntries.DoesNotExist:
-            return JsonResponse({"error": "Entry not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-
-@method_decorator(csrf_exempt, name="dispatch")
-class BlackListView(AllowedHostsIPMixin, View):
-    def get(self, request):
-        blacklist = Blacklist.objects.all().values(
-            "id", "callerid", "destination", "reason", "expiration_date"
-        )
-        return JsonResponse(list(blacklist), safe=False)
-
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            callerid = data.get("callerid", "").strip()
-            destination = data.get("destination", "").strip()
-            reason = data.get("reason", "").strip()
-            expiration_date = data.get("expiration_date")
-
-            if not callerid:
-                return JsonResponse({"error": "Missing required fields"}, status=400)
-
-            entry, created = Blacklist.objects.update_or_create(
-                callerid=callerid,
-                destination=destination,
-                defaults={"reason": reason, "expiration_date": expiration_date},
-            )
-            return JsonResponse(
-                {
-                    "id": str(entry.id),
-                    "callerid": entry.callerid,
-                    "destination": entry.destination,
-                    "reason": entry.reason,
-                    "expiration_date": entry.expiration_date,
-                    "created": created,
-                },
-                status=201 if created else 200,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    def delete(self, request, pk):
-        try:
-            entry = Blacklist.objects.get(pk=pk)
-            entry.delete()
-            return JsonResponse({"status": "deleted", "id": str(pk)})
-        except Blacklist.DoesNotExist:
-            return JsonResponse({"error": "Blacklist entry not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-
-@method_decorator(csrf_exempt, name="dispatch")
-class WhiteListView(AllowedHostsIPMixin, View):
-    def get(self, request):
-        whitelist = Whitelist.objects.all().values(
-            "id", "callerid", "destination", "reason", "expiration_date"
-        )
-        return JsonResponse(list(whitelist), safe=False)
-
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            callerid = data.get("callerid", "").strip()
-            destination = data.get("destination", "").strip()
-            reason = data.get("reason", "").strip()
-            expiration_date = data.get("expiration_date")
-
-            if not callerid:
-                return JsonResponse({"error": "Missing required fields"}, status=400)
-
-            entry, created = Whitelist.objects.update_or_create(
-                callerid=callerid,
-                destination=destination,
-                defaults={"reason": reason, "expiration_date": expiration_date},
-            )
-            return JsonResponse(
-                {
-                    "id": str(entry.id),
-                    "callerid": entry.callerid,
-                    "destination": entry.destination,
-                    "reason": entry.reason,
-                    "expiration_date": entry.expiration_date,
-                    "created": created,
-                },
-                status=201 if created else 200,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    def delete(self, request, pk):
-        try:
-            entry = Whitelist.objects.get(pk=pk)
-            entry.delete()
-            return JsonResponse({"status": "deleted", "id": str(pk)})
-        except Whitelist.DoesNotExist:
-            return JsonResponse({"error": "Whitelist entry not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-
-@method_decorator(csrf_exempt, name="dispatch")
-class ContactsView(AllowedHostsIPMixin, View):
-    def get(self, request):
-        contacts = Contact.objects.all().values("id", "callerid", "name")
-        return JsonResponse(list(contacts), safe=False)
-
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            callerid = data.get("callerid", "").strip()
-            name = data.get("name", "").strip()
-
-            if not callerid or not name:
-                return JsonResponse({"error": "Missing required fields"}, status=400)
-
-            contact, created = Contact.objects.update_or_create(
-                callerid=callerid,
-                defaults={"name": name},
-            )
-            return JsonResponse(
-                {
-                    "id": str(contact.id),
-                    "callerid": contact.callerid,
-                    "name": contact.name,
-                    "created": created,
-                },
-                status=201 if created else 200,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    def delete(self, request, pk):
-        try:
-            contact = Contact.objects.get(pk=pk)
-            contact.delete()
-            return JsonResponse({"status": "deleted", "id": str(pk)})
-        except Contact.DoesNotExist:
-            return JsonResponse({"error": "Contact not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        entry = get_object_or_404(CustomListEntries, pk=entry_pk, list_name__id=pk)
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1628,7 +1628,7 @@ class Blacklist(AuditFields):
         return f"{self.callerid} - {self.reason}"
 
 
-class Whitelist(models.Model):
+class Whitelist(AuditFields):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
