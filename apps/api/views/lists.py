@@ -10,8 +10,6 @@ from apps.api.mixins import AllowedHostsIPMixin
 
 from core.models import Blacklist, Whitelist, Contact
 
-# TODO: Add security Mixins to allow access only to authorized IP addresses
-
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ListsView(AllowedHostsIPMixin, View):
