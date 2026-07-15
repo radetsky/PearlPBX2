@@ -1590,7 +1590,6 @@ class Blacklist(AuditFields):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
-        unique=True,
         help_text=_("Caller ID to block"),
         verbose_name=_("Caller ID"),
     )
@@ -1623,6 +1622,12 @@ class Blacklist(AuditFields):
     class Meta:
         db_table = "blacklist"
         verbose_name_plural = _("17. Blacklist")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["callerid", "destination"],
+                name="blacklist_callerid_destination_uniq",
+            )
+        ]
 
     def __str__(self):
         return f"{self.callerid} - {self.reason}"
@@ -1632,7 +1637,6 @@ class Whitelist(AuditFields):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     callerid = models.CharField(
         max_length=64,
-        unique=True,
         help_text=_("Caller ID to allow"),
         verbose_name=_("Caller ID"),
     )
@@ -1665,6 +1669,12 @@ class Whitelist(AuditFields):
     class Meta:
         db_table = "whitelist"
         verbose_name_plural = _("18. Whitelist")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["callerid", "destination"],
+                name="whitelist_callerid_destination_uniq",
+            )
+        ]
 
     def __str__(self):
         return f"{self.callerid} - {self.reason}"

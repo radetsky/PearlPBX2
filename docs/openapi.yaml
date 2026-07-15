@@ -1,0 +1,1276 @@
+openapi: 3.0.3
+info:
+  title: PearlPBX2 API
+  version: 1.0.0
+  description: REST API for PearlPBX2 — blacklist, whitelist, contacts, and custom
+    lists.
+paths:
+  /api/v1/blacklist/:
+    get:
+      operationId: blacklist_list
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - blacklist
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBlacklistList'
+          description: ''
+    post:
+      operationId: blacklist_create
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      tags:
+      - blacklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blacklist'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blacklist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+  /api/v1/blacklist/{id}/:
+    get:
+      operationId: blacklist_retrieve
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this blacklist.
+        required: true
+      tags:
+      - blacklist
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blacklist'
+          description: ''
+    put:
+      operationId: blacklist_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this blacklist.
+        required: true
+      tags:
+      - blacklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Blacklist'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blacklist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    patch:
+      operationId: blacklist_partial_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this blacklist.
+        required: true
+      tags:
+      - blacklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBlacklist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBlacklist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBlacklist'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blacklist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    delete:
+      operationId: blacklist_destroy
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this blacklist.
+        required: true
+      tags:
+      - blacklist
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/calls/originate/:
+    post:
+      operationId: calls_originate_create
+      summary: Originate a call
+      tags:
+      - calls
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Originate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Originate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Originate'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Call originated successfully.
+        '400':
+          description: Invalid request body.
+        '401':
+          description: Authentication credentials were not provided.
+        '502':
+          description: AMI error or Asterisk unreachable.
+        '503':
+          description: Asterisk is disabled in this DEVMODE.
+  /api/v1/contacts/:
+    get:
+      operationId: contacts_list
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - contacts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContactList'
+          description: ''
+    post:
+      operationId: contacts_create
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      tags:
+      - contacts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contact'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+  /api/v1/contacts/{id}/:
+    get:
+      operationId: contacts_retrieve
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - contacts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+    put:
+      operationId: contacts_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - contacts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contact'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    patch:
+      operationId: contacts_partial_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - contacts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    delete:
+      operationId: contacts_destroy
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - contacts
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/:
+    get:
+      operationId: lists_list
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - lists
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomListNameList'
+          description: ''
+    post:
+      operationId: lists_create
+      description: Set created_by / modified_by from the authenticated user.
+      tags:
+      - lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomListName'
+          description: ''
+  /api/v1/lists/{id}/:
+    get:
+      operationId: lists_retrieve
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      tags:
+      - lists
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomListName'
+          description: ''
+    put:
+      operationId: lists_update
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      tags:
+      - lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomListName'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomListName'
+          description: ''
+        '400':
+          description: Empty or missing "name".
+    patch:
+      operationId: lists_partial_update
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      tags:
+      - lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomListName'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomListName'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomListName'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomListName'
+          description: ''
+        '400':
+          description: Empty or missing "name".
+    delete:
+      operationId: lists_destroy
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      tags:
+      - lists
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/{id}/entries/:
+    get:
+      operationId: lists_entries_list
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - lists
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomListEntryList'
+          description: ''
+    post:
+      operationId: lists_entries_create
+      description: Set created_by / modified_by from the authenticated user.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this custom list names.
+        required: true
+      tags:
+      - lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomListEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomListEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomListEntry'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomListEntry'
+          description: ''
+  /api/v1/lists/{id}/entries/{entry_pk}/:
+    delete:
+      operationId: lists_entries_destroy
+      description: Delete a single entry scoped to its parent list.
+      parameters:
+      - in: path
+        name: entry_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - lists
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Entry deleted
+  /api/v1/whitelist/:
+    get:
+      operationId: whitelist_list
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - whitelist
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWhitelistList'
+          description: ''
+    post:
+      operationId: whitelist_create
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      tags:
+      - whitelist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelist'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+  /api/v1/whitelist/{id}/:
+    get:
+      operationId: whitelist_retrieve
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this whitelist.
+        required: true
+      tags:
+      - whitelist
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelist'
+          description: ''
+    put:
+      operationId: whitelist_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this whitelist.
+        required: true
+      tags:
+      - whitelist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Whitelist'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    patch:
+      operationId: whitelist_partial_update
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this whitelist.
+        required: true
+      tags:
+      - whitelist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWhitelist'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWhitelist'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWhitelist'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Whitelist'
+          description: ''
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Uniqueness constraint would be violated.
+    delete:
+      operationId: whitelist_destroy
+      description: |-
+        POST performs update_or_create; 201 on create, 200 on update.
+
+        Subclass sets `upsert_lookup_fields` (used as the lookup) — the rest of the
+        validated data becomes `defaults`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this whitelist.
+        required: true
+      tags:
+      - whitelist
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Blacklist:
+      type: object
+      description: Shared base for Blacklist/Whitelist (identical fields).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для блокування
+          maxLength: 64
+        destination:
+          type: string
+          default: ''
+          title: Призначення
+          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
+            = блокування для всієї системи.
+          maxLength: 64
+        reason:
+          type: string
+          default: ''
+          title: Причина
+          description: Причина блокування ідентифікатора абонента
+          maxLength: 64
+        expiration_date:
+          type: string
+          format: date-time
+          nullable: true
+          title: Дата закінчення
+          description: Дата закінчення терміну дії запису чорного списку. Якщо не
+            вказано — запис постійний.
+      required:
+      - callerid
+      - id
+    Contact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для розпізнавання
+          maxLength: 64
+        name:
+          type: string
+          title: Назва
+          description: Ім'я ідентифікатора абонента
+          maxLength: 64
+      required:
+      - callerid
+      - id
+      - name
+    CustomListEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Custom List Entry Value
+          description: Value of the custom list entry
+          maxLength: 64
+        destination:
+          type: string
+          default: ''
+          description: Destination number where calls must be detected. Default= for
+            whole system detection.
+          maxLength: 64
+        reason:
+          type: string
+          default: ''
+          description: Reason for detecting the caller ID
+          maxLength: 64
+        expiration_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration date for the custom list entry. If not set, the
+            entry is permanent.
+      required:
+      - callerid
+      - id
+    CustomListName:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          title: Custom List Name
+          description: Name of the custom list
+          maxLength: 64
+      required:
+      - id
+      - name
+    Originate:
+      type: object
+      properties:
+        channel:
+          type: string
+          description: First leg to dial, e.g. 'Local/0503856087@default' or 'PJSIP/101'.
+          maxLength: 256
+        exten:
+          type: string
+          description: Extension/number the first leg is connected to, e.g. '0675653380'.
+          maxLength: 128
+        context:
+          type: string
+          default: default
+          description: Dialplan context. Defaults to 'default'.
+          maxLength: 128
+        priority:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Dialplan priority.
+        callerid:
+          type: string
+          description: Caller ID, format 'name<number>', e.g. '380443333333<0675653380>'.
+          maxLength: 128
+        variable:
+          type: object
+          additionalProperties:
+            type: string
+          description: 'Channel variables, e.g. {"userId": "0"}.'
+        timeout_ms:
+          type: integer
+          maximum: 120000
+          minimum: 1000
+          default: 30000
+          description: Max time to wait for the originate in milliseconds.
+      required:
+      - channel
+      - exten
+    PaginatedBlacklistList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Blacklist'
+    PaginatedContactList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contact'
+    PaginatedCustomListEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomListEntry'
+    PaginatedCustomListNameList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomListName'
+    PaginatedWhitelistList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Whitelist'
+    PatchedBlacklist:
+      type: object
+      description: Shared base for Blacklist/Whitelist (identical fields).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для блокування
+          maxLength: 64
+        destination:
+          type: string
+          default: ''
+          title: Призначення
+          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
+            = блокування для всієї системи.
+          maxLength: 64
+        reason:
+          type: string
+          default: ''
+          title: Причина
+          description: Причина блокування ідентифікатора абонента
+          maxLength: 64
+        expiration_date:
+          type: string
+          format: date-time
+          nullable: true
+          title: Дата закінчення
+          description: Дата закінчення терміну дії запису чорного списку. Якщо не
+            вказано — запис постійний.
+    PatchedContact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для розпізнавання
+          maxLength: 64
+        name:
+          type: string
+          title: Назва
+          description: Ім'я ідентифікатора абонента
+          maxLength: 64
+    PatchedCustomListName:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          title: Custom List Name
+          description: Name of the custom list
+          maxLength: 64
+    PatchedWhitelist:
+      type: object
+      description: Shared base for Blacklist/Whitelist (identical fields).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для дозволу
+          maxLength: 64
+        destination:
+          type: string
+          default: ''
+          title: Призначення
+          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
+            = дозвіл для всієї системи.
+          maxLength: 64
+        reason:
+          type: string
+          default: ''
+          title: Причина
+          description: Причина дозволу ідентифікатора абонента
+          maxLength: 64
+        expiration_date:
+          type: string
+          format: date-time
+          nullable: true
+          title: Дата закінчення
+          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
+            — запис постійний.
+    Whitelist:
+      type: object
+      description: Shared base for Blacklist/Whitelist (identical fields).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        callerid:
+          type: string
+          title: Ідентифікатор абонента
+          description: Ідентифікатор абонента для дозволу
+          maxLength: 64
+        destination:
+          type: string
+          default: ''
+          title: Призначення
+          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
+            = дозвіл для всієї системи.
+          maxLength: 64
+        reason:
+          type: string
+          default: ''
+          title: Причина
+          description: Причина дозволу ідентифікатора абонента
+          maxLength: 64
+        expiration_date:
+          type: string
+          format: date-time
+          nullable: true
+          title: Дата закінчення
+          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
+            — запис постійний.
+      required:
+      - callerid
+      - id
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"

@@ -2,7 +2,6 @@ import os
 from os import makedirs
 import tarfile
 import datetime
-from contextlib import suppress
 
 from django import forms
 from django.conf import settings
@@ -88,15 +87,11 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
             try:
                 self.apply_changes(cfgfiles)
                 if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
-                    ami = AsteriskManagementInterface()
-                    try:
+                    with AsteriskManagementInterface() as ami:
                         if request.POST.get("reload_type") == "soft":
                             ami.soft_reload()
                         else:
                             ami.restart()
-                    finally:
-                        with suppress(Exception):
-                            ami.logoff()
                 messages.success(request, _("Configurations files saved successfully."))
 
                 skipped = get_users_excluded_from_pjsip()

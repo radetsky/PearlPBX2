@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "channels",
     "rest_framework",
     "rest_framework.authtoken",
+    "drf_spectacular",
     "core",
     "apps.api",
     "apps.callback",
@@ -211,6 +212,15 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.api.exceptions.api_exception_handler",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "PearlPBX2 API",
+    "DESCRIPTION": "REST API for PearlPBX2 — blacklist, whitelist, contacts, and custom lists.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")

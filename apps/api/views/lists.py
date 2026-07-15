@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
 from apps.api.models import CustomListNames, CustomListEntries
 from apps.api.serializers import (
@@ -55,28 +56,78 @@ class UpsertCreateMixin:
         )
 
 
+def _list_schema(serializer):
+    """OpenAPI responses for upsert-style list viewsets (create + update paths)."""
+    conflict = OpenApiResponse(description="Uniqueness constraint would be violated.")
+    invalid = OpenApiResponse(description="Invalid request body.")
+    return extend_schema_view(
+        create=extend_schema(
+            responses={200: serializer, 201: serializer, 400: invalid, 409: conflict}
+        ),
+        update=extend_schema(responses={200: serializer, 400: invalid, 409: conflict}),
+        partial_update=extend_schema(
+            responses={200: serializer, 400: invalid, 409: conflict}
+        ),
+    )
+
+
+@_list_schema(BlacklistSerializer)
 class BlacklistViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
     queryset = Blacklist.objects.all().order_by("callerid")
     serializer_class = BlacklistSerializer
     upsert_lookup_fields = ["callerid", "destination"]
 
 
+@_list_schema(WhitelistSerializer)
 class WhitelistViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
     queryset = Whitelist.objects.all().order_by("callerid")
     serializer_class = WhitelistSerializer
     upsert_lookup_fields = ["callerid", "destination"]
 
 
+@_list_schema(ContactSerializer)
 class ContactViewSet(UpsertCreateMixin, AuditMixin, viewsets.ModelViewSet):
     queryset = Contact.objects.all().order_by("callerid")
     serializer_class = ContactSerializer
     upsert_lookup_fields = ["callerid"]
 
 
+@extend_schema_view(
+    update=extend_schema(
+        responses={
+            200: CustomListNameSerializer,
+            400: OpenApiResponse(description='Empty or missing "name".'),
+        }
+    ),
+    partial_update=extend_schema(
+        responses={
+            200: CustomListNameSerializer,
+            400: OpenApiResponse(description='Empty or missing "name".'),
+        }
+    ),
+)
 class CustomListViewSet(AuditMixin, viewsets.ModelViewSet):
     queryset = CustomListNames.objects.all().order_by("name")
     serializer_class = CustomListNameSerializer
 
+    def update(self, request, *args, **kwargs):
+        name = str(request.data.get("name", "")).strip()
+        if not name:
+            return Response(
+                {"error": 'Missing "name"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        methods=["GET"],
+        responses=CustomListEntrySerializer(many=True),
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=CustomListEntrySerializer,
+        responses={201: CustomListEntrySerializer},
+    )
     @action(detail=True, methods=["get", "post"])
     def entries(self, request, pk=None):
         parent = self.get_object()
@@ -95,6 +146,7 @@ class CustomListViewSet(AuditMixin, viewsets.ModelViewSet):
 class CustomListEntryDetailView(APIView):
     """Delete a single entry scoped to its parent list."""
 
+    @extend_schema(responses={204: OpenApiResponse(description="Entry deleted")})
     def delete(self, request, pk, entry_pk):
         entry = get_object_or_404(CustomListEntries, pk=entry_pk, list_name__id=pk)
         entry.delete()

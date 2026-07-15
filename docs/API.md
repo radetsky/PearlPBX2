@@ -42,6 +42,7 @@ There is no session-based or IP-based restriction. CSRF protection is not enforc
 - `400` — Bad Request (missing or invalid fields)
 - `401` — Unauthorized (missing or invalid token)
 - `404` — Not Found
+- `409` — Conflict (a uniqueness constraint would be violated, e.g. renaming an entry so it collides with an existing one)
 
 ---
 
@@ -90,7 +91,9 @@ Add or update a blacklist entry.
 - `callerid` — required
 - `destination`, `reason`, `expiration_date` — optional
 
-**Response:** `201` on create, `200` on update.
+Uniqueness is enforced on the `callerid` + `destination` pair (a common value is `destination = ""` for system-wide blocking).
+
+**Response:** `201` on create, `200` on update. Updating a record's `callerid`/`destination` (via `PUT`/`PATCH` on `/api/v1/blacklist/<uuid>/`) so that it collides with another existing pair returns `409 Conflict`.
 
 ### DELETE `/api/v1/blacklist/<uuid>/`
 
@@ -198,6 +201,8 @@ Rename a list.
 {"name": "New Name"}
 ```
 
+`name` must be a non-empty string. An empty or missing `name` returns `400` with body `{"error": "Missing \"name\""}`.
+
 ### DELETE `/api/v1/lists/<uuid>/`
 
 Delete a list and all its entries. Returns `204 No Content`.
@@ -249,22 +254,81 @@ Delete a specific entry from a list. Returns `204 No Content`.
 
 ---
 
-## Known Limitations
+## Originate a call
 
-- No filtering or search on GET endpoints.
-- No Swagger/OpenAPI documentation yet.
+**`POST /api/v1/calls/originate/`**
+
+Originate a call via Asterisk AMI. Replaces direct HTTP calls to Asterisk `rawman` — the AMI secret is never sent by the client.
+
+**Request body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `channel` | string | yes | — | First leg to dial, e.g. `"Local/0503856087@default"` or `"PJSIP/101"` |
+| `exten` | string | yes | — | Extension/number the first leg connects to, e.g. `"0675653380"` |
+| `context` | string | no | `"default"` | Dialplan context |
+| `priority` | integer | no | `1` | Dialplan priority (min: 1) |
+| `callerid` | string | no | — | Caller ID in format `name<number>`, e.g. `"380443333333<0675653380>"` |
+| `variable` | object | no | — | Channel variables as key-value pairs, e.g. `{"userId": "0"}` |
+| `timeout_ms` | integer | no | `30000` | Asterisk-side Originate timeout in ms (1000–120000). This is also the server-side wait budget: the API worker will not block waiting for the AMI response longer than `timeout_ms + 5s`. |
+
+**Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Call originated successfully. Body: `{"status": "originated", "message": "..."}` |
+| `400` | Invalid request body (missing required fields, validation errors) |
+| `401` | Authentication credentials were not provided |
+| `502` | AMI error or Asterisk unreachable |
+| `503` | Asterisk is disabled in this DEVMODE |
+
+**Example:**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
+  -H "Authorization: Token <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "channel": "Local/0503856087@default",
+        "exten": "0675653380",
+        "context": "default",
+        "callerid": "380443333333<0675653380>",
+        "variable": {"userId": "0"}
+      }'
+```
+
+**Mapping from old rawman parameters:**
+
+| rawman param | API field |
+|---|---|
+| `channel` | `channel` |
+| `exten` | `exten` |
+| `context` | `context` |
+| `priority` | `priority` |
+| `Variable` | `variable` (dict) |
+| `callerId` | `callerid` |
 
 ---
 
-## Planned Improvements
+## Known Limitations
 
-### OpenAPI / Swagger Documentation
+- No filtering or search on GET endpoints.
 
-Add interactive API documentation using [drf-spectacular](https://github.com/tfranzel/drf-spectacular) or [drf-yasg](https://github.com/axnsan12/drf-yasg).
+---
 
-**Scope:**
-- Auto-generate OpenAPI 3.0 schema from existing ViewSets
-- Expose Swagger UI at `/api/v1/docs/`
-- Expose ReDoc UI at `/api/v1/redoc/`
-- Expose raw schema at `/api/v1/schema/`
-- Annotate all endpoints with request/response examples, field descriptions, and status codes
+## API Documentation
+
+Interactive, auto-generated OpenAPI 3.0 documentation is available (powered by
+drf-spectacular). All three endpoints require authentication (a valid token or an
+authenticated session), the same as the rest of the API.
+
+- **Raw schema (OpenAPI 3.0, YAML):** `GET /api/v1/schema/`
+- **Swagger UI:** `GET /api/v1/docs/`
+- **ReDoc UI:** `GET /api/v1/redoc/`
+
+> **Note:** These three endpoints require authentication (`Authorization: Token <key>`),
+> just like the rest of the API. Opening them directly in a browser without a token
+> returns `401`. This is intentional — the documentation is not publicly exposed.
+
+The schema is generated directly from the DRF ViewSets and serializers, so it always
+matches the running code.
