@@ -22,11 +22,18 @@ SECRET_KEY = env.str(
     "DJANGO_SECRET_KEY", ""
 )  # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 
-if DEVMODE not in (DEVMODE_PRODUCTION, DEVMODE_STAGING):
+if DEVMODE == DEVMODE_WITHOUT_ASTERISK:
+    # DEBUG and a committed key are only acceptable for local, non-network dev.
     # SECURITY WARNING: don't run with debug turned on in production!
     DEBUG = True
     # SECURITY WARNING: keep the secret key used in production secret!
     SECRET_KEY = "django-insecure-dom_8=vl0m@(cfoacp393+*&3s#jrtl#rt45o6=k3#7%llprq^"
+elif not SECRET_KEY:
+    # Any network-reachable mode (Development / Staging / Production) must
+    # supply its own secret via the environment — never the committed one.
+    raise ImproperlyConfigured(
+        f"DJANGO_SECRET_KEY must be set for DEVMODE={DEVMODE!r}."
+    )
 
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1"])

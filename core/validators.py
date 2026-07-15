@@ -2,6 +2,7 @@ from typing import List, Dict, Optional, Tuple, Set
 from django.core.validators import BaseValidator
 import re
 
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import validate_ipv4_address
@@ -1083,3 +1084,17 @@ class DialplanHelper:
                 step += ";"
             formatted_steps.append(step)
         return "\n".join(formatted_steps)
+
+
+def validate_dialplan_field(value):
+    """Model-level dialplan validator.
+
+    Resolves the set of allowed macros from the database at call time (so it
+    stays in sync with `DialplanMacro` rows) and delegates to
+    `AsteriskDialplanValidator`. Attach this to `DialplanExtension.dialplan` so
+    that imports and management commands are validated the same way the admin
+    form is, not only the form's `clean_dialplan`.
+    """
+    DialplanMacro = apps.get_model("core", "DialplanMacro")
+    allowed_macros = set(DialplanMacro.objects.values_list("name", flat=True))
+    AsteriskDialplanValidator(allowed_macros=allowed_macros)(value)

@@ -29,6 +29,7 @@ from core.validators import (
     validate_asterisk_extension_prefix,
     validate_match_hosts,
     validate_penalty_value,
+    validate_dialplan_field,
 )
 
 import logging
@@ -626,6 +627,7 @@ class DialplanExtension(models.Model):
     dialplan = models.TextField(
         verbose_name=_("Extension scenario"),
         help_text=_("Use Asterisk AEL syntax to define the dialplan."),
+        validators=[validate_dialplan_field],
     )
     description = models.CharField(
         max_length=64,
