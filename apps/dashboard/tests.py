@@ -86,7 +86,7 @@ class TestGetAllQueues(DashboardAPITestBase):
     def test_returns_multiple_queues(self):
         q1 = {"members": {}, "calls": {}, "stats": {"waiting": 0}}
         q2 = {"members": {"SIP/200": {}}, "calls": {}, "stats": {"waiting": 1}}
-        self.mock_redis.keys.return_value = [
+        self.mock_redis.scan_iter.return_value = [
             "asterisk:queue:support",
             "asterisk:queue:sales",
         ]
@@ -100,14 +100,14 @@ class TestGetAllQueues(DashboardAPITestBase):
         self.assertEqual(data["sales"]["stats"]["waiting"], 1)
 
     def test_returns_empty_when_no_queues(self):
-        self.mock_redis.keys.return_value = []
+        self.mock_redis.scan_iter.return_value = []
         with self._patch_redis():
             resp = self.client.get("/dashboard/api/queues/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {})
 
     def test_skips_queue_with_none_data(self):
-        self.mock_redis.keys.return_value = ["asterisk:queue:ghost"]
+        self.mock_redis.scan_iter.return_value = ["asterisk:queue:ghost"]
         self.mock_redis.get.return_value = None
         with self._patch_redis():
             resp = self.client.get("/dashboard/api/queues/")

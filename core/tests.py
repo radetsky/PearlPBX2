@@ -642,6 +642,43 @@ class TestMakeQueuesConf(TestCase):
             ann.delete()
             moh.delete()
 
+    def test_queue_configuration_emits_previously_ignored_options(self):
+        moh = MusicOnHold.objects.create(name="test-queue-moh2", mode="files")
+        ann = QueueAnnouncements.objects.create(name="test-queue-ann2")
+        queue = Queue.objects.create(
+            name="test-support2",
+            music_class=moh,
+            queue_announcement=ann,
+            strategy="ringall",
+            timeout=30,
+            retry=5,
+            maxlen=10,
+            weight=5,
+            setqueuevar=True,
+        )
+        try:
+            result = make_queues_conf()
+            self.assertIn("maxlen=10", result)
+            self.assertIn("weight=5", result)
+            self.assertIn("setqueuevar=yes", result)
+        finally:
+            queue.delete()
+            ann.delete()
+            moh.delete()
+
+    def test_force_longest_waiting_caller_emitted(self):
+        gs = CallQueueGlobalSettings.objects.create(
+            persistent_members=True,
+            autofill=True,
+            monitor_type="MixMonitor",
+            force_longest_waiting_caller=True,
+        )
+        try:
+            result = make_queues_conf()
+            self.assertIn("force_longest_waiting_caller = yes", result)
+        finally:
+            gs.delete()
+
 
 class TestMakeQueuerules(TestCase):
     def test_queuerules_structure(self):

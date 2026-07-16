@@ -88,7 +88,7 @@ def get_queue_state(request, queue_name):
 def get_all_queues(request):
     try:
         r = _get_redis()
-        queue_keys = r.keys("asterisk:queue:*")
+        queue_keys = list(r.scan_iter("asterisk:queue:*"))
         queues = {}
         for key in queue_keys:
             queue_name = key.replace("asterisk:queue:", "")

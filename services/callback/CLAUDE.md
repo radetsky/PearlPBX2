@@ -42,7 +42,9 @@ Production deployment: `sudo systemctl start pearlpbx-callback` (unit file: `../
 
 **Multi-process**: uses `os.fork()` — parent + N-1 children, each running independent polling loops. Row locking prevents duplicate processing.
 
-**AMI reconnection**: automatic on disconnect via `on_disconnect()` callback.
+**AMI reconnection**: not automatic. A background health-check thread calls
+`os._exit(1)` when the AMI connection is lost; the process is expected to be
+supervised by systemd with `Restart=always` (see the provided unit file).
 
 ## Configuration
 

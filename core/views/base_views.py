@@ -146,12 +146,9 @@ class HomepageStatusView(LoginRequiredMixin, View):
             output = response.keys.get("Output", "")
             m = re.match(r"(Asterisk\s+[\d.]+)", output)
             ami_result["version"] = m.group(1) if m else output.split(" built")[0]
-            try:
-                client.logoff()
-            except Exception:
-                pass
             done.set()
 
+        client = None
         try:
             client = AMIClient(
                 address=settings.ASTERISK_MANAGER_HOST,
@@ -167,6 +164,12 @@ class HomepageStatusView(LoginRequiredMixin, View):
                 result["asterisk"] = ami_result
         except Exception as e:
             logger.warning("AMI unavailable in HomepageStatusView: %s", e)
+        finally:
+            if client is not None:
+                try:
+                    client.logoff()
+                except Exception:
+                    pass
 
         return JsonResponse(result)
 

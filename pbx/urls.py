@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 from django.views.i18n import set_language
 from django.views.static import serve
@@ -20,12 +21,12 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# Serve MOH files
+# Serve MOH files (authenticated users only — same tree is writable by admins)
 MOH_ROOT = (
     "/var/lib/asterisk/moh/"
     if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK
     else "moh/"
 )
 urlpatterns += [
-    path("moh/<path:path>", serve, {"document_root": MOH_ROOT}),
+    path("moh/<path:path>", login_required(serve), {"document_root": MOH_ROOT}),
 ]

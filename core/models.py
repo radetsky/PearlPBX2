@@ -188,6 +188,17 @@ class DialplanContext(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        if (
+            RoutingTable.objects.filter(name=self.name)
+            .exclude(pk=self.pk if self.pk else None)
+            .exists()
+        ):
+            raise ValidationError(
+                {"name": _('Context name "%(name)s" already exists in RoutingTable.') % {"name": self.name}}
+            )
+
     def save(self, *args, **kwargs):
         if (
             RoutingTable.objects.filter(name=self.name)
@@ -231,6 +242,17 @@ class RoutingTable(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if (
+            DialplanContext.objects.filter(name=self.name)
+            .exclude(pk=self.pk if self.pk else None)
+            .exists()
+        ):
+            raise ValidationError(
+                {"name": _('Context name "%(name)s" already exists in DialplanContext.') % {"name": self.name}}
+            )
 
     def save(self, *args, **kwargs):
         if (
@@ -429,6 +451,13 @@ class SIPUser(models.Model):
             using=using,
             update_fields=update_fields,
         )
+
+    def delete(self, *args, **kwargs):
+        default_users_context = DialplanContext.getUsersOrCreateUsers()
+        DialplanExtension.objects.filter(
+            context=default_users_context, ext=self.extension
+        ).delete()
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.username} ({self.name})"
@@ -835,7 +864,7 @@ class MusicOnHold(models.Model):
 
     mode = models.CharField(
         max_length=32,
-        default=1,
+        default=MusicOnHoldModes.FILES,
         choices=MusicOnHoldModes.choices,
         null=True,
         blank=False,
@@ -852,7 +881,7 @@ class MusicOnHold(models.Model):
 
     sort = models.CharField(
         max_length=32,
-        default=1,
+        default=MusicOnHoldSortModes.RANDOM,
         choices=MusicOnHoldSortModes.choices,
         null=True,
         blank=False,

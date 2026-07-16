@@ -6,6 +6,7 @@ import json
 import os
 import logging
 import random
+import re
 import time
 import uuid
 
@@ -39,6 +40,15 @@ def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"):
     dir_path = os.path.dirname(filename)
     full_path = os.path.join(base_dir, dir_path)
     os.makedirs(full_path, exist_ok=True)
+
+
+_SAFE_CALLERID_RE = re.compile(r"[^0-9A-Za-z+_-]")
+
+
+def _sanitize_for_path(value: str) -> str:
+    """Strip anything but digits/letters/+/_/- so a crafted caller ID cannot
+    inject path separators or MixMonitor option delimiters."""
+    return _SAFE_CALLERID_RE.sub("", value or "")
 
 
 class Database:
@@ -144,7 +154,9 @@ class Database:
         date_path = now.strftime("%Y/%m/%d")
         uuid_str = str(uuid.uuid4())
         time_str = now.strftime("%H_%M_%S")
-        filename = f"{date_path}/{time_str}_{src}_{dst}"
+        safe_src = _sanitize_for_path(src)
+        safe_dst = _sanitize_for_path(dst)
+        filename = f"{date_path}/{time_str}_{safe_src}_{safe_dst}"
         with self.get_session() as session:
             # Check if the filename already exists in the database
             existing_filename = session.execute(

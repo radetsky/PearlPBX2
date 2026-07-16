@@ -92,6 +92,7 @@ class PhoneProvisioningManager:
     def save_config_file(self, config_data, filename):
         """Save configuration file"""
         filepath = os.path.join(self.config_directory, filename)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         with open(filepath, "wb") as f:
             f.write(config_data)

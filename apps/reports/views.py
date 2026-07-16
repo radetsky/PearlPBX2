@@ -366,13 +366,52 @@ class QueueLogReportView(ReportViewPermissionMixin, FormView):
         return response
 
 
+def _serve_audio_file_response(request, file_path, content_type, filename):
+    """Shared Range/206 + full-file response logic for audio playback views."""
+    file_size = os.stat(file_path).st_size
+
+    if request.GET.get("download"):
+        return FileResponse(
+            open(file_path, "rb"),
+            content_type=content_type,
+            as_attachment=True,
+        )
+
+    range_header = request.META.get("HTTP_RANGE", "").strip()
+    range_match = (
+        re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
+    )
+
+    if range_match:
+        first = int(range_match.group(1))
+        last = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+        last = min(last, file_size - 1)
+        if first >= file_size or first > last:
+            return HttpResponse(status=416)
+        length = last - first + 1
+        with open(file_path, "rb") as f:
+            f.seek(first)
+            data = f.read(length)
+        response = HttpResponse(data, status=206, content_type=content_type)
+        response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
+        response["Content-Length"] = str(length)
+    else:
+        response = FileResponse(open(file_path, "rb"), content_type=content_type)
+        response["Content-Length"] = str(file_size)
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+
+    response["Accept-Ranges"] = "bytes"
+    response["Cache-Control"] = "private, max-age=3600"
+    return response
+
+
 class AudioFileView(ReportViewPermissionMixin, View):
     def get(self, request, record_id):
         record = get_object_or_404(MonitorFilenames, id=record_id)
         file_path = record.get_audio_file_path()
 
         try:
-            file_size = os.stat(file_path).st_size
+            os.stat(file_path)
         except FileNotFoundError:
             raise Http404("Audio file does not exist")
 
@@ -381,45 +420,7 @@ class AudioFileView(ReportViewPermissionMixin, View):
             content_type = "audio/wav"
 
         filename = os.path.basename(file_path)
-
-        if request.GET.get("download"):
-            response = FileResponse(
-                open(file_path, "rb"),
-                content_type=content_type,
-                as_attachment=True,
-            )
-        else:
-            range_header = request.META.get("HTTP_RANGE", "").strip()
-            range_match = (
-                re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
-            )
-
-            if range_match:
-                first = int(range_match.group(1))
-                last = (
-                    int(range_match.group(2)) if range_match.group(2) else file_size - 1
-                )
-                last = min(last, file_size - 1)
-                if first >= file_size or first > last:
-                    return HttpResponse(status=416)
-                length = last - first + 1
-                with open(file_path, "rb") as f:
-                    f.seek(first)
-                    data = f.read(length)
-                response = HttpResponse(data, status=206, content_type=content_type)
-                response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
-                response["Content-Length"] = str(length)
-            else:
-                response = FileResponse(
-                    open(file_path, "rb"), content_type=content_type
-                )
-                response["Content-Length"] = str(file_size)
-                response["Content-Disposition"] = f'inline; filename="{filename}"'
-
-            response["Accept-Ranges"] = "bytes"
-
-        response["Cache-Control"] = "private, max-age=3600"
-        return response
+        return _serve_audio_file_response(request, file_path, content_type, filename)
 
 
 class AudioFileByUniqueidView(ReportViewPermissionMixin, View):
@@ -438,7 +439,7 @@ class AudioFileByUniqueidView(ReportViewPermissionMixin, View):
             raise Http404("Audio file does not exist")
 
         try:
-            file_size = os.stat(file_path).st_size
+            os.stat(file_path)
         except FileNotFoundError:
             raise Http404("Audio file does not exist")
 
@@ -447,42 +448,7 @@ class AudioFileByUniqueidView(ReportViewPermissionMixin, View):
             content_type = "audio/mpeg" if file_path.endswith(".mp3") else "audio/wav"
 
         filename = os.path.basename(file_path)
-
-        if request.GET.get("download"):
-            response = FileResponse(
-                open(file_path, "rb"),
-                content_type=content_type,
-                as_attachment=True,
-            )
-        else:
-            range_header = request.META.get("HTTP_RANGE", "").strip()
-            range_match = (
-                re.match(r"bytes=(\d+)-(\d*)", range_header) if range_header else None
-            )
-            if range_match:
-                first = int(range_match.group(1))
-                last = (
-                    int(range_match.group(2)) if range_match.group(2) else file_size - 1
-                )
-                last = min(last, file_size - 1)
-                if first >= file_size or first > last:
-                    return HttpResponse(status=416)
-                length = last - first + 1
-                with open(file_path, "rb") as f:
-                    f.seek(first)
-                    data = f.read(length)
-                response = HttpResponse(data, status=206, content_type=content_type)
-                response["Content-Range"] = f"bytes {first}-{last}/{file_size}"
-                response["Content-Length"] = str(length)
-            else:
-                response = FileResponse(open(file_path, "rb"), content_type=content_type)
-                response["Content-Length"] = str(file_size)
-                response["Content-Disposition"] = f'inline; filename="{filename}"'
-
-            response["Accept-Ranges"] = "bytes"
-
-        response["Cache-Control"] = "private, max-age=3600"
-        return response
+        return _serve_audio_file_response(request, file_path, content_type, filename)
 
 
 class MonitorReportView(ReportViewPermissionMixin, View):
@@ -685,6 +651,7 @@ class CDRReportView(ReportViewPermissionMixin, View):
                 "Billed Duration",
                 "Status",
                 "Channel",
+                "Dest. Channel",
             ]
         )
 
@@ -959,6 +926,44 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                     ).values("callid", "data2")
                 }
 
+                all_callids = list(callerid_by_callid.keys())
+                all_callerids = list(set(callerid_by_callid.values()))
+
+                # Batch (once per queue, not per abandoned call) the three checks
+                # that used to run per-call inside the loop below.
+                lucky_new_callids = QueueLog.objects.filter(
+                    time__lte=date_to,
+                    queuename=queuename,
+                    event="ENTERQUEUE",
+                    data2__in=all_callerids,
+                ).exclude(callid__in=all_callids).values_list("callid", "time", "data2")
+
+                completed_callids = set(
+                    QueueLog.objects.filter(
+                        callid__in=[c for c, _t, _d in lucky_new_callids],
+                        event__in=["COMPLETECALLER", "COMPLETEAGENT"],
+                    ).values_list("callid", flat=True)
+                )
+                lucky_callerids_by_time = {}
+                for callid, entry_time, callerid in lucky_new_callids:
+                    if callid in completed_callids:
+                        lucky_callerids_by_time.setdefault(callerid, []).append(entry_time)
+
+                called_back_callerids = set(
+                    CDR.objects.filter(
+                        start__lte=date_to,
+                        disposition="ANSWERED",
+                        src__in=all_callerids,
+                    ).values_list("src", "start")
+                )
+                operator_callerids = set(
+                    CDR.objects.filter(
+                        start__lte=date_to,
+                        disposition="ANSWERED",
+                        dst__in=all_callerids,
+                    ).values_list("dst", "start")
+                )
+
                 called_back = 0
                 operators = 0
 
@@ -970,43 +975,27 @@ class AnalyticsMissedCallsView(ReportViewPermissionMixin, View):
                     if not callerid:
                         continue
 
-                    # Lucky: callerid re-entered same queue after abandon_time and completed
-                    new_callids = (
-                        QueueLog.objects.filter(
-                            time__gte=abandon_time,
-                            time__lte=date_to,
-                            queuename=queuename,
-                            event="ENTERQUEUE",
-                            data2=callerid,
-                        )
-                        .exclude(callid=callid)
-                        .values("callid")
-                    )
-
-                    if QueueLog.objects.filter(
-                        callid__in=new_callids,
-                        event__in=["COMPLETECALLER", "COMPLETEAGENT"],
-                    ).exists():
+                    # Lucky: re-entered the same queue after abandon_time and completed.
+                    if any(
+                        t >= abandon_time
+                        for t in lucky_callerids_by_time.get(callerid, [])
+                    ):
                         called_back += 1
                         continue
 
-                    # Called back: callerid called in via CDR after abandon_time (not through queue)
-                    if CDR.objects.filter(
-                        start__gte=abandon_time,
-                        start__lte=date_to,
-                        disposition="ANSWERED",
-                        src=callerid,
-                    ).exists():
+                    # Called back: caller dialed in via CDR after abandon_time.
+                    if any(
+                        src == callerid and start >= abandon_time
+                        for src, start in called_back_callerids
+                    ):
                         called_back += 1
                         continue
 
-                    # Done: operator dialed callerid after abandon_time (only if not lucky/called_back)
-                    if CDR.objects.filter(
-                        start__gte=abandon_time,
-                        start__lte=date_to,
-                        disposition="ANSWERED",
-                        dst=callerid,
-                    ).exists():
+                    # Done: operator dialed the caller after abandon_time.
+                    if any(
+                        dst == callerid and start >= abandon_time
+                        for dst, start in operator_callerids
+                    ):
                         operators += 1
 
                 labels.append(queuename)

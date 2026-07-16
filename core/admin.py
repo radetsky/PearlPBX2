@@ -1,6 +1,6 @@
 from typing import Optional
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -260,11 +260,22 @@ class ConfigurationFileAdmin(admin.ModelAdmin):
             obj.save()
             return
         if last_instance.content != obj.content:
-            # Create new ConfigirationFile instance with incremented version
+            # Create new ConfigurationFile instance with incremented version
             obj.pk = None
             obj.version = last_instance.version + 1
             obj.created = timezone.now()
             obj.save()
+        else:
+            # Content unchanged: still persist name/description/path edits on the
+            # existing row instead of silently discarding them.
+            obj.save()
+            messages.info(
+                request,
+                _(
+                    "Content unchanged — no new version created; other field "
+                    "edits were saved."
+                ),
+            )
 
 
 class SoundFileAdmin(admin.ModelAdmin):

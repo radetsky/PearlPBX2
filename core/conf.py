@@ -578,6 +578,10 @@ def _make_single_queue_config(queue: Queue) -> list[str]:
     output.append(_opt("announce", queue.announce))
     output.append(_opt("queue_announce", queue.queue_announce))
     output.append(f"strategy={queue.strategy}")
+    output.append(_opt("maxlen", queue.maxlen, "0"))
+    output.append(f"weight={queue.weight}")
+    output.append(_bool_opt("setqueuevar", queue.setqueuevar))
+    output.append(_bool_opt("random-periodic-announce", queue.random_periodic_announce))
     output.append(_opt("servicelevel", queue.service_level, "0"))
     output.append(_opt("context", queue.context))
     output.append(_opt("timeout", queue.timeout, "15"))
@@ -652,6 +656,7 @@ def make_queues_conf():
         )
         plaintext += f"negative_penalty_invalid = {'yes' if global_settings.negative_penalty_invalid else 'no'}\n"
         plaintext += f"log_membername_as_agent = {'yes' if global_settings.log_membername_as_agent else 'no'}\n"
+        plaintext += f"force_longest_waiting_caller = {'yes' if global_settings.force_longest_waiting_caller else 'no'}\n"
     else:
         plaintext += "persistent_members = yes\n"
         plaintext += "autofill = yes\n"
@@ -659,6 +664,7 @@ def make_queues_conf():
         plaintext += "shared_lastcall = no\n"
         plaintext += "negative_penalty_invalid = yes\n"
         plaintext += "log_membername_as_agent = yes\n"
+        plaintext += "force_longest_waiting_caller = no\n"
 
     plaintext += "; ==== Queues section ====\n"
     plaintext += make_queues_configurations()

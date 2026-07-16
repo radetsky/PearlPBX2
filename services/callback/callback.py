@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import psycopg2
+from psycopg2 import sql
 import sys
 import threading
 import time
@@ -262,19 +263,19 @@ class Callback:
         dt = datetime.now(timezone.utc)
         cursor = self.conn.cursor()
 
-        cursor.execute(
-            f"update {self.dbtable} set updated=%s, dial_status=%s where dst=%s and id=%s",
-            (dt, status, dst, id),
-        )
+        query = sql.SQL(
+            "update {table} set updated=%s, dial_status=%s where dst=%s and id=%s"
+        ).format(table=sql.Identifier(self.dbtable))
+        cursor.execute(query, (dt, status, dst, id))
         self.conn.commit()
 
     def update_uniqueid(self, id: int, uniqueid: str):
         self.ensure_db_connected()
         cursor = self.conn.cursor()
-        cursor.execute(
-            f"update {self.dbtable} set uniqueid=%s where id=%s",
-            (uniqueid, id),
+        query = sql.SQL("update {table} set uniqueid=%s where id=%s").format(
+            table=sql.Identifier(self.dbtable)
         )
+        cursor.execute(query, (uniqueid, id))
         self.conn.commit()
 
     def _on_originate_response(self, id: int, dst: str, response):

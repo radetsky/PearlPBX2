@@ -1,10 +1,21 @@
+import csv
+import io
+import os
+import tempfile
 from datetime import timedelta
+from unittest.mock import patch
 
-from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
 from apps.reports.models import CDR, QueueLog
 from apps.reports.services.lost_and_found import build_lost_and_found
+from apps.reports.views import (
+    AnalyticsMissedCallsView,
+    CDRReportView,
+    _serve_audio_file_response,
+)
 
 
 def _make_queuelog(callid, event, time, queuename="testqueue", agent="", data1="", data2=""):
@@ -161,3 +172,137 @@ class BuildLostAndFoundTest(TestCase):
 
         limited = build_lost_and_found(self._qs(), limit=3)
         self.assertEqual(len(limited), 3)
+
+
+class ExportCdrCsvTest(TestCase):
+    def test_header_and_row_have_same_column_count(self):
+        _make_cdr(
+            src="100",
+            dst="200",
+            start=timezone.now(),
+            channel="PJSIP/100-000001",
+            dstchannel="PJSIP/200-000002",
+        )
+        response = CDRReportView.export_cdr_csv(None, CDR.objects.all())
+        content = response.content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(content)))
+        header, data_row = rows[0], rows[1]
+        self.assertEqual(len(header), len(data_row))
+        self.assertEqual(header[-1], "Dest. Channel")
+        self.assertEqual(data_row[-1], "PJSIP/200-000002")
+
+
+class AnalyticsMissedCallsBatchTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = get_user_model().objects.create_superuser(
+            username="analytics-admin", email="a@example.com", password="pass12345"
+        )
+        self.now = timezone.now().replace(microsecond=0)
+        self.abandon_time = self.now - timedelta(minutes=30)
+        self.callerid = "0672381745"
+        self.callid = "analytics-callid-001"
+
+        _make_queuelog(
+            callid=self.callid,
+            event="ENTERQUEUE",
+            time=self.abandon_time - timedelta(seconds=10),
+            queuename="supportq",
+            data2=self.callerid,
+        )
+        _make_queuelog(
+            callid=self.callid,
+            event="ABANDON",
+            time=self.abandon_time,
+            queuename="supportq",
+            data2=self.callerid,
+        )
+
+    def _get_table_data(self, date_from, date_to):
+        request = self.factory.get(
+            "/reports/analytics/missed-calls/",
+            {"date_from": date_from, "date_to": date_to},
+        )
+        request.user = self.user
+        with patch("apps.reports.views.render") as mock_render:
+            mock_render.return_value = None
+            AnalyticsMissedCallsView.as_view()(request)
+            context = mock_render.call_args[0][2]
+        return context["table_data"]
+
+    def _fmt(self, dt):
+        return timezone.localtime(dt).strftime("%Y-%m-%dT%H:%M")
+
+    def test_operator_called_back_counted_via_batch_queries(self):
+        _make_cdr(
+            src="101",
+            dst=self.callerid,
+            start=self.abandon_time + timedelta(minutes=5),
+            disposition="ANSWERED",
+        )
+        table_data = self._get_table_data(
+            self._fmt(self.now - timedelta(hours=1)), self._fmt(self.now)
+        )
+        row = next(r for r in table_data if r["queuename"] == "supportq")
+        self.assertEqual(row["missed"], 1)
+        self.assertEqual(row["operators"], 1)
+        self.assertEqual(row["called_back"], 0)
+
+    def test_caller_called_back_counted_via_batch_queries(self):
+        _make_cdr(
+            src=self.callerid,
+            dst="239",
+            start=self.abandon_time + timedelta(minutes=3),
+            disposition="ANSWERED",
+        )
+        table_data = self._get_table_data(
+            self._fmt(self.now - timedelta(hours=1)), self._fmt(self.now)
+        )
+        row = next(r for r in table_data if r["queuename"] == "supportq")
+        self.assertEqual(row["missed"], 1)
+        self.assertEqual(row["called_back"], 1)
+        self.assertEqual(row["operators"], 0)
+
+
+class ServeAudioFileResponseTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.file_path = os.path.join(self.tmpdir.name, "test.wav")
+        with open(self.file_path, "wb") as f:
+            f.write(b"0123456789")
+
+    def test_full_file_response_headers(self):
+        request = self.factory.get("/reports/audio/1/")
+        response = _serve_audio_file_response(
+            request, self.file_path, "audio/wav", "test.wav"
+        )
+        self.assertEqual(response["Content-Length"], "10")
+        self.assertEqual(response["Accept-Ranges"], "bytes")
+        self.assertIn("test.wav", response["Content-Disposition"])
+
+    def test_range_request_returns_206(self):
+        request = self.factory.get("/reports/audio/1/", HTTP_RANGE="bytes=2-5")
+        response = _serve_audio_file_response(
+            request, self.file_path, "audio/wav", "test.wav"
+        )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response["Content-Range"], "bytes 2-5/10")
+        self.assertEqual(response["Content-Length"], "4")
+        self.assertEqual(response.content, b"2345")
+
+    def test_same_headers_for_both_views_shared_logic(self):
+        """Regression test: both AudioFileView and AudioFileByUniqueidView
+        delegate to the same helper, so identical requests produce identical
+        Range headers."""
+        request1 = self.factory.get("/reports/audio/1/", HTTP_RANGE="bytes=0-3")
+        request2 = self.factory.get("/reports/audio/uid/1/", HTTP_RANGE="bytes=0-3")
+        response1 = _serve_audio_file_response(
+            request1, self.file_path, "audio/wav", "test.wav"
+        )
+        response2 = _serve_audio_file_response(
+            request2, self.file_path, "audio/wav", "test.wav"
+        )
+        self.assertEqual(response1["Content-Range"], response2["Content-Range"])
+        self.assertEqual(response1.content, response2.content)
