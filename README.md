@@ -79,7 +79,7 @@ For production deployment with WebSocket support:
 uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000
 ```
 
-See [docs/install_asterisk.md](docs/install_asterisk.md) for full installation including Asterisk compilation, PostgreSQL setup, nginx configuration, and systemd unit files.
+See [docs/en/install_asterisk.md](docs/en/install_asterisk.md) for full installation including Asterisk compilation, PostgreSQL setup, nginx configuration, and systemd unit files.
 
 ## Configuration
 
@@ -97,7 +97,7 @@ All configuration is done via environment variables. Copy `env.sample` to `.env`
 | `REDIS_URL` | Redis URL (default: `redis://localhost:6379/0`) |
 | `TFTP_DIR` | TFTP root directory for phone provisioning |
 
-Django runs under the `asterisk` OS user to have write access to `/etc/asterisk`. See [INSTALL.md](INSTALL.md) for details.
+Django runs under the `asterisk` OS user to have write access to `/etc/asterisk`. See [docs/en/INSTALL.md](docs/en/INSTALL.md) for details.
 
 ## Standalone Services
 

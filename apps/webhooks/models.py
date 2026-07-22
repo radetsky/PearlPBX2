@@ -1,0 +1,153 @@
+import re
+
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+from core.models import DialplanContext, Queue
+
+TEMPLATE_VARIABLES = frozenset(
+    {
+        "event",
+        "uniqueid",
+        "caller_id_num",
+        "caller_id_name",
+        "exten",
+        "context",
+        "queue",
+        "timestamp",
+        "duration",
+        "cause",
+        "cause_txt",
+        "answered_time",
+        "billsec",
+        "recorded",
+        "recording_expected",
+        "recording_url",
+        "recording_file",
+        "missed",
+        "wait_time",
+        "member_name",
+        "member_interface",
+        "member_number",
+        "ringtime",
+        "holdtime",
+        "answered_by_member",
+        "answered_by_interface",
+    }
+)
+
+_PLACEHOLDER_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _collect_placeholders(value):
+    if isinstance(value, str):
+        return set(_PLACEHOLDER_RE.findall(value))
+    if isinstance(value, dict):
+        found = set()
+        for v in value.values():
+            found |= _collect_placeholders(v)
+        return found
+    if isinstance(value, list):
+        found = set()
+        for v in value:
+            found |= _collect_placeholders(v)
+        return found
+    return set()
+
+
+def validate_payload_template(value):
+    """Template must be a JSON object; ${...} placeholders must be known variables."""
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        raise ValidationError(_("Payload template must be a JSON object."))
+    unknown = _collect_placeholders(value) - TEMPLATE_VARIABLES
+    if unknown:
+        raise ValidationError(
+            _("Unknown placeholders: %(names)s. Allowed: %(allowed)s"),
+            params={
+                "names": ", ".join(sorted(unknown)),
+                "allowed": ", ".join(sorted(TEMPLATE_VARIABLES)),
+            },
+        )
+
+
+class Webhook(models.Model):
+    name = models.CharField(max_length=64, unique=True)
+    description = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    url = models.URLField(
+        max_length=512,
+        help_text=_("Endpoint that receives the JSON POST (CRM side)."),
+    )
+    send_incoming = models.BooleanField(
+        default=True,
+        help_text=_("Send an event when an incoming call starts."),
+    )
+    send_ended = models.BooleanField(
+        default=True,
+        help_text=_(
+            "Send an event when a call ends. Only calls announced by an "
+            "incoming event are reported, so this requires incoming events."
+        ),
+    )
+    send_missed = models.BooleanField(
+        default=False,
+        help_text=_("Send an event when a caller abandons a queue (missed call)."),
+    )
+    send_answered = models.BooleanField(
+        default=False,
+        help_text=_("Send an event when a queue member answers a call."),
+    )
+    contexts = models.ManyToManyField(
+        DialplanContext,
+        blank=True,
+        related_name="webhooks",
+        help_text=_("Incoming calls entering these contexts trigger the webhook."),
+    )
+    queues = models.ManyToManyField(
+        Queue,
+        blank=True,
+        related_name="webhooks",
+        help_text=_("Calls joining these queues trigger the webhook."),
+    )
+    headers = models.JSONField(
+        blank=True,
+        default=dict,
+        help_text=_('Extra HTTP headers, e.g. {"Authorization": "Bearer ..."}.'),
+    )
+    secret = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text=_(
+            "Optional shared secret. When set, requests carry an HMAC-SHA256 "
+            "signature of the body in the X-PearlPBX-Signature header."
+        ),
+    )
+    timeout = models.PositiveSmallIntegerField(
+        default=5, help_text=_("HTTP timeout per attempt, seconds.")
+    )
+    retries = models.PositiveSmallIntegerField(
+        default=1, help_text=_("Extra delivery attempts after a failure.")
+    )
+    payload_template = models.JSONField(
+        null=True,
+        blank=True,
+        validators=[validate_payload_template],
+        help_text=_(
+            "Optional custom JSON body. String values may use ${placeholders}; "
+            "empty means the default payload."
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = "webhook"
+        verbose_name = _("Webhook")
+        verbose_name_plural = _("Webhooks")

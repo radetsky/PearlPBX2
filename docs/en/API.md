@@ -310,6 +310,37 @@ curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
 
 ---
 
+## Call Recordings
+
+**`GET /api/v1/recordings/<uniqueid>/`**
+
+Fetch a recorded call's audio by Asterisk uniqueid. This is the endpoint referenced
+by `recording_url` in CRM webhook payloads — see
+[CRM integration guide (Ukrainian)](../ua/crm-integration.md) for the full webhook
+reference. Supports HTTP `Range` requests for streaming/seeking, and a
+`?download=1` query parameter to force a `Content-Disposition: attachment` response.
+
+**Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `200` / `206` | The audio file (`audio/wav` or `audio/mpeg`), full or partial (Range) |
+| `401` | Authentication credentials were not provided |
+| `404` | No recording exists for this uniqueid (not recorded, or not yet written to disk) |
+
+**Example:**
+
+```bash
+curl -H "Authorization: Token <your-token>" \
+  http://127.0.0.1:8000/api/v1/recordings/1753000000.42/ \
+  -o call.wav
+```
+
+Access is not scoped further — any valid API token can fetch any recording, the
+same as the rest of this API.
+
+---
+
 ## Known Limitations
 
 - No filtering or search on GET endpoints.

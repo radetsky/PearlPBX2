@@ -169,7 +169,7 @@ python listener.py
 - Password fields should use `PasswordWithToggleInput` widget from `core/widgets.py`
 
 ### Security Considerations
-- Django runs as user `asterisk` to access `/etc/asterisk` (see INSTALL.md)
+- Django runs as user `asterisk` to access `/etc/asterisk` (see docs/en/INSTALL.md)
 - AMI credentials are stored in environment variables, never hardcoded
 - Production mode requires DJANGO_SECRET_KEY, SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE enabled
 - DEVMODE setting controls security features: "Production", "Staging", "Development", "without_asterisk_on_localhost"

@@ -6,11 +6,14 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
+
+from core.models import MonitorFilenames
 
 from apps.reports.models import CDR, QueueLog
 from apps.reports.services.lost_and_found import build_lost_and_found
+from apps.reports.services.recordings import find_recording_path_by_uniqueid
 from apps.reports.views import (
     AnalyticsMissedCallsView,
     CDRReportView,
@@ -306,3 +309,45 @@ class ServeAudioFileResponseTest(TestCase):
         )
         self.assertEqual(response1["Content-Range"], response2["Content-Range"])
         self.assertEqual(response1.content, response2.content)
+
+
+class FindRecordingPathByUniqueidTest(TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.settings_override = override_settings(
+            ASTERISK_MONITOR_DIR=self.tmpdir.name, ASTERISK_BACKUP_MONITOR_DIR=""
+        )
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+
+    def _write(self, relative_path):
+        path = os.path.join(self.tmpdir.name, relative_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(b"audio")
+        return path
+
+    def test_legacy_flat_file_found(self):
+        path = self._write("123.456.wav")
+        self.assertEqual(find_recording_path_by_uniqueid("123.456"), path)
+
+    def test_new_style_file_found_via_monitor_filenames(self):
+        path = self._write("2026/07/21/10_00_00_100_200.wav")
+        MonitorFilenames.objects.create(
+            src="100",
+            dst="200",
+            filename="2026/07/21/10_00_00_100_200",
+            cdr_uniqueid="123.456",
+        )
+        self.assertEqual(find_recording_path_by_uniqueid("123.456"), path)
+
+    def test_missing_recording_returns_none(self):
+        MonitorFilenames.objects.create(
+            src="100", dst="200", filename="2026/07/21/none", cdr_uniqueid="123.456"
+        )
+        self.assertIsNone(find_recording_path_by_uniqueid("123.456"))
+
+    def test_invalid_uniqueid_returns_none(self):
+        self.assertIsNone(find_recording_path_by_uniqueid("../../etc/passwd"))
+        self.assertIsNone(find_recording_path_by_uniqueid(""))

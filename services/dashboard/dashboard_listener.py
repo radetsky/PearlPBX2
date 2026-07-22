@@ -7,7 +7,6 @@ import logging
 import signal
 import sys
 import time
-import urllib.request
 from collections import defaultdict
 
 import threading
@@ -17,18 +16,26 @@ import redis.asyncio as redis
 from asterisk.ami import AMIClient, SimpleAction
 from datetime import datetime
 
+import re
+
+from webhook_sender import WebhookManager, post_json
+
+_MEMBER_INTERFACE_RE = re.compile(r"^(?:SIP|PJSIP)/(.+)$", re.IGNORECASE)
+
+
+def extract_member_number(member_interface):
+    """Extract the plain extension/number from a queue member interface,
+    e.g. "PJSIP/101" -> "101". Returns the input unchanged if it doesn't match."""
+    if not member_interface:
+        return None
+    match = _MEMBER_INTERFACE_RE.match(member_interface)
+    return match.group(1) if match else member_interface
+
 
 def _post_to_slack(webhook_url, text, username, timeout):
     """Send a plain-text message to a Slack incoming webhook."""
     payload = json.dumps({"text": text, "username": username}).encode("utf-8")
-    req = urllib.request.Request(
-        webhook_url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.status
+    return post_json(webhook_url, payload, {}, timeout)
 
 
 def _build_missed_slack_text(entries):
@@ -70,6 +77,7 @@ class DashboardAMIListener:
         self.queue_state = {}
         self.channels_state = {}  # State of all active channels
         self.event_handlers = self.set_event_handlers()
+        self.webhooks = WebhookManager(self.redis_client, self.logger)
 
         self.slack_webhook_url = self.params.get("slack_missed_call_webhook_url", "")
         self.slack_timeout = int(self.params.get("slack_timeout", 4))
@@ -306,6 +314,33 @@ class DashboardAMIListener:
             },
         )
 
+        if self.webhooks.enabled:
+            notified = await self.webhooks.on_incoming(
+                {
+                    "uniqueid": uniqueid,
+                    "caller_id_num": caller_id_num,
+                    "caller_id_name": caller_id_name,
+                    "exten": exten,
+                    "context": context,
+                    "queue": None,
+                    # AGI that decides on recording has not run yet at Newchannel
+                    "recording_expected": None,
+                }
+            )
+            if notified:
+                await self.publish_event(
+                    "call_incoming",
+                    {
+                        "uniqueid": uniqueid,
+                        "channel": channel,
+                        "caller_id_num": caller_id_num,
+                        "caller_id_name": caller_id_name,
+                        "context": context,
+                        "exten": exten,
+                        "webhooks": notified,
+                    },
+                )
+
         self.logger.info(
             f"New channel: {channel} ({caller_id_num}) - {channel_state_desc}"
         )
@@ -477,6 +512,26 @@ class DashboardAMIListener:
             },
         )
 
+        notified = await self.webhooks.on_hangup(
+            {
+                "uniqueid": uniqueid,
+                "cause": cause,
+                "cause_txt": cause_txt,
+                "variables": channel_data.get("variables", {}),
+            }
+        )
+        if notified:
+            await self.publish_event(
+                "call_ended",
+                {
+                    "uniqueid": uniqueid,
+                    "channel": channel,
+                    "cause": cause,
+                    "cause_txt": cause_txt,
+                    "webhooks": notified,
+                },
+            )
+
         # Remove channel from in-memory state
         if channel in self.channels_state:
             del self.channels_state[channel]
@@ -548,7 +603,14 @@ class DashboardAMIListener:
         uniqueid = event.get("Uniqueid")
 
         # Track only important variables
-        important_vars = ["ANSWEREDTIME", "DIALEDTIME", "HANGUPCAUSE", "CDR(billsec)"]
+        important_vars = [
+            "ANSWEREDTIME",
+            "DIALEDTIME",
+            "HANGUPCAUSE",
+            "CDR(billsec)",
+            "MIXMONITOR",
+            "MIXMONITOR_FILENAME",
+        ]
 
         if variable in important_vars:
             if channel in self.channels_state:
@@ -743,9 +805,46 @@ class DashboardAMIListener:
             },
         )
 
+        if self.webhooks.enabled:
+            channel_data = self.channels_state.get(channel, {})
+            mixmonitor = channel_data.get("variables", {}).get("MIXMONITOR")
+            notified = await self.webhooks.on_incoming(
+                {
+                    "uniqueid": uniqueid,
+                    "caller_id_num": caller_id,
+                    "caller_id_name": event.get("CallerIDName"),
+                    "exten": channel_data.get("exten"),
+                    "context": channel_data.get("context"),
+                    "queue": queue_name,
+                    # AGI usually runs before Queue(), so MIXMONITOR is known here
+                    "recording_expected": None if mixmonitor is None else mixmonitor == "1",
+                }
+            )
+            if notified:
+                await self.publish_event(
+                    "call_incoming",
+                    {
+                        "uniqueid": uniqueid,
+                        "channel": channel,
+                        "caller_id_num": caller_id,
+                        "queue": queue_name,
+                        "webhooks": notified,
+                    },
+                )
+
         self.logger.info(
             f"Queue {queue_name}: Caller {caller_id} joined (position {position})"
         )
+
+    @staticmethod
+    def _queue_wait_time(call):
+        join_time = (call or {}).get("join_time")
+        if not join_time:
+            return None
+        try:
+            return int((datetime.now() - datetime.fromisoformat(join_time)).total_seconds())
+        except ValueError:
+            return None
 
     async def _remove_caller_from_queue(self, queue_name, uniqueid):
         call = self.queue_state.get(queue_name, {}).get("calls", {}).pop(uniqueid, None)
@@ -778,6 +877,26 @@ class DashboardAMIListener:
         self.logger.info(
             f"Queue {queue_name}: Call {uniqueid} abandoned (caller: {caller_id})"
         )
+
+        if self.webhooks.enabled:
+            notified = await self.webhooks.on_abandon(
+                {
+                    "uniqueid": uniqueid,
+                    "queue": queue_name,
+                    "caller_id_num": caller_id,
+                    "wait_time": self._queue_wait_time(call),
+                }
+            )
+            if notified:
+                await self.publish_event(
+                    "call_missed",
+                    {
+                        "uniqueid": uniqueid,
+                        "queue": queue_name,
+                        "caller_id_num": caller_id,
+                        "webhooks": notified,
+                    },
+                )
 
         if self.slack_webhook_url:
             self._missed_buffer.append({
@@ -820,7 +939,12 @@ class DashboardAMIListener:
         member_name = event.get("MemberName")
         uniqueid = event.get("Uniqueid")
         channel = event.get("Channel")
-        member_channel = event.get("DestChannel")
+        # AgentConnect carries the member interface as "Member" (falling back to
+        # "Interface" for older Asterisk versions); it never has "DestChannel".
+        member_interface = event.get("Member") or event.get("Interface")
+        member_number = extract_member_number(member_interface)
+        ringtime = event.get("Ringtime")
+        holdtime = event.get("Holdtime")
 
         await self.publish_event(
             "agent_connect",
@@ -829,12 +953,40 @@ class DashboardAMIListener:
                 "member": member_name,
                 "unique_id": uniqueid,
                 "channel": channel,
-                "member_channel": member_channel,
+                "member_interface": member_interface,
             },
         )
 
+        if self.webhooks.enabled:
+            channel_data = self.channels_state.get(channel, {})
+            notified = await self.webhooks.on_agent_connect(
+                {
+                    "uniqueid": uniqueid,
+                    "queue": queue_name,
+                    "caller_id_num": channel_data.get("caller_id_num"),
+                    "caller_id_name": channel_data.get("caller_id_name"),
+                    "member_name": member_name,
+                    "member_interface": member_interface,
+                    "member_number": member_number,
+                    "ringtime": ringtime,
+                    "holdtime": holdtime,
+                }
+            )
+            if notified:
+                await self.publish_event(
+                    "call_answered",
+                    {
+                        "uniqueid": uniqueid,
+                        "channel": channel,
+                        "queue": queue_name,
+                        "member_name": member_name,
+                        "member_interface": member_interface,
+                        "webhooks": notified,
+                    },
+                )
+
         self.logger.info(
-            f"Queue {queue_name}: Agent {member_name} connected to call {uniqueid}"
+            f"Queue {queue_name}: Agent {member_name} ({member_interface}) connected to call {uniqueid}"
         )
 
     # ============ INITIALIZATION ============
@@ -865,6 +1017,7 @@ class DashboardAMIListener:
                 await asyncio.sleep(30)
 
                 await self.redis_client.ping()  # type: ignore
+                await self.webhooks.load_config()
                 await self.update_channels_state()
                 if self.queue_state:
                     async with self.redis_client.pipeline(transaction=False) as pipe:
@@ -903,6 +1056,11 @@ class DashboardAMIListener:
             except Exception as e:
                 self.logger.error(f"Slack flush on shutdown failed: {e}")
 
+        try:
+            await self.webhooks.wait_pending()
+        except Exception as e:
+            self.logger.error(f"Webhook flush on shutdown failed: {e}")
+
         if self.ami:
             self.ami.logoff()
 
@@ -921,6 +1079,7 @@ class DashboardAMIListener:
         self.loop = asyncio.get_running_loop()
         self.ami.add_event_listener(on_event=self.event_listener_sync)
 
+        await self.webhooks.load_config()
         await self.restore_pause_states()
         await asyncio.sleep(
             1

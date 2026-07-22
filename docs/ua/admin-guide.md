@@ -147,8 +147,8 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 
 ### Докладна інструкція
 
-- Повна інструкція зі встановлення Asterisk: [docs/install_asterisk.md](install_asterisk.md)
-- Загальні вимоги та налаштування: [INSTALL.md](../INSTALL.md)
+- Повна інструкція зі встановлення Asterisk: [docs/en/install_asterisk.md](../en/install_asterisk.md)
+- Загальні вимоги та налаштування: [docs/en/INSTALL.md](../en/INSTALL.md)
 - Docker-розгортання: `docker-compose.yml` (django, asterisk, postgres, redis)
 - Ansible-розгортання: `ansible/` (9 ролей: system, postgres, redis, asterisk, pearlpbx2, services, nginx, tftp, firewall)
 
@@ -165,7 +165,7 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 
 ## 4. Конфігурація через змінні середовища
 
-Всі налаштування задаються через змінні середовища. Приклад: [env.sample](../env.sample).
+Всі налаштування задаються через змінні середовища. Приклад: [env.sample](../../env.sample).
 
 ### Обов'язкові змінні
 
@@ -797,7 +797,9 @@ context check_blacklist {
 
 ## 17. REST API
 
-Система надає REST API для зовнішньої інтеграції. Докладна документація: [docs/API.md](API.md).
+Система надає REST API для зовнішньої інтеграції. Докладна документація: [docs/en/API.md](../en/API.md).
+
+Для інтеграції з CRM-системами (веб-хуки про дзвінки та доступ до записів розмов через API) див. окремий гайд: [docs/ua/crm-integration.md](crm-integration.md).
 
 ### Короткий огляд
 

@@ -6,7 +6,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 
-from apps.api.views import lists, calls
+from apps.api.views import lists, calls, recordings
 
 router = DefaultRouter()
 router.register("blacklist", lists.BlacklistViewSet, basename="blacklist")
@@ -24,5 +24,10 @@ urlpatterns = [
         name="lists_entry_detail",
     ),
     path("calls/originate/", calls.OriginateView.as_view(), name="calls_originate"),
+    path(
+        "recordings/<str:uniqueid>/",
+        recordings.RecordingByUniqueidView.as_view(),
+        name="recording_by_uniqueid",
+    ),
     path("", include(router.urls)),
 ]

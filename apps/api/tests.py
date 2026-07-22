@@ -1,3 +1,5 @@
+import os
+import tempfile
 import uuid
 
 from django.contrib.auth import get_user_model
@@ -9,7 +11,7 @@ from rest_framework.test import APITestCase
 from unittest.mock import patch, MagicMock
 
 from apps.api.models import CustomListNames, CustomListEntries
-from core.models import Blacklist, Whitelist, Contact
+from core.models import Blacklist, Whitelist, Contact, MonitorFilenames
 
 
 class BaseAPITestCase(APITestCase):
@@ -364,3 +366,52 @@ class OriginateApiTests(APITestCase):
         self._auth()
         resp = self.client.post(self.url, self.body, format="json")
         self.assertEqual(resp.status_code, 502)
+
+
+class RecordingsApiTests(BaseAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.settings_override = override_settings(
+            ASTERISK_MONITOR_DIR=self.tmpdir.name, ASTERISK_BACKUP_MONITOR_DIR=""
+        )
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+
+    def _write_recording(self, relative_path, content=b"RIFFaudio"):
+        path = os.path.join(self.tmpdir.name, relative_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(content)
+        return path
+
+    def test_requires_auth(self):
+        self.client.credentials()
+        resp = self.client.get("/api/v1/recordings/123.456/")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_legacy_recording_served_with_token(self):
+        self._write_recording("123.456.wav")
+        resp = self.client.get("/api/v1/recordings/123.456/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(b"".join(resp.streaming_content), b"RIFFaudio")
+
+    def test_new_style_recording_served_via_monitor_filenames(self):
+        self._write_recording("2026/07/21/10_00_00_100_200.wav")
+        MonitorFilenames.objects.create(
+            src="100",
+            dst="200",
+            filename="2026/07/21/10_00_00_100_200",
+            cdr_uniqueid="123.456",
+        )
+        resp = self.client.get("/api/v1/recordings/123.456/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_missing_recording_404(self):
+        resp = self.client.get("/api/v1/recordings/123.456/")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_invalid_uniqueid_404(self):
+        resp = self.client.get("/api/v1/recordings/not-a-uniqueid/")
+        self.assertEqual(resp.status_code, 404)

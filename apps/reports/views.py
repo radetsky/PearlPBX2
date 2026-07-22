@@ -24,6 +24,7 @@ from core.models import (
 )
 
 from apps.reports.mixins import ReportViewPermissionMixin
+from apps.reports.services.recordings import find_recording_path_by_uniqueid
 from apps.reports.models import CDR
 from apps.reports.forms import (
     ASTERISK_NONE,
@@ -425,22 +426,8 @@ class AudioFileView(ReportViewPermissionMixin, View):
 
 class AudioFileByUniqueidView(ReportViewPermissionMixin, View):
     def get(self, request, uniqueid):
-        if not re.match(r"^[\d.]+$", uniqueid):
-            raise Http404("Invalid uniqueid")
-
-        file_path = None
-        for ext in (".mp3", ".wav"):
-            candidate = os.path.join(settings.ASTERISK_MONITOR_DIR, uniqueid + ext)
-            if os.path.exists(candidate):
-                file_path = candidate
-                break
-
+        file_path = find_recording_path_by_uniqueid(uniqueid)
         if not file_path:
-            raise Http404("Audio file does not exist")
-
-        try:
-            os.stat(file_path)
-        except FileNotFoundError:
             raise Http404("Audio file does not exist")
 
         content_type, _ = mimetypes.guess_type(file_path)

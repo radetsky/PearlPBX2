@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.dashboard",
     "apps.lists",
+    "apps.webhooks",
     "pbx.apps.MyAdminConfig",  # replaces 'django.contrib.admin'
 ]
 
@@ -225,12 +226,16 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "PearlPBX2 API",
-    "DESCRIPTION": "REST API for PearlPBX2 — blacklist, whitelist, contacts, and custom lists.",
+    "DESCRIPTION": "REST API for PearlPBX2 — blacklist, whitelist, contacts, custom lists, call origination, and call recordings.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")
+
+# Public base URL of this web interface; used to build absolute links
+# (e.g. call recording URLs in CRM webhook payloads).
+PEARLPBX_PUBLIC_URL = env.str("PEARLPBX_PUBLIC_URL", default="http://localhost:8000")
 
 CHANNEL_LAYERS = {
     "default": {
