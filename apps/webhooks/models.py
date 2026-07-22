@@ -56,6 +56,17 @@ def _collect_placeholders(value):
     return set()
 
 
+def default_payload_template():
+    """Full example template listing every available placeholder.
+
+    Shown as the starting point in the admin "Add Webhook" form. Fields not
+    relevant to a given event render as empty strings (see webhook_sender.py),
+    so this single template is safe to use unmodified for every event type.
+    Clear the field to fall back to the built-in per-event default payload.
+    """
+    return {name: f"${{{name}}}" for name in sorted(TEMPLATE_VARIABLES)}
+
+
 def validate_payload_template(value):
     """Template must be a JSON object; ${...} placeholders must be known variables."""
     if value is None:
@@ -135,10 +146,13 @@ class Webhook(models.Model):
     payload_template = models.JSONField(
         null=True,
         blank=True,
+        default=default_payload_template,
         validators=[validate_payload_template],
         help_text=_(
-            "Optional custom JSON body. String values may use ${placeholders}; "
-            "empty means the default payload."
+            "Custom JSON body. String values may use ${placeholders}; "
+            "pre-filled with every available placeholder as a starting point. "
+            "Clear the field (empty/null) to use the built-in default payload "
+            "shape instead, which varies per event."
         ),
     )
     created_at = models.DateTimeField(auto_now_add=True)

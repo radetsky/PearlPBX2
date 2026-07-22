@@ -70,9 +70,16 @@ only). Each row is independent, so multiple CRMs can be wired up at once:
 - **Secret** — optional; when set, every request carries an HMAC-SHA256
   signature of the raw body.
 - **Timeout / Retries** — per-request timeout and extra delivery attempts.
-- **Payload template** — optional JSON object overriding the default body.
-  String values may use `${placeholder}` syntax (see Template variables
-  below); leave empty to use the default payload for each event.
+- **Payload template** — JSON object overriding the default body. String
+  values may use `${placeholder}` syntax (see Template variables below). The
+  admin "Add Webhook" form pre-fills this field with every available
+  placeholder as a starting point (`default_payload_template()` in
+  `apps/webhooks/models.py`) — trim it down to the fields you need, or clear
+  the field entirely (empty/null) to fall back to the built-in per-event
+  default payload shape shown below. Placeholders not produced by the firing
+  event (e.g. `${ringtime}` on `call.incoming`) always render as an empty
+  string rather than leaking the literal `${...}` text, so the full default
+  template is safe to use unmodified across all four events.
 
 Changes take effect without restarting the service: Django serializes the
 active configuration into the Redis key `webhooks:config` on every save

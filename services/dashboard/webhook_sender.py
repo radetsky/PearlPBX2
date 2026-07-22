@@ -22,6 +22,41 @@ NOTIFIED_TTL = 7200  # seconds; matches REDIS_STATE_TTL of the listener
 SIGNATURE_HEADER = "X-PearlPBX-Signature"
 RETRY_DELAY_SECONDS = 2
 
+# Keep in sync with apps.webhooks.models.TEMPLATE_VARIABLES. A custom template
+# may list any of these placeholders regardless of event type; ones not
+# produced by the firing event render as empty strings rather than leaking
+# the literal "${name}" text into the payload.
+ALL_TEMPLATE_VARIABLES = frozenset(
+    {
+        "event",
+        "uniqueid",
+        "caller_id_num",
+        "caller_id_name",
+        "exten",
+        "context",
+        "queue",
+        "timestamp",
+        "duration",
+        "cause",
+        "cause_txt",
+        "answered_time",
+        "billsec",
+        "recorded",
+        "recording_expected",
+        "recording_url",
+        "recording_file",
+        "missed",
+        "wait_time",
+        "member_name",
+        "member_interface",
+        "member_number",
+        "ringtime",
+        "holdtime",
+        "answered_by_member",
+        "answered_by_interface",
+    }
+)
+
 
 def post_json(url, body, headers, timeout):
     """POST a JSON body (bytes); return the HTTP status code."""
@@ -350,7 +385,10 @@ class WebhookManager:
     def _build_body(self, wh, event, variables):
         template = wh.get("payload_template")
         if template:
-            payload = render_template(template, {**variables, "event": event})
+            full_vars = {name: None for name in ALL_TEMPLATE_VARIABLES}
+            full_vars.update(variables)
+            full_vars["event"] = event
+            payload = render_template(template, full_vars)
         else:
             payload = {"event": event, **variables}
         return json.dumps(payload).encode("utf-8")

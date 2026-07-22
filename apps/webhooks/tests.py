@@ -5,7 +5,12 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 
 from apps.webhooks.admin import WebhookAdminForm
-from apps.webhooks.models import Webhook, validate_payload_template
+from apps.webhooks.models import (
+    TEMPLATE_VARIABLES,
+    Webhook,
+    default_payload_template,
+    validate_payload_template,
+)
 from apps.webhooks.sync import serialize_webhooks, sync_webhooks_config
 from core.models import DialplanContext, MusicOnHold, Queue, QueueAnnouncements
 
@@ -38,6 +43,27 @@ class PayloadTemplateValidatorTests(TestCase):
     def test_non_object_rejected(self):
         with self.assertRaises(ValidationError):
             validate_payload_template(["${uniqueid}"])
+
+
+class DefaultPayloadTemplateTests(TestCase):
+    def test_covers_every_template_variable(self):
+        template = default_payload_template()
+        assert set(template.keys()) == set(TEMPLATE_VARIABLES)
+        for name, placeholder in template.items():
+            assert placeholder == f"${{{name}}}"
+
+    def test_default_template_itself_is_valid(self):
+        validate_payload_template(default_payload_template())
+
+    def test_new_webhook_gets_full_template_by_default(self):
+        webhook = Webhook.objects.create(name="crm", url="https://crm.example.com/hook")
+        assert set(webhook.payload_template.keys()) == set(TEMPLATE_VARIABLES)
+
+    def test_field_can_still_be_cleared_to_null(self):
+        webhook = Webhook.objects.create(
+            name="crm", url="https://crm.example.com/hook", payload_template=None
+        )
+        assert webhook.payload_template is None
 
 
 @override_settings(PEARLPBX_PUBLIC_URL="https://pbx.example.com/")

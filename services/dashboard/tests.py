@@ -8,6 +8,7 @@ import logging
 from unittest.mock import patch
 
 from webhook_sender import (
+    ALL_TEMPLATE_VARIABLES,
     NOTIFIED_KEY_PREFIX,
     SIGNATURE_HEADER,
     WEBHOOKS_CONFIG_KEY,
@@ -531,6 +532,79 @@ class TestDelivery:
 
         run(scenario())
         assert len(attempts) == 3
+
+
+class TestFullPlaceholderTemplate:
+    """Mirrors apps.webhooks.models.default_payload_template(): a template
+    listing every known placeholder, used unmodified for every event type.
+    Must go through the real delivery path (_build_body), not `fired_events`
+    (which captures pre-render variables), to see the actual JSON sent."""
+
+    FULL_TEMPLATE = {name: f"${{{name}}}" for name in sorted(ALL_TEMPLATE_VARIABLES)}
+
+    @staticmethod
+    def capture_sent_body(manager):
+        sent = {}
+
+        async def fake_send(name, event, url, body, headers, timeout, retries):
+            sent["body"] = body
+
+        manager._send_with_retries = fake_send
+        return sent
+
+    def test_incoming_has_no_leftover_placeholders(self):
+        manager, _ = make_manager(make_config(payload_template=self.FULL_TEMPLATE))
+        run(manager.load_config())
+        sent = self.capture_sent_body(manager)
+
+        async def scenario():
+            await manager.on_incoming(
+                {
+                    "uniqueid": "1.2",
+                    "caller_id_num": "100",
+                    "caller_id_name": None,
+                    "exten": "s",
+                    "context": "incoming",
+                    "queue": None,
+                    "recording_expected": None,
+                }
+            )
+            await manager.wait_pending()
+
+        run(scenario())
+
+        payload = json.loads(sent["body"])
+        assert payload["event"] == "call.incoming"
+        assert payload["caller_id_num"] == "100"
+        # Fields call.incoming never produces (e.g. from call.ended/answered)
+        # must render empty, not leak the literal "${name}" placeholder text.
+        for absent_field in ("duration", "cause", "member_name", "ringtime"):
+            assert payload[absent_field] == ""
+            assert "$" not in payload[absent_field]
+
+    def test_missed_has_no_leftover_placeholders(self):
+        manager, _ = make_manager(make_config(payload_template=self.FULL_TEMPLATE))
+        run(manager.load_config())
+        sent = self.capture_sent_body(manager)
+
+        async def scenario():
+            await manager.on_abandon(
+                {
+                    "uniqueid": "1.2",
+                    "queue": "support",
+                    "caller_id_num": "100",
+                    "wait_time": 15,
+                }
+            )
+            await manager.wait_pending()
+
+        run(scenario())
+
+        payload = json.loads(sent["body"])
+        assert payload["event"] == "call.missed"
+        assert payload["wait_time"] == "15"
+        for absent_field in ("member_name", "recorded", "answered_by_member"):
+            assert payload[absent_field] == ""
 
 
 class TestRenderTemplate:
