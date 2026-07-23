@@ -24,6 +24,7 @@ urlpatterns = [
         name="lists_entry_detail",
     ),
     path("calls/originate/", calls.OriginateView.as_view(), name="calls_originate"),
+    path("calls/conference/", calls.ConferenceView.as_view(), name="calls_conference"),
     path(
         "recordings/<str:uniqueid>/",
         recordings.RecordingByUniqueidView.as_view(),

@@ -368,6 +368,116 @@ class OriginateApiTests(APITestCase):
         self.assertEqual(resp.status_code, 502)
 
 
+class ConferenceApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="conftester", password="x"
+        )
+        self.token = Token.objects.create(user=self.user)
+        self.url = reverse("calls_conference")
+        self.body = {
+            "parties": [
+                "PJSIP/101",
+                "PJSIP/0504139380@mega-provider",
+                "Local/2222@internal",
+            ],
+        }
+
+    def _auth(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_requires_auth(self):
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_validation_error_needs_at_least_two_parties(self):
+        self._auth()
+        resp = self.client.post(
+            self.url, {"parties": ["PJSIP/101"]}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.calls.AsteriskManagementInterface")
+    def test_conference_success_originates_each_party_async(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = False
+        ami_response.keys = {"Message": "Originate successfully queued"}
+        mock_ami.send_originate.return_value = MagicMock(response=ami_response)
+
+        resp = self.client.post(self.url, self.body, format="json")
+
+        self.assertEqual(resp.status_code, 202)
+        self.assertEqual(mock_ami.send_originate.call_count, 3)
+        room = resp.data["room"]
+        self.assertTrue(room)
+        self.assertEqual(len(resp.data["results"]), 3)
+        for result in resp.data["results"]:
+            self.assertTrue(result["queued"])
+
+        called_exten = {
+            c.kwargs["exten"] for c in mock_ami.send_originate.call_args_list
+        }
+        self.assertEqual(called_exten, {room})
+        for call in mock_ami.send_originate.call_args_list:
+            self.assertTrue(call.kwargs["async_originate"])
+        mock_ami_cls.return_value.__exit__.assert_called_once()
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.calls.AsteriskManagementInterface")
+    def test_conference_uses_provided_room(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = False
+        ami_response.keys = {"Message": ""}
+        mock_ami.send_originate.return_value = MagicMock(response=ami_response)
+
+        body = dict(self.body, room="8842")
+        resp = self.client.post(self.url, body, format="json")
+
+        self.assertEqual(resp.status_code, 202)
+        self.assertEqual(resp.data["room"], "8842")
+        for call in mock_ami.send_originate.call_args_list:
+            self.assertEqual(call.kwargs["exten"], "8842")
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.calls.AsteriskManagementInterface")
+    def test_conference_partial_failure_reported_per_party(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ok_response = MagicMock()
+        ok_response.is_error.return_value = False
+        ok_response.keys = {"Message": "queued"}
+        error_response = MagicMock()
+        error_response.is_error.return_value = True
+        error_response.keys = {"Message": "Extension does not exist"}
+        mock_ami.send_originate.side_effect = [
+            MagicMock(response=ok_response),
+            MagicMock(response=error_response),
+            MagicMock(response=None),
+        ]
+
+        resp = self.client.post(self.url, self.body, format="json")
+
+        self.assertEqual(resp.status_code, 202)
+        results = resp.data["results"]
+        self.assertTrue(results[0]["queued"])
+        self.assertFalse(results[1]["queued"])
+        self.assertEqual(results[1]["detail"], "Extension does not exist")
+        self.assertFalse(results[2]["queued"])
+        self.assertEqual(results[2]["detail"], "AMI originate timed out.")
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.calls.AsteriskManagementInterface", side_effect=Exception("no ami"))
+    def test_ami_unavailable(self, _mock):
+        self._auth()
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 502)
+
+
 class RecordingsApiTests(BaseAPITestCase):
     def setUp(self):
         super().setUp()

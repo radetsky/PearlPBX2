@@ -45,6 +45,7 @@ class AsteriskManagementInterface:
             "module reload app_queue.so",
             "module reload manager",
             "module reload res_musiconhold.so",
+            "module reload app_confbridge.so",
         ]
         for cmd in commands:
             self.client.send_action(SimpleAction(name="Command", Command=cmd))
@@ -54,7 +55,7 @@ class AsteriskManagementInterface:
         logger.debug(command_action)
         self.client.send_action(command_action)
 
-    def originate(
+    def send_originate(
         self,
         *,
         channel: str,
@@ -64,7 +65,16 @@ class AsteriskManagementInterface:
         callerid: str | None = None,
         variables: dict | None = None,
         timeout_ms: int = 30000,
+        async_originate: bool = False,
     ):
+        """
+        Send an AMI Originate action and return its future immediately, without
+        waiting for the response. Callers that need to originate several legs in
+        parallel (e.g. conference parties) should send them all first and only
+        then read each future's `.response` — `AMIClient.send_action` writes to
+        the socket and returns right away, so nothing here blocks until `.response`
+        is accessed.
+        """
         keys = {
             "Channel": channel,
             "Exten": exten,
@@ -74,15 +84,20 @@ class AsteriskManagementInterface:
         }
         if callerid:
             keys["CallerID"] = callerid
+        if async_originate:
+            # With Async, AMI acknowledges the queued request immediately instead of
+            # blocking until the call completes.
+            keys["Async"] = "true"
 
         action = SimpleAction("Originate", **keys)
         for name, value in (variables or {}).items():
             action[name] = value
 
         logger.debug(action)
-        future = self.client.send_action(action)
-        response = future.response
-        return response
+        return self.client.send_action(action)
+
+    def originate(self, **kwargs):
+        return self.send_originate(**kwargs).response
 
     def logoff(self):
         self.client.logoff()

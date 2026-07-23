@@ -211,6 +211,7 @@ class AsteriskDialplanValidator(BaseValidator):
         "VoiceMail",
         "VoiceMailMain",
         "Queue",
+        "ConfBridge",
         "AGI",
         "Busy",
         "Congestion",
@@ -992,6 +993,13 @@ class AsteriskDialplanValidator(BaseValidator):
             if not params:
                 raise ValidationError(
                     "Dial requires at least one parameter (destination)"
+                )
+
+        # Validation for ConfBridge
+        elif app_name == "ConfBridge":
+            if not params:
+                raise ValidationError(
+                    "ConfBridge requires at least one parameter (conference room number)"
                 )
 
         # Validation for Playback

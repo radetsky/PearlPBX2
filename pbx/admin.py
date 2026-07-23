@@ -22,6 +22,7 @@ from core.conf import (
     make_extensions_ael,
     make_manager_conf,
     make_musiconhold_conf,
+    make_confbridge_conf,
     write_tls_cert_files,
     get_users_excluded_from_pjsip,
 )
@@ -63,6 +64,7 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
         cfgfiles[os.path.join(config_dir, "queuerules.conf")] = make_queuerules_conf()
         cfgfiles[os.path.join(config_dir, "manager.conf")] = make_manager_conf()
         cfgfiles[os.path.join(config_dir, "musiconhold.conf")] = make_musiconhold_conf()
+        cfgfiles[os.path.join(config_dir, "confbridge.conf")] = make_confbridge_conf()
         for cfg in self.get_latest_configuration_files():
             if cfg.path not in cfgfiles:
                 cfgfiles[cfg.path] = cfg.content

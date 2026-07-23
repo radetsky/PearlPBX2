@@ -282,6 +282,12 @@ PEARLPBX_DEFAULT_ROUTING_TABLE = "PEARLPBX"
 PEARLPBX_DEFAULT_ROUTING_RECORD = "PEARLPBX-Users"
 PEARLPBX_DEFAULT_ROUTING_PREFIX = "_2XX"
 
+# Dialplan context (ConfBridge room = ${EXTEN}) created by migration
+# core.0079_create_conference_dialplan_context. If changed from the default,
+# create a matching DialplanContext/DialplanExtension manually — renaming or
+# deleting that row does not follow this setting automatically.
+PEARLPBX_CONFERENCE_CONTEXT = env.str("PEARLPBX_CONFERENCE_CONTEXT", default="conference")
+
 # 0 = current day (since 00:00); >0 = sliding window in minutes
 DASHBOARD_MISSED_CALL_WINDOW_MINUTES = env.int(
     "DASHBOARD_MISSED_CALL_WINDOW_MINUTES", 0
