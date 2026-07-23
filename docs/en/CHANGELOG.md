@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-23
+
+### Added
+
+- **CRM webhooks** (`apps/webhooks/`) — new `Webhook` model lets an admin register one or more CRM endpoints that receive JSON POST notifications for call events (incoming, answered, ended/missed), driven from `services/dashboard/dashboard_listener.py` via the new `services/dashboard/webhook_sender.py`. Payloads are built from a configurable, validated `payload_template` (JSON object with `${variable}` placeholders such as `caller_id_num`, `queue`, `recording_url`, `wait_time`, etc.), added in a follow-up migration (`0003_alter_webhook_payload_template.py`). A `sync_webhooks` management command and `apps/webhooks/sync.py` keep webhook definitions in sync. Documented in `docs/ua/crm-integration.md` and `docs/ua/crm-integrator-guide.md`.
+- **Call recording lookup API** — `GET /api/v1/recordings/<uniqueid>/` (`apps/api/views/recordings.py`, backed by `apps/reports/services/recordings.py`) serves the recorded audio (wav/mp3, Range-request support) for a given Asterisk uniqueid; this is the deterministic URL delivered to CRMs as `recording_url` in webhook payloads.
+- **ConfBridge conference calling** — new `POST /api/v1/calls/conference/` endpoint (`apps/api/views/calls.py`, `ConferenceSerializer`) originates multiple parties (e.g. operator, client, driver) concurrently into a shared ConfBridge room, alongside the existing single-leg `/calls/originate/`. `core/ami.py` gained non-blocking `send_originate()` split out from `originate()` so conference legs dial in parallel instead of sequentially. `core/conf.py` / `pbx/admin.py` generate `confbridge.conf` default profiles; a reserved `"conference"` `DialplanContext`/`DialplanExtension` (migration `0079`) and a `core/checks.py` system check prevent an admin from creating a colliding context or routing table name. `core/validators.py` whitelists ConfBridge in the dialplan AEL validator.
+- Repository docs reorganised under `docs/en/` (English) and `docs/ua/` (Ukrainian); new `docs/en/realtime_in_future.md`, `docs/ua/crm-integration.md`, `docs/ua/crm-integrator-guide.md`. `bin/rename_pearlpbx2_services.sh` added to rename legacy systemd units to the `pearlpbx2-*` naming scheme.
+
+### Fixed
+
+- **PJSIP outbound registration AOR contact** — `__build_aor_contact_line()` in `core/conf.py` now falls back to `registration_uri` when `contact_uri` is not set (with a warning, since registrar and media host may differ), instead of silently emitting no contact. For trunks with `registrationThere` (registering to a remote provider), the AOR now seeds a static bootstrap contact so calls aren't blackholed in the window before the first successful `REGISTER`; once registration succeeds, `remove_existing=yes` replaces it with the learned contact.
+
 ## [2.4.0] - 2026-07-16
 
 ### Added
