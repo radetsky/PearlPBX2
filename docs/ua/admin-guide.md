@@ -1,6 +1,6 @@
 # Посібник адміністратора PearlPBX2
 
-**Версія:** 2.3.3
+**Версія:** 2.4.0
 
 ---
 
@@ -22,9 +22,10 @@
 14. [Звукові файли](#14-звукові-файли)
 15. [Apply Changes](#15-apply-changes)
 16. [Служби (Services)](#16-служби-services)
-17. [REST API](#17-rest-api)
-18. [Провізіонінг телефонів](#18-провізіонінг-телефонів)
-19. [Обслуговування](#19-обслуговування)
+17. [Веб-хуки (CRM)](#17-веб-хуки-crm)
+18. [REST API](#18-rest-api)
+19. [Провізіонінг телефонів](#19-провізіонінг-телефонів)
+20. [Обслуговування](#20-обслуговування)
 
 ---
 
@@ -101,6 +102,7 @@ Callback daemon ─────────────► Asterisk AMI (вих�
 | `apps/callback/` | Моделі та представлення для колбеків |
 | `apps/provision/` | Провізіонінг телефонів |
 | `apps/api/` | REST API |
+| `apps/webhooks/` | Веб-хуки для CRM-інтеграції (події дзвінків) |
 
 ---
 
@@ -197,6 +199,9 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 | `DASHBOARD_MISSED_CALL_WINDOW_MINUTES` | Вікно пропущених дзвінків | `0` (поточна доба) |
 | `PHONE_COUNTRY_CODE` | Код країни для нормалізації | `380` |
 | `PHONE_LOCAL_CODE` | Міський код | `044` |
+| `PHONE_REQUIRED_LEN` | Очікувана довжина повного номера при нормалізації | `10` |
+| `PHONE_CITYCODE_LEN` | Довжина міського коду при нормалізації | `7` |
+| `PEARLPBX_PUBLIC_URL` | Публічний базовий URL веб-інтерфейсу (використовується для посилань на записи розмов у веб-хуках CRM) | `http://localhost:8000` |
 
 ---
 
@@ -211,7 +216,7 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 Користувачі в цій групі мають доступ до:
 
 - Dashboard (`/dashboard/`)
-- ULINE Monitor (`/dashboard/ulines/`)
+- Parking (моніторинг ULINE, `/dashboard/ulines/`)
 - Reports (`/reports/`)
 - Lists (`/lists/`)
 
@@ -247,7 +252,7 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 | Пункт | Роль | URL |
 |-------|------|-----|
 | Dashboard | admin, superuser, Report Viewer | `/dashboard/` |
-| ULINE Monitor | admin, superuser, Report Viewer | `/dashboard/ulines/` |
+| Parking (ULINE) | admin, superuser, Report Viewer | `/dashboard/ulines/` |
 | Reports | admin, superuser, Report Viewer | `/reports/` |
 | Lists | admin, superuser, Report Viewer | `/lists/` |
 | Admin panel | superuser | `/admin` |
@@ -309,6 +314,9 @@ SIP-користувачі — це внутрішні абоненти теле
 | **Secret** | Пароль для SIP-автентифікації |
 | **Transport** | Транспорт PJSIP, який використовує абонент |
 | **Routing Table** | Таблиця маршрутизації для вихідних дзвінків |
+| **NAT** | Увімкнення обробки NAT для абонента (boolean) |
+| **Auth Type** | Тип автентифікації: `userpass` або `md5` |
+| **Allowed Extension** | Обмеження, з якого extension дозволено реєструватись цьому абоненту |
 | **Custom Settings** | Додаткові налаштування для секцій `endpoint`, `auth`, `aor` |
 
 ### Автоматична генерація extension
@@ -374,7 +382,7 @@ SIP-піри — це зовнішні з'єднання з телефонним
 
 | Поле | Опис |
 |------|------|
-| **NAT** | Налаштування NAT (`force_rport,comedia`) |
+| **NAT** | Увімкнення обробки NAT для транку (boolean) |
 | **Custom AOR Settings** | Додаткові параметри AOR |
 
 ### Групи транків
@@ -506,7 +514,7 @@ SIP-піри — це зовнішні з'єднання з телефонним
 | Поле | Опис |
 |------|------|
 | **Name** | Унікальне ім'я черги |
-| **Strategy** | Стратегія розподілу дзвінків (`ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `linear`, `wrandom`) |
+| **Strategy** | Стратегія розподілу дзвінків (`ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `rrordered`, `linear`, `wrandom`) |
 | **Music Class** | Клас MOH для музики в черзі |
 
 ### Додавання членів черги
@@ -532,6 +540,8 @@ SIP-піри — це зовнішні з'єднання з телефонним
 | **State Interface** | Інтерфейс для відстеження стану |
 | **Queue** | Черга |
 | **Penalty** | Штраф (визначає пріоритет) |
+| **Ring In Use** | Дзвонити агенту, навіть якщо його інтерфейс вже зайнятий іншим викликом |
+| **Wrapuptime** | Індивідуальний час "після дзвінка" для цього агента (перекриває значення черги) |
 
 ### Правила черг (Queue Rules)
 
@@ -573,11 +583,12 @@ SIP-піри — це зовнішні з'єднання з телефонним
 - monitor_format
 - timeoutpriority, timeoutrestart
 - periodic_announce, random_periodic_announce
+- setqueuevar
 - та інші.
 
 ### Глобальні налаштування черг (CallQueueGlobalSettings)
 
-Доступно через адмін-панель: PBX Setup → Call Queue Global Settings. Тут можна задати глобальні параметри, які застосовуються до всіх черг (наприклад, `shared_lastcall`, `setvar`).
+Доступно через адмін-панель: PBX Setup → Call Queue Global Settings. Тут можна задати глобальні параметри, які застосовуються до всіх черг, зокрема `shared_lastcall`, `setvar`, `persistent_members`, `autofill`, `monitor_type`, `negative_penalty_invalid`, `force_longest_waiting_caller`.
 
 ---
 
@@ -669,7 +680,7 @@ Apply Changes доступний тільки для **superuser**. Шлях: `/
 
 ### Перегляд історії
 
-Моделі `ConfigurationFile` та `SystemConfiguration` зберігають історію змін. Кожен SystemConfiguration — це знімок стану конфігурації на момент Apply, що дозволяє відстежити, які файли і в яких версіях були застосовані.
+Моделі `ConfigurationFile` та `SystemConfiguration` зберігають історію змін. Кожен SystemConfiguration — це знімок стану конфігурації на момент Apply, що дозволяє відстежити, які файли і в яких версіях були застосовані. Знімок також включає посилання на бінарні файли (модель `BinaryFile`, наприклад TLS-сертифікати), застосовані разом із текстовими конфігами.
 
 ---
 
@@ -684,9 +695,11 @@ Apply Changes доступний тільки для **superuser**. Шлях: `/
 | Служба | systemd unit | Порт | Призначення |
 |--------|-------------|------|-------------|
 | Django | `PearlPBX2.service` | 8000 | Веб-додаток |
-| Dashboard Listener | `Dashboard.service` | — | AMI → Redis |
-| Callback Daemon | `Callback.service` | — | Колбеки |
-| FastAGI Server | `FastAGI.service` | 4573 | AGI-обробники |
+| Dashboard Listener | `pearlpbx2-dashboard.service` | — | AMI → Redis |
+| Callback Daemon | `pearlpbx2-callback.service` | — | Колбеки |
+| FastAGI Server | `pearlpbx2-fastagi.service` | 4573 | AGI-обробники |
+
+**Примітка:** юніти встановлюються та керуються через Ansible (`ansible/roles/services/`); шаблони `.service`-файлів у `services/` у корені репозиторію застаріли й не відповідають назвам, що реально розгортаються.
 
 ### Dashboard Listener
 
@@ -715,11 +728,18 @@ python dashboard_listener.py
 **Перевірка роботи:**
 
 ```bash
-systemctl status Dashboard.service
-journalctl -u Dashboard.service -f
+systemctl status pearlpbx2-dashboard.service
+journalctl -u pearlpbx2-dashboard.service -f
 ```
 
 **Залежності:** `redis`, `asterisk-ami`
+
+**Сповіщення в Slack про пропущені дзвінки (опціонально):** служба може надсилати агреговане повідомлення в Slack, коли абоненти залишають чергу без відповіді. Всі пропущені дзвінки в межах вікна debounce групуються в одне повідомлення на чергу. Налаштовується через змінні в `services/dashboard/env`:
+
+| Змінна | Опис | Типове значення |
+|--------|------|-----------------|
+| `SLACK_MISSED_CALL_WEBHOOK_URL` | Slack incoming webhook URL. Порожнє значення вимикає функцію | — (вимкнено) |
+| `MISSED_CALL_DEBOUNCE_SECONDS` | Вікно групування пропущених дзвінків в одне повідомлення | `60` |
 
 ### Callback Daemon
 
@@ -780,6 +800,14 @@ python fastagi.py
 
 **Залежності:** `twisted`, `starpy`, `psycopg2-binary`, `redis`
 
+### Класичні AGI-скрипти (Slack-сповіщення)
+
+**Директорія:** `services/agi/`
+
+На відміну від FastAGI Server (окрема служба на порту 4573), це класичні AGI-скрипти (`missed_call.py`, `unmatched_call.py`), які Asterisk запускає напряму з діалплану для точкових Slack-сповіщень про пропущені та невідповідні дзвінки. Спільний функціонал (зокрема `notify_slack()`) винесено в `agi_common.py`.
+
+**Конфігурація:** `/etc/PearlPBX/AGI/env`.
+
 ### Приклад використання FastAGI в діалплані
 
 ```ael
@@ -795,43 +823,84 @@ context check_blacklist {
 
 ---
 
-## 17. REST API
+## 17. Веб-хуки (CRM)
 
-Система надає REST API для зовнішньої інтеграції. Докладна документація: [docs/en/API.md](../en/API.md).
+Веб-хуки дозволяють автоматично надсилати CRM-системі JSON POST-запити про події дзвінків (початок, відповідь оператора, завершення, пропущений дзвінок у черзі). Реалізовано в `apps/webhooks/` — доставку обробляє Dashboard Listener на основі подій AMI.
 
-Для інтеграції з CRM-системами (веб-хуки про дзвінки та доступ до записів розмов через API) див. окремий гайд: [docs/ua/crm-integration.md](crm-integration.md).
+**Докладний опис форматів payload, перевірки підпису та прикладів обробника** — в окремому гайді [docs/ua/crm-integration.md](crm-integration.md) (а також спрощена версія для розробників CRM: [docs/ua/crm-integrator-guide.md](crm-integrator-guide.md)). Цей розділ описує лише налаштування веб-хука в адмін-панелі.
+
+### Створення веб-хука
+
+1. Адмін-панель → Webhooks → Add Webhook.
+2. Поля:
+
+| Поле | Опис |
+|------|------|
+| **Name** | Унікальна назва веб-хука |
+| **Description** | Опис (для власної навігації) |
+| **Is Active** | Увімкнути/вимкнути надсилання без видалення налаштування |
+| **URL** | Ендпоінт на боці CRM, куди надсилається JSON POST |
+| **Send Incoming** | Надсилати подію на початок вхідного дзвінка |
+| **Send Ended** | Надсилати подію на завершення дзвінка (потребує ввімкненого Send Incoming, інакше дзвінок не буде "анонсовано") |
+| **Send Missed** | Надсилати подію при пропущеному дзвінку в черзі (потребує вибору хоча б однієї черги) |
+| **Send Answered** | Надсилати подію, коли оператор черги відповів на дзвінок (потребує вибору хоча б однієї черги) |
+| **Contexts** | Контексти діалплану, вхідні дзвінки в яких запускають веб-хук |
+| **Queues** | Черги, приєднання до яких запускає веб-хук |
+| **Headers** | Додаткові HTTP-заголовки у форматі JSON (наприклад, `{"Authorization": "Bearer ..."}`) |
+| **Secret** | Спільний секрет для HMAC-SHA256 підпису тіла запиту (заголовок `X-PearlPBX-Signature`) |
+| **Timeout** | Таймаут HTTP-запиту в секундах (за замовчуванням 5) |
+| **Retries** | Кількість повторних спроб доставки після невдачі (за замовчуванням 1) |
+| **Payload Template** | Кастомний JSON-шаблон тіла запиту з підстановками `${placeholder}`; якщо очистити поле — використовується вбудований шаблон за замовчуванням для кожного типу події |
+
+**Примітка:** якщо для веб-хука не вибрано жодного контексту чи черги, форма адміна вимагає вказати принаймні один з них (інакше незрозуміло, які дзвінки мають запускати доставку).
+
+---
+
+## 18. REST API
+
+Система надає REST API для зовнішньої інтеграції. Докладна документація: [docs/en/API.md](../en/API.md), а також живий Swagger UI на `/api/v1/docs/` і OpenAPI-схема на `/api/v1/schema/`.
+
+Для інтеграції з CRM-системами (веб-хуки про дзвінки, розділ 17 вище) та доступ до записів розмов через API див. окремий гайд: [docs/ua/crm-integration.md](crm-integration.md).
 
 ### Короткий огляд
 
+API побудовано на Django REST Framework (`DefaultRouter` + `ViewSet`-и, `apps/api/`).
+
 **Базовий URL:** `/api/v1/`
 
-**Автентифікація:** IP-адресна (тільки хосте з `PEARLPBX_API_ALLOWED_HOSTS`).
+**Автентифікація:** token-based через DRF `TokenAuthentication` (заголовок `Authorization: Token <key>`). IP-адресних обмежень більше немає. Токен створюється командою:
+
+```bash
+python manage.py drf_create_token <username>
+```
+
+Без валідного токена запити повертають `401 Unauthorized`.
 
 **Ендпоінти:**
 
 | Ендпоінт | Методи | Призначення |
 |----------|--------|-------------|
-| `/api/v1/blacklist/` | GET, POST | Керування блок-листом |
-| `/api/v1/blacklist/<uuid>/` | DELETE | Видалення запису з блок-листу |
-| `/api/v1/whitelist/` | GET, POST | Керування дозволеними номерами |
-| `/api/v1/whitelist/<uuid>/` | DELETE | Видалення запису |
-| `/api/v1/contacts/` | GET, POST | Керування контактами |
-| `/api/v1/contacts/<uuid>/` | DELETE | Видалення контакту |
-| `/api/v1/lists/` | GET | Список іменованих списків |
-| `/api/v1/lists/add/` | POST | Створення списку |
-| `/api/v1/lists/update/<uuid>/` | POST | Перейменування списку |
-| `/api/v1/lists/revoke/<uuid>/` | DELETE | Видалення списку |
-| `/api/v1/lists/<uuid>/` | GET | Вміст списку |
-| `/api/v1/lists/<uuid>/add/` | POST | Додавання запису до списку |
-| `/api/v1/lists/<uuid>/revoke/<uuid>/` | DELETE | Видалення запису зі списку |
+| `/api/v1/blacklist/` | GET, POST | Список / створення записів блок-листа |
+| `/api/v1/blacklist/<uuid>/` | GET, PUT, PATCH, DELETE | Перегляд / зміна / видалення запису |
+| `/api/v1/whitelist/` | GET, POST | Список / створення дозволених номерів |
+| `/api/v1/whitelist/<uuid>/` | GET, PUT, PATCH, DELETE | Перегляд / зміна / видалення запису |
+| `/api/v1/contacts/` | GET, POST | Список / створення контактів |
+| `/api/v1/contacts/<uuid>/` | GET, PUT, PATCH, DELETE | Перегляд / зміна / видалення контакту |
+| `/api/v1/lists/` | GET, POST | Список іменованих списків / створення нового |
+| `/api/v1/lists/<uuid>/` | GET, PATCH, DELETE | Вміст / перейменування / видалення списку |
+| `/api/v1/lists/<uuid>/entries/` | GET, POST | Перегляд / додавання записів до списку |
+| `/api/v1/lists/<uuid>/entries/<uuid>/` | DELETE | Видалення запису зі списку |
+| `/api/v1/calls/originate/` | POST | Ініціювати вихідний дзвінок через AMI (повертає 503, якщо `DEVMODE=without_asterisk_on_localhost`) |
+| `/api/v1/recordings/<uniqueid>/` | GET | Отримати аудіофайл запису розмови (підтримка Range-запитів) |
+| `/api/v1/docs/`, `/api/v1/redoc/`, `/api/v1/schema/` | GET | Swagger/Redoc UI та OpenAPI-схема |
 
-**Коди статусу:** 200, 201, 400, 403, 404, 500.
+**Коди статусу:** 200, 201, 204, 400, 401, 404, 409.
 
 **Формат відповіді:** JSON.
 
 ---
 
-## 18. Провізіонінг телефонів
+## 19. Провізіонінг телефонів
 
 Система підтримує автоматичне налаштування SIP-телефонів через TFTP.
 
@@ -839,10 +908,10 @@ context check_blacklist {
 
 | Поле | Опис |
 |------|------|
-| **MAC Address** | MAC-адреса телефону |
+| **MAC Address** | MAC-адреса телефону (унікальна) |
 | **SIP User** | Прив'язаний SIP-користувач |
-| **Phone Type** | Тип телефону (Cisco SPA, Grandstream тощо) |
-| **Description** | Опис |
+| **Telephone Type** | Тип телефону: `spa502g`, `spa504g`, `gxp1200`, `softphone`, `webrtc`, `other` |
+| **SIP Server** | Адреса SIP-сервера, яку отримає пристрій у своїй конфігурації |
 
 ### Процес провізіонінгу
 
@@ -853,7 +922,7 @@ context check_blacklist {
 
 ---
 
-## 19. Обслуговування
+## 20. Обслуговування
 
 ### Резервне копіювання
 
@@ -884,8 +953,10 @@ systemctl restart PearlPBX2
 
 Система логує події через стандартний механізм Django logging:
 
-- **core** логгер — DEBUG рівень.
+- **core** логгер — INFO рівень (навмисно знижено з DEBUG, щоб уникнути потрапляння payload'ів подій AMI, які містять caller ID/PII, у journald).
 - **django** логгер — INFO рівень.
+- **apps** логгер — INFO рівень, `propagate=False`.
+- **\_\_main\_\_** логгер — INFO рівень.
 
 Логи виводяться в консоль (stdout). Для продакшну рекомендується налаштувати запис у файл або систему централізованого логування.
 
@@ -893,15 +964,15 @@ systemctl restart PearlPBX2
 
 ```bash
 # Перевірка статусу всіх служб
-systemctl status PearlPBX2 Dashboard.service Callback.service FastAGI.service asterisk.service
+systemctl status PearlPBX2.service pearlpbx2-dashboard.service pearlpbx2-callback.service pearlpbx2-fastagi.service asterisk.service
 
 # Перегляд логів
-journalctl -u PearlPBX2 -f
-journalctl -u Dashboard.service -f
-journalctl -u Callback.service -f
-journalctl -u FastAGI.service -f
+journalctl -u PearlPBX2.service -f
+journalctl -u pearlpbx2-dashboard.service -f
+journalctl -u pearlpbx2-callback.service -f
+journalctl -u pearlpbx2-fastagi.service -f
 ```
 
 ---
 
-*Документ створено для PearlPBX2 v2.3.3. Інтерфейс системи та шляхи можуть відрізнятися залежно від конфігурації.*
+*Документ створено для PearlPBX2 v2.4.0. Інтерфейс системи та шляхи можуть відрізнятися залежно від конфігурації.*

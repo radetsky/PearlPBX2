@@ -215,6 +215,146 @@ class TestMakePjsipConfUplinks(TestCase):
         self.assertIn("contact_user=myuser", result)
         self.assertIn("outbound_auth=test-trunk-reg", result)
 
+    def test_trunk_with_outbound_registration_has_static_aor_contact(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-reg-contact",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            registration_uri="sip.provider.com:5060",
+            contact_uri="sbc.provider.com:5061",
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=False,
+            registrationThere=True,
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("contact=sip:sbc.provider.com:5061", result)
+        self.assertIn("max_contacts=1", result)
+        self.assertIn("remove_existing=yes", result)
+
+    def test_trunk_with_outbound_registration_falls_back_to_registration_uri(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-reg-fallback",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            registration_uri="sip.provider.com:5060",
+            contact_uri="",
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=False,
+            registrationThere=True,
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("contact=sip:sip.provider.com:5060", result)
+
+    def test_trunk_with_inbound_registration_has_no_static_aor_contact(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-reg-here",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            contact_uri="sbc.provider.com:5061",
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=True,
+            registrationThere=False,
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertNotIn("contact=sip:sbc.provider.com:5061", result)
+        self.assertIn("max_contacts=1", result)
+        self.assertIn("remove_existing=yes", result)
+
+    def test_trunk_with_outbound_registration_tls_uses_sips_contact(self):
+        tls_transport = SIPTransport.objects.create(
+            name="test-uplink-tls-transport",
+            protocol="tls",
+            bind="0.0.0.0:5061",
+            description="TLS Transport",
+        )
+        try:
+            trunk = SIPPeer.objects.create(
+                name="test-trunk-reg-tls",
+                transport=tls_transport,
+                routing_table=self.routing_table,
+                registration_uri="sip.provider.com:5061",
+                contact_uri="sbc.provider.com:5061",
+                match_hosts="sip.provider.com",
+                username="myuser",
+                secret="mysecret",
+                registrationHere=False,
+                registrationThere=True,
+            )
+            result = make_pjsip_conf_uplinks()
+            self.assertIn("contact=sips:sbc.provider.com:5061", result)
+        finally:
+            trunk.delete()
+            tls_transport.delete()
+
+    def test_trunk_with_both_registration_flags_keeps_bootstrap_contact(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-reg-both",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            registration_uri="sip.provider.com:5060",
+            contact_uri="sbc.provider.com:5061",
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=True,
+            registrationThere=True,
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("contact=sip:sbc.provider.com:5061", result)
+        self.assertIn("max_contacts=1", result)
+        self.assertIn("remove_existing=yes", result)
+
+    def test_trunk_without_registration_and_without_contact_logs_warning(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-no-contact",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=False,
+            registrationThere=False,
+        )
+        self.created_peers.append(trunk)
+        with self.assertLogs("core.conf", level="WARNING") as logs:
+            result = make_pjsip_conf_uplinks()
+        self.assertIn("[test-trunk-no-contact]", result)
+        self.assertNotIn("contact=sip:", result)
+        self.assertTrue(
+            any("no contact_uri or registration_uri defined" in m for m in logs.output)
+        )
+
+    def test_trunk_falls_back_to_registration_uri_logs_warning(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-reg-fallback-warn",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            registration_uri="sip.provider.com:5060",
+            contact_uri="",
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=False,
+            registrationThere=True,
+        )
+        self.created_peers.append(trunk)
+        with self.assertLogs("core.conf", level="WARNING") as logs:
+            result = make_pjsip_conf_uplinks()
+        self.assertIn("contact=sip:sip.provider.com:5060", result)
+        self.assertTrue(
+            any("Falling back to registration_uri" in m for m in logs.output)
+        )
+
     def test_trunk_with_nat_enabled(self):
         trunk = SIPPeer.objects.create(
             name="test-trunk-nat",

@@ -190,6 +190,18 @@ def __section_trunk_auth_userpass(trunk: SIPPeer):
 def __build_aor_contact_line(trunk: SIPPeer, transport: SIPTransport) -> str:
     host = (trunk.contact_uri or "").split(",")[0].strip()
     if not host:
+        host = (trunk.registration_uri or "").split(",")[0].strip()
+        if host:
+            logger.warning(
+                f"Trunk {trunk.name} has no contact_uri defined. "
+                f"Falling back to registration_uri ({host}) for the AOR contact; "
+                "this may be wrong if the registrar and media host differ."
+            )
+    if not host:
+        logger.warning(
+            f"Trunk {trunk.name} has no contact_uri or registration_uri defined. "
+            "AOR will have no static contact."
+        )
         return ""
     sip = "sips" if transport.protocol in ["wss", "tls"] else "sip"
     return f"contact={sip}:{host}\n"
@@ -217,7 +229,17 @@ def __section_trunk_aor(trunk: SIPPeer):
     )
 
     if trunk.registrationHere or trunk.registrationThere:
+        # Either side registers dynamically: cap contacts at 1 and let the
+        # REGISTER replace whatever contact is currently on the AOR.
         result += "max_contacts=1\nremove_existing=yes\n"
+        if trunk.registrationThere:
+            # Outbound registration to a provider does not reliably populate
+            # the AOR contact dynamically, so seed a static bootstrap contact
+            # for the window before the first successful REGISTER. Once the
+            # provider REGISTER succeeds, remove_existing=yes replaces it with
+            # the learned contact. This also applies when registrationHere is
+            # also set, since the same bootstrap gap exists on that path.
+            result += __build_aor_contact_line(trunk, transport)
     else:
         result += __build_aor_contact_line(trunk, transport)
 
