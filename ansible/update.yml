@@ -130,6 +130,14 @@
           }}
       loop: "{{ pearlpbx2_pre_update_showmigrations.results }}"
 
+    - name: Ensure deploy-state directory exists
+      file:
+        path: "{{ deploy_state_file | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
     - name: Read existing deploy-state ledger, if any
       slurp:
         src: "{{ deploy_state_file }}"
