@@ -53,18 +53,6 @@
     owner: "{{ db_user }}"
     state: present
 
-- name: Get system timezone
-  command: timedatectl show --property=Timezone --value
-  register: system_tz
-  changed_when: false
-
-- name: Set PostgreSQL timezone to match system timezone
-  become_user: postgres
-  postgresql_query:
-    db: postgres
-    query: "ALTER SYSTEM SET timezone TO '{{ system_tz.stdout }}';"
-  notify: Reload postgresql
-
 - name: Find pg_hba.conf
   find:
     paths: /etc/postgresql
