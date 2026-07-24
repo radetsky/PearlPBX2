@@ -740,6 +740,50 @@ class TestMakeManagerConf(TestCase):
             user.delete()
 
 
+class TestSyncManagerUsersCommand(TestCase):
+    def test_creates_service_manager_users(self):
+        from django.core.management import call_command
+
+        call_command(
+            "sync_manager_users",
+            "--callback-secret=callbacksecret",
+            "--dashboard-secret=dashboardsecret",
+            "--fastagi-secret=fastagisecret",
+        )
+
+        callback = ManagerUsers.objects.get(username="callback")
+        self.assertEqual(callback.secret, "callbacksecret")
+        self.assertEqual(callback.read, "system,call,agent")
+        self.assertEqual(callback.write, "system,call,originate")
+
+        dashboard = ManagerUsers.objects.get(username="dashboard_listener")
+        self.assertEqual(dashboard.secret, "dashboardsecret")
+
+        fastagi = ManagerUsers.objects.get(username="fastagi")
+        self.assertEqual(fastagi.secret, "fastagisecret")
+
+    def test_is_idempotent_and_updates_secret(self):
+        from django.core.management import call_command
+
+        call_command(
+            "sync_manager_users",
+            "--callback-secret=old",
+            "--dashboard-secret=old",
+            "--fastagi-secret=old",
+        )
+        call_command(
+            "sync_manager_users",
+            "--callback-secret=new",
+            "--dashboard-secret=new",
+            "--fastagi-secret=new",
+        )
+
+        self.assertEqual(ManagerUsers.objects.filter(username="callback").count(), 1)
+        self.assertEqual(
+            ManagerUsers.objects.get(username="callback").secret, "new"
+        )
+
+
 class TestMakeQueuesConf(TestCase):
     def test_basic_queues_conf_structure(self):
         result = make_queues_conf()
