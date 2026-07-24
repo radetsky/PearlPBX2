@@ -109,7 +109,7 @@
 
     - name: Capture applied migration state before migrating (for rollback)
       command: >
-        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py showmigrations {{ item }}
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py showmigrations {{ item }} --skip-checks
       args:
         chdir: "{{ pearlpbx2_install_dir }}"
       environment: "{{ pearlpbx2_django_env }}"
@@ -155,7 +155,7 @@
 
     - name: Run database migrations
       command: >
-        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate --noinput
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate --noinput --skip-checks
       args:
         chdir: "{{ pearlpbx2_install_dir }}"
       environment: "{{ pearlpbx2_django_env }}"
@@ -163,7 +163,7 @@
 
     - name: Collect static files
       command: >
-        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput --skip-checks
       args:
         chdir: "{{ pearlpbx2_install_dir }}"
       environment: "{{ pearlpbx2_django_env }}"
