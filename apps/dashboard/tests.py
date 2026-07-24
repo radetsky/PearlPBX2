@@ -290,10 +290,16 @@ class TestInputValidation(DashboardAPITestBase):
 
 
 class TestAuthRequired(TestCase):
-    def test_all_api_endpoints_redirect_anonymous(self):
+    def test_html_view_redirects_anonymous(self):
+        """Session-only HTML views still redirect anonymous users to login."""
+        resp = Client().get("/dashboard/")
+        self.assertEqual(resp.status_code, 302)
+
+    def test_readonly_api_endpoints_reject_anonymous_with_401(self):
+        """Read-only JSON endpoints accept a session OR a token, so an
+        unauthenticated request gets a JSON 401, not a login redirect."""
         c = Client()
         urls = [
-            "/dashboard/",
             "/dashboard/api/queues/",
             "/dashboard/api/queues/test/",
             "/dashboard/api/channels/",
@@ -303,8 +309,50 @@ class TestAuthRequired(TestCase):
         for url in urls:
             resp = c.get(url)
             self.assertEqual(
-                resp.status_code, 302, f"{url} didn't redirect anonymous user"
+                resp.status_code, 401, f"{url} didn't return 401 for anonymous request"
             )
+
+
+class TestTokenAuth(TestCase):
+    """Read-only endpoints must accept a valid DRF auth token without a session,
+    while the AMI-triggering endpoint must stay closed to token auth."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from rest_framework.authtoken.models import Token
+
+        cls.user = User.objects.create_user(username="integrator", password=_TEST_PASSWORD)
+        cls.token = Token.objects.create(user=cls.user)
+
+    def setUp(self):
+        self.client = Client()
+        self.mock_redis = MagicMock()
+        self.mock_redis.get.return_value = None
+        self.mock_redis.scan_iter.return_value = []
+
+    def _auth_header(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_readonly_endpoint_accepts_token_without_session(self):
+        with patch("apps.dashboard.views._get_redis", return_value=self.mock_redis):
+            resp = self.client.get("/dashboard/api/queues/", **self._auth_header())
+        self.assertEqual(resp.status_code, 200)
+
+    def test_readonly_endpoint_rejects_bad_token(self):
+        resp = self.client.get(
+            "/dashboard/api/queues/", HTTP_AUTHORIZATION="Token not-a-real-token"
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_hangup_endpoint_rejects_token_auth(self):
+        """Token auth must not unlock the AMI-triggering write endpoint."""
+        resp = self.client.post(
+            "/dashboard/api/channels/hangup/",
+            data=json.dumps({"channel": "PJSIP/100-00000001"}),
+            content_type="application/json",
+            **self._auth_header(),
+        )
+        self.assertNotEqual(resp.status_code, 200)
 
 
 class TestUlineMonitorAccess(DashboardAPITestBase):

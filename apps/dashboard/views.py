@@ -12,6 +12,8 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 from asterisk.ami import AMIClient, SimpleAction
 
@@ -40,6 +42,26 @@ def staff_required_json(view_func):
     return wrapper
 
 
+def token_or_login_required(view_func):
+    """Allow a read-only JSON endpoint via an active Django session OR a valid
+    DRF auth token (Authorization: Token <key>)."""
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        try:
+            result = TokenAuthentication().authenticate(request)
+        except AuthenticationFailed:
+            result = None
+        if result is not None:
+            request.user, request.auth = result
+            return view_func(request, *args, **kwargs)
+        return JsonResponse({"error": "authentication required"}, status=401)
+
+    return wrapper
+
+
 @login_required
 def operator_panel(request):
     """Operator Dashboard - main page"""
@@ -52,7 +74,7 @@ def new_dashboard(request):
     return render(request, "dashboard/new_dashboard.html")
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_sip_endpoints(request):
     """Return internal SIP user usernames and external SIP peer names from the DB.
@@ -65,7 +87,7 @@ def get_sip_endpoints(request):
     return JsonResponse({"users": users, "peers": peers})
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_queue_state(request, queue_name):
     if not _VALID_NAME_RE.match(queue_name):
@@ -83,7 +105,7 @@ def get_queue_state(request, queue_name):
     return JsonResponse({"members": {}, "calls": {}, "stats": {"waiting": 0}})
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_all_queues(request):
     try:
@@ -102,7 +124,7 @@ def get_all_queues(request):
     return JsonResponse(queues)
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_all_channels(request):
     """Get all active channels"""
@@ -118,7 +140,7 @@ def get_all_channels(request):
     return JsonResponse({})
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_channel(request, channel_name):
     """Get a specific channel"""
@@ -137,7 +159,7 @@ def get_channel(request, channel_name):
     return JsonResponse({"error": "Channel not found"}, status=404)
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_active_calls(request):
     """Get all active calls (with bridge)"""
@@ -401,7 +423,7 @@ def pause_queue_member(request):
     return JsonResponse({"error": response.status}, status=400)
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_missed_calls(request):
     """Return today's unresolved missed calls (ABANDON without callback) for a queue."""
@@ -436,7 +458,7 @@ def get_missed_calls(request):
     return JsonResponse(result, safe=False)
 
 
-@login_required
+@token_or_login_required
 @require_http_methods(["GET"])
 def get_channels_by_type(request, channel_type):
     """Get channels by type (PJSIP, DAHDI, Local, etc.)"""

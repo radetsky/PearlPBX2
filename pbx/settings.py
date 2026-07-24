@@ -242,6 +242,8 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [REDIS_URL],
+            "capacity": 256,  # max messages buffered per channel (default 100)
+            "expiry": 60,  # seconds a message may sit before being dropped
         },
     },
 }

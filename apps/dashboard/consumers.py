@@ -1,5 +1,8 @@
 import asyncio
+from urllib.parse import parse_qs
+
 import redis.asyncio as redis
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.conf import settings
 import logging
@@ -7,15 +10,44 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@database_sync_to_async
+def _user_for_token(key):
+    from rest_framework.authtoken.models import Token
+
+    try:
+        return Token.objects.select_related("user").get(key=key).user
+    except Token.DoesNotExist:
+        return None
+
+
+def _extract_token(scope):
+    """Read an auth token from the ?token= query param or an
+    Authorization: Token <key> header (browsers can't set custom WS headers,
+    so the query param is the primary path)."""
+    qs = parse_qs(scope.get("query_string", b"").decode())
+    if qs.get("token"):
+        return qs["token"][0]
+    for name, value in scope.get("headers", []):
+        if name == b"authorization":
+            parts = value.decode().split()
+            if len(parts) == 2 and parts[0].lower() == "token":
+                return parts[1]
+    return None
+
+
 class AsteriskEventsConsumer(AsyncWebsocketConsumer):
     """WebSocket consumer for real-time Asterisk events"""
 
     async def connect(self):
-        """Client connection"""
-        # Authentication check (optional)
-        if not self.scope["user"].is_authenticated:
-            await self.close()
-            return
+        """Client connection: Django session OR a valid auth token."""
+        user = self.scope.get("user")
+        if user is None or not user.is_authenticated:
+            token = _extract_token(self.scope)
+            user = await _user_for_token(token) if token else None
+            if user is None or not user.is_authenticated:
+                await self.close()
+                return
+            self.scope["user"] = user
 
         await self.accept()
         logger.info(f"WebSocket connected: {self.scope['user']}")
