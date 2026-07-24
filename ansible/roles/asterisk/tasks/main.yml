@@ -123,6 +123,19 @@
       args:
         chdir: "{{ asterisk_build_dir }}"
 
+    - name: Pre-seed /etc/asterisk with PearlPBX2 baseline configs
+      # Must run before "make basic-pbx": that target only skips files that
+      # already exist, so seeding our own queues.conf/extensions.conf/etc.
+      # here stops Asterisk's demo configs (fake queues, fake agents) from
+      # ever being installed instead of PearlPBX2's own baseline.
+      copy:
+        src: "{{ playbook_dir }}/../contrib/configs/"
+        dest: /etc/asterisk/
+        owner: "{{ pearlpbx2_user }}"
+        group: "{{ pearlpbx2_group }}"
+        mode: '0640'
+        force: no
+
     - name: Install basic-pbx sample configs
       command: make basic-pbx
       args:
