@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.3.0`
+# PearlPBX2 `v2.6.0`
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
 
@@ -15,7 +15,11 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Callback queue** — automated outbound callback system with configurable AMI timeout (`--ami_timeout`)
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones
 - **Lists** — web CRUD UI for Blocklist, Allowlist, and Contacts; accessible to Report Viewer group without admin access
-- **REST API** — blacklist/whitelist management via HTTP API
+- **REST API** — DRF-based endpoints for blacklist/whitelist/contacts management, call control (`/calls/originate/`), and ConfBridge conference calls (`/calls/conference/`); documented in `docs/openapi.yaml`
+- **CRM webhooks** — configurable JSON POST notifications for call events (incoming, answered, ended/missed), driven from the dashboard listener; call recording lookup via `GET /api/v1/recordings/<uniqueid>/`
+- **Token authentication** — dashboard WebSocket and read-only JSON API accept a DRF auth token in addition to a Django session, for CRM/external integrations
+- **Slack notifications** — aggregated alerts for missed queue calls, plus per-call notifications from classic AGI scripts
+- **Ansible deployment** — install/update playbooks plus a rollback procedure (`rollback.sh`) to revert code, migrations, and services to a prior deployment
 - **Apply Changes** — one-click config regeneration and Asterisk reload
 
 ## Architecture
@@ -37,7 +41,8 @@ Callback daemon ─────────────► Asterisk AMI (outboun
 - `apps/lists/` — web CRUD UI for blocklist, allowlist, contacts
 - `apps/callback/` — callback queue models and views
 - `apps/provision/` — phone provisioning via TFTP
-- `apps/api/` — REST API for blacklist/whitelist
+- `apps/api/` — REST API for blacklist/whitelist, call control, and recordings
+- `apps/webhooks/` — CRM webhook definitions and delivery sync
 - `services/callback/` — standalone daemon: monitors DB, initiates calls via AMI
 - `services/dashboard/` — standalone daemon: AMI event listener → Redis
 - `services/fastagi/` — standalone FastAGI server (blacklist, recording, routing)

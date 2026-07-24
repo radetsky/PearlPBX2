@@ -4,9 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [2.6.0] - 2026-07-24
 
-## [2.5.0] - 2026-07-23
+### Added
+
+- **Ansible rollback procedure** — `rollback.sh` plus `ansible/rollback.yml` and `bin/pearlpbx2_resolve_rollback_target.py` let an admin roll a deployment back N steps using a deploy-state ledger written by `update.yml`: it resolves the target commit/migration state, reverts Django migrations while the newer migration files are still on disk, checks out and syncs the rolled-back code (aborting if the source repo has uncommitted changes), reinstalls dependencies for the main app and the `callback`/`dashboard`/`fastagi` services, and restarts them. `ansible/update.yml` now also ensures the deploy-state directory exists before writing the ledger.
+- **`sync_manager_users` management command** (`core/management/commands/sync_manager_users.py`) — creates/updates the AMI `ManagerUsers` records for the built-in `callback`, `dashboard_listener`, and `fastagi` services from fixed scopes, mirroring `manager.conf.j2`; wired into the Ansible `pearlpbx2` role install so these accounts are (re)provisioned automatically instead of requiring manual `manager.conf` edits. Covered by new tests in `core/tests.py`.
+- **Token authentication for dashboard WebSocket and read-only JSON API** — `apps/dashboard/consumers.py`'s `AsteriskEventsConsumer.connect()` now also accepts a DRF auth token (via `?token=` query param or `Authorization: Token <key>` header) when there is no authenticated session; a matching `token_or_login_required` decorator in `apps/dashboard/views.py` extends the same fallback to the read-only endpoints (`get_sip_endpoints`, `get_queue_state`, `get_all_queues`, `get_all_channels`, `get_channel`, `get_active_calls`, `get_missed_calls`, `get_channels_by_type`), enabling CRM/external integrations that can't rely on Django sessions. `docs/ua/crm-integrator-guide.md` updated accordingly.
+
+### Changed
+
+- **`ALLOWED_HOSTS` during install** now includes the host's FQDN, `localhost`, and all detected IPv4 interface addresses (in addition to the short hostname and `127.0.0.1`), so the admin UI is no longer rejected with a 400 when reached via a secondary network interface's IP.
+- **`CHANNEL_LAYERS` Redis backend** given explicit `capacity` (256) and `expiry` (60s) settings instead of relying on channels_redis defaults.
+- **Ansible install playbook simplified** — removed the interactive timezone-confirmation preflight step and the PostgreSQL system-timezone-sync task (`ansible/install.yml`, `ansible/roles/postgres/tasks/main.yml`); the `asterisk` role now pre-seeds `/etc/asterisk` with PearlPBX2's own baseline configs before running `make basic-pbx`, so Asterisk's demo queues/agents are never installed in their place; `collectstatic` now runs with AMI connection settings and `CSRF_TRUSTED_ORIGINS` in its environment.
+
+
 
 ### Added
 
