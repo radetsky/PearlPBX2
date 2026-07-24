@@ -1,0 +1,189 @@
+---
+- name: Roll PearlPBX2 back N deployments
+  hosts: localhost
+  become: true
+
+  vars:
+    services:
+      - name: dashboard
+        unit: pearlpbx2-dashboard
+        venv: "{{ pearlpbx2_install_dir }}/services/dashboard/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/dashboard/requirements.txt"
+      - name: callback
+        unit: pearlpbx2-callback
+        venv: "{{ pearlpbx2_install_dir }}/services/callback/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/callback/requirements.txt"
+      - name: fastagi
+        unit: pearlpbx2-fastagi
+        venv: "{{ pearlpbx2_install_dir }}/services/fastagi/.python-venv"
+        requirements: "{{ pearlpbx2_install_dir }}/services/fastagi/requirements.txt"
+    deploy_state_file: /var/backups/pearlpbx2/deploy_state/state.json
+    repo_dir: "{{ playbook_dir }}/.."
+    deploy_timestamp: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+    # Number of deployments to roll back, e.g. -e steps=3. Overridden by
+    # rollback.sh via -n/--steps; defaults to one step back.
+    steps: 1
+
+  tasks:
+    # Fails the play with a clear stderr message (missing ledger, not enough
+    # history, or already at the oldest recorded deployment) if the request
+    # can't be satisfied — same script rollback.sh uses for its preview, so
+    # the two never disagree on what "N steps back" resolves to.
+    - name: Resolve rollback target from deploy-state ledger
+      command: >
+        python3 {{ repo_dir }}/bin/pearlpbx2_resolve_rollback_target.py
+        {{ deploy_state_file }} --steps {{ steps }}
+      register: pearlpbx2_resolved
+      changed_when: false
+
+    - name: Parse resolved rollback target
+      set_fact:
+        pearlpbx2_rollback: "{{ pearlpbx2_resolved.stdout | from_json }}"
+
+    - name: Read env file for Django management commands
+      slurp:
+        src: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+      register: pearlpbx2_env_raw
+      no_log: true
+
+    - name: Parse env file into dict
+      set_fact:
+        pearlpbx2_django_env: >-
+          {{
+            dict(
+              pearlpbx2_env_raw.content | b64decode
+              | regex_findall('^([A-Z_]+)=(.*)$', multiline=True)
+            )
+          }}
+      no_log: true
+
+    # Migrations must be reversed while the NEWER migration files are still on
+    # disk — Django needs them to compute the down-path. Do this before the
+    # code checkout below replaces those files with the old version's.
+    - name: Revert database migrations to the pre-update state
+      command: >
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate
+        {{ item.key }} {{ item.value }} --noinput
+      args:
+        chdir: "{{ pearlpbx2_install_dir }}"
+      environment: "{{ pearlpbx2_django_env }}"
+      become_user: "{{ pearlpbx2_user }}"
+      loop: "{{ pearlpbx2_rollback.target_migrations | dict2items }}"
+
+    - name: Fail if the source repo has uncommitted changes
+      command: git -C {{ repo_dir }} status --porcelain
+      register: pearlpbx2_git_status
+      changed_when: false
+      delegate_to: localhost
+
+    - name: Abort — source repo has uncommitted local changes
+      fail:
+        msg: >-
+          {{ repo_dir }} has uncommitted changes. Commit or stash them first —
+          'git checkout {{ pearlpbx2_rollback.target_commit }}' would otherwise
+          discard that work.
+      when: pearlpbx2_git_status.stdout | trim | length > 0
+
+    - name: Check out the target commit in the source repo
+      command: git -C {{ repo_dir }} checkout {{ pearlpbx2_rollback.target_commit }}
+      delegate_to: localhost
+
+    - name: Sync rolled-back application code
+      synchronize:
+        src: "{{ repo_dir }}/"
+        dest: "{{ pearlpbx2_install_dir }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=.github"
+          - "--exclude=__pycache__"
+          - "--exclude=.python-venv"
+          - "--exclude=.venv"
+          - "--exclude=ansible"
+          - "--exclude=*.pyc"
+          - "--exclude=staticfiles"
+          - "--exclude=CLAUDE.md"
+      delegate_to: localhost
+
+    - name: Set ownership of application directory
+      file:
+        path: "{{ pearlpbx2_install_dir }}"
+        owner: "{{ pearlpbx2_user }}"
+        group: "{{ pearlpbx2_group }}"
+        recurse: yes
+
+    - name: Update AGI scripts in agi-bin
+      copy:
+        src: "{{ pearlpbx2_install_dir }}/services/agi/{{ item }}"
+        dest: /var/lib/asterisk/agi-bin/{{ item }}
+        owner: "{{ pearlpbx2_user }}"
+        group: "{{ pearlpbx2_group }}"
+        mode: '0755'
+        remote_src: yes
+      loop:
+        - agi_common.py
+        - unmatched_call.py
+        - missed_call.py
+
+    - name: Reinstall main Python dependencies for the rolled-back code
+      pip:
+        requirements: "{{ pearlpbx2_install_dir }}/requirements.txt"
+        virtualenv: "{{ pearlpbx2_install_dir }}/.venv"
+        state: present
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Reinstall service Python dependencies for the rolled-back code
+      pip:
+        requirements: "{{ item.requirements }}"
+        virtualenv: "{{ item.venv }}"
+        state: present
+      loop: "{{ services }}"
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Collect static files
+      command: >
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput
+      args:
+        chdir: "{{ pearlpbx2_install_dir }}"
+      environment: "{{ pearlpbx2_django_env }}"
+      become_user: "{{ pearlpbx2_user }}"
+
+    - name: Restart PearlPBX2
+      systemd:
+        name: PearlPBX2
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart auxiliary services
+      systemd:
+        name: "{{ item.unit }}"
+        state: restarted
+      loop: "{{ services }}"
+
+    # Drop every entry at or after the rolled-back-to point — they describe
+    # commits newer than what's now running, so they're no longer valid
+    # rollback targets. If that empties the list (rolled back to the oldest
+    # recorded deployment), leave a bottom-of-stack marker so state.json
+    # always has at least one entry and a subsequent ./update.sh can append
+    # to it normally.
+    - name: Determine final history after rollback
+      set_fact:
+        pearlpbx2_final_history: >-
+          {{
+            pearlpbx2_rollback.remaining_history
+            if (pearlpbx2_rollback.remaining_history | length > 0)
+            else [{
+              'timestamp': deploy_timestamp,
+              'previous_commit': '',
+              'new_commit': pearlpbx2_rollback.target_commit,
+              'migrations_before': {}
+            }]
+          }}
+
+    - name: Update deploy-state ledger after rollback
+      copy:
+        content: "{{ {'history': pearlpbx2_final_history} | to_nice_json }}"
+        dest: "{{ deploy_state_file }}"
+        owner: root
+        group: root
+        mode: '0640'

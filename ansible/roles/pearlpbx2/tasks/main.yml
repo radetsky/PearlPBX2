@@ -189,6 +189,32 @@
   become_user: "{{ pearlpbx2_user }}"
   no_log: true
 
+- name: Determine installed commit for the rollback ledger
+  command: git -C {{ playbook_dir }}/.. rev-parse HEAD
+  register: pearlpbx2_installed_commit
+  delegate_to: localhost
+  changed_when: false
+  failed_when: false
+
+- name: Seed the deploy-state ledger for rollback.sh
+  copy:
+    content: |
+      {
+        "history": [
+          {
+            "timestamp": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "previous_commit": "",
+            "new_commit": "{{ pearlpbx2_installed_commit.stdout | default('unknown') }}",
+            "migrations_before": {}
+          }
+        ]
+      }
+    dest: /var/backups/pearlpbx2/deploy_state/state.json
+    owner: root
+    group: root
+    mode: '0640'
+    force: no
+
 - name: Install PearlPBX2 systemd unit
   template:
     src: pearlpbx2.service.j2

@@ -14,3 +14,8 @@ ssl_dir: /etc/ssl/pearlpbx2
 ssl_days: 3650
 
 tftp_dir: /var/lib/tftpboot
+
+# Number of past deployments kept in the rollback ledger (see update.yml /
+# rollback.yml). Each entry is a few hundred bytes; 10 is ample headroom
+# without letting /var/backups/pearlpbx2 grow unbounded.
+deploy_history_retention: 10

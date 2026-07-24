@@ -17,8 +17,27 @@
         unit: pearlpbx2-fastagi
         venv: "{{ pearlpbx2_install_dir }}/services/fastagi/.python-venv"
         requirements: "{{ pearlpbx2_install_dir }}/services/fastagi/requirements.txt"
+    # Apps that carry migrations — used to build the rollback ledger.
+    migrated_apps:
+      - core
+      - api
+      - callback
+      - provision
+      - reports
+      - webhooks
+    deploy_state_file: /var/backups/pearlpbx2/deploy_state/state.json
 
   tasks:
+    - name: Determine commit being deployed
+      command: git -C {{ playbook_dir }}/.. rev-parse HEAD
+      register: pearlpbx2_new_commit
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Set deploy timestamp
+      set_fact:
+        deploy_timestamp: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
     - name: Sync application code
       synchronize:
         src: "{{ playbook_dir }}/../"
@@ -88,6 +107,44 @@
           }}
       no_log: true
 
+    - name: Capture applied migration state before migrating (for rollback)
+      command: >
+        {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py showmigrations {{ item }}
+      args:
+        chdir: "{{ pearlpbx2_install_dir }}"
+      environment: "{{ pearlpbx2_django_env }}"
+      become_user: "{{ pearlpbx2_user }}"
+      changed_when: false
+      loop: "{{ migrated_apps }}"
+      register: pearlpbx2_pre_update_showmigrations
+
+    - name: Build pre-update migration leaf map
+      vars:
+        applied_lines: "{{ item.stdout_lines | select('match', '^ \\[X\\] ') | list }}"
+      set_fact:
+        pre_update_migrations: >-
+          {{
+            pre_update_migrations | default({}) | combine({
+              item.item: (applied_lines[-1].split(']')[1] | trim) if applied_lines | length > 0 else 'zero'
+            })
+          }}
+      loop: "{{ pearlpbx2_pre_update_showmigrations.results }}"
+
+    - name: Read existing deploy-state ledger, if any
+      slurp:
+        src: "{{ deploy_state_file }}"
+      register: pearlpbx2_prior_state_raw
+      failed_when: false
+
+    - name: Parse prior deploy-state history
+      set_fact:
+        pearlpbx2_history: >-
+          {{
+            ((pearlpbx2_prior_state_raw.content | b64decode | from_json).history)
+            if (pearlpbx2_prior_state_raw.content is defined)
+            else []
+          }}
+
     - name: Run database migrations
       command: >
         {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py migrate --noinput
@@ -115,3 +172,28 @@
         name: "{{ item.unit }}"
         state: restarted
       loop: "{{ services }}"
+
+    - name: Determine previous commit for the new ledger entry
+      set_fact:
+        pearlpbx2_deploy_previous_commit: >-
+          {{ (pearlpbx2_history[-1].new_commit) if (pearlpbx2_history | length > 0) else 'unknown' }}
+
+    - name: Append and trim deploy-state ledger
+      set_fact:
+        pearlpbx2_new_history: >-
+          {{
+            (pearlpbx2_history + [{
+              'timestamp': deploy_timestamp,
+              'previous_commit': pearlpbx2_deploy_previous_commit,
+              'new_commit': pearlpbx2_new_commit.stdout,
+              'migrations_before': pre_update_migrations
+            }])[-(deploy_history_retention | int):]
+          }}
+
+    - name: Record deploy-state ledger for rollback.sh
+      copy:
+        content: "{{ {'history': pearlpbx2_new_history} | to_nice_json }}"
+        dest: "{{ deploy_state_file }}"
+        owner: root
+        group: root
+        mode: '0640'

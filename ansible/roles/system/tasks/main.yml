@@ -68,6 +68,7 @@
     - { path: "{{ pearlpbx2_etc_dir }}/syncmp3",  owner: root, group: root, mode: "0755" }
     - { path: "{{ pearlpbx2_etc_dir }}/pg_backup", owner: root, group: root, mode: "0755" }
     - { path: /var/backups/asterisk, owner: "{{ pearlpbx2_user }}", group: "{{ pearlpbx2_group }}", mode: "0750" }
+    - { path: /var/backups/pearlpbx2/deploy_state, owner: root, group: root, mode: "0750" }
     - { path: /var/lib/pearlpbx2/monitor-state, owner: root, group: root, mode: "0755" }
     - { path: "{{ pearlpbx2_etc_dir }}/AGI", owner: root, group: "{{ pearlpbx2_group }}", mode: "0750" }
 
