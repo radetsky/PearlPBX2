@@ -291,6 +291,21 @@ class TestAbandon:
         info.update(overrides)
         return info
 
+    def announce(self, manager, exten="700", context="incoming"):
+        run(
+            manager.on_incoming(
+                {
+                    "uniqueid": "111.222",
+                    "caller_id_num": "380501234567",
+                    "caller_id_name": None,
+                    "exten": exten,
+                    "context": context,
+                    "queue": None,
+                    "recording_expected": None,
+                }
+            )
+        )
+
     def test_missed_fires_without_marker(self):
         manager, _ = make_manager(make_config())
         run(manager.load_config())
@@ -301,6 +316,20 @@ class TestAbandon:
         assert notified == ["crm"]
         assert calls[0][:2] == ("crm", "call.missed")
         assert calls[0][2]["wait_time"] == 33
+        assert calls[0][2]["exten"] is None
+        assert calls[0][2]["context"] is None
+
+    def test_missed_includes_exten_and_context_from_marker(self):
+        manager, _ = make_manager(make_config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        run(manager.on_abandon(self.abandon_info()))
+
+        missed = [c for c in calls if c[1] == "call.missed"][0]
+        assert missed[2]["exten"] == "700"
+        assert missed[2]["context"] == "incoming"
 
     def test_missed_requires_event_subscription(self):
         manager, _ = make_manager(make_config(events=["incoming", "ended"]))
@@ -362,6 +391,21 @@ class TestAgentConnect:
         info.update(overrides)
         return info
 
+    def announce(self, manager, exten="700", context="incoming"):
+        run(
+            manager.on_incoming(
+                {
+                    "uniqueid": "111.222",
+                    "caller_id_num": "380501234567",
+                    "caller_id_name": None,
+                    "exten": exten,
+                    "context": context,
+                    "queue": None,
+                    "recording_expected": None,
+                }
+            )
+        )
+
     def test_answered_fires_without_marker(self):
         manager, _ = make_manager(make_config())
         run(manager.load_config())
@@ -377,6 +421,20 @@ class TestAgentConnect:
         assert variables["member_number"] == "101"
         assert variables["ringtime"] == "3500"
         assert variables["holdtime"] == "18"
+        assert variables["exten"] is None
+        assert variables["context"] is None
+
+    def test_answered_includes_exten_and_context_from_marker(self):
+        manager, _ = make_manager(make_config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        run(manager.on_agent_connect(self.agent_connect_info()))
+
+        answered = [c for c in calls if c[1] == "call.answered"][0]
+        assert answered[2]["exten"] == "700"
+        assert answered[2]["context"] == "incoming"
 
     def test_answered_requires_event_subscription(self):
         manager, _ = make_manager(make_config(events=["incoming", "ended"]))

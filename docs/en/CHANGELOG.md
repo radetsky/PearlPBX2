@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **CRM webhook `call.answered`/`call.missed` missing destination number** — `services/dashboard/webhook_sender.py`'s `_on_agent_connect`/`_on_abandon` now enrich their payloads with `exten`/`context` from the `webhook:notified:{uniqueid}` marker (the same data already included in `call.incoming`/`call.ended`), so CRM integrations can see which number the caller dialed for answered/missed queue calls too. Covered by new tests in `services/dashboard/tests.py`.
+
 ## [2.6.0] - 2026-07-24
 
 ### Added

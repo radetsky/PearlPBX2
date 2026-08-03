@@ -142,6 +142,7 @@ class WebhookManager:
         """Report a missed (abandoned) queue call. Returns notified names.
 
         call_info: uniqueid, queue, caller_id_num, wait_time.
+        exten/context are enriched from the announced-call marker, if present.
         """
         try:
             return await self._on_abandon(call_info)
@@ -165,6 +166,7 @@ class WebhookManager:
 
         call_info: uniqueid, queue, caller_id_num, caller_id_name, member_name,
         member_interface, member_number, ringtime, holdtime.
+        exten/context are enriched from the announced-call marker, if present.
         """
         try:
             return await self._on_agent_connect(call_info)
@@ -248,10 +250,14 @@ class WebhookManager:
         if not self.enabled or not uniqueid:
             return []
         matched = self._match("missed", queue=call_info.get("queue"))
+        marker = await self._get_marker(uniqueid)
         if matched:
+            call = (marker or {}).get("call", {})
             variables = {
                 "uniqueid": uniqueid,
                 "caller_id_num": call_info.get("caller_id_num"),
+                "exten": call.get("exten"),
+                "context": call.get("context"),
                 "queue": call_info.get("queue"),
                 "wait_time": call_info.get("wait_time"),
                 "timestamp": datetime.now().isoformat(),
@@ -259,7 +265,6 @@ class WebhookManager:
             for wh in matched:
                 self._fire(wh, "call.missed", variables)
 
-        marker = await self._get_marker(uniqueid)
         if marker:
             marker.setdefault("call", {})["missed"] = True
             await self._set_marker(uniqueid, marker)
@@ -270,11 +275,15 @@ class WebhookManager:
         if not self.enabled or not uniqueid:
             return []
         matched = self._match("answered", queue=call_info.get("queue"))
+        marker = await self._get_marker(uniqueid)
         if matched:
+            call = (marker or {}).get("call", {})
             variables = {
                 "uniqueid": uniqueid,
                 "caller_id_num": call_info.get("caller_id_num"),
                 "caller_id_name": call_info.get("caller_id_name"),
+                "exten": call.get("exten"),
+                "context": call.get("context"),
                 "queue": call_info.get("queue"),
                 "member_name": call_info.get("member_name"),
                 "member_interface": call_info.get("member_interface"),
@@ -286,7 +295,6 @@ class WebhookManager:
             for wh in matched:
                 self._fire(wh, "call.answered", variables)
 
-        marker = await self._get_marker(uniqueid)
         if marker:
             marker.setdefault("call", {}).update(
                 {
