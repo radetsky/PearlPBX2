@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **AEL global variables** — new `DialplanGlobalVariable` model (`core/models.py`, migration `0080`) lets an admin define named `globals { }` entries via the Django admin, emitted at the top of the generated `extensions.ael` by `make_dialplan_globals()` in `core/conf.py`. Name/value are validated with new `validate_ael_variable_name`/`validate_ael_variable_value` validators in `core/validators.py` (identifier syntax; no `;` or line breaks in the value). Covered by new tests in `core/tests.py`.
+
 ### Fixed
 
 - **CRM webhook `call.answered`/`call.missed` missing destination number** — `services/dashboard/webhook_sender.py`'s `_on_agent_connect`/`_on_abandon` now enrich their payloads with `exten`/`context` from the `webhook:notified:{uniqueid}` marker (the same data already included in `call.incoming`/`call.ended`), so CRM integrations can see which number the caller dialed for answered/missed queue calls too. Covered by new tests in `services/dashboard/tests.py`.
+- **Ansible update playbook** — `manage.py showmigrations`/`migrate`/`collectstatic` steps in `ansible/update.yml` now run with `--skip-checks`, so Django system checks unrelated to the update (e.g. warnings from in-progress model changes) no longer abort the update process.
 
 ## [2.6.0] - 2026-07-24
 
