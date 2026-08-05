@@ -9,6 +9,7 @@ from core.models import (
     DialplanContext,
     DialplanExtension,
     DialplanMacro,
+    DialplanGlobalVariable,
     Settings,
     ManagerUsers,
     CallQueueGlobalSettings,
@@ -31,6 +32,7 @@ from core.conf import (
     make_extensions_ael,
     make_dialplan_contexts,
     make_dialplan_macros,
+    make_dialplan_globals,
     make_dialplan_extension,
     make_routing_tables,
     make_manager_conf,
@@ -657,6 +659,40 @@ class TestMakeDialplanMacros(TestCase):
             macro.delete()
 
 
+class TestMakeDialplanGlobals(TestCase):
+    def test_globals_header(self):
+        result = make_dialplan_globals()
+        self.assertIn("// ==== Global variables ====", result)
+
+    def test_no_globals_block_without_variables(self):
+        result = make_dialplan_globals()
+        self.assertNotIn("globals {", result)
+
+    def test_globals_with_variables(self):
+        v1 = DialplanGlobalVariable.objects.create(
+            name="OUTBOUND_CID",
+            value="380441234567",
+            description="Default outbound CallerID",
+        )
+        v2 = DialplanGlobalVariable.objects.create(
+            name="RECORD_ALL",
+            value="yes",
+        )
+        try:
+            result = make_dialplan_globals()
+            self.assertIn("globals {", result)
+            self.assertIn("// Default outbound CallerID", result)
+            self.assertIn("OUTBOUND_CID = 380441234567;", result)
+            self.assertIn("RECORD_ALL = yes;", result)
+            self.assertIn("}\n", result)
+            self.assertLess(
+                result.index("OUTBOUND_CID"), result.index("RECORD_ALL")
+            )
+        finally:
+            v1.delete()
+            v2.delete()
+
+
 class TestMakeRoutingTables(TestCase):
     def setUp(self):
         self.rt = RoutingTable.objects.get(name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE)
@@ -705,6 +741,7 @@ class TestMakeExtensionsAel(TestCase):
         result = make_extensions_ael()
         self.assertIn("// === This is auto generated file. Do not edit it! ===", result)
         self.assertIn("// === Use PearlPBX admin panel! ===", result)
+        self.assertIn("// ==== Global variables ====", result)
         self.assertIn("// ==== Macros ====", result)
         self.assertIn("// ==== Routing tables ====", result)
         self.assertIn("// ==== Dialplan contexts ====", result)
@@ -1267,6 +1304,74 @@ class TestValidateAsteriskExtensionPrefix(TestCase):
             self.fail(
                 "validate_asterisk_extension_prefix raised ValidationError for 'h'"
             )
+
+
+class TestValidateAelVariableName(TestCase):
+    def test_valid_name(self):
+        from core.validators import validate_ael_variable_name
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_ael_variable_name("OUTBOUND_CID")
+        except ValidationError:
+            self.fail("validate_ael_variable_name raised ValidationError for 'OUTBOUND_CID'")
+
+    def test_name_starting_with_digit_is_invalid(self):
+        from core.validators import validate_ael_variable_name
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            validate_ael_variable_name("1CID")
+
+    def test_name_with_hyphen_is_invalid(self):
+        from core.validators import validate_ael_variable_name
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            validate_ael_variable_name("my-var")
+
+
+class TestValidateAelVariableValue(TestCase):
+    def test_plain_value_is_valid(self):
+        from core.validators import validate_ael_variable_value
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_ael_variable_value("380441234567")
+        except ValidationError:
+            self.fail("validate_ael_variable_value raised ValidationError for '380441234567'")
+
+    def test_substitution_value_is_valid(self):
+        from core.validators import validate_ael_variable_value
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_ael_variable_value("${CALLERID(num)}")
+        except ValidationError:
+            self.fail("validate_ael_variable_value raised ValidationError for '${CALLERID(num)}'")
+
+    def test_channel_value_is_valid(self):
+        from core.validators import validate_ael_variable_value
+        from django.core.exceptions import ValidationError
+
+        try:
+            validate_ael_variable_value("PJSIP/trunk1")
+        except ValidationError:
+            self.fail("validate_ael_variable_value raised ValidationError for 'PJSIP/trunk1'")
+
+    def test_value_with_semicolon_is_invalid(self):
+        from core.validators import validate_ael_variable_value
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            validate_ael_variable_value("foo; bar")
+
+    def test_value_with_newline_is_invalid(self):
+        from core.validators import validate_ael_variable_value
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            validate_ael_variable_value("foo\nbar")
 
 
 class TestNormalizePhone(TestCase):

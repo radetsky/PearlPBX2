@@ -52,6 +52,23 @@ def validate_asterisk_context(value):
         raise ValidationError("Context name is too long (max 80 characters).")
 
 
+def validate_ael_variable_name(value):
+    """Validator for AEL global variable name."""
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", value):
+        raise ValidationError(
+            "Variable name must start with a letter or underscore, "
+            "and contain only letters, digits, and underscores."
+        )
+
+
+def validate_ael_variable_value(value):
+    """Reject characters that would break AEL globals block syntax."""
+    if re.search(r"[;\r\n]", value):
+        raise ValidationError(
+            "Variable value must not contain ';' or line breaks."
+        )
+
+
 def validate_match_hosts(value):
     """Validate comma-separated list of hosts/IPs without ports for pjsip identify match=."""
     if not value:

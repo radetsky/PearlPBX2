@@ -13,6 +13,7 @@ from .models import (
     DialplanContext,
     DialplanExtension,
     DialplanMacro,
+    DialplanGlobalVariable,
     Settings,
     MusicOnHoldPlaylistEntry,
     MusicOnHold,
@@ -158,6 +159,13 @@ class DialplanMacroAdmin(admin.ModelAdmin):
     list_display = ("name", "description")
     ordering = ["name", "description"]
     search_fields = ["name", "description", "macro"]
+
+
+class DialplanGlobalVariableAdmin(admin.ModelAdmin):
+    fields = ["name", "value", "description"]
+    list_display = ("name", "value", "description")
+    ordering = ["name"]
+    search_fields = ["name", "value", "description"]
 
 
 class MusicOnHoldPlaylistEntryAdmin(admin.ModelAdmin):
@@ -430,6 +438,7 @@ admin.site.register(SIPTransport, SIPTransportAdmin)
 admin.site.register(DialplanContext, DialplanContextAdmin)
 admin.site.register(DialplanExtension, DialplanExtensionAdmin)
 admin.site.register(DialplanMacro, DialplanMacroAdmin)
+admin.site.register(DialplanGlobalVariable, DialplanGlobalVariableAdmin)
 admin.site.register(Settings)
 admin.site.register(MusicOnHoldPlaylistEntry, MusicOnHoldPlaylistEntryAdmin)
 admin.site.register(MusicOnHold, MusicOnHoldAdmin)

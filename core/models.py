@@ -30,6 +30,8 @@ from core.validators import (
     validate_match_hosts,
     validate_penalty_value,
     validate_dialplan_field,
+    validate_ael_variable_name,
+    validate_ael_variable_value,
 )
 
 import logging
@@ -158,6 +160,40 @@ class SIPTransport(models.Model):
 
     class Meta:
         verbose_name_plural = _("01. SIP Transports")
+
+
+class DialplanGlobalVariable(models.Model):
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        null=False,
+        blank=False,
+        verbose_name=_("Variable name"),
+        help_text=_("Latin letters, digits and underscore, must not start with a digit"),
+        validators=[validate_ael_variable_name],
+    )
+    value = models.CharField(
+        max_length=255,
+        null=False,
+        blank=False,
+        verbose_name=_("Variable value"),
+        help_text=_("Value assigned in the AEL globals block, Asterisk substitutions are allowed"),
+        validators=[validate_ael_variable_value],
+    )
+    description = models.CharField(
+        max_length=64,
+        null=False,
+        blank=True,
+        verbose_name=_("Variable description"),
+        help_text=_("Use latin symbols, digits and undercore to describe"),
+    )
+
+    class Meta:
+        db_table = "dialplan_global_variables"
+        verbose_name_plural = _("03a. Dialplan globals")
+
+    def __str__(self):
+        return self.name
 
 
 class DialplanContext(models.Model):

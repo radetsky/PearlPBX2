@@ -12,6 +12,7 @@ from core.models import (
     DialplanContext,
     DialplanExtension,
     DialplanMacro,
+    DialplanGlobalVariable,
     RoutingTable,
     RoutingRecord,
     ManagerUsers,
@@ -794,9 +795,24 @@ def make_routing_tables():
     return plaintext
 
 
+def make_dialplan_globals():
+    plaintext = "// ==== Global variables ====\n"
+    variables = DialplanGlobalVariable.objects.all().order_by("name")
+    if not variables:
+        return plaintext
+    plaintext += "globals {\n"
+    for variable in variables:
+        if variable.description:
+            plaintext += f"    // {variable.description}\n"
+        plaintext += f"    {variable.name} = {variable.value};\n"
+    plaintext += "}\n"
+    return plaintext
+
+
 def make_extensions_ael():
     plaintext = "// === This is auto generated file. Do not edit it! ===\n"
     plaintext += "// === Use PearlPBX admin panel! ===\n"
+    plaintext += make_dialplan_globals()
     plaintext += make_dialplan_macros()
     plaintext += make_routing_tables()
     plaintext += make_dialplan_contexts()
