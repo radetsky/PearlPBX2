@@ -262,3 +262,12 @@
     user: root
     job: "{{ pearlpbx2_install_dir }}/bin/syncmp3.sh"
     state: present
+
+- name: Install backup_asterisk cron job (daily at 02:30)
+  cron:
+    name: pearlpbx2_backup_asterisk
+    minute: "30"
+    hour: "2"
+    user: root
+    job: "{{ pearlpbx2_install_dir }}/bin/backup_asterisk.sh"
+    state: present

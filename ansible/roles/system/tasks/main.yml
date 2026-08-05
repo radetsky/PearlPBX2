@@ -67,7 +67,9 @@
     - { path: "{{ pearlpbx2_etc_dir }}/system_monitor", owner: root, group: root, mode: "0755" }
     - { path: "{{ pearlpbx2_etc_dir }}/syncmp3",  owner: root, group: root, mode: "0755" }
     - { path: "{{ pearlpbx2_etc_dir }}/pg_backup", owner: root, group: root, mode: "0755" }
+    - { path: "{{ pearlpbx2_etc_dir }}/backup_asterisk", owner: root, group: root, mode: "0755" }
     - { path: /var/backups/asterisk, owner: "{{ pearlpbx2_user }}", group: "{{ pearlpbx2_group }}", mode: "0750" }
+    - { path: /var/backups/asterisk-etc, owner: root, group: root, mode: "0750" }
     - { path: /var/backups/pearlpbx2/deploy_state, owner: root, group: root, mode: "0750" }
     - { path: /var/lib/pearlpbx2/monitor-state, owner: root, group: root, mode: "0755" }
     - { path: "{{ pearlpbx2_etc_dir }}/AGI", owner: root, group: "{{ pearlpbx2_group }}", mode: "0750" }
@@ -84,6 +86,7 @@
     - { src: syncmp3.env.j2,        dir: syncmp3 }
     - { src: system_monitor.env.j2, dir: system_monitor }
     - { src: pg_backup.env.j2,      dir: pg_backup }
+    - { src: backup_asterisk.env.j2, dir: backup_asterisk }
 
 - name: Deploy AGI env placeholder (skip if already exists)
   template:
