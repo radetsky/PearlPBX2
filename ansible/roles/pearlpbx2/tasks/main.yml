@@ -229,14 +229,19 @@
     state: started
     daemon_reload: yes
 
-- name: Install pg_backup_pearlpbx2 to cron.daily
-  copy:
-    src: "{{ pearlpbx2_install_dir }}/bin/pg_backup_pearlpbx2.sh"
-    dest: /etc/cron.daily/pg_backup_pearlpbx2
-    owner: root
-    group: root
-    mode: '0755'
-    remote_src: yes
+- name: Remove legacy pg_backup_pearlpbx2 cron.daily script
+  file:
+    path: /etc/cron.daily/pg_backup_pearlpbx2
+    state: absent
+
+- name: Install pg_backup cron job (daily at 01:30)
+  cron:
+    name: pearlpbx2_pg_backup
+    minute: "30"
+    hour: "1"
+    user: root
+    job: "{{ pearlpbx2_install_dir }}/bin/pg_backup_pearlpbx2.sh"
+    state: present
 
 - name: Install system_monitor cron job (every 15 minutes)
   cron:
