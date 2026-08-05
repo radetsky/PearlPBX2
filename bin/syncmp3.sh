@@ -64,7 +64,11 @@ log "Cleaning local files older than ${LOCAL_MP3_DAYS}d (mp3) / ${LOCAL_WAV_DAYS
 find "$MONITOR_DIR" -type f -name "*.mp3" -mtime +"$LOCAL_MP3_DAYS" -delete
 find "$MONITOR_DIR" -type f -name "*.wav" -mtime +"$LOCAL_WAV_DAYS" -delete
 
-log "Cleaning backup files older than ${BACKUP_MP3_DAYS}d..."
-find "$BACKUP_DIR" -type f -name "*.mp3" -mtime +"$BACKUP_MP3_DAYS" -delete
+if [[ "${BACKUP_MP3_DAYS}" == "0" ]]; then
+    log "Backup cleanup disabled (BACKUP_MP3_DAYS=0)"
+else
+    log "Cleaning backup files older than ${BACKUP_MP3_DAYS}d..."
+    find "$BACKUP_DIR" -type f -name "*.mp3" -mtime +"$BACKUP_MP3_DAYS" -delete
+fi
 
 log "====== syncmp3 done ======"
