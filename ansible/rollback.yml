@@ -40,10 +40,13 @@
       set_fact:
         pearlpbx2_rollback: "{{ pearlpbx2_resolved.stdout | from_json }}"
 
-    - name: Read env file for Django management commands
-      slurp:
-        src: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+    - name: Read env file for Django management commands (via bash, to respect export/quoting)
+      shell: >
+        env -i bash -c 'set -a; source {{ pearlpbx2_etc_dir }}/PearlPBX2/env; env'
+      args:
+        executable: /bin/bash
       register: pearlpbx2_env_raw
+      changed_when: false
       no_log: true
 
     - name: Parse env file into dict
@@ -51,8 +54,8 @@
         pearlpbx2_django_env: >-
           {{
             dict(
-              pearlpbx2_env_raw.content | b64decode
-              | regex_findall('^([A-Z_]+)=(.*)$', multiline=True)
+              pearlpbx2_env_raw.stdout
+              | regex_findall('^([A-Z_][A-Z0-9_]*)=(.*)$', multiline=True)
             )
           }}
       no_log: true
