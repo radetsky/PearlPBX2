@@ -96,7 +96,7 @@
           {{
             dict(
               lookup('file', pearlpbx2_etc_dir + '/PearlPBX2/env')
-              | regex_findall('^([A-Z_][A-Z0-9_]*)=(.*)$', multiline=True)
+              | regex_findall('^([A-Z_][A-Z0-9_]*)=[\"\']?(.*?)[\"\']?$', multiline=True)
             )
           }}
       no_log: true
