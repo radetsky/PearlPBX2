@@ -4,16 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [2.7.0] - 2026-08-10
 
 ### Added
 
 - **AEL global variables** — new `DialplanGlobalVariable` model (`core/models.py`, migration `0080`) lets an admin define named `globals { }` entries via the Django admin, emitted at the top of the generated `extensions.ael` by `make_dialplan_globals()` in `core/conf.py`. Name/value are validated with new `validate_ael_variable_name`/`validate_ael_variable_value` validators in `core/validators.py` (identifier syntax; no `;` or line breaks in the value). Covered by new tests in `core/tests.py`.
+- **Calls by Destination Number report** — `AnalyticsDestinationCallsView` (`apps/reports/views.py`), template `analytics_destination_calls.html`, and `AnalyticsDestinationCallsForm`, registered at `/reports/analytics/destination-calls/`. Counts answered/total external inbound calls grouped by destination (B-number) — inbound leg must belong to a `SIPPeer` — with unique-caller counts, average talk time, filters for destination/exclude-contacts/top-N, and CSV export. Gated by `view_analytics_reports`. Translations updated for en/es/uk.
+- **`backup_asterisk.sh`** — daily `tar.gz` backup of `/etc/asterisk` with configurable retention (`RETENTION_DAYS`, default 14 days) and a Slack alert on failure. Configured via `/etc/PearlPBX/backup_asterisk/env` (templated from `backup_asterisk.env.j2` in the `system` Ansible role), backing up into `/var/backups/asterisk-etc`; installed as a daily cron job (02:30) by the `pearlpbx2` role.
+
+### Changed
+
+- **English-only API responses** — new `core.middleware.ForceEnglishAPIMiddleware` forces the `en` locale for any request under `/api/`, regardless of `Accept-Language` or the caller's session locale, so external integrations get stable English messages.
+- **Channel-classification helpers extracted** — new `apps/reports/services/channels.py` module (`peer_channel_regex()`/`user_channel_regex()`) replaces the inline regex-building previously duplicated in `CDRReportView`; regexes are now computed lazily and memoized, and an empty SIPPeer/SIPUser list yields `Q(pk__in=[])` instead of a malformed regex.
+- **`pg_backup_pearlpbx2` moved from `cron.daily` to an explicit cron entry** — now runs daily at 01:30; the legacy `/etc/cron.daily/pg_backup_pearlpbx2` script is removed during install.
+- **`syncmp3.sh`** — `BACKUP_MP3_DAYS=0` now disables backup-directory cleanup instead of deleting every file in it.
 
 ### Fixed
 
 - **CRM webhook `call.answered`/`call.missed` missing destination number** — `services/dashboard/webhook_sender.py`'s `_on_agent_connect`/`_on_abandon` now enrich their payloads with `exten`/`context` from the `webhook:notified:{uniqueid}` marker (the same data already included in `call.incoming`/`call.ended`), so CRM integrations can see which number the caller dialed for answered/missed queue calls too. Covered by new tests in `services/dashboard/tests.py`.
 - **Ansible update playbook** — `manage.py showmigrations`/`migrate`/`collectstatic` steps in `ansible/update.yml` now run with `--skip-checks`, so Django system checks unrelated to the update (e.g. warnings from in-progress model changes) no longer abort the update process.
+- **Env-file parsing in Ansible update/rollback** — `ansible/update.yml` and `ansible/rollback.yml` no longer read `/etc/PearlPBX/PearlPBX2/env` via `slurp` + base64 decode; `update.yml` now uses `lookup('file', …)` with a regex that correctly handles digits in variable names and strips surrounding quotes from values.
 
 ## [2.6.0] - 2026-07-24
 

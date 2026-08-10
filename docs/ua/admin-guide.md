@@ -1,6 +1,6 @@
 # Посібник адміністратора PearlPBX2
 
-**Версія:** 2.6.0
+**Версія:** 2.7.0
 
 ---
 
@@ -464,6 +464,16 @@ SIP-піри — це зовнішні з'єднання з телефонним
 
 1. Адмін-панель → PBX Setup → Dialplan Macros → Add.
 2. Поля: **Name**, **Description**, **Macro** (тіло макросу на AEL).
+
+### Глобальні змінні (DialplanGlobalVariable)
+
+Дозволяють визначити іменовані записи, що потрапляють у блок `globals { }` на початку
+згенерованого `extensions.ael`.
+
+1. Адмін-панель → PBX Setup → Dialplan Global Variables → Add.
+2. Поля: **Name**, **Value**.
+3. Ім'я перевіряється на коректний синтаксис ідентифікатора; значення не може містити `;`
+   або переноси рядків.
 
 ### Примітка щодо імен
 
@@ -936,6 +946,15 @@ python manage.py drf_create_token <username>
 - Формат імені: `asterisk-{timestamp}.tar.gz`.
 - Бекап включає всю поточну конфігурацію Asterisk.
 
+Крім того, Ansible-інсталяція налаштовує два щоденні cron-завдання:
+
+- **Бекап PostgreSQL** (`bin/pg_backup_pearlpbx2.sh`) — щодня о 01:30.
+- **Бекап `/etc/asterisk`** (`bin/backup_asterisk.sh`) — щодня о 02:30. Архівує `/etc/asterisk`
+  у `tar.gz` та зберігає в `BACKUP_DIR` (типово `/var/backups/asterisk-etc`) з ретенцією
+  `RETENTION_DAYS` (типово 14 днів). Конфігурація — `/etc/PearlPBX/backup_asterisk/env`
+  (шаблон `backup_asterisk.env.j2`); опційно можна вказати `SLACK_WEBHOOK_URL` для сповіщення
+  про збій.
+
 ### Міграція з PearlPBX1
 
 Директорія `migrate_from_PearlPBX1/` містить скрипти та інструкції для міграції з першої версії системи.
@@ -979,4 +998,4 @@ journalctl -u pearlpbx2-fastagi.service -f
 
 ---
 
-*Документ створено для PearlPBX2 v2.6.0. Інтерфейс системи та шляхи можуть відрізнятися залежно від конфігурації.*
+*Документ створено для PearlPBX2 v2.7.0. Інтерфейс системи та шляхи можуть відрізнятися залежно від конфігурації.*

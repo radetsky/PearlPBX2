@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.6.0`
+# PearlPBX2 `v2.7.0`
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
 
@@ -11,7 +11,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Queue management** — queues, members, rules, announcements
 - **Real-time operator dashboard** — dark-theme live dashboard (`/dashboard/live/`) with five tabs: Overview, Queues, PJSIP, Bridged, Channels; WebSocket status indicator, hangup actions, queue agent info in call modal, agent state restored after Asterisk restart; old dashboard preserved at `/dashboard/old/`
 - **CDR & reports** — call detail records with direction/channel filters, queue logs, callback reports with duration and recordings, call recordings browser
-- **Analytics reports** — queue calls, agent calls, outbound calls, missed calls (with link to queue log), missed by hour, call duration, queue activity (hourly/daily, exclude-contacts filter) with Chart.js charts
+- **Analytics reports** — queue calls, calls by destination number, agent calls, outbound calls, missed calls (with link to queue log), missed by hour, call duration, queue activity (hourly/daily, exclude-contacts filter) with Chart.js charts
 - **Callback queue** — automated outbound callback system with configurable AMI timeout (`--ami_timeout`)
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones
 - **Lists** — web CRUD UI for Blocklist, Allowlist, and Contacts; accessible to Report Viewer group without admin access
@@ -19,7 +19,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **CRM webhooks** — configurable JSON POST notifications for call events (incoming, answered, ended/missed), driven from the dashboard listener; call recording lookup via `GET /api/v1/recordings/<uniqueid>/`
 - **Token authentication** — dashboard WebSocket and read-only JSON API accept a DRF auth token in addition to a Django session, for CRM/external integrations
 - **Slack notifications** — aggregated alerts for missed queue calls, plus per-call notifications from classic AGI scripts
-- **Ansible deployment** — install/update playbooks plus a rollback procedure (`rollback.sh`) to revert code, migrations, and services to a prior deployment
+- **Ansible deployment** — install/update playbooks plus a rollback procedure (`rollback.sh`) to revert code, migrations, and services to a prior deployment; daily cron backups of PostgreSQL and `/etc/asterisk`
 - **Apply Changes** — one-click config regeneration and Asterisk reload
 
 ## Architecture
