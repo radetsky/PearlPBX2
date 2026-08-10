@@ -1180,6 +1180,28 @@ msgstr "Llamadas respondidas"
 msgid "Unique callers"
 msgstr "Llamantes únicos"
 
+#: apps/reports/templates/analytics_destination_calls.html:5
+#: apps/reports/templates/analytics_destination_calls.html:9
+#: core/templates/reports.html:26
+msgid "Calls by Destination Number"
+msgstr "Llamadas por número de destino"
+
+#: apps/reports/forms.py:429
+msgid "Show top"
+msgstr "Mostrar top"
+
+#: apps/reports/templates/analytics_destination_calls.html:92
+msgid "Not answered"
+msgstr "No contestadas"
+
+#: apps/reports/templates/analytics_destination_calls.html:93
+msgid "Answered %"
+msgstr "% contestadas"
+
+#: apps/reports/templates/analytics_destination_calls.html:95
+msgid "Avg talk time"
+msgstr "Duración media de la llamada"
+
 #: apps/reports/templates/callback_report.html:8
 msgid "Callback Report"
 msgstr "Informe de rellamadas"

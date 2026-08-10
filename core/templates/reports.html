@@ -23,6 +23,7 @@
                 <h3 class="uk-card-title">{% trans "Analytics" %}</h3>
                 <ul class="uk-list uk-list-striped">
                     <li><a href="{% url 'analytics_queue_calls' %}">{% trans "Calls by Queue" %}</a></li>
+                    <li><a href="{% url 'analytics_destination_calls' %}">{% trans "Calls by Destination Number" %}</a></li>
                     <li><a href="{% url 'analytics_agent_calls' %}">{% trans "Calls by Agent in Queue" %}</a></li>
                     <li><a href="{% url 'analytics_outbound_calls' %}">{% trans "Outbound Calls by Agent" %}</a></li>
                     <li><a href="{% url 'analytics_missed_calls' %}">{% trans "Missed Calls by Queue" %}</a></li>

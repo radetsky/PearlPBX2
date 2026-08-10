@@ -1173,6 +1173,28 @@ msgstr ""
 msgid "Unique callers"
 msgstr ""
 
+#: apps/reports/templates/analytics_destination_calls.html:5
+#: apps/reports/templates/analytics_destination_calls.html:9
+#: core/templates/reports.html:26
+msgid "Calls by Destination Number"
+msgstr ""
+
+#: apps/reports/forms.py:429
+msgid "Show top"
+msgstr ""
+
+#: apps/reports/templates/analytics_destination_calls.html:92
+msgid "Not answered"
+msgstr ""
+
+#: apps/reports/templates/analytics_destination_calls.html:93
+msgid "Answered %"
+msgstr ""
+
+#: apps/reports/templates/analytics_destination_calls.html:95
+msgid "Avg talk time"
+msgstr ""
+
 #: apps/reports/templates/callback_report.html:8
 msgid "Callback Report"
 msgstr ""

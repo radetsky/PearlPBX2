@@ -19,11 +19,10 @@ from core.models import (
     MonitorFilenames,
     RoutingTable,
     RoutingRecord,
-    SIPUser,
-    SIPPeer,
 )
 
 from apps.reports.mixins import ReportViewPermissionMixin
+from apps.reports.services.channels import peer_channel_regex, user_channel_regex
 from apps.reports.services.recordings import find_recording_path_by_uniqueid
 from apps.reports.models import CDR
 from apps.reports.forms import (
@@ -32,6 +31,7 @@ from apps.reports.forms import (
     AnalyticsAgentCallsForm,
     AnalyticsCallDurationForm,
     AnalyticsDateRangeForm,
+    AnalyticsDestinationCallsForm,
     AnalyticsQueueActivityForm,
     AnalyticsMissedByHourForm,
     CDRReportForm,
@@ -515,39 +515,40 @@ class CDRReportView(ReportViewPermissionMixin, View):
             qs = qs.filter(duration__lte=data["max_duration"])
         direction = data.get("call_direction")
         if direction:
-            peer_names = list(SIPPeer.objects.values_list("name", flat=True))
-            user_names = list(SIPUser.objects.values_list("username", flat=True))
-            peer_pattern = (
-                r"^PJSIP/(" + "|".join(re.escape(n) for n in peer_names) + r")-"
-            )
-            user_pattern = (
-                r"^PJSIP/(" + "|".join(re.escape(n) for n in user_names) + r")-"
-            )
+            patterns = {}
 
-            def channel_q(pattern, field):
+            def pattern_for(kind):
+                """Lazily fetch and memoize the SIPPeer/SIPUser channel regex."""
+                if kind not in patterns:
+                    patterns[kind] = (
+                        peer_channel_regex() if kind == "peer" else user_channel_regex()
+                    )
+                return patterns[kind]
+
+            def channel_q(kind, field):
+                pattern = pattern_for(kind)
+                if pattern is None:
+                    return Q(pk__in=[])  # no SIPPeer/SIPUser configured -> match nothing
                 return Q(**{f"{field}__regex": pattern})
 
             if direction == "incoming":
-                qs = qs.filter(channel_q(peer_pattern, "channel"))
+                qs = qs.filter(channel_q("peer", "channel"))
             elif direction == "outgoing":
                 qs = qs.filter(
-                    channel_q(user_pattern, "channel")
-                    & channel_q(peer_pattern, "dstchannel")
+                    channel_q("user", "channel") & channel_q("peer", "dstchannel")
                 )
             elif direction == "internal":
                 qs = qs.filter(
-                    channel_q(user_pattern, "channel")
-                    & channel_q(user_pattern, "dstchannel")
+                    channel_q("user", "channel") & channel_q("user", "dstchannel")
                 )
             elif direction == "transit":
                 qs = qs.filter(
-                    channel_q(peer_pattern, "channel")
-                    & channel_q(peer_pattern, "dstchannel")
+                    channel_q("peer", "channel") & channel_q("peer", "dstchannel")
                 )
             elif direction == "unbridged_peer":
-                qs = qs.filter(channel_q(peer_pattern, "channel"), dstchannel="")
+                qs = qs.filter(channel_q("peer", "channel"), dstchannel="")
             elif direction == "unbridged_user":
-                qs = qs.filter(channel_q(user_pattern, "channel"), dstchannel="")
+                qs = qs.filter(channel_q("user", "channel"), dstchannel="")
         return qs.order_by("-start")
 
     @staticmethod
@@ -1245,6 +1246,146 @@ class AnalyticsQueueActivityView(ReportViewPermissionMixin, View):
             "totals": totals,
         }
         return render(request, self.template_name, context)
+
+
+class AnalyticsDestinationCallsView(ReportViewPermissionMixin, View):
+    """Answered/total counts of external inbound calls grouped by destination (B-number).
+
+    Only calls whose inbound leg belongs to a SIPPeer (trunk/provider) are
+    counted - calls originating from an internal SIPUser extension are excluded.
+    """
+
+    template_name = "analytics_destination_calls.html"
+
+    def get(self, request):
+        # top_n has no <select> value on first load, so it must be defaulted
+        # explicitly - unlike date_from/date_to, a partially-filled GET (e.g. a
+        # hand-built URL) won't fall back to _default_analytics_params().
+        data = request.GET.copy() if request.GET else _default_analytics_params()
+        data.setdefault("top_n", "30")
+        form = AnalyticsDestinationCallsForm(data)
+        table_data = None
+        chart_data = None
+        totals = None
+        top_n = ""
+
+        if form.is_valid():
+            date_from = form.cleaned_data["date_from"]
+            date_to = form.cleaned_data["date_to"]
+            dst_filter = form.cleaned_data["dst"]
+            exclude_contacts = form.cleaned_data["exclude_contacts"]
+            top_n = form.cleaned_data["top_n"]
+
+            peer_pattern = peer_channel_regex()
+            qs = CDR.objects.none()
+            if peer_pattern is not None:
+                qs = CDR.objects.filter(
+                    start__range=(date_from, date_to),
+                    channel__regex=peer_pattern,
+                ).exclude(dst="")
+                if dst_filter:
+                    qs = qs.filter(dst__icontains=dst_filter)
+                if exclude_contacts:
+                    qs = qs.exclude(
+                        src__in=Contact.objects.values_list("callerid", flat=True)
+                    )
+
+            rows = list(
+                qs.values("dst")
+                .annotate(
+                    total=Count("uniqueid", distinct=True),
+                    answered=Count(
+                        "uniqueid", distinct=True, filter=Q(disposition="ANSWERED")
+                    ),
+                    unique_callers=Count("src", distinct=True),
+                    avg_billsec=Avg("billsec", filter=Q(disposition="ANSWERED")),
+                )
+                .order_by("-answered")
+            )
+
+            table_data = []
+            total_calls = total_answered = total_unique = 0
+            for r in rows:
+                not_answered = r["total"] - r["answered"]
+                answered_pct = (
+                    f"{r['answered'] / r['total'] * 100:.1f}" if r["total"] else "0.0"
+                )
+                table_data.append(
+                    {
+                        "dst": r["dst"],
+                        "total": r["total"],
+                        "answered": r["answered"],
+                        "not_answered": not_answered,
+                        "answered_pct": answered_pct,
+                        "unique_callers": r["unique_callers"],
+                        "avg_talk_time": _fmt_duration(round(r["avg_billsec"] or 0)),
+                    }
+                )
+                total_calls += r["total"]
+                total_answered += r["answered"]
+                total_unique += r["unique_callers"]
+
+            totals = {
+                "total": total_calls,
+                "answered": total_answered,
+                "not_answered": total_calls - total_answered,
+                "answered_pct": (
+                    f"{total_answered / total_calls * 100:.1f}" if total_calls else "0.0"
+                ),
+                "unique_callers": total_unique,
+            }
+
+            if "export" in request.GET:
+                return self._export_csv(table_data)
+
+            chart_rows = table_data[: int(top_n)] if top_n else table_data
+            chart_data = {
+                "labels": [r["dst"] for r in chart_rows],
+                "values": [r["answered"] for r in chart_rows],
+            }
+
+        context = {
+            "form": form,
+            "table_data": table_data,
+            "chart_data": chart_data,
+            "totals": totals,
+            "top_n": top_n,
+        }
+        return render(request, self.template_name, context)
+
+    @staticmethod
+    def _export_csv(table_data):
+        response = HttpResponse(content_type=CONTENT_TYPE_CSV)
+        response["Content-Disposition"] = (
+            'attachment; filename="destination_calls_report.csv"'
+        )
+        response.write("\ufeff")  # BOM for UTF-8
+
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "Destination number",
+                "Total calls",
+                "Answered",
+                "Not answered",
+                "Answered %",
+                "Unique callers",
+                "Avg talk time",
+            ]
+        )
+        for row in table_data or []:
+            writer.writerow(
+                [
+                    row["dst"],
+                    row["total"],
+                    row["answered"],
+                    row["not_answered"],
+                    row["answered_pct"],
+                    row["unique_callers"],
+                    row["avg_talk_time"],
+                ]
+            )
+        return response
 
 
 class RoutingTableReportView(ReportViewPermissionMixin, View):

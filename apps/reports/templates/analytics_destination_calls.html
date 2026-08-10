@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Calls by Destination Number" %}{% endblock %}
+
+{% block content %}
+<div class="uk-container uk-container-expand uk-margin-top">
+    <h1 class="uk-heading-line uk-text-center"><span>{% trans "Calls by Destination Number" %}</span></h1>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+        <form method="get" class="uk-form-stacked">
+            <div class="uk-grid-match uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_from.id_for_label }}">
+                        {{ form.date_from.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_from }}
+                    </div>
+                    {% if form.date_from.errors %}
+                        <span class="uk-text-danger">{{ form.date_from.errors }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.date_to.id_for_label }}">
+                        {{ form.date_to.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.date_to }}
+                    </div>
+                    {% if form.date_to.errors %}
+                        <span class="uk-text-danger">{{ form.date_to.errors }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.dst.id_for_label }}">
+                        {{ form.dst.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.dst }}
+                    </div>
+                </div>
+                <div>
+                    <label class="uk-form-label" for="{{ form.top_n.id_for_label }}">
+                        {{ form.top_n.label }}
+                    </label>
+                    <div class="uk-form-controls">
+                        {{ form.top_n }}
+                    </div>
+                </div>
+            </div>
+            <div class="uk-margin-top">
+                <label>
+                    {{ form.exclude_contacts }}
+                    {{ form.exclude_contacts.label }}
+                </label>
+            </div>
+            <div class="uk-margin-top">
+                <button type="submit" class="uk-button uk-button-primary uk-border-rounded uk-margin-small-right">
+                    <span uk-icon="search"></span> {% trans "Search" %}
+                </button>
+                {% if table_data %}
+                    <button type="submit" name="export" value="csv" class="uk-button uk-button-secondary uk-border-rounded">
+                        <span uk-icon="download" class="uk-margin-small-right"></span>{% trans "Export CSV" %}
+                    </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    {% if table_data is not None %}
+        {% if table_data %}
+            <div class="uk-card uk-card-default uk-card-body uk-margin-bottom uk-border-rounded">
+                <h3 class="uk-card-title">{% trans "Chart" %}</h3>
+                <div style="overflow-x: auto;">
+                    <div id="destChartWrap" style="height: 420px;">
+                        <canvas id="destChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="uk-card uk-card-default uk-card-body uk-border-rounded">
+                <h3 class="uk-card-title">{% trans "Table" %}</h3>
+                <div class="uk-overflow-auto">
+                    <table class="uk-table uk-table-striped uk-table-hover uk-table-small">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Destination number" %}</th>
+                                <th class="uk-text-right">{% trans "Total calls" %}</th>
+                                <th class="uk-text-right">{% trans "Answered" %}</th>
+                                <th class="uk-text-right">{% trans "Not answered" %}</th>
+                                <th class="uk-text-right">{% trans "Answered %" %}</th>
+                                <th class="uk-text-right">{% trans "Unique callers" %}</th>
+                                <th class="uk-text-right">{% trans "Avg talk time" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in table_data %}
+                            <tr>
+                                <td>{{ row.dst }}</td>
+                                <td class="uk-text-right">{{ row.total }}</td>
+                                <td class="uk-text-right">{{ row.answered }}</td>
+                                <td class="uk-text-right">{{ row.not_answered }}</td>
+                                <td class="uk-text-right">{{ row.answered_pct }}%</td>
+                                <td class="uk-text-right">{{ row.unique_callers }}</td>
+                                <td class="uk-text-right">{{ row.avg_talk_time }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="uk-text-bold">
+                                <td>{% trans "Total" %}</td>
+                                <td class="uk-text-right">{{ totals.total }}</td>
+                                <td class="uk-text-right">{{ totals.answered }}</td>
+                                <td class="uk-text-right">{{ totals.not_answered }}</td>
+                                <td class="uk-text-right">{{ totals.answered_pct }}%</td>
+                                <td class="uk-text-right">{{ totals.unique_callers }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            {{ chart_data|json_script:"chart-data" }}
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            <script>
+            (function () {
+                const raw = document.getElementById('chart-data').textContent;
+                const data = JSON.parse(raw);
+                const wrap = document.getElementById('destChartWrap');
+                const minWidth = Math.max(data.labels.length * 32, 300);
+                wrap.style.width = minWidth + 'px';
+                new Chart(document.getElementById('destChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '{% trans "Answered calls" %}',
+                            data: data.values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ' ' + ctx.parsed.y + ' {% trans "calls" %}'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 }
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+        {% else %}
+            <div class="uk-alert uk-alert-warning" uk-alert>
+                <p>{% trans "No data found for the selected period." %}</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock content %}

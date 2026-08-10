@@ -9,12 +9,13 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
-from core.models import MonitorFilenames
+from core.models import Contact, MonitorFilenames, SIPPeer, SIPUser
 
 from apps.reports.models import CDR, QueueLog
 from apps.reports.services.lost_and_found import build_lost_and_found
 from apps.reports.services.recordings import find_recording_path_by_uniqueid
 from apps.reports.views import (
+    AnalyticsDestinationCallsView,
     AnalyticsMissedCallsView,
     CDRReportView,
     _serve_audio_file_response,
@@ -265,6 +266,160 @@ class AnalyticsMissedCallsBatchTest(TestCase):
         self.assertEqual(row["missed"], 1)
         self.assertEqual(row["called_back"], 1)
         self.assertEqual(row["operators"], 0)
+
+
+class AnalyticsDestinationCallsTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = get_user_model().objects.create_superuser(
+            username="analytics-dst-admin", email="b@example.com", password="pass12345"
+        )
+        self.now = timezone.now().replace(microsecond=0)
+        self.peer = SIPPeer.objects.create(name="trunk1")
+        self.sip_user = SIPUser.objects.create(
+            username="101", secret="secret", extension="101"
+        )
+
+    def _get(self, **params):
+        params.setdefault("date_from", self._fmt(self.now - timedelta(hours=1)))
+        params.setdefault("date_to", self._fmt(self.now + timedelta(hours=1)))
+        request = self.factory.get(
+            "/reports/analytics/destination-calls/", params
+        )
+        request.user = self.user
+        with patch("apps.reports.views.render") as mock_render:
+            mock_render.return_value = None
+            AnalyticsDestinationCallsView.as_view()(request)
+            context = mock_render.call_args[0][2]
+        return context
+
+    def _fmt(self, dt):
+        return timezone.localtime(dt).strftime("%Y-%m-%dT%H:%M")
+
+    def test_external_peer_call_is_counted(self):
+        _make_cdr(
+            src="+380501112233",
+            dst="0800123456",
+            start=self.now,
+            disposition="ANSWERED",
+            channel="PJSIP/trunk1-00000001",
+        )
+        table_data = self._get()["table_data"]
+        row = next(r for r in table_data if r["dst"] == "0800123456")
+        self.assertEqual(row["total"], 1)
+        self.assertEqual(row["answered"], 1)
+        self.assertEqual(row["not_answered"], 0)
+
+    def test_internal_user_call_is_excluded(self):
+        _make_cdr(
+            src="101",
+            dst="102",
+            start=self.now,
+            disposition="ANSWERED",
+            channel="PJSIP/101-00000002",
+        )
+        table_data = self._get()["table_data"]
+        self.assertEqual(table_data, [])
+
+    def test_not_answered_calls_are_counted_but_not_as_answered(self):
+        _make_cdr(
+            src="+380501112233",
+            dst="0800123456",
+            start=self.now,
+            disposition="NO ANSWER",
+            channel="PJSIP/trunk1-00000003",
+        )
+        table_data = self._get()["table_data"]
+        row = next(r for r in table_data if r["dst"] == "0800123456")
+        self.assertEqual(row["total"], 1)
+        self.assertEqual(row["answered"], 0)
+        self.assertEqual(row["not_answered"], 1)
+
+    def test_multiple_cdr_rows_same_uniqueid_counted_once(self):
+        # Two CDR rows for the same call (e.g. a transfer leg) share a
+        # uniqueid but differ by sequence, which stays NULL here - Postgres
+        # treats NULL as distinct under unique_together, so both inserts succeed.
+        for _ in range(2):
+            _make_cdr(
+                src="+380501112233",
+                dst="0800123456",
+                start=self.now,
+                disposition="ANSWERED",
+                channel="PJSIP/trunk1-00000004",
+                uniqueid="shared-uid",
+            )
+        table_data = self._get()["table_data"]
+        row = next(r for r in table_data if r["dst"] == "0800123456")
+        self.assertEqual(row["total"], 1)
+        self.assertEqual(row["answered"], 1)
+
+    def test_exclude_contacts_filters_known_callers(self):
+        Contact.objects.create(callerid="+380501112233", name="Known caller")
+        _make_cdr(
+            src="+380501112233",
+            dst="0800123456",
+            start=self.now,
+            disposition="ANSWERED",
+            channel="PJSIP/trunk1-00000005",
+        )
+        table_data = self._get(exclude_contacts="on")["table_data"]
+        self.assertEqual(table_data, [])
+
+    def test_top_n_limits_chart_but_not_table(self):
+        # top_n only accepts the fixed dropdown values (30/50/100/""), so
+        # exercising the "30" truncation branch needs more than 30 distinct
+        # destination numbers.
+        for i in range(35):
+            _make_cdr(
+                src=f"+3805011122{i:02d}",
+                dst=f"08001234{i:03d}",
+                start=self.now,
+                disposition="ANSWERED",
+                channel=f"PJSIP/trunk1-{i:08d}",
+            )
+        context = self._get(top_n="30")
+        self.assertEqual(len(context["table_data"]), 35)
+        self.assertEqual(len(context["chart_data"]["labels"]), 30)
+
+    def test_top_n_all_keeps_full_chart(self):
+        for i in range(3):
+            _make_cdr(
+                src=f"+38050111223{i}",
+                dst=f"080012345{i}",
+                start=self.now,
+                disposition="ANSWERED",
+                channel=f"PJSIP/trunk1-0000000{i}",
+            )
+        context = self._get(top_n="")
+        self.assertEqual(len(context["table_data"]), 3)
+        self.assertEqual(len(context["chart_data"]["labels"]), 3)
+
+    def test_top_n_defaults_to_30_when_omitted_from_a_partial_get(self):
+        # A GET carrying only date_from/date_to (e.g. a hand-built or
+        # bookmarked URL) must still default top_n to "30", not "" (all).
+        for i in range(35):
+            _make_cdr(
+                src=f"+3805011122{i:02d}",
+                dst=f"08001234{i:03d}",
+                start=self.now,
+                disposition="ANSWERED",
+                channel=f"PJSIP/trunk1-{i:08d}",
+            )
+        context = self._get()
+        self.assertEqual(len(context["table_data"]), 35)
+        self.assertEqual(len(context["chart_data"]["labels"]), 30)
+
+    def test_no_sip_peers_returns_empty_result_without_error(self):
+        SIPPeer.objects.all().delete()
+        _make_cdr(
+            src="+380501112233",
+            dst="0800123456",
+            start=self.now,
+            disposition="ANSWERED",
+            channel="PJSIP/trunk1-00000006",
+        )
+        table_data = self._get()["table_data"]
+        self.assertEqual(table_data, [])
 
 
 class ServeAudioFileResponseTest(TestCase):

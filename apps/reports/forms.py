@@ -407,6 +407,33 @@ class AnalyticsQueueActivityForm(_AnalyticsQueueFilterForm):
     )
 
 
+class AnalyticsDestinationCallsForm(_AnalyticsBaseForm):
+    TOP_N_CHOICES = [
+        ("30", "30"),
+        ("50", "50"),
+        ("100", "100"),
+        ("", _("All")),
+    ]
+
+    dst = forms.CharField(
+        label=_("Destination number"),
+        required=False,
+        widget=forms.TextInput(attrs={"class": "uk-input uk-border-rounded"}),
+    )
+    exclude_contacts = forms.BooleanField(
+        label=_("Exclude known numbers (Contacts)"),
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "uk-checkbox"}),
+    )
+    top_n = forms.ChoiceField(
+        label=_("Show top"),
+        choices=TOP_N_CHOICES,
+        required=False,
+        initial="30",
+        widget=forms.Select(attrs={"class": "uk-select uk-border-rounded"}),
+    )
+
+
 class CallbackNumberReportForm(forms.Form):
     DIAL_STATUS_CHOICES = [
         ("", _("All")),

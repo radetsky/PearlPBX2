@@ -1180,6 +1180,28 @@ msgstr "Відповіді на дзвінки"
 msgid "Unique callers"
 msgstr "Унікальні абоненти"
 
+#: apps/reports/templates/analytics_destination_calls.html:5
+#: apps/reports/templates/analytics_destination_calls.html:9
+#: core/templates/reports.html:26
+msgid "Calls by Destination Number"
+msgstr "Дзвінки за номером Б"
+
+#: apps/reports/forms.py:429
+msgid "Show top"
+msgstr "Показати топ"
+
+#: apps/reports/templates/analytics_destination_calls.html:92
+msgid "Not answered"
+msgstr "Не прийнято"
+
+#: apps/reports/templates/analytics_destination_calls.html:93
+msgid "Answered %"
+msgstr "% прийнятих"
+
+#: apps/reports/templates/analytics_destination_calls.html:95
+msgid "Avg talk time"
+msgstr "Середня тривалість розмови"
+
 #: apps/reports/templates/callback_report.html:8
 msgid "Callback Report"
 msgstr "Звіт передзвонів"
