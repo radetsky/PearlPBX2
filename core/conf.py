@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# Copyright (C) 2024-2026 Alex Radetsky
+
 import textwrap
 import logging
 import os

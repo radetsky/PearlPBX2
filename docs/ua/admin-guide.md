@@ -149,10 +149,8 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 
 ### Докладна інструкція
 
-- Повна інструкція зі встановлення Asterisk: [docs/en/install_asterisk.md](../en/install_asterisk.md)
-- Загальні вимоги та налаштування: [docs/en/INSTALL.md](../en/INSTALL.md)
-- Docker-розгортання: `docker-compose.yml` (django, asterisk, postgres, redis)
-- Ansible-розгортання: `ansible/` (9 ролей: system, postgres, redis, asterisk, pearlpbx2, services, nginx, tftp, firewall)
+- Docker-розгортання: `docker-compose.yml` (django, asterisk, postgres, redis, fastagi, dashboard-listener, callback)
+- Ansible-розгортання (рекомендовано для bare-metal production): `ansible/install.yml` (9 ролей: system, postgres, redis, asterisk, pearlpbx2, services, nginx, tftp, firewall)
 
 ### Режими роботи (DEVMODE)
 

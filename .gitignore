@@ -4,3 +4,12 @@ db.sqlite3
 __pycache__
 .coverage
 .DS_Store
+.env
+*.env
+staticfiles/
+*.pyc
+.idea/
+local_settings.py
+
+# Internal planning/task notes — not part of the public release
+tasks/

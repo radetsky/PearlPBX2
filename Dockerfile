@@ -14,10 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --clear || true
+RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 8000
+
+# Idempotently migrate + collectstatic on every start, then run the CMD
+ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Run with uvicorn for ASGI/WebSocket support
 CMD ["uvicorn", "pbx.asgi:application", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,26 @@
+# Local development override — merged automatically by `docker compose up`
+# whenever this file sits next to docker-compose.yml (no extra flag needed).
+# To run without it (closer to a production image), use:
+#   docker compose -f docker-compose.yml up -d
+#
+# Note: this does NOT flip DEBUG on. In this codebase DEBUG only becomes
+# True under DEVMODE=without_asterisk_on_localhost, which also disables the
+# AMI reload/restart call in "Apply Changes" (pbx/admin.py) and other
+# Asterisk-touching code paths. Since this compose stack has a real,
+# already-verified Asterisk container, switching DEVMODE would silently
+# break that integration — not worth it just to get hot reload. Hot reload
+# here comes from the source bind mount + uvicorn --reload instead.
+services:
+  django:
+    volumes:
+      - .:/app
+    command:
+      [
+        "uvicorn",
+        "pbx.asgi:application",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]

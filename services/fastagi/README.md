@@ -55,6 +55,13 @@ Configuration is done via environment variables:
 | `PARKING_ULINE_MAX` | 199 | Last parking slot number |
 | `ULINE_SWEEP_INTERVAL` | 300 | Seconds between stale-slot sweep runs |
 
+### Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FASTAGI_HOST` | 127.0.0.1 | Bind address for the FastAGI listener (use `0.0.0.0` when Asterisk runs in a separate container/host) |
+| `FASTAGI_PORT` | 4573 | Bind port for the FastAGI listener |
+
 ### Asterisk AMI (fallback for queue-status)
 
 | Variable | Default | Description |
@@ -73,7 +80,7 @@ source .python-venv/bin/activate
 python fastagi.py
 ```
 
-Server listens on `127.0.0.1:4573` by default.
+Server listens on `127.0.0.1:4573` by default. Set `FASTAGI_HOST`/`FASTAGI_PORT` to change.
 
 ### Production (systemd)
 

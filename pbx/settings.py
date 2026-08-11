@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# Copyright (C) 2024-2026 Alex Radetsky
+
 import environ
 
 from django.core.exceptions import ImproperlyConfigured
@@ -18,9 +21,7 @@ DEVMODE_STAGING = "Staging"  # Staging server
 DEVMODE = env.str("DEVMODE", "Development")
 
 DEBUG = False
-SECRET_KEY = env.str(
-    "DJANGO_SECRET_KEY", ""
-)  # python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+SECRET_KEY = env.str("DJANGO_SECRET_KEY", "")  # generate with: openssl rand -hex 50
 
 if DEVMODE == DEVMODE_WITHOUT_ASTERISK:
     # DEBUG and a committed key are only acceptable for local, non-network dev.
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "core.middleware.ForceEnglishAPIMiddleware",
@@ -295,6 +297,10 @@ PEARLPBX_CONFERENCE_CONTEXT = env.str("PEARLPBX_CONFERENCE_CONTEXT", default="co
 DASHBOARD_MISSED_CALL_WINDOW_MINUTES = env.int(
     "DASHBOARD_MISSED_CALL_WINDOW_MINUTES", 0
 )
+
+# Range of parking ULINE slots allocated by the FastAGI parking-uline handler
+PARKING_ULINE_MIN = env.int("PARKING_ULINE_MIN", default=1)
+PARKING_ULINE_MAX = env.int("PARKING_ULINE_MAX", default=199)
 
 PHONE_COUNTRY_CODE = env.str("PHONE_COUNTRY_CODE", "380")
 PHONE_LOCAL_CODE = env.str("PHONE_LOCAL_CODE", "044")

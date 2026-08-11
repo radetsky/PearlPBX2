@@ -736,4 +736,7 @@ def start_fastagi_server(
 
 if __name__ == "__main__":
     db = Database()  # Initialize the database connection
-    start_fastagi_server()
+    start_fastagi_server(
+        host=os.environ.get("FASTAGI_HOST", "127.0.0.1"),
+        port=int(os.environ.get("FASTAGI_PORT", 4573)),
+    )

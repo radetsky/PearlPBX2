@@ -18,4 +18,5 @@ djangorestframework==3.16.*
 drf-spectacular==0.28.*
 uvicorn==0.40.0
 uvicorn[standard]
+whitenoise==6.11.0
 

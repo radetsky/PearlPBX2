@@ -10,8 +10,7 @@ services:
       - DB_NAME=${DB_NAME:-pearlpbx2}
       - DB_USER=${DB_USER:-pearlpbx2}
       - DB_PASS=${DB_PASS:-pearlpbx2}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
       - ASTERISK_MANAGER_HOST=asterisk
       - ASTERISK_MANAGER_PORT=5038
       - ASTERISK_MANAGER_USERNAME=${ASTERISK_MANAGER_USERNAME:-admin}
@@ -36,6 +35,30 @@ services:
       redis:
         condition: service_healthy
 
+  # Seeds Asterisk config that must exist before its first boot into the
+  # shared config volume — see docker/asterisk-bootstrap.sh:
+  #  - manager.conf (AMI enabled): the upstream image ships AMI disabled,
+  #    and nothing else can reach Asterisk's CLI to enable it from another
+  #    container. No-op once manager.conf exists (including after Django's
+  #    first "Apply Changes").
+  #  - modules.conf (res_crypto.so): the image's own healthcheck.sh
+  #    requires this module, but the image's own default modules.conf
+  #    doesn't load it. No-op once already patched.
+  asterisk-init:
+    image: alpine:3.20
+    container_name: pearlpbx2-asterisk-init
+    environment:
+      - ASTERISK_MANAGER_PORT=5038
+      - ASTERISK_MANAGER_BIND=0.0.0.0
+      - ASTERISK_MANAGER_USERNAME=${ASTERISK_MANAGER_USERNAME:-admin}
+      - ASTERISK_MANAGER_SECRET=${ASTERISK_MANAGER_SECRET:-admin}
+    volumes:
+      - asterisk_config:/etc/asterisk
+      - ./docker/asterisk-bootstrap.sh:/asterisk-bootstrap.sh:ro
+    command: ["sh", "/asterisk-bootstrap.sh"]
+    networks:
+      - pearlpbx
+
   asterisk:
     image: andrius/asterisk:22
     container_name: pearlpbx2-asterisk
@@ -53,6 +76,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      asterisk-init:
+        condition: service_completed_successfully
 
   postgres:
     image: postgres:17
@@ -85,6 +110,75 @@ services:
     restart: unless-stopped
     networks:
       - pearlpbx
+
+  fastagi:
+    build: services/fastagi
+    container_name: pearlpbx2-fastagi
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pearlpbx2}
+      - DB_USER=${DB_USER:-pearlpbx2}
+      - DB_PASS=${DB_PASS:-pearlpbx2}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AMI_HOST=asterisk
+      - AMI_PORT=5038
+      - AMI_USER=${ASTERISK_MANAGER_USERNAME:-admin}
+      - AMI_PASS=${ASTERISK_MANAGER_SECRET:-admin}
+      - PARKING_ULINE_MIN=${PARKING_ULINE_MIN:-1}
+      - PARKING_ULINE_MAX=${PARKING_ULINE_MAX:-199}
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  dashboard-listener:
+    build: services/dashboard
+    container_name: pearlpbx2-dashboard-listener
+    environment:
+      - AMI_HOST=asterisk
+      - AMI_PORT=5038
+      - AMI_USER=${ASTERISK_MANAGER_USERNAME:-admin}
+      - AMI_PASS=${ASTERISK_MANAGER_SECRET:-admin}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+    depends_on:
+      redis:
+        condition: service_healthy
+      asterisk:
+        condition: service_started
+
+  callback-service:
+    build: services/callback
+    container_name: pearlpbx2-callback
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pearlpbx2}
+      - DB_USER=${DB_USER:-pearlpbx2}
+      - DB_PASS=${DB_PASS:-pearlpbx2}
+      - AMI_HOST=asterisk
+      - AMI_PORT=5038
+      - AMI_USER=${ASTERISK_MANAGER_USERNAME:-admin}
+      - AMI_PASS=${ASTERISK_MANAGER_SECRET:-admin}
+    restart: unless-stopped
+    networks:
+      - pearlpbx
+    depends_on:
+      postgres:
+        condition: service_healthy
+      asterisk:
+        condition: service_started
+    profiles:
+      - callback
 
 networks:
   pearlpbx:
