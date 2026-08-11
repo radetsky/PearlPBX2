@@ -13,6 +13,8 @@ Two ways to get PearlPBX2 running, depending on what you're doing. See [README.m
 
 ## Option 1: Ansible (production install)
 
+Requires a Debian or Ubuntu host (the playbook uses `apt` and systemd directly — no other distros are supported).
+
 Provisions Asterisk (compiled from source), PostgreSQL, Redis, nginx, systemd units, and the firewall on a fresh host — no manual steps:
 
 ```bash

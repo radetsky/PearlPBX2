@@ -58,6 +58,7 @@ Callback daemon ─────────────► Asterisk AMI (outboun
 - PostgreSQL 14+
 - Redis 7+
 - Asterisk 22+ with `res_pjsip`, `res_agi`, `cdr_pgsql`
+- Debian or Ubuntu (required only for the Ansible production install; the Docker Compose path is OS-independent)
 
 ## Quick Start
 
