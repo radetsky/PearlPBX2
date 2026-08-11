@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.7.1] - 2026-08-11
+
+### Added
+
+- **CRM webhooks: outbound calls now match via routing table** — `Webhook` gained a `routing_tables` M2M field (migration `0004_webhook_routing_tables.py`); a SIP user's PJSIP context is its routing table's name, so outbound calls were never matched by webhooks that only listed inbound `DialplanContext`s. `apps/webhooks/sync.py` merges routing table names into the same `contexts` list sent to the dashboard listener; admin form, m2m signals, and tests updated accordingly.
+- **Public release files** — `LICENSE` (PolyForm Shield 1.0.0 — permits any use, including commercial, except operating a competing product/service), `NOTICE`, `CONTRIBUTING.md`, `QUICKSTART.md` (Ansible and Docker Compose install paths), SPDX headers (`LicenseRef-PolyForm-Shield-1.0.0`) in `core/models.py`, `core/conf.py`, `manage.py`, `pbx/settings.py`.
+- **Full Docker Compose stack** — new `services/fastagi/Dockerfile`, `services/dashboard/Dockerfile`, `services/callback/Dockerfile`; `docker-compose.yml` gained `fastagi`, `dashboard-listener`, `callback-service` (opt-in via `--profile callback`), and `asterisk-init`, which seeds a minimal AMI-enabled `manager.conf` and patches `modules.conf` to load `res_crypto.so` before Asterisk's first boot — the vendor `andrius/asterisk:22` image ships both AMI disabled and `res_crypto` unloaded (the latter breaks the image's own healthcheck). `docker-entrypoint.sh` runs `migrate`/`collectstatic` idempotently on every `django` container start. `docker-compose.override.yml` gives `django` a source bind mount + `uvicorn --reload` for local development, picked up automatically by `docker compose up`.
+- **`PARKING_ULINE_MIN`/`PARKING_ULINE_MAX`** explicitly declared in `pbx/settings.py` (previously only read via `getattr(..., default)` in `apps/dashboard/views.py`); documented in `env.sample`.
+- **`FASTAGI_HOST`/`FASTAGI_PORT` env vars** for `services/fastagi/fastagi.py` — the server previously always bound `127.0.0.1:4573`, unreachable from a separate Asterisk container; defaults unchanged for existing bare-metal/systemd installs.
+
+### Changed
+
+- **License**: the project is released under **PolyForm Shield 1.0.0** (source-available) — permits any use, including your own commercial deployment, except building a competing product or service on the code. See `LICENSE`/`NOTICE`/README `## License`.
+- **README** rewritten: license badge + Quick Start badge, `## Quick Start` now points to `QUICKSTART.md`, `## License` and `## Contributing` sections rewritten for the new license and `CONTRIBUTING.md`.
+- **`DJANGO_SECRET_KEY` generation hint** switched from a Django management-command one-liner to `openssl rand -hex 50` (`env.sample`, `pbx/settings.py`) — the former assumed Django was already installed locally, which isn't true for the Docker-first setup path.
+- **`.gitignore`**: added `.env`, `*.env`, `staticfiles/`, `*.pyc`, `.idea/`, `local_settings.py`, `tasks/`.
+- **`docs/` reorganised**: `CHANGELOG.md` moved to the repository root; `docs/en/install_asterisk.md` and `docs/en/INSTALL.md` removed (superseded by `ansible/install.yml`, which already automates everything they described by hand — including the `/etc/asterisk` ownership fix); `docs/en/realtime_in_future.md` moved to the (git-untracked) `tasks/` directory as an internal roadmap note. `tasks/` itself removed from git tracking (internal planning docs, not part of the public release) — files kept on disk.
+
+### Fixed
+
+- **Static files not served under Docker** — `DEBUG` is `False` even in `DEVMODE=Development` here (only `without_asterisk_on_localhost` flips it), so Django wasn't serving `/static/` itself and there is no nginx in front of the `django` container in Docker Compose. Added `whitenoise` + `WhiteNoiseMiddleware`; no effect on bare-metal/Ansible installs where nginx already serves `/static/` first.
+- **`django` service `REDIS_URL` misconfigured in `docker-compose.yml`** — it was set via unused `REDIS_HOST`/`REDIS_PORT` variables (a pattern only the standalone services read); Django itself only reads a single `REDIS_URL`, which was silently falling back to `redis://localhost:6379` inside the container. Fixed to `REDIS_URL=redis://redis:6379`; this was breaking the `/dashboard/ulines/` page and would also have broken the WebSocket dashboard (`channels_redis` uses the same setting).
+- **Broken `docs/openapi.yaml` link in README** — the file lives at `docs/en/openapi.yaml`; README now links to both `docs/en/API.md` and `docs/en/openapi.yaml`.
+
 ## [2.7.0] - 2026-08-10
 
 ### Added
