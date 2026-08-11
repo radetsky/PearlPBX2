@@ -18,7 +18,9 @@ def serialize_webhooks():
     from apps.webhooks.models import Webhook
 
     webhooks = []
-    qs = Webhook.objects.filter(is_active=True).prefetch_related("contexts", "queues")
+    qs = Webhook.objects.filter(is_active=True).prefetch_related(
+        "contexts", "routing_tables", "queues"
+    )
     for wh in qs:
         events = [
             event
@@ -30,12 +32,19 @@ def serialize_webhooks():
             )
             if enabled
         ]
+        # A SIP user's PJSIP context is its routing table's name (see
+        # core/conf.py make_pjsip_conf_users), so outbound calls are matched
+        # by merging routing table names into the same context list used for
+        # inbound DialplanContext matches.
+        contexts = [c.name for c in wh.contexts.all()] + [
+            rt.name for rt in wh.routing_tables.all()
+        ]
         webhooks.append(
             {
                 "name": wh.name,
                 "url": wh.url,
                 "events": events,
-                "contexts": [c.name for c in wh.contexts.all()],
+                "contexts": contexts,
                 "queues": [q.name for q in wh.queues.all()],
                 "headers": wh.headers or {},
                 "secret": wh.secret,

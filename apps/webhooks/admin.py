@@ -15,9 +15,16 @@ class WebhookAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if not cleaned.get("contexts") and not cleaned.get("queues"):
+        if (
+            not cleaned.get("contexts")
+            and not cleaned.get("routing_tables")
+            and not cleaned.get("queues")
+        ):
             raise ValidationError(
-                _("Select at least one context or queue to define which calls trigger this webhook.")
+                _(
+                    "Select at least one context, routing table, or queue to "
+                    "define which calls trigger this webhook."
+                )
             )
         if cleaned.get("send_ended") and not cleaned.get("send_incoming"):
             raise ValidationError(
@@ -50,7 +57,7 @@ class WebhookAdmin(admin.ModelAdmin):
     ]
     list_filter = ["is_active"]
     search_fields = ["name", "url"]
-    filter_horizontal = ["contexts", "queues"]
+    filter_horizontal = ["contexts", "routing_tables", "queues"]
 
 
 admin.site.register(Webhook, WebhookAdmin)

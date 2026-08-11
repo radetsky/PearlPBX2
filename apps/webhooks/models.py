@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from core.models import DialplanContext, Queue
+from core.models import DialplanContext, Queue, RoutingTable
 
 TEMPLATE_VARIABLES = frozenset(
     {
@@ -116,6 +116,17 @@ class Webhook(models.Model):
         blank=True,
         related_name="webhooks",
         help_text=_("Incoming calls entering these contexts trigger the webhook."),
+    )
+    routing_tables = models.ManyToManyField(
+        RoutingTable,
+        blank=True,
+        related_name="webhooks",
+        help_text=_(
+            "Calls placed by extensions assigned to these routing tables trigger "
+            "the webhook. A SIP user's PJSIP context is its routing table's name, "
+            "so this is how outbound calls are matched (DialplanContext only "
+            "covers inbound-side contexts)."
+        ),
     )
     queues = models.ManyToManyField(
         Queue,

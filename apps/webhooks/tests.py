@@ -12,7 +12,13 @@ from apps.webhooks.models import (
     validate_payload_template,
 )
 from apps.webhooks.sync import serialize_webhooks, sync_webhooks_config
-from core.models import DialplanContext, MusicOnHold, Queue, QueueAnnouncements
+from core.models import (
+    DialplanContext,
+    MusicOnHold,
+    Queue,
+    QueueAnnouncements,
+    RoutingTable,
+)
 
 
 def make_queue(name="support"):
@@ -25,6 +31,10 @@ def make_queue(name="support"):
 
 def make_context(name="incoming"):
     return DialplanContext.objects.create(name=name)
+
+
+def make_routing_table(name="outbound-users"):
+    return RoutingTable.objects.create(name=name)
 
 
 class PayloadTemplateValidatorTests(TestCase):
@@ -97,6 +107,21 @@ class SerializeWebhooksTests(TestCase):
         self.assertEqual(wh["timeout"], 7)
         self.assertEqual(wh["retries"], 2)
 
+    def test_routing_tables_merged_into_contexts(self):
+        """A SIP user's PJSIP context is its routing table's name, so outbound
+        matching relies on routing_tables landing in the same 'contexts' list
+        sent to the dashboard listener."""
+        webhook = Webhook.objects.create(
+            name="crm", url="https://crm.example.com/hook", send_incoming=True
+        )
+        webhook.contexts.add(make_context("incoming"))
+        webhook.routing_tables.add(make_routing_table("outbound-users"))
+
+        config = serialize_webhooks()
+
+        wh = config["webhooks"][0]
+        self.assertCountEqual(wh["contexts"], ["incoming", "outbound-users"])
+
     def test_sync_writes_redis_key(self):
         with patch("apps.webhooks.sync.redis.Redis") as redis_cls:
             client = MagicMock()
@@ -140,6 +165,7 @@ class WebhookAdminFormTests(TestCase):
             "send_missed": False,
             "send_answered": False,
             "contexts": [],
+            "routing_tables": [],
             "queues": [],
             "headers": "{}",
             "secret": "",
@@ -157,6 +183,13 @@ class WebhookAdminFormTests(TestCase):
     def test_valid_with_queue(self):
         queue = make_queue()
         form = WebhookAdminForm(data=self.form_data(queues=[queue.pk]))
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_with_routing_table_only(self):
+        routing_table = make_routing_table()
+        form = WebhookAdminForm(
+            data=self.form_data(routing_tables=[routing_table.pk])
+        )
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_ended_requires_incoming(self):

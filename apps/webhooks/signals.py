@@ -51,6 +51,11 @@ def connect():
     )
     m2m_changed.connect(
         on_webhook_m2m_changed,
+        sender=Webhook.routing_tables.through,
+        dispatch_uid="webhooks_sync_routing_tables",
+    )
+    m2m_changed.connect(
+        on_webhook_m2m_changed,
         sender=Webhook.queues.through,
         dispatch_uid="webhooks_sync_queues",
     )
