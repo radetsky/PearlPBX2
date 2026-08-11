@@ -7,12 +7,15 @@
 # Optional secrets:
 #   LLM_BASE_URL - Custom API endpoint (default: from action config)
 #   LLM_MODEL - Model name to use (default: from action config)
+#
+# DISABLED: no automatic trigger until LLM_API_KEY (and friends) are
+# configured as repo secrets. Trigger manually via workflow_dispatch,
+# or restore the pull_request trigger below once secrets are set.
 
 name: LLM Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch: {}
 
 jobs:
   code-review:
