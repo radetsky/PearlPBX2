@@ -862,7 +862,7 @@ def make_manager_conf():
     plaintext += "displayconnects = yes\n"
     plaintext += f"secret = {manager_secret}\n"
     plaintext += "read = system,call,log,verbose,command,agent,user\n"
-    plaintext += "write = system,call,log,verbose,command,agent,user\n"
+    plaintext += "write = system,call,log,verbose,command,agent,user,originate\n"
     plaintext += "writetimeout = 5000\n"
     plaintext += "eventfilter=!Event: RTCP*|!Event: VarSet|!Event: Cdr\n"
 
