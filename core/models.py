@@ -630,6 +630,16 @@ class SIPPeer(models.Model):
         help_text=_("Custom peer [aor] section"),
         verbose_name=_("AOR Settings"),
     )
+    custom_identify_settings = models.TextField(
+        null=True,
+        blank=True,
+        default="",
+        help_text=_(
+            "Custom peer [identify] section body (after endpoint=), "
+            "e.g. match_header=Contact: 0001"
+        ),
+        verbose_name=_("Identify Settings"),
+    )
 
     @property
     def auth_realm(self):

@@ -4,6 +4,7 @@
 import textwrap
 import logging
 import os
+import re
 
 from django.db.models import Q
 
@@ -289,7 +290,21 @@ def __section_trunk_endpoint(trunk: SIPPeer) -> str:
 
     lines.append(f"aors={trunk.name}")
 
-    if not trunk.registrationHere and trunk.match_hosts and trunk.match_hosts.strip():
+    custom_identify_settings = (trunk.custom_identify_settings or "").strip()
+    if custom_identify_settings:
+        # identify_by defaults to "username,ip" and does not include "header",
+        # so header-based match_header identify silently never fires unless
+        # requested explicitly here.
+        identify_by = []
+        if re.search(r"(?m)^\s*match_header\s*=", custom_identify_settings):
+            identify_by.append("header")
+        if re.search(r"(?m)^\s*match\s*=", custom_identify_settings):
+            identify_by.append("ip")
+        if trunk.registrationHere:
+            identify_by.append("username")
+        if identify_by:
+            lines.append(f"identify_by={','.join(identify_by)}")
+    elif not trunk.registrationHere and trunk.match_hosts and trunk.match_hosts.strip():
         lines.append("identify_by=ip")
 
     if (
@@ -317,6 +332,16 @@ def __section_trunk_identify(trunk: SIPPeer) -> str:
     """
     Generates the identify section for a SIP trunk.
     """
+    custom_identify_settings = (trunk.custom_identify_settings or "").strip()
+    if custom_identify_settings:
+        return (
+            f"; Custom identify settings for {trunk.name}\n"
+            f"[{trunk.name}]\n"
+            "type=identify\n"
+            f"endpoint={trunk.name}\n"
+            f"{custom_identify_settings}\n"
+        )
+
     result = [
         "; Identify",
         f"[{trunk.name}]",
@@ -353,7 +378,9 @@ def make_pjsip_conf_uplinks():
         result += __section_trunk_aor(trunk)
         # endpoint
         result += __section_trunk_endpoint(trunk)
-        if trunk.match_hosts and trunk.match_hosts.strip():
+        if (trunk.match_hosts and trunk.match_hosts.strip()) or (
+            trunk.custom_identify_settings and trunk.custom_identify_settings.strip()
+        ):
             result += __section_trunk_identify(trunk)
 
         result += "\n"

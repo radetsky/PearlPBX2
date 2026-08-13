@@ -96,7 +96,7 @@ class SIPPeerAdmin(admin.ModelAdmin):
         (
             _("Advanced"),
             {
-                "fields": ["nat", "custom_aor_settings"],
+                "fields": ["nat", "custom_aor_settings", "custom_identify_settings"],
                 "classes": ["collapse"],
             },
         ),

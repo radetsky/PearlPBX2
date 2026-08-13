@@ -387,6 +387,40 @@ class TestMakePjsipConfUplinks(TestCase):
         self.assertIn("max_contacts=5", result)
         self.assertIn("qualify_frequency=60", result)
 
+    def test_trunk_with_custom_identify_settings_uses_match_header(self):
+        trunk = SIPPeer.objects.create(
+            name="0001",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            username="0001",
+            secret="secret1",
+            registrationHere=True,
+            custom_identify_settings="match_header=Contact: 0001",
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("; Custom identify settings for 0001", result)
+        self.assertIn("type=identify", result)
+        self.assertIn("endpoint=0001", result)
+        self.assertIn("match_header=Contact: 0001", result)
+        self.assertIn("identify_by=header,username", result)
+
+    def test_trunk_without_custom_identify_settings_keeps_default_identify_by(self):
+        trunk = SIPPeer.objects.create(
+            name="test-trunk-default-identify",
+            transport=self.transport,
+            routing_table=self.routing_table,
+            match_hosts="sip.provider.com",
+            username="myuser",
+            secret="mysecret",
+            registrationHere=False,
+            registrationThere=False,
+        )
+        self.created_peers.append(trunk)
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("identify_by=ip", result)
+        self.assertNotIn("identify_by=header", result)
+
     def test_trunk_without_transport_skips_sections(self):
         trunk = SIPPeer.objects.create(
             name="test-trunk-no-transport",
