@@ -26,7 +26,9 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 
 ## 1. Як це працює
 
-Джерелом істини про стан дзвінків є сервіс `services/dashboard/dashboard_listener.py` — він слухає події Asterisk AMI в реальному часі. Саме він і надсилає веб-хуки, у чотирьох випадках:
+Джерелом істини про стан дзвінків є сервіс `services/dashboard/dashboard_listener.py` — він слухає події Asterisk AMI в реальному часі. Він надсилає веб-хуки у двох незалежних ланцюгах подій.
+
+**Вхідний ланцюг** — дзвінки, що надходять на PBX (з транка, або внутрішній дзвінок, що заходить у контекст/чергу):
 
 | Подія          | Коли спрацьовує | Умова |
 |----------------|------------------|-------|
@@ -35,17 +37,28 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 | `call.missed`   | абонент поклав слухавку, не дочекавшись оператора в черзі | черга дзвінка збігається з фільтром веб-хука, і в ньому увімкнено «Send missed» |
 | `call.ended`    | канал завершує роботу (hangup) | **лише для дзвінків, про які раніше було надіслано `call.incoming`** |
 
-Важливий нюанс: `call.ended` навмисно надсилається **тільки** для дзвінків, про які CRM вже було проінформовано подією `call.incoming`. Система запам'ятовує в Redis (`webhook:notified:{uniqueid}`, TTL 2 години), яким веб-хукам було повідомлено про початок дзвінка, і при завершенні дзвінка перевіряє цей запис. Це гарантує:
-- CRM ніколи не отримає «дзвінок завершено» для дзвінка, про який їй не повідомляли;
-- CRM ніколи не отримає цю подію двічі.
+**Вихідний ланцюг** — дзвінки, які ініціює SIP-користувач (внутрішній абонент, що бере слухавку й набирає номер), **ніколи** транк:
 
-Події `call.missed` і `call.answered`, навпаки, **не** вимагають попереднього `call.incoming` — і пропущений, і відповілий дзвінок вартий окремого запису в CRM, навіть якщо цей веб-хук не підписаний на вхідні дзвінки. Якщо дзвінок усе ж було анонсовано (`call.incoming` для нього надсилався), обидві події додатково позначають внутрішній маркер: пропуск ставить `missed: true`, а відповідь оператора записує, хто саме відповів (`answered_by_member`, `answered_by_interface`). Подальший `call.ended` буде містити всі ці поля — так CRM може пов'язати всі події одного дзвінка без додаткових запитів.
+| Подія | Коли спрацьовує | Умова |
+|-------|------------------|-------|
+| `call.outgoing` | новий канал SIP-користувача, чий endpoint належить до однієї з routing tables веб-хука | endpoint каналу збігається з фільтром «Routing tables» веб-хука |
+| `call.outgoing_answered` | викликана сторона підняла слухавку (AMI-подія `DialEnd` з `DialStatus=ANSWER`) | **лише для дзвінків, про які раніше було надіслано `call.outgoing`** |
+| `call.outgoing_ended` | канал завершує роботу (hangup) | **лише для дзвінків, про які раніше було надіслано `call.outgoing`** |
+
+Важливий нюанс: `call.ended` і `call.outgoing_ended` навмисно надсилаються **тільки** для дзвінків, про які CRM вже було проінформовано відповідно `call.incoming` чи `call.outgoing`. Система запам'ятовує в Redis (`webhook:notified:{uniqueid}`, TTL 2 години), яким веб-хукам було повідомлено про початок дзвінка (і в якому саме ланцюгу — вхідному чи вихідному), і при завершенні дзвінка перевіряє цей запис. Це гарантує:
+- CRM ніколи не отримає «дзвінок завершено» для дзвінка, про який їй не повідомляли;
+- CRM ніколи не отримає цю подію двічі;
+- дзвінок з вихідного ланцюга завжди завершується подією `call.outgoing_ended`, а не `call.ended`, навіть якщо один і той самий веб-хук підписаний на обидва ланцюги.
+
+Події `call.missed` і `call.answered`, навпаки, **не** вимагають попереднього `call.incoming` — і пропущений, і відповілий дзвінок вартий окремого запису в CRM, навіть якщо цей веб-хук не підписаний на вхідні дзвінки. Якщо дзвінок усе ж було анонсовано (`call.incoming` для нього надсилався), обидві події додатково позначають внутрішній маркер: пропуск ставить `missed: true`, а відповідь оператора записує, хто саме відповів (`answered_by_member`, `answered_by_interface`). Подальший `call.ended` буде містити всі ці поля — так CRM може пов'язати всі події одного дзвінка без додаткових запитів. `call.outgoing_answered` працює аналогічно: маркер отримує `DialStatus` та відмітку часу відповіді, а `call.outgoing_ended` несе поля `answered`/`dial_status`, щоб CRM відрізнила дозвон від BUSY/NOANSWER/CANCEL без додаткових запитів.
 
 Подія `call.answered` існує лише для дзвінків через чергу — вона відповідає AMI-події Asterisk `AgentConnect`, яка не виникає поза чергами. Тому увімкнути «Send answered» можна лише за наявності хоча б однієї вибраної черги (так само, як і для `send_missed`).
 
+**Як вихідний дзвінок відрізняється від транка з такою самою routing table.** І SIP-користувач, і транк можуть мати PJSIP `context`, що дорівнює назві routing table (так влаштована генерація `pjsip.conf`), тому за самим контекстом каналу відрізнити їх не можна. Замість цього Django серіалізує в Redis карту `{ім'я_endpoint: назва_routing_table}` — **лише для SIP-користувачів**, транки в неї ніколи не потрапляють. Коли приходить новий канал, `dashboard_listener` дістає з його імені (`PJSIP/1001-0000000a` → `1001`) ім'я endpoint і шукає його в цій карті. Якщо endpoint не знайдено (це транк, або будь-що інше, що не є налаштованим SIP-користувачем) — вихідний ланцюг подій не спрацьовує ніколи, незалежно від того, який контекст чи routing table налаштовані.
+
 ## 2. Налаштування веб-хука в адмінці
 
-Веб-хуки налаштовуються в Django admin, модель **Webhooks** (доступно тільки суперкористувачу). Кожен рядок — окрема незалежна інтеграція, тож можна одночасно підключити кілька різних CRM.
+Веб-хуки налаштовуються в Django admin, модель **Webhooks** (доступно тільки суперкористувачу). Кожен рядок — окрема незалежна інтеграція, тож можна одночасно підключити кілька різних CRM — наприклад, один рядок на вхідний ланцюг і окремий рядок (зі своїм URL) на вихідний.
 
 Поля форми:
 
@@ -53,16 +66,18 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 |------|------|
 | `is_active` | вкл/викл цього веб-хука без видалення налаштувань |
 | `url` | адреса, куди CRM приймає `POST`-запити |
-| `send_incoming` / `send_ended` / `send_missed` / `send_answered` | на які події підписаний цей веб-хук. `send_ended` вимагає увімкненого `send_incoming` (див. п.1). `send_missed` і `send_answered` кожен вимагає вибрану хоча б одну чергу |
-| `contexts` | список контекстів діалплану — вхідні дзвінки в ці контексти запускають веб-хук |
-| `queues` | список черг — дзвінки, що приєднались до цих черг, запускають веб-хук |
+| `send_incoming` / `send_ended` / `send_missed` / `send_answered` | на які події **вхідного** ланцюга підписаний цей веб-хук. `send_ended` вимагає увімкненого `send_incoming`. `send_missed` і `send_answered` кожен вимагає вибрану хоча б одну чергу. Ці події матчаться лише за `contexts`/`queues`, ніколи за `routing_tables` |
+| `send_outgoing` / `send_outgoing_answered` / `send_outgoing_ended` | на які події **вихідного** ланцюга підписаний цей веб-хук. `send_outgoing_answered` і `send_outgoing_ended` кожен вимагає увімкненого `send_outgoing`. Ці події матчаться лише за `routing_tables` |
+| `contexts` | список контекстів діалплану — вхідні дзвінки в ці контексти запускають `call.incoming` |
+| `routing_tables` | SIP-користувачі, приписані до цих routing tables, запускають вихідний ланцюг, коли самі ініціюють дзвінок. Транк — ніколи |
+| `queues` | список черг — дзвінки, що приєднались до цих черг, запускають події вхідного ланцюга, пов'язані з чергами |
 | `headers` | додаткові HTTP-заголовки у форматі JSON, наприклад `{"X-Api-Key": "..."}` |
 | `secret` | опціональний спільний секрет для підпису тіла запиту (HMAC-SHA256), див. п.5 |
 | `timeout` | таймаут одної спроби доставки, секунди (за замовчуванням 5) |
 | `retries` | скільки додаткових спроб робити після невдачі (за замовчуванням 1) |
 | `payload_template` | кастомний JSON-шаблон тіла запиту, див. п.6. При створенні нового веб-хука форма адмінки автоматично заповнює це поле повним прикладом з усіма доступними плейсхолдерами — можна прибрати зайве або очистити поле повністю, щоб повернутись до вбудованого стандартного payload |
 
-**Обов'язково** потрібно вибрати хоча б один контекст або чергу — інакше форма не збережеться: саме це визначає, для яких «сценаріїв» дзвінків спрацьовує веб-хук.
+**Обов'язково** потрібно вибрати хоча б один контекст, routing table або чергу — інакше форма не збережеться: саме це визначає, для яких «сценаріїв» дзвінків спрацьовує веб-хук.
 
 Зміни в адмінці застосовуються **без перезапуску сервісу**: при кожному збереженні Django серіалізує активні веб-хуки в Redis-ключ `webhooks:config`, а `dashboard_listener` перечитує цей ключ при старті й на кожному циклі перевірки здоров'я (кожні 30 секунд). Якщо потрібно примусово синхронізувати конфіг вручну (наприклад, після втрати даних Redis):
 
@@ -154,6 +169,71 @@ python manage.py sync_webhooks
 
 Поля, не застосовні до конкретної події, приходять як `null` (наприклад, `queue` для дзвінка, класифікованого за контекстом, а не за чергою).
 
+### `call.outgoing` — початок вихідного дзвінка
+
+```json
+{
+  "event": "call.outgoing",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Оператор Петренко",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "direction": "outbound",
+  "timestamp": "2026-08-11T18:58:51.811673"
+}
+```
+
+### `call.outgoing_answered` — викликана сторона підняла слухавку
+
+```json
+{
+  "event": "call.outgoing_answered",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Оператор Петренко",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "dest_channel": "PJSIP/trunk1-0000002a",
+  "dial_status": "ANSWER",
+  "direction": "outbound",
+  "timestamp": "2026-08-11T18:58:56.203112"
+}
+```
+
+`dial_status` — це значення AMI-поля `DialStatus` (`ANSWER`, `BUSY`, `NOANSWER`, `CANCEL`, ...). Подія спрацьовує лише коли воно `ANSWER`, і лише один раз на дзвінок, навіть якщо Asterisk перебирає кілька напрямків (наприклад, резервний транк), перш ніж хтось відповість.
+
+### `call.outgoing_ended` — завершення вихідного дзвінка
+
+```json
+{
+  "event": "call.outgoing_ended",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Оператор Петренко",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "queue": null,
+  "direction": "outbound",
+  "dial_status": "ANSWER",
+  "answered": true,
+  "timestamp": "2026-08-11T18:59:24.550012",
+  "duration": 28,
+  "cause": "16",
+  "cause_txt": "Normal Clearing",
+  "answered_time": "26",
+  "billsec": "26",
+  "missed": false,
+  "answered_by_member": null,
+  "answered_by_interface": null,
+  "recorded": false,
+  "recording_url": null,
+  "recording_file": null
+}
+```
+
+`answered` — `true`, лише якщо перед завершенням прийшла подія `call.outgoing_answered`; інакше `false`, а `dial_status` показує причину (`BUSY`, `NOANSWER`, `CANCEL`...). Так CRM відрізняє успішний дозвон від невдалого без додаткових запитів.
+
 ## 4. Записи розмов: посилання та завантаження через API
 
 `recording_url` у кожному payload — це **детерміноване** посилання, побудоване з `uniqueid` дзвінка. Його можна обчислити ще до завершення дзвінка, тому воно є вже в `call.incoming` — як прогноз:
@@ -232,12 +312,12 @@ function verify(secret, rawBody, headerValue) {
 {
   "call_id": "${uniqueid}",
   "from": "${caller_id_num}",
-  "direction": "inbound",
+  "direction": "${direction}",
   "recording": "${recording_url}"
 }
 ```
 
-Доступні плейсхолдери: `event`, `uniqueid`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`.
+Доступні плейсхолдери: `event`, `uniqueid`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`.
 
 Використання невідомого плейсхолдера викликає помилку валідації форми — адмінка не дасть зберегти такий шаблон. Якщо поле лишити порожнім, надсилається стандартний payload для кожної події.
 
@@ -256,7 +336,7 @@ function verify(secret, rawBody, headerValue) {
 
 ## 8. Приклад: мінімальний обробник веб-хуків
 
-Спрощений приклад на Python (Flask) — приймає всі три типи подій, перевіряє підпис і за потреби забирає запис розмови:
+Спрощений приклад на Python (Flask) — приймає події обох ланцюгів, перевіряє підпис і за потреби забирає запис розмови:
 
 ```python
 import hashlib
@@ -296,10 +376,14 @@ def handle_webhook():
         mark_call_card_answered(payload["uniqueid"], payload["member_name"])
     elif event == "call.missed":
         create_missed_call_task(payload)
-    elif event == "call.ended":
+    elif event in ("call.ended", "call.outgoing_ended"):
         close_call_card(payload)
         if payload.get("recorded"):
             fetch_recording(payload["uniqueid"], payload["recording_url"])
+    elif event == "call.outgoing":
+        create_or_update_call_card(payload)
+    elif event == "call.outgoing_answered":
+        mark_call_card_answered(payload["uniqueid"], payload["caller_id_name"])
 
     return "", 200
 

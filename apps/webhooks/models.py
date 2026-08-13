@@ -34,6 +34,10 @@ TEMPLATE_VARIABLES = frozenset(
         "holdtime",
         "answered_by_member",
         "answered_by_interface",
+        "direction",
+        "dest_channel",
+        "dial_status",
+        "answered",
     }
 )
 
@@ -111,6 +115,20 @@ class Webhook(models.Model):
         default=False,
         help_text=_("Send an event when a queue member answers a call."),
     )
+    send_outgoing = models.BooleanField(
+        default=False,
+        help_text=_(
+            "Send an event when a SIP user (not a trunk) places an outgoing call."
+        ),
+    )
+    send_outgoing_answered = models.BooleanField(
+        default=False,
+        help_text=_("Send an event when the called party answers an outgoing call."),
+    )
+    send_outgoing_ended = models.BooleanField(
+        default=False,
+        help_text=_("Send an event when an outgoing call ends."),
+    )
     contexts = models.ManyToManyField(
         DialplanContext,
         blank=True,
@@ -122,10 +140,10 @@ class Webhook(models.Model):
         blank=True,
         related_name="webhooks",
         help_text=_(
-            "Calls placed by extensions assigned to these routing tables trigger "
-            "the webhook. A SIP user's PJSIP context is its routing table's name, "
-            "so this is how outbound calls are matched (DialplanContext only "
-            "covers inbound-side contexts)."
+            "Filters the outgoing-call chain (call.outgoing / call.outgoing_answered "
+            "/ call.outgoing_ended): only calls placed by SIP users assigned to "
+            "these routing tables trigger it. Trunks (SIPPeer) never trigger the "
+            "outgoing chain, even if they share a routing table with a SIP user."
         ),
     )
     queues = models.ManyToManyField(

@@ -39,10 +39,19 @@ def on_post_migrate(sender, **kwargs):
 
 def connect():
     from apps.webhooks.models import Webhook
+    from core.models import SIPUser
 
     post_save.connect(on_webhook_saved, sender=Webhook, dispatch_uid="webhooks_sync_save")
     post_delete.connect(
         on_webhook_deleted, sender=Webhook, dispatch_uid="webhooks_sync_delete"
+    )
+    # The 'sip_users' map in the synced config is keyed off SIPUser, not just
+    # Webhook, so a user's username/routing_table change must resync too.
+    post_save.connect(
+        on_webhook_saved, sender=SIPUser, dispatch_uid="webhooks_sync_sipuser_save"
+    )
+    post_delete.connect(
+        on_webhook_deleted, sender=SIPUser, dispatch_uid="webhooks_sync_sipuser_delete"
     )
     m2m_changed.connect(
         on_webhook_m2m_changed,

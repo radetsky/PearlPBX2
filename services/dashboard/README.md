@@ -30,17 +30,29 @@ row configured in the Django admin, nothing runs.
 
 ### Events
 
-| Event          | Fired from                | Trigger                                                            |
-|----------------|----------------------------|---------------------------------------------------------------------|
-| `call.incoming`| `handle_newchannel` / `handle_queue_caller_join` | A new call enters a configured context, or joins a configured queue |
-| `call.answered`| `handle_agent_connect`                           | A queue member answers the call (AMI `AgentConnect`) |
-| `call.missed`  | `handle_queue_caller_abandon`                    | A caller abandons a configured queue (same trigger point as the Slack missed-call notification) |
-| `call.ended`   | `handle_hangup`                                  | The channel hangs up — **only** for calls that were already announced with a `call.incoming` event |
+There are two independent event chains. The **inbound chain** covers calls
+arriving at the PBX (from a trunk/SIPPeer, or an internal call ringing into a
+context/queue); the **outbound chain** covers calls placed by a SIP user
+(`apps.webhooks.models.SIPUser` extension picking up and dialing out) — never
+by a trunk, even if the trunk shares a routing table's name with a SIP user.
 
-`call.ended` is intentionally scoped to announced calls: a Redis marker
-(`webhook:notified:{uniqueid}`, TTL 7200s) is written when `call.incoming`
-fires and consumed (read + deleted) on hangup, so CRM never receives a "call
-ended" for a call it was never told about, and never receives it twice.
+| Event                    | Fired from                                       | Trigger                                                            |
+|---------------------------|--------------------------------------------------|---------------------------------------------------------------------|
+| `call.incoming`           | `handle_newchannel` / `handle_queue_caller_join` | A new call enters a configured context, or joins a configured queue |
+| `call.answered`           | `handle_agent_connect`                           | A queue member answers the call (AMI `AgentConnect`) |
+| `call.missed`             | `handle_queue_caller_abandon`                    | A caller abandons a configured queue (same trigger point as the Slack missed-call notification) |
+| `call.ended`              | `handle_hangup`                                  | The channel hangs up — **only** for calls that were already announced with a `call.incoming` event |
+| `call.outgoing`           | `handle_newchannel`                              | A SIP user's channel is created and its endpoint belongs to one of the webhook's routing tables |
+| `call.outgoing_answered`  | `handle_dial_end`                                | The dialed party answers (AMI `DialEnd` with `DialStatus=ANSWER`) — **only** for calls already announced with `call.outgoing` |
+| `call.outgoing_ended`     | `handle_hangup`                                  | The channel hangs up — **only** for calls already announced with `call.outgoing` |
+
+`call.ended` and `call.outgoing_ended` are each scoped to calls announced on
+their own chain: a Redis marker (`webhook:notified:{uniqueid}`, TTL 7200s) is
+written when `call.incoming` or `call.outgoing` fires and consumed (read +
+deleted) on hangup, so CRM never receives an "ended" event for a call it was
+never told about, and never receives it twice. The marker's `direction` field
+(`"inbound"`/`"outbound"`) is how `handle_hangup` knows which chain — and
+therefore which webhooks and which event name — to fire.
 
 `call.missed` and `call.answered` do not require that marker — an abandoned or
 answered queue call is still worth a CRM record even if no incoming event
@@ -48,24 +60,48 @@ matched. If the call was later announced too (or already was), the abandon
 event stamps the marker with `missed: true`, and `call.answered` stamps it
 with the responding agent (`answered_by_member` / `answered_by_interface`);
 the subsequent `call.ended` payload carries both so CRM can correlate all of
-it without extra lookups.
+it without extra lookups. `call.outgoing_answered` behaves the same way on
+the outbound side: it stamps the marker with `answered_at` and the
+`DialStatus`, and `call.outgoing_ended` carries `answered` / `dial_status` so
+CRM can tell a picked-up call from BUSY/NOANSWER/CANCEL without extra lookups.
 
 `call.answered` is queue-based only (it corresponds to Asterisk's `AgentConnect`
 AMI event, which only fires for queue calls) — enabling it requires selecting
 at least one queue, same as `call.missed`.
 
+**How outbound calls are told apart from a trunk sharing the same routing
+table:** both a SIP user's endpoint and a trunk's endpoint can end up with a
+PJSIP `context` equal to a routing table's name (see `core/conf.py`), so
+context alone cannot tell them apart. Instead, `apps/webhooks/sync.py`
+serializes a `sip_users` map (`{endpoint_name: routing_table_name}`, SIPUser
+only — trunks are never included) into `webhooks:config`, and
+`webhook_sender.extract_endpoint()` pulls the endpoint name out of the AMI
+`Channel` (`PJSIP/1001-0000000a` → `1001`) to look it up. A channel whose
+endpoint isn't in that map — a trunk, a queue's internal leg, anything that
+isn't a configured SIP user — never triggers the outbound chain.
+
 ### Configuration
 
 Configure webhooks in the Django admin (`apps.webhooks.Webhook`, superuser
-only). Each row is independent, so multiple CRMs can be wired up at once:
+only). Each row is independent, so multiple CRMs can be wired up at once —
+including one row for the inbound chain and a separate row (own URL) for the
+outbound chain, per the two-chain split above.
 
 - **URL** — where the JSON POST is sent.
-- **Send incoming / Send ended / Send missed / Send answered** — which events
-  this webhook subscribes to. `Send ended` requires `Send incoming` (see
-  scoping above); `Send missed` and `Send answered` each require at least one
-  selected queue.
-- **Contexts** / **Queues** — at least one of the two must be set; these
-  define which calls this webhook fires for ("specific scenarios").
+- **Send incoming / Send ended / Send missed / Send answered** — which
+  inbound-chain events this webhook subscribes to. `Send ended` requires
+  `Send incoming`; `Send missed` and `Send answered` each require at least one
+  selected queue. These events are matched by **Contexts**/**Queues**, never
+  by **Routing tables**.
+- **Send outgoing / Send outgoing answered / Send outgoing ended** — which
+  outbound-chain events this webhook subscribes to. `Send outgoing answered`
+  and `Send outgoing ended` each require `Send outgoing`. These events are
+  matched only by **Routing tables**.
+- **Contexts** — inbound `DialplanContext`s that trigger `call.incoming`.
+- **Routing tables** — SIP users assigned to these routing tables trigger the
+  outbound chain when they place a call. Never matches a trunk.
+- **Queues** — queues that trigger the inbound-chain queue events.
+  At least one of Contexts/Routing tables/Queues must be set overall.
 - **Headers** — extra HTTP headers as JSON, e.g. `{"Authorization": "Bearer ..."}`.
 - **Secret** — optional; when set, every request carries an HMAC-SHA256
   signature of the raw body.
@@ -79,7 +115,7 @@ only). Each row is independent, so multiple CRMs can be wired up at once:
   default payload shape shown below. Placeholders not produced by the firing
   event (e.g. `${ringtime}` on `call.incoming`) always render as an empty
   string rather than leaking the literal `${...}` text, so the full default
-  template is safe to use unmodified across all four events.
+  template is safe to use unmodified across all seven events.
 
 Changes take effect without restarting the service: Django serializes the
 active configuration into the Redis key `webhooks:config` on every save
@@ -163,13 +199,79 @@ python manage.py sync_webhooks
 Asterisk's `AgentConnect` AMI event: how long the phone rang for the agent,
 and how long the caller waited in the queue before being connected.
 
+Outbound chain — fired for a call placed by a SIP user:
+
+```json
+{
+  "event": "call.outgoing",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Operator Petrenko",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "direction": "outbound",
+  "timestamp": "2026-08-11T18:58:51.811673"
+}
+```
+
+```json
+{
+  "event": "call.outgoing_answered",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Operator Petrenko",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "dest_channel": "PJSIP/trunk1-0000002a",
+  "dial_status": "ANSWER",
+  "direction": "outbound",
+  "timestamp": "2026-08-11T18:58:56.203112"
+}
+```
+
+```json
+{
+  "event": "call.outgoing_ended",
+  "uniqueid": "1753000000.55",
+  "caller_id_num": "1001",
+  "caller_id_name": "Operator Petrenko",
+  "exten": "380671112233",
+  "context": "outbound-users",
+  "queue": null,
+  "direction": "outbound",
+  "dial_status": "ANSWER",
+  "answered": true,
+  "timestamp": "2026-08-11T18:59:24.550012",
+  "duration": 28,
+  "cause": "16",
+  "cause_txt": "Normal Clearing",
+  "answered_time": "26",
+  "billsec": "26",
+  "missed": false,
+  "answered_by_member": null,
+  "answered_by_interface": null,
+  "recorded": false,
+  "recording_url": null,
+  "recording_file": null
+}
+```
+
+`dial_status` mirrors Asterisk's `DialStatus` from the AMI `DialEnd` event
+(`ANSWER`, `BUSY`, `NOANSWER`, `CANCEL`, ...). `call.outgoing_answered` fires
+only when it's `ANSWER`, and only once per call even if Asterisk tries several
+destinations (e.g. a trunk failover) before one answers. `call.outgoing_ended`
+always carries the last known `dial_status` and `answered` (`true` only if
+`call.outgoing_answered` fired), so an unanswered outgoing call still gets a
+correctly-flagged ended event with no answered event before it.
+
 Template variables available for `payload_template`: `event`, `uniqueid`,
 `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`,
 `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`,
 `recording_expected`, `recording_url`, `recording_file`, `missed`,
 `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`,
-`holdtime`, `answered_by_member`, `answered_by_interface`. Fields not
-relevant to a given event are `null`.
+`holdtime`, `answered_by_member`, `answered_by_interface`, `direction`,
+`dest_channel`, `dial_status`, `answered`. Fields not relevant to a given
+event are `null`.
 
 ### Call recordings
 

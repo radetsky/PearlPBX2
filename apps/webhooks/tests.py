@@ -18,6 +18,9 @@ from core.models import (
     Queue,
     QueueAnnouncements,
     RoutingTable,
+    SIPPeer,
+    SIPTransport,
+    SIPUser,
 )
 
 
@@ -35,6 +38,32 @@ def make_context(name="incoming"):
 
 def make_routing_table(name="outbound-users"):
     return RoutingTable.objects.create(name=name)
+
+
+def make_transport(name="test-transport", protocol="udp"):
+    return SIPTransport.objects.create(name=name, protocol=protocol, bind="0.0.0.0:5060")
+
+
+def make_sip_user(username="1001", routing_table=None, transport=None):
+    return SIPUser.objects.create(
+        name=f"User {username}",
+        username=username,
+        extension=username,
+        secret="secret",
+        transport=transport or make_transport(f"transport-{username}"),
+        routing_table=routing_table or make_routing_table(f"rt-{username}"),
+        auth_type="userpass",
+    )
+
+
+def make_sip_peer(name="trunk1", routing_table=None, transport=None):
+    return SIPPeer.objects.create(
+        name=name,
+        transport=transport or make_transport(f"transport-{name}"),
+        routing_table=routing_table or make_routing_table(f"rt-{name}"),
+        username="trunkuser",
+        secret="secret",
+    )
 
 
 class PayloadTemplateValidatorTests(TestCase):
@@ -107,12 +136,15 @@ class SerializeWebhooksTests(TestCase):
         self.assertEqual(wh["timeout"], 7)
         self.assertEqual(wh["retries"], 2)
 
-    def test_routing_tables_merged_into_contexts(self):
-        """A SIP user's PJSIP context is its routing table's name, so outbound
-        matching relies on routing_tables landing in the same 'contexts' list
-        sent to the dashboard listener."""
+    def test_routing_tables_kept_separate_from_contexts(self):
+        """routing_tables filter only the outgoing chain and must not leak into
+        the inbound 'contexts' list (a trunk can share a routing table's name
+        with a SIP user's context, so merging them would be ambiguous)."""
         webhook = Webhook.objects.create(
-            name="crm", url="https://crm.example.com/hook", send_incoming=True
+            name="crm",
+            url="https://crm.example.com/hook",
+            send_incoming=True,
+            send_outgoing=True,
         )
         webhook.contexts.add(make_context("incoming"))
         webhook.routing_tables.add(make_routing_table("outbound-users"))
@@ -120,7 +152,38 @@ class SerializeWebhooksTests(TestCase):
         config = serialize_webhooks()
 
         wh = config["webhooks"][0]
-        self.assertCountEqual(wh["contexts"], ["incoming", "outbound-users"])
+        self.assertEqual(wh["contexts"], ["incoming"])
+        self.assertEqual(wh["routing_tables"], ["outbound-users"])
+        self.assertIn("outgoing", wh["events"])
+
+    def test_sip_users_map_excludes_trunks(self):
+        routing_table = make_routing_table("rt-shared")
+        transport = make_transport("shared-transport")
+        user = make_sip_user(
+            username="1001", routing_table=routing_table, transport=transport
+        )
+        make_sip_peer("trunk1", routing_table=routing_table, transport=transport)
+
+        config = serialize_webhooks()
+
+        self.assertEqual(config["sip_users"]["1001"], routing_table.name)
+        self.assertNotIn("trunk1", config["sip_users"])
+        self.assertEqual(user.username, "1001")
+
+    def test_sip_users_map_excludes_users_without_routing_table(self):
+        SIPUser.objects.create(
+            name="No Routing",
+            username="1002",
+            extension="1002",
+            secret="secret",
+            transport=make_transport("transport-1002"),
+            routing_table=None,
+            auth_type="userpass",
+        )
+
+        config = serialize_webhooks()
+
+        self.assertNotIn("1002", config["sip_users"])
 
     def test_sync_writes_redis_key(self):
         with patch("apps.webhooks.sync.redis.Redis") as redis_cls:
@@ -152,6 +215,84 @@ class WebhookSignalsTests(TestCase):
             webhook.delete()
         sync.assert_called()
 
+    def test_sip_user_save_triggers_sync(self):
+        """The synced 'sip_users' map depends on SIPUser, not just Webhook."""
+        with patch("apps.webhooks.sync.sync_webhooks_config") as sync:
+            make_sip_user("2001")
+        sync.assert_called()
+
+
+class RoutingTableWebhookDataMigrationTests(TestCase):
+    """Covers apps/webhooks/migrations/0006_migrate_routing_table_webhooks.py.
+
+    Runs the migration's RunPython function directly against the current
+    model state, which is safe here since 0006 only adds fields after 0005
+    (no renames/removals in between) that would require a historical model.
+    """
+
+    def _run_migration(self):
+        import importlib
+
+        from django.apps import apps as current_apps
+
+        migration_module = importlib.import_module(
+            "apps.webhooks.migrations.0006_migrate_routing_table_webhooks"
+        )
+        migration_module.migrate_routing_table_webhooks(current_apps, None)
+
+    def test_outgoing_only_webhook_translated(self):
+        webhook = Webhook.objects.create(
+            name="crm",
+            url="https://crm.example.com/hook",
+            send_incoming=True,
+            send_ended=True,
+        )
+        webhook.routing_tables.add(make_routing_table())
+
+        self._run_migration()
+        webhook.refresh_from_db()
+
+        self.assertTrue(webhook.send_outgoing)
+        self.assertTrue(webhook.send_outgoing_ended)
+        self.assertFalse(webhook.send_outgoing_answered)
+        self.assertFalse(webhook.send_incoming)
+        self.assertFalse(webhook.send_ended)
+
+    def test_mixed_webhook_keeps_inbound_flags(self):
+        webhook = Webhook.objects.create(
+            name="crm",
+            url="https://crm.example.com/hook",
+            send_incoming=True,
+            send_ended=True,
+        )
+        webhook.contexts.add(make_context())
+        webhook.routing_tables.add(make_routing_table())
+
+        self._run_migration()
+        webhook.refresh_from_db()
+
+        self.assertTrue(webhook.send_outgoing)
+        self.assertTrue(webhook.send_outgoing_ended)
+        self.assertTrue(webhook.send_incoming)
+        self.assertTrue(webhook.send_ended)
+
+    def test_webhook_without_routing_tables_untouched(self):
+        webhook = Webhook.objects.create(
+            name="crm",
+            url="https://crm.example.com/hook",
+            send_incoming=True,
+            send_ended=True,
+        )
+        webhook.contexts.add(make_context())
+
+        self._run_migration()
+        webhook.refresh_from_db()
+
+        self.assertFalse(webhook.send_outgoing)
+        self.assertFalse(webhook.send_outgoing_ended)
+        self.assertTrue(webhook.send_incoming)
+        self.assertTrue(webhook.send_ended)
+
 
 class WebhookAdminFormTests(TestCase):
     def form_data(self, **overrides):
@@ -164,6 +305,9 @@ class WebhookAdminFormTests(TestCase):
             "send_ended": True,
             "send_missed": False,
             "send_answered": False,
+            "send_outgoing": False,
+            "send_outgoing_answered": False,
+            "send_outgoing_ended": False,
             "contexts": [],
             "routing_tables": [],
             "queues": [],
@@ -185,10 +329,77 @@ class WebhookAdminFormTests(TestCase):
         form = WebhookAdminForm(data=self.form_data(queues=[queue.pk]))
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_valid_with_routing_table_only(self):
+    def test_routing_table_alone_does_not_satisfy_inbound_events(self):
+        """routing_tables only matches the outgoing chain; inbound flags
+        (send_incoming/ended/missed/answered, on by default here) still need
+        a context or queue."""
         routing_table = make_routing_table()
         form = WebhookAdminForm(
             data=self.form_data(routing_tables=[routing_table.pk])
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_valid_outgoing_only_webhook(self):
+        routing_table = make_routing_table()
+        form = WebhookAdminForm(
+            data=self.form_data(
+                routing_tables=[routing_table.pk],
+                send_incoming=False,
+                send_ended=False,
+                send_outgoing=True,
+            )
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_outgoing_requires_routing_table(self):
+        queue = make_queue()
+        form = WebhookAdminForm(
+            data=self.form_data(
+                queues=[queue.pk],
+                send_incoming=False,
+                send_ended=False,
+                send_outgoing=True,
+            )
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_outgoing_answered_requires_outgoing(self):
+        routing_table = make_routing_table()
+        form = WebhookAdminForm(
+            data=self.form_data(
+                routing_tables=[routing_table.pk],
+                send_incoming=False,
+                send_ended=False,
+                send_outgoing=False,
+                send_outgoing_answered=True,
+            )
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_outgoing_ended_requires_outgoing(self):
+        routing_table = make_routing_table()
+        form = WebhookAdminForm(
+            data=self.form_data(
+                routing_tables=[routing_table.pk],
+                send_incoming=False,
+                send_ended=False,
+                send_outgoing=False,
+                send_outgoing_ended=True,
+            )
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_outgoing_chain_valid_with_routing_table(self):
+        routing_table = make_routing_table()
+        form = WebhookAdminForm(
+            data=self.form_data(
+                routing_tables=[routing_table.pk],
+                send_incoming=False,
+                send_ended=False,
+                send_outgoing=True,
+                send_outgoing_answered=True,
+                send_outgoing_ended=True,
+            )
         )
         self.assertTrue(form.is_valid(), form.errors)
 

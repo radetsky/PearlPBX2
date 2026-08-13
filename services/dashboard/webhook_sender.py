@@ -1,10 +1,13 @@
 """CRM webhook delivery for the dashboard AMI listener.
 
 Configuration is produced by the Django app `apps.webhooks` and read from the
-Redis key `webhooks:config`. Calls announced with an incoming event are marked
-in Redis (`webhook:notified:{uniqueid}`) so that ended events are sent only for
-announced calls, exactly once. All failures are logged and never propagate into
-the AMI event handlers.
+Redis key `webhooks:config`. Calls announced with an incoming or outgoing event
+are marked in Redis (`webhook:notified:{uniqueid}`) so that ended events are
+sent only for announced calls, exactly once. The marker's `direction` field
+("inbound"/"outbound") ties a call to one of the two independent event chains:
+call.incoming -> call.answered/call.missed -> call.ended, or call.outgoing ->
+call.outgoing_answered -> call.outgoing_ended. All failures are logged and
+never propagate into the AMI event handlers.
 """
 
 import asyncio
@@ -12,6 +15,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import urllib.request
 from datetime import datetime
 from string import Template
@@ -21,6 +25,17 @@ NOTIFIED_KEY_PREFIX = "webhook:notified:"
 NOTIFIED_TTL = 7200  # seconds; matches REDIS_STATE_TTL of the listener
 SIGNATURE_HEADER = "X-PearlPBX-Signature"
 RETRY_DELAY_SECONDS = 2
+
+_ENDPOINT_RE = re.compile(r"^(?:PJSIP|SIP)/(.+)-[0-9a-f]{8}(?:;\d+)?$", re.IGNORECASE)
+
+
+def extract_endpoint(channel):
+    """Extract the PJSIP/SIP endpoint name from a channel name,
+    e.g. "PJSIP/1001-0000000a" -> "1001". Returns None if it doesn't match."""
+    if not channel:
+        return None
+    match = _ENDPOINT_RE.match(channel)
+    return match.group(1) if match else None
 
 # Keep in sync with apps.webhooks.models.TEMPLATE_VARIABLES. A custom template
 # may list any of these placeholders regardless of event type; ones not
@@ -54,6 +69,10 @@ ALL_TEMPLATE_VARIABLES = frozenset(
         "holdtime",
         "answered_by_member",
         "answered_by_interface",
+        "direction",
+        "dest_channel",
+        "dial_status",
+        "answered",
     }
 )
 
@@ -88,6 +107,7 @@ class WebhookManager:
         self.logger = logger or logging.getLogger("dashboard")
         self.webhooks = []
         self.base_url = ""
+        self.sip_users = {}
         self._raw_config = None
         self._tasks = set()
 
@@ -110,16 +130,19 @@ class WebhookManager:
                 self.logger.info("Webhooks: config removed, feature disabled")
             self.webhooks = []
             self.base_url = ""
+            self.sip_users = {}
             return
         try:
             config = json.loads(raw)
             webhooks = [wh for wh in config.get("webhooks", []) if wh.get("url")]
             base_url = (config.get("base_url") or "").rstrip("/")
+            sip_users = config.get("sip_users") or {}
         except (ValueError, TypeError, AttributeError) as e:
             self.logger.error(f"Webhooks: invalid config in Redis, ignoring: {e}")
             return
         self.webhooks = webhooks
         self.base_url = base_url
+        self.sip_users = sip_users
         self.logger.info(
             f"Webhooks: config loaded, {len(webhooks)} active webhook(s)"
         )
@@ -138,6 +161,19 @@ class WebhookManager:
             self.logger.error(f"Webhooks: incoming handling failed: {e}", exc_info=True)
             return []
 
+    async def on_outgoing(self, call_info):
+        """Announce an outgoing call placed by a SIP user. Returns notified names.
+
+        call_info: uniqueid, channel, caller_id_num, caller_id_name, exten,
+        context. No-op (returns []) if the channel's endpoint isn't a known
+        SIP user (e.g. it's a trunk/SIPPeer).
+        """
+        try:
+            return await self._on_outgoing(call_info)
+        except Exception as e:
+            self.logger.error(f"Webhooks: outgoing handling failed: {e}", exc_info=True)
+            return []
+
     async def on_abandon(self, call_info):
         """Report a missed (abandoned) queue call. Returns notified names.
 
@@ -151,15 +187,17 @@ class WebhookManager:
             return []
 
     async def on_hangup(self, hangup_info):
-        """Report call end for announced calls only. Returns notified names.
+        """Report call end for announced calls only.
 
         hangup_info: uniqueid, cause, cause_txt, variables (channel vars dict).
+        Returns (notified_names, direction) where direction is "inbound",
+        "outbound", or None if the call was never announced.
         """
         try:
             return await self._on_hangup(hangup_info)
         except Exception as e:
             self.logger.error(f"Webhooks: hangup handling failed: {e}", exc_info=True)
-            return []
+            return [], None
 
     async def on_agent_connect(self, call_info):
         """Report a queue call answered by an agent. Returns notified names.
@@ -176,9 +214,22 @@ class WebhookManager:
             )
             return []
 
+    async def on_dial_end(self, dial_info):
+        """Report an outgoing call being answered/rejected. Returns notified names.
+
+        dial_info: uniqueid, dial_status (Asterisk DialStatus: ANSWER, BUSY,
+        NOANSWER, CANCEL, ...), dest_channel. No-op for calls not announced
+        via the outgoing chain (direction != "outbound" in the marker).
+        """
+        try:
+            return await self._on_dial_end(dial_info)
+        except Exception as e:
+            self.logger.error(f"Webhooks: dial-end handling failed: {e}", exc_info=True)
+            return []
+
     # ============ INTERNALS ============
 
-    def _match(self, event, context=None, queue=None):
+    def _match(self, event, context=None, queue=None, routing_table=None):
         matched = []
         for wh in self.webhooks:
             if event not in wh.get("events", []):
@@ -186,6 +237,10 @@ class WebhookManager:
             if context is not None and context in wh.get("contexts", []):
                 matched.append(wh)
             elif queue is not None and queue in wh.get("queues", []):
+                matched.append(wh)
+            elif routing_table is not None and routing_table in wh.get(
+                "routing_tables", []
+            ):
                 matched.append(wh)
         return matched
 
@@ -228,11 +283,64 @@ class WebhookManager:
         call = (marker or {}).get("call", {})
         call.update(
             {
+                "direction": "inbound",
                 "caller_id_num": call_info.get("caller_id_num"),
                 "caller_id_name": call_info.get("caller_id_name"),
                 "exten": call_info.get("exten"),
                 "context": call_info.get("context"),
                 "queue": call_info.get("queue") or call.get("queue"),
+                "started_at": call.get("started_at") or datetime.now().isoformat(),
+            }
+        )
+        await self._set_marker(
+            uniqueid,
+            {
+                "webhooks": sorted(already | {wh["name"] for wh in targets}),
+                "call": call,
+            },
+        )
+        return [wh["name"] for wh in targets]
+
+    async def _on_outgoing(self, call_info):
+        uniqueid = call_info.get("uniqueid")
+        if not self.enabled or not uniqueid:
+            return []
+        endpoint = extract_endpoint(call_info.get("channel"))
+        routing_table = self.sip_users.get(endpoint) if endpoint else None
+        if routing_table is None:
+            # Not a SIP user's channel (e.g. a trunk/SIPPeer) — never fires
+            # the outgoing chain, even if it shares a routing table's name.
+            return []
+        matched = self._match("outgoing", routing_table=routing_table)
+        if not matched:
+            return []
+
+        marker = await self._get_marker(uniqueid)
+        already = set(marker.get("webhooks", [])) if marker else set()
+        targets = [wh for wh in matched if wh["name"] not in already]
+        if not targets:
+            return []
+
+        variables = {
+            "uniqueid": uniqueid,
+            "caller_id_num": call_info.get("caller_id_num"),
+            "caller_id_name": call_info.get("caller_id_name"),
+            "exten": call_info.get("exten"),
+            "context": call_info.get("context"),
+            "direction": "outbound",
+            "timestamp": datetime.now().isoformat(),
+        }
+        for wh in targets:
+            self._fire(wh, "call.outgoing", variables)
+
+        call = (marker or {}).get("call", {})
+        call.update(
+            {
+                "direction": "outbound",
+                "caller_id_num": call_info.get("caller_id_num"),
+                "caller_id_name": call_info.get("caller_id_name"),
+                "exten": call_info.get("exten"),
+                "context": call_info.get("context"),
                 "started_at": call.get("started_at") or datetime.now().isoformat(),
             }
         )
@@ -305,27 +413,77 @@ class WebhookManager:
             await self._set_marker(uniqueid, marker)
         return [wh["name"] for wh in matched]
 
-    async def _on_hangup(self, hangup_info):
-        uniqueid = hangup_info.get("uniqueid")
+    async def _on_dial_end(self, dial_info):
+        uniqueid = dial_info.get("uniqueid")
         if not uniqueid:
             return []
         marker = await self._get_marker(uniqueid)
-        if not marker:
+        call = (marker or {}).get("call", {})
+        if not marker or call.get("direction") != "outbound":
             return []
-        await self._delete_marker(uniqueid)
-        if not self.enabled:
+
+        dial_status = dial_info.get("dial_status")
+        call["dial_status"] = dial_status
+        already_answered = bool(call.get("answered_at"))
+        if dial_status == "ANSWER" and not already_answered:
+            call["answered_at"] = datetime.now().isoformat()
+        marker["call"] = call
+        await self._set_marker(uniqueid, marker)
+
+        if dial_status != "ANSWER" or already_answered or not self.enabled:
             return []
 
         by_name = {wh["name"]: wh for wh in self.webhooks}
         targets = [
             by_name[name]
             for name in marker.get("webhooks", [])
-            if name in by_name and "ended" in by_name[name].get("events", [])
+            if name in by_name and "outgoing_answered" in by_name[name].get("events", [])
         ]
         if not targets:
             return []
 
+        variables = {
+            "uniqueid": uniqueid,
+            "caller_id_num": call.get("caller_id_num"),
+            "caller_id_name": call.get("caller_id_name"),
+            "exten": call.get("exten"),
+            "context": call.get("context"),
+            "dest_channel": dial_info.get("dest_channel"),
+            "dial_status": dial_status,
+            "direction": "outbound",
+            "timestamp": datetime.now().isoformat(),
+        }
+        for wh in targets:
+            self._fire(wh, "call.outgoing_answered", variables)
+        return [wh["name"] for wh in targets]
+
+    async def _on_hangup(self, hangup_info):
+        uniqueid = hangup_info.get("uniqueid")
+        if not uniqueid:
+            return [], None
+        marker = await self._get_marker(uniqueid)
+        if not marker:
+            return [], None
+        await self._delete_marker(uniqueid)
+
         call = marker.get("call", {})
+        direction = call.get("direction")
+        outbound = direction == "outbound"
+        event_key = "outgoing_ended" if outbound else "ended"
+        event_name = "call.outgoing_ended" if outbound else "call.ended"
+
+        if not self.enabled:
+            return [], direction
+
+        by_name = {wh["name"]: wh for wh in self.webhooks}
+        targets = [
+            by_name[name]
+            for name in marker.get("webhooks", [])
+            if name in by_name and event_key in by_name[name].get("events", [])
+        ]
+        if not targets:
+            return [], direction
+
         channel_vars = hangup_info.get("variables") or {}
         mixmonitor = channel_vars.get("MIXMONITOR")
         recorded = None if mixmonitor is None else mixmonitor == "1"
@@ -336,6 +494,9 @@ class WebhookManager:
             "exten": call.get("exten"),
             "context": call.get("context"),
             "queue": call.get("queue"),
+            "direction": call.get("direction"),
+            "dial_status": call.get("dial_status"),
+            "answered": bool(call.get("answered_at") or call.get("answered_by_member")),
             "timestamp": datetime.now().isoformat(),
             "duration": self._call_duration(call.get("started_at")),
             "cause": hangup_info.get("cause"),
@@ -350,8 +511,8 @@ class WebhookManager:
             "recording_file": channel_vars.get("MIXMONITOR_FILENAME"),
         }
         for wh in targets:
-            self._fire(wh, "call.ended", variables)
-        return [wh["name"] for wh in targets]
+            self._fire(wh, event_name, variables)
+        return [wh["name"] for wh in targets], direction
 
     @staticmethod
     def _call_duration(started_at):

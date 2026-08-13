@@ -14,6 +14,25 @@ from django.conf import settings
 WEBHOOKS_CONFIG_KEY = "webhooks:config"
 
 
+def _serialize_sip_users():
+    """Map PJSIP endpoint name -> routing table name, SIP users only.
+
+    Used by the listener to tell an outgoing call placed by a SIP user apart
+    from one placed by a trunk (SIPPeer): both endpoint kinds can end up with
+    a context equal to a routing table's name (see core/conf.py), so the
+    endpoint name is the only reliable signal. Excludes users skipped during
+    pjsip.conf generation (no transport/routing table), matching
+    core.conf.get_users_excluded_from_pjsip.
+    """
+    from core.conf import get_users_excluded_from_pjsip
+
+    excluded_ids = get_users_excluded_from_pjsip().values_list("pk", flat=True)
+    from core.models import SIPUser
+
+    users = SIPUser.objects.exclude(pk__in=excluded_ids).select_related("routing_table")
+    return {user.username: user.routing_table.name for user in users}
+
+
 def serialize_webhooks():
     from apps.webhooks.models import Webhook
 
@@ -29,22 +48,19 @@ def serialize_webhooks():
                 ("ended", wh.send_ended),
                 ("missed", wh.send_missed),
                 ("answered", wh.send_answered),
+                ("outgoing", wh.send_outgoing),
+                ("outgoing_answered", wh.send_outgoing_answered),
+                ("outgoing_ended", wh.send_outgoing_ended),
             )
             if enabled
-        ]
-        # A SIP user's PJSIP context is its routing table's name (see
-        # core/conf.py make_pjsip_conf_users), so outbound calls are matched
-        # by merging routing table names into the same context list used for
-        # inbound DialplanContext matches.
-        contexts = [c.name for c in wh.contexts.all()] + [
-            rt.name for rt in wh.routing_tables.all()
         ]
         webhooks.append(
             {
                 "name": wh.name,
                 "url": wh.url,
                 "events": events,
-                "contexts": contexts,
+                "contexts": [c.name for c in wh.contexts.all()],
+                "routing_tables": [rt.name for rt in wh.routing_tables.all()],
                 "queues": [q.name for q in wh.queues.all()],
                 "headers": wh.headers or {},
                 "secret": wh.secret,
@@ -56,6 +72,7 @@ def serialize_webhooks():
     return {
         "webhooks": webhooks,
         "base_url": settings.PEARLPBX_PUBLIC_URL.rstrip("/"),
+        "sip_users": _serialize_sip_users(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 

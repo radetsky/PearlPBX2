@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **CRM webhooks: separate outgoing-call event chain** — new events `call.outgoing` / `call.outgoing_answered` / `call.outgoing_ended`, fired for calls placed by a SIP user (never a trunk), independent of the existing inbound chain (`call.incoming` / `call.answered` / `call.missed` / `call.ended`). `Webhook` gained `send_outgoing`, `send_outgoing_answered`, `send_outgoing_ended` (migration `0005_webhook_outgoing_events.py`); each requires at least one selected routing table, mirroring how inbound events require a context or queue. New payload fields `direction` (`"inbound"`/`"outbound"`), `dest_channel`, `dial_status`, `answered`. Outgoing-call detection is endpoint-based, not context-based: both a SIP user and a trunk can end up with a PJSIP context equal to a routing table's name, so `apps/webhooks/sync.py` now serializes a `sip_users` map (`{endpoint: routing_table}`, SIP users only) into `webhooks:config`, and `webhook_sender.extract_endpoint()` resolves the AMI channel's endpoint against it — a trunk's channel never matches, even sharing a routing table's name with a SIP user. `services/dashboard/dashboard_listener.py` wires `AMI DialEnd` (`DialStatus=ANSWER`) to `call.outgoing_answered`, closing a gap noted in the previous release (direct/non-queue calls previously had no "answered" signal at all).
+
+### Changed
+
+- **BREAKING for existing `Webhook` rows that use `routing_tables`** — before this release, `routing_tables` were merged into the same `contexts` list used for `call.incoming` matching (added in 2.7.1), so a webhook configured with only a routing table fired `call.incoming`/`call.ended` for outbound calls. Migration `0006_migrate_routing_table_webhooks.py` translates existing rows automatically (`send_outgoing = send_incoming`, `send_outgoing_ended = send_ended`; inbound flags are cleared only if the row had no `contexts`/`queues` of its own), but **the CRM-side handler must be updated** to expect `call.outgoing*` instead of `call.incoming`/`call.ended` for those calls. Deploy order: `migrate` + `sync_webhooks` first, then restart `dashboard-listener` — an old listener process doesn't know the new `webhooks:config` keys (`sip_users`, separate `routing_tables`) and won't fire the outgoing chain during the rollout window.
+- `apps/webhooks/models.Webhook.routing_tables` help text and admin validation updated to reflect that routing tables now filter only the outgoing chain, never the inbound one.
+
 ## [2.7.1] - 2026-08-11
 
 ### Added

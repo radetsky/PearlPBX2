@@ -13,6 +13,7 @@ from webhook_sender import (
     SIGNATURE_HEADER,
     WEBHOOKS_CONFIG_KEY,
     WebhookManager,
+    extract_endpoint,
     render_template,
 )
 
@@ -37,12 +38,13 @@ class FakeRedis:
             self.store.pop(key, None)
 
 
-def make_config(**overrides):
+def make_config(sip_users=None, **overrides):
     webhook = {
         "name": "crm",
         "url": "https://crm.example.com/hook",
         "events": ["incoming", "ended", "missed", "answered"],
         "contexts": ["incoming"],
+        "routing_tables": [],
         "queues": ["support"],
         "headers": {},
         "secret": "",
@@ -51,7 +53,11 @@ def make_config(**overrides):
         "payload_template": None,
     }
     webhook.update(overrides)
-    return {"webhooks": [webhook], "base_url": "https://pbx.example.com"}
+    return {
+        "webhooks": [webhook],
+        "base_url": "https://pbx.example.com",
+        "sip_users": sip_users or {},
+    }
 
 
 def make_manager(config=None):
@@ -199,9 +205,10 @@ class TestHangup:
         run(manager.load_config())
         fired = fired_events(manager)
 
-        notified = run(manager.on_hangup(self.hangup_info(uniqueid="999.1")))
+        notified, direction = run(manager.on_hangup(self.hangup_info(uniqueid="999.1")))
 
         assert notified == []
+        assert direction is None
         assert fired == []
 
     def test_ended_fires_once_and_deletes_marker(self):
@@ -210,11 +217,13 @@ class TestHangup:
         calls = fired_events(manager)
         self.announce(manager)
 
-        first = run(manager.on_hangup(self.hangup_info()))
-        second = run(manager.on_hangup(self.hangup_info()))
+        first, first_direction = run(manager.on_hangup(self.hangup_info()))
+        second, second_direction = run(manager.on_hangup(self.hangup_info()))
 
         assert first == ["crm"]
+        assert first_direction == "inbound"
         assert second == []
+        assert second_direction is None
         events = [c[1] for c in calls]
         assert events == ["call.incoming", "call.ended"]
         assert f"{NOTIFIED_KEY_PREFIX}111.222" not in redis.store
@@ -274,9 +283,10 @@ class TestHangup:
         fired = fired_events(manager)
         self.announce(manager)
 
-        notified = run(manager.on_hangup(self.hangup_info()))
+        notified, direction = run(manager.on_hangup(self.hangup_info()))
 
         assert notified == []
+        assert direction == "inbound"
         assert [c[1] for c in fired] == ["call.incoming"]
 
 
@@ -524,6 +534,253 @@ class TestAgentConnect:
         assert ended[2]["answered_by_interface"] is None
 
 
+class TestOutgoing:
+    def outgoing_info(self, **overrides):
+        info = {
+            "uniqueid": "111.222",
+            "channel": "PJSIP/1001-0000000a",
+            "caller_id_num": "1001",
+            "caller_id_name": "Operator",
+            "exten": "0501234567",
+            "context": "outbound-users",
+        }
+        info.update(overrides)
+        return info
+
+    def outgoing_config(self, **overrides):
+        base = {
+            "events": ["outgoing", "outgoing_answered", "outgoing_ended"],
+            "contexts": [],
+            "queues": [],
+            "routing_tables": ["outbound-users"],
+        }
+        base.update(overrides)
+        return make_config(sip_users={"1001": "outbound-users"}, **base)
+
+    def test_sip_user_endpoint_fires_and_marks(self):
+        manager, redis = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        notified = run(manager.on_outgoing(self.outgoing_info()))
+
+        assert notified == ["crm"]
+        assert calls[0][:2] == ("crm", "call.outgoing")
+        assert calls[0][2]["direction"] == "outbound"
+        marker = json.loads(redis.store[f"{NOTIFIED_KEY_PREFIX}111.222"])
+        assert marker["call"]["direction"] == "outbound"
+        assert marker["webhooks"] == ["crm"]
+
+    def test_trunk_endpoint_never_fires(self):
+        """A SIPPeer/trunk channel must never trigger the outgoing chain,
+        even if it shares the routing table's name with a SIP user."""
+        manager, _ = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        fired = fired_events(manager)
+
+        notified = run(
+            manager.on_outgoing(self.outgoing_info(channel="PJSIP/some-trunk-0000000b"))
+        )
+
+        assert notified == []
+        assert fired == []
+
+    def test_routing_table_not_matched_by_webhook(self):
+        manager, _ = make_manager(self.outgoing_config(routing_tables=["other-rt"]))
+        run(manager.load_config())
+        fired = fired_events(manager)
+
+        notified = run(manager.on_outgoing(self.outgoing_info()))
+
+        assert notified == []
+        assert fired == []
+
+    def test_unrecognized_channel_format_never_fires(self):
+        manager, _ = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        fired = fired_events(manager)
+
+        notified = run(manager.on_outgoing(self.outgoing_info(channel="Local/1001@x")))
+
+        assert notified == []
+        assert fired == []
+
+
+class TestOutgoingChain:
+    def config(self, **overrides):
+        base = {
+            "events": ["outgoing", "outgoing_answered", "outgoing_ended"],
+            "contexts": [],
+            "queues": [],
+            "routing_tables": ["outbound-users"],
+        }
+        base.update(overrides)
+        return make_config(sip_users={"1001": "outbound-users"}, **base)
+
+    def announce(self, manager):
+        return run(
+            manager.on_outgoing(
+                {
+                    "uniqueid": "111.222",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "caller_id_name": "Operator",
+                    "exten": "0501234567",
+                    "context": "outbound-users",
+                }
+            )
+        )
+
+    def test_full_chain_outgoing_answered_ended(self):
+        manager, redis = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        answered = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk1-0000000b",
+                }
+            )
+        )
+        ended, direction = run(
+            manager.on_hangup(
+                {
+                    "uniqueid": "111.222",
+                    "cause": "16",
+                    "cause_txt": "Normal Clearing",
+                    "variables": {},
+                }
+            )
+        )
+
+        assert answered == ["crm"]
+        assert ended == ["crm"]
+        assert direction == "outbound"
+        events = [c[1] for c in calls]
+        assert events == ["call.outgoing", "call.outgoing_answered", "call.outgoing_ended"]
+        ended_vars = calls[-1][2]
+        assert ended_vars["answered"] is True
+        assert ended_vars["dial_status"] == "ANSWER"
+        assert ended_vars["direction"] == "outbound"
+        assert f"{NOTIFIED_KEY_PREFIX}111.222" not in redis.store
+
+    def test_repeated_dial_end_answer_does_not_duplicate(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        first = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk1-1",
+                }
+            )
+        )
+        second = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk2-2",
+                }
+            )
+        )
+
+        assert first == ["crm"]
+        assert second == []
+        assert [c[1] for c in calls] == ["call.outgoing", "call.outgoing_answered"]
+
+    def test_unanswered_call_ended_without_answered_event(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "BUSY",
+                    "dest_channel": "PJSIP/trunk1-1",
+                }
+            )
+        )
+        run(
+            manager.on_hangup(
+                {
+                    "uniqueid": "111.222",
+                    "cause": "17",
+                    "cause_txt": "User busy",
+                    "variables": {},
+                }
+            )
+        )
+
+        events = [c[1] for c in calls]
+        assert events == ["call.outgoing", "call.outgoing_ended"]
+        ended_vars = calls[-1][2]
+        assert ended_vars["answered"] is False
+        assert ended_vars["dial_status"] == "BUSY"
+
+    def test_dial_end_ignored_for_inbound_marker(self):
+        manager, _ = make_manager(
+            make_config(events=["incoming", "ended", "outgoing_answered"])
+        )
+        run(manager.load_config())
+        calls = fired_events(manager)
+        run(
+            manager.on_incoming(
+                {
+                    "uniqueid": "111.222",
+                    "caller_id_num": "380501234567",
+                    "caller_id_name": None,
+                    "exten": "s",
+                    "context": "incoming",
+                    "queue": None,
+                    "recording_expected": None,
+                }
+            )
+        )
+
+        notified = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/101-1",
+                }
+            )
+        )
+
+        assert notified == []
+        assert [c[1] for c in calls] == ["call.incoming"]
+
+    def test_dial_end_without_marker_is_noop(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        fired = fired_events(manager)
+
+        notified = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "999.1",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk1-1",
+                }
+            )
+        )
+
+        assert notified == []
+        assert fired == []
+
+
 class TestDelivery:
     def test_default_body_and_hmac_signature(self):
         manager, _ = make_manager(
@@ -664,6 +921,109 @@ class TestFullPlaceholderTemplate:
         for absent_field in ("member_name", "recorded", "answered_by_member"):
             assert payload[absent_field] == ""
 
+    def outgoing_config(self, events):
+        return make_config(
+            sip_users={"1001": "outbound-users"},
+            events=events,
+            contexts=[],
+            queues=[],
+            routing_tables=["outbound-users"],
+            payload_template=self.FULL_TEMPLATE,
+        )
+
+    def test_outgoing_has_no_leftover_placeholders(self):
+        manager, _ = make_manager(self.outgoing_config(["outgoing"]))
+        run(manager.load_config())
+        sent = self.capture_sent_body(manager)
+
+        async def scenario():
+            await manager.on_outgoing(
+                {
+                    "uniqueid": "1.2",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "caller_id_name": "Operator",
+                    "exten": "0501234567",
+                    "context": "outbound-users",
+                }
+            )
+            await manager.wait_pending()
+
+        run(scenario())
+
+        payload = json.loads(sent["body"])
+        assert payload["event"] == "call.outgoing"
+        assert payload["direction"] == "outbound"
+        for absent_field in ("duration", "cause", "member_name", "dest_channel"):
+            assert "$" not in payload[absent_field]
+
+    def test_outgoing_answered_has_no_leftover_placeholders(self):
+        manager, _ = make_manager(self.outgoing_config(["outgoing", "outgoing_answered"]))
+        run(manager.load_config())
+        sent = self.capture_sent_body(manager)
+
+        async def scenario():
+            await manager.on_outgoing(
+                {
+                    "uniqueid": "1.2",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "caller_id_name": "Operator",
+                    "exten": "0501234567",
+                    "context": "outbound-users",
+                }
+            )
+            await manager.on_dial_end(
+                {
+                    "uniqueid": "1.2",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk1-0000000b",
+                }
+            )
+            await manager.wait_pending()
+
+        run(scenario())
+
+        payload = json.loads(sent["body"])
+        assert payload["event"] == "call.outgoing_answered"
+        assert payload["dest_channel"] == "PJSIP/trunk1-0000000b"
+        for absent_field in ("duration", "cause", "member_name"):
+            assert "$" not in payload[absent_field]
+
+    def test_outgoing_ended_has_no_leftover_placeholders(self):
+        manager, _ = make_manager(self.outgoing_config(["outgoing", "outgoing_ended"]))
+        run(manager.load_config())
+        sent = self.capture_sent_body(manager)
+
+        async def scenario():
+            await manager.on_outgoing(
+                {
+                    "uniqueid": "1.2",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "caller_id_name": "Operator",
+                    "exten": "0501234567",
+                    "context": "outbound-users",
+                }
+            )
+            await manager.on_hangup(
+                {
+                    "uniqueid": "1.2",
+                    "cause": "16",
+                    "cause_txt": "Normal Clearing",
+                    "variables": {},
+                }
+            )
+            await manager.wait_pending()
+
+        run(scenario())
+
+        payload = json.loads(sent["body"])
+        assert payload["event"] == "call.outgoing_ended"
+        assert payload["direction"] == "outbound"
+        for field in ("duration", "cause", "member_name", "answered", "dial_status"):
+            assert "$" not in payload[field]
+
 
 class TestRenderTemplate:
     def test_substitutes_in_nested_structures(self):
@@ -702,3 +1062,20 @@ class TestExtractMemberNumber:
         from dashboard_listener import extract_member_number
 
         assert extract_member_number(None) is None
+
+
+class TestExtractEndpoint:
+    def test_pjsip_channel(self):
+        assert extract_endpoint("PJSIP/1001-0000000a") == "1001"
+
+    def test_sip_channel_case_insensitive(self):
+        assert extract_endpoint("sip/202-0000000b") == "202"
+
+    def test_endpoint_name_with_hyphen(self):
+        assert extract_endpoint("PJSIP/user-01-0000000c") == "user-01"
+
+    def test_unrecognized_format_returns_none(self):
+        assert extract_endpoint("Local/303@from-queue") is None
+
+    def test_none_returns_none(self):
+        assert extract_endpoint(None) is None

@@ -341,6 +341,30 @@ class DashboardAMIListener:
                     },
                 )
 
+            outgoing_notified = await self.webhooks.on_outgoing(
+                {
+                    "uniqueid": uniqueid,
+                    "channel": channel,
+                    "caller_id_num": caller_id_num,
+                    "caller_id_name": caller_id_name,
+                    "exten": exten,
+                    "context": context,
+                }
+            )
+            if outgoing_notified:
+                await self.publish_event(
+                    "call_outgoing",
+                    {
+                        "uniqueid": uniqueid,
+                        "channel": channel,
+                        "caller_id_num": caller_id_num,
+                        "caller_id_name": caller_id_name,
+                        "context": context,
+                        "exten": exten,
+                        "webhooks": outgoing_notified,
+                    },
+                )
+
         self.logger.info(
             f"New channel: {channel} ({caller_id_num}) - {channel_state_desc}"
         )
@@ -432,6 +456,26 @@ class DashboardAMIListener:
             },
         )
 
+        if self.webhooks.enabled:
+            notified = await self.webhooks.on_dial_end(
+                {
+                    "uniqueid": uniqueid,
+                    "dial_status": dial_status,
+                    "dest_channel": destination,
+                }
+            )
+            if notified:
+                await self.publish_event(
+                    "call_outgoing_answered",
+                    {
+                        "uniqueid": uniqueid,
+                        "channel": channel,
+                        "destination": destination,
+                        "dial_status": dial_status,
+                        "webhooks": notified,
+                    },
+                )
+
         self.logger.info(
             f"Dial end: {channel} -> {destination} (status: {dial_status})"
         )
@@ -512,7 +556,7 @@ class DashboardAMIListener:
             },
         )
 
-        notified = await self.webhooks.on_hangup(
+        notified, direction = await self.webhooks.on_hangup(
             {
                 "uniqueid": uniqueid,
                 "cause": cause,
@@ -521,8 +565,9 @@ class DashboardAMIListener:
             }
         )
         if notified:
+            event_name = "call_outgoing_ended" if direction == "outbound" else "call_ended"
             await self.publish_event(
-                "call_ended",
+                event_name,
                 {
                     "uniqueid": uniqueid,
                     "channel": channel,

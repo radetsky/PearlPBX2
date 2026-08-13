@@ -19,7 +19,7 @@ Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), bu
 - **Phone provisioning** — TFTP-based autoconfiguration for SIP phones
 - **Lists** — web CRUD UI for Blocklist, Allowlist, and Contacts; accessible to Report Viewer group without admin access
 - **REST API** — DRF-based endpoints for blacklist/whitelist/contacts management, call control (`/calls/originate/`), and ConfBridge conference calls (`/calls/conference/`); documented in [`docs/en/API.md`](docs/en/API.md) and [`docs/en/openapi.yaml`](docs/en/openapi.yaml)
-- **CRM webhooks** — configurable JSON POST notifications for call events (incoming, answered, ended/missed), driven from the dashboard listener; call recording lookup via `GET /api/v1/recordings/<uniqueid>/`
+- **CRM webhooks** — configurable JSON POST notifications for two independent call chains, driven from the dashboard listener: inbound (incoming, answered, missed, ended) and outbound (outgoing, outgoing answered, outgoing ended — placed by a SIP user, never a trunk); call recording lookup via `GET /api/v1/recordings/<uniqueid>/`
 - **Token authentication** — dashboard WebSocket and read-only JSON API accept a DRF auth token in addition to a Django session, for CRM/external integrations
 - **Slack notifications** — aggregated alerts for missed queue calls, plus per-call notifications from classic AGI scripts
 - **Ansible deployment** — install/update playbooks plus a rollback procedure (`rollback.sh`) to revert code, migrations, and services to a prior deployment; daily cron backups of PostgreSQL and `/etc/asterisk`
