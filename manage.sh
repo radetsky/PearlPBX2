@@ -21,6 +21,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "${line//[[:space:]]/}" ]] && continue
     key="${line%%=*}"
     value="${line#*=}"
+    # Strip one layer of matching surrounding quotes (VAR="value" / VAR='value'),
+    # since this loop reads raw lines and does not get shell quote handling.
+    if [[ ${#value} -ge 2 && "${value:0:1}" == "${value: -1}" && ( "${value:0:1}" == '"' || "${value:0:1}" == "'" ) ]]; then
+        value="${value:1:$((${#value}-2))}"
+    fi
     printf -v "$key" '%s' "$value"
     export "$key"
 done < "${ENV_FILE}"
