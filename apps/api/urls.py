@@ -6,7 +6,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 
-from apps.api.views import lists, calls, recordings
+from apps.api.views import lists, calls, recordings, queues
 
 router = DefaultRouter()
 router.register("blacklist", lists.BlacklistViewSet, basename="blacklist")
@@ -25,6 +25,12 @@ urlpatterns = [
     ),
     path("calls/originate/", calls.OriginateView.as_view(), name="calls_originate"),
     path("calls/conference/", calls.ConferenceView.as_view(), name="calls_conference"),
+    path("queues/members/", queues.QueueMemberListView.as_view(), name="queue_members"),
+    path(
+        "queues/members/pause/",
+        queues.QueueMemberPauseView.as_view(),
+        name="queue_member_pause",
+    ),
     path(
         "recordings/<str:uniqueid>/",
         recordings.RecordingByUniqueidView.as_view(),

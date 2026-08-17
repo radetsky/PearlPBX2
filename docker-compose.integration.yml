@@ -1,0 +1,105 @@
+# Integration test stack: spins up a REAL Asterisk container (same image as
+# docker-compose.yml) plus Postgres, and runs tests/integration/ against them.
+# Isolated from the dev stack (docker-compose.yml) and the fast mocked test
+# stack (docker-compose.test.yml) — separate project name, separate volumes,
+# no ports published to the host, safe to run alongside either.
+#
+# Usage: make integration-test   (see Makefile)
+# Or directly:
+#   docker compose -f docker-compose.integration.yml run --rm integration-test
+#   docker compose -f docker-compose.integration.yml down -v
+
+name: pearlpbx2-integration
+
+services:
+  postgres-integration:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: pearlpbx2_integration
+      POSTGRES_USER: integration
+      POSTGRES_PASSWORD: integration
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U integration -d pearlpbx2_integration"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - pearlpbx-integration
+
+  # Seeds manager.conf (AMI enabled) before Asterisk's first boot — same
+  # script and same reasoning as docker-compose.yml's asterisk-init, just
+  # pointed at this stack's own config volume so it never touches the dev
+  # stack's Asterisk instance.
+  asterisk-init:
+    image: alpine:3.20
+    environment:
+      - ASTERISK_MANAGER_PORT=5038
+      - ASTERISK_MANAGER_BIND=0.0.0.0
+      - ASTERISK_MANAGER_USERNAME=integration
+      - ASTERISK_MANAGER_SECRET=integration-secret
+    volumes:
+      - asterisk_integration_config:/etc/asterisk
+      - ./docker/asterisk-bootstrap.sh:/asterisk-bootstrap.sh:ro
+    command: ["sh", "/asterisk-bootstrap.sh"]
+    networks:
+      - pearlpbx-integration
+
+  asterisk:
+    image: andrius/asterisk:22
+    volumes:
+      - asterisk_integration_config:/etc/asterisk
+      - asterisk_integration_lib:/var/lib/asterisk
+      - asterisk_integration_spool:/var/spool/asterisk
+    networks:
+      - pearlpbx-integration
+    depends_on:
+      asterisk-init:
+        condition: service_completed_successfully
+    # No healthcheck on this image is wired up (see docker-compose.yml's
+    # comment on the same point) and no ports are published to the host —
+    # this stack is test-only. Readiness is handled by tests/integration's
+    # own AMI login retry loop instead of depends_on: service_healthy.
+
+  integration-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - DB_HOST=postgres-integration
+      - DB_PORT=5432
+      - DB_NAME=pearlpbx2_integration
+      - DB_USER=integration
+      - DB_PASS=integration
+      - DJANGO_SECRET_KEY=integration-test-secret-key
+      - DEVMODE=Development
+      - ASTERISK_MANAGER_HOST=asterisk
+      - ASTERISK_MANAGER_PORT=5038
+      - ASTERISK_MANAGER_BIND=0.0.0.0
+      - ASTERISK_MANAGER_USERNAME=integration
+      - ASTERISK_MANAGER_SECRET=integration-secret
+      - ASTERISK_CONFIG_DIR=/etc/asterisk
+      - ASTERISK_ROOT_DIR=/
+      - ASTERISK_BACKUP_DIR=/var/spool/asterisk/backup
+    volumes:
+      - .:/app
+      - asterisk_integration_config:/etc/asterisk
+      - asterisk_integration_spool:/var/spool/asterisk
+    command: ["tests/integration", "-v", "-p", "no:cacheprovider"]
+    networks:
+      - pearlpbx-integration
+    depends_on:
+      postgres-integration:
+        condition: service_healthy
+      asterisk:
+        condition: service_started
+
+networks:
+  pearlpbx-integration:
+    driver: bridge
+
+volumes:
+  asterisk_integration_config:
+  asterisk_integration_lib:
+  asterisk_integration_spool:

@@ -1,0 +1,24 @@
+name: Integration Tests (real Asterisk)
+
+# Opt-in, not run on every PR: this stack boots a real Asterisk container and
+# reloads its config, which takes tens of seconds — too slow for per-PR
+# feedback, unlike the mocked suite in test.yml. Runs on push to main/master
+# (post-merge confidence) and can be triggered manually.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests against real Asterisk
+        run: docker compose -f docker-compose.integration.yml run --rm integration-test
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.integration.yml down -v

@@ -275,6 +275,22 @@ if not ASTERISK_MANAGER_SECRET:
         )
     ASTERISK_MANAGER_SECRET = "dev-insecure-ami-secret-change-me"
 
+# AMI client/response timeout (seconds) used when a caller of
+# core.ami.AsteriskManagementInterface doesn't pass one explicitly. Long by design:
+# it covers slow admin operations like `core restart now` (pbx/admin.py's Apply
+# Changes flow), which can legitimately take a while.
+ASTERISK_AMI_DEFAULT_TIMEOUT = env.int("ASTERISK_AMI_DEFAULT_TIMEOUT", 3600)
+
+# AMI client/response timeout (seconds) for short, synchronous actions that don't
+# wait on a dial/answer (QueuePause, QueueStatus, Hangup). Matches the timeout
+# services/fastagi/fastagi.py already uses for its own AMI QueueStatus query.
+ASTERISK_AMI_QUICK_TIMEOUT = env.int("ASTERISK_AMI_QUICK_TIMEOUT", 5)
+
+# Extra seconds of slack added on top of an Originate's own Asterisk-side timeout_ms
+# when bounding the AMI client's response wait, so a slow-but-successful round trip
+# isn't cut off right as Asterisk's own Originate timeout fires.
+ASTERISK_AMI_RESPONSE_MARGIN = env.int("ASTERISK_AMI_RESPONSE_MARGIN", 5)
+
 ASTERISK_MONITOR_DIR = env.str(
     "ASTERISK_MONITOR_DIR", default="/var/spool/asterisk/monitor"
 )

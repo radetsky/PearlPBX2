@@ -525,3 +525,202 @@ class RecordingsApiTests(BaseAPITestCase):
     def test_invalid_uniqueid_404(self):
         resp = self.client.get("/api/v1/recordings/not-a-uniqueid/")
         self.assertEqual(resp.status_code, 404)
+
+
+class QueueMemberPauseApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="queuetester", password="x"
+        )
+        self.token = Token.objects.create(user=self.user)
+        self.url = reverse("queue_member_pause")
+        self.body = {"interface": "PJSIP/101", "paused": True}
+
+    def _auth(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_requires_auth(self):
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_invalid_interface_rejected(self):
+        self._auth()
+        resp = self.client.post(
+            self.url, {"interface": "PJSIP/101\r\nBAD", "paused": True}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_missing_paused_rejected(self):
+        self._auth()
+        resp = self.client.post(self.url, {"interface": "PJSIP/101"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_pause_success(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = False
+        mock_ami.queue_pause.return_value = ami_response
+
+        resp = self.client.post(self.url, self.body, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["status"], "paused")
+        mock_ami.queue_pause.assert_called_once_with(
+            interface="PJSIP/101", paused=True, queue=None
+        )
+        mock_ami_cls.return_value.__exit__.assert_called_once()
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_unpause_passes_queue_when_given(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = False
+        mock_ami.queue_pause.return_value = ami_response
+
+        body = {"interface": "PJSIP/101", "paused": False, "queue": "support"}
+        resp = self.client.post(self.url, body, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["status"], "unpaused")
+        mock_ami.queue_pause.assert_called_once_with(
+            interface="PJSIP/101", paused=False, queue="support"
+        )
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_interface_not_found_404(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = True
+        ami_response.keys = {"Message": "Interface not found"}
+        mock_ami.queue_pause.return_value = ami_response
+
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 404)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_ami_error_502(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        ami_response = MagicMock()
+        ami_response.is_error.return_value = True
+        ami_response.keys = {"Message": "Some other AMI failure"}
+        mock_ami.queue_pause.return_value = ami_response
+
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 502)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_timeout_none_502(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        mock_ami.queue_pause.return_value = None
+
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 502)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface", side_effect=Exception("no ami"))
+    def test_ami_unavailable(self, _mock):
+        self._auth()
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 502)
+
+    @override_settings(DEVMODE="without_asterisk_on_localhost")
+    def test_asterisk_disabled_503(self):
+        self._auth()
+        resp = self.client.post(self.url, self.body, format="json")
+        self.assertEqual(resp.status_code, 503)
+
+
+class QueueMemberListApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="queuelisttester", password="x"
+        )
+        self.token = Token.objects.create(user=self.user)
+        self.url = reverse("queue_members")
+
+    def _auth(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+
+    def test_requires_auth(self):
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 401)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_list_maps_ami_events(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        event = MagicMock()
+        event.keys = {
+            "Queue": "support",
+            "Name": "PJSIP/101",
+            "Location": "PJSIP/101",
+            "StateInterface": "PJSIP/101",
+            "Membership": "static",
+            "Penalty": "0",
+            "CallsTaken": "3",
+            "LastCall": "0",
+            "InCall": "0",
+            "Status": "1",
+            "Paused": "1",
+        }
+        mock_ami.queue_members.return_value = [event]
+
+        resp = self.client.get(self.url, {"queue": "support"})
+
+        self.assertEqual(resp.status_code, 200)
+        mock_ami.queue_members.assert_called_once_with(queue="support")
+        member = resp.data["members"][0]
+        self.assertEqual(member["queue"], "support")
+        self.assertEqual(member["calls_taken"], 3)
+        self.assertTrue(member["paused"])
+        self.assertFalse(member["in_call"])
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_list_without_queue_param(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        mock_ami.queue_members.return_value = []
+
+        resp = self.client.get(self.url)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["members"], [])
+        mock_ami.queue_members.assert_called_once_with(queue=None)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface", side_effect=Exception("no ami"))
+    def test_ami_unavailable(self, _mock):
+        self._auth()
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 502)
+
+    @override_settings(DEVMODE="Development")
+    @patch("apps.api.views.queues.AsteriskManagementInterface")
+    def test_blank_queue_param_collapses_to_none(self, mock_ami_cls):
+        self._auth()
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        mock_ami.queue_members.return_value = []
+
+        resp = self.client.get(self.url, {"queue": ""})
+
+        self.assertEqual(resp.status_code, 200)
+        mock_ami.queue_members.assert_called_once_with(queue=None)
+
+    @override_settings(DEVMODE="without_asterisk_on_localhost")
+    def test_asterisk_disabled_503(self):
+        self._auth()
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 503)
