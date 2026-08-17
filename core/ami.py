@@ -123,12 +123,14 @@ class AsteriskManagementInterface:
         if wait_seconds is None:
             wait_seconds = settings.ASTERISK_AMI_QUICK_TIMEOUT
 
-        events = []
+        events: list = []
+        events_lock = threading.Lock()
         complete = threading.Event()
 
         def collect(event, **kwargs):
             if event.name == "QueueMember":
-                events.append(event)
+                with events_lock:
+                    events.append(event)
             elif event.name == "QueueStatusComplete":
                 complete.set()
 
@@ -145,11 +147,15 @@ class AsteriskManagementInterface:
                 raise RuntimeError("AMI QueueStatus timed out.")
             if response.is_error():
                 raise RuntimeError(response.keys.get("Message", "QueueStatus failed."))
-            complete.wait(wait_seconds)
+            if not complete.wait(wait_seconds):
+                raise TimeoutError(
+                    f"AMI QueueStatus did not complete within {wait_seconds}s."
+                )
         finally:
             self.client.remove_event_listener(listener)
 
-        return list(events)
+        with events_lock:
+            return list(events)
 
     def logoff(self):
         self.client.logoff()
