@@ -310,6 +310,86 @@ curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
 
 ---
 
+## Queue Members
+
+Pause/unpause a queue member and read live queue member status via Asterisk AMI.
+There is no persistent "queue member" resource here — these endpoints talk to
+Asterisk directly, so they reflect (and change) live runtime state, not the
+`QueueMember` records managed in Django admin.
+
+### POST `/api/v1/queues/members/pause/`
+
+Pause or unpause a queue member.
+
+**Request body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `interface` | string | yes | — | Queue member interface, e.g. `"PJSIP/101"` |
+| `paused` | boolean | yes | — | `true` to pause, `false` to unpause |
+| `queue` | string | no | — | Limit the change to one queue. Omitted, it applies to the member in every queue it belongs to |
+
+**Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Pause state updated. Body: `{"status": "paused"}` or `{"status": "unpaused"}` |
+| `400` | Invalid request body |
+| `401` | Authentication credentials were not provided |
+| `404` | The interface is not a member of the given queue(s) |
+| `502` | AMI error or Asterisk unreachable |
+| `503` | Asterisk is disabled in this DEVMODE |
+
+**Example:**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/queues/members/pause/ \
+  -H "Authorization: Token <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"interface": "PJSIP/101", "paused": true}'
+```
+
+### GET `/api/v1/queues/members/`
+
+List queue members and their current status. Optional `?queue=<name>` query
+parameter limits results to one queue; omit it to list members of every queue.
+
+**Response:**
+
+```json
+{
+  "members": [
+    {
+      "queue": "support",
+      "name": "PJSIP/101",
+      "location": "PJSIP/101",
+      "state_interface": "PJSIP/101",
+      "membership": "static",
+      "penalty": 0,
+      "calls_taken": 3,
+      "last_call": 0,
+      "in_call": false,
+      "status": "1",
+      "paused": true
+    }
+  ]
+}
+```
+
+`status` is the raw Asterisk device-state code (`AST_DEVICE_*`), passed through
+without translation.
+
+**Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `200` | List of members (possibly empty) |
+| `401` | Authentication credentials were not provided |
+| `502` | AMI error or Asterisk unreachable |
+| `503` | Asterisk is disabled in this DEVMODE |
+
+---
+
 ## Call Recordings
 
 **`GET /api/v1/recordings/<uniqueid>/`**

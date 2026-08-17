@@ -17,6 +17,7 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from asterisk.ami import AMIClient, SimpleAction
 
+from core.ami import AsteriskManagementInterface
 from core.models import SIPUser, SIPPeer
 from apps.reports.models import QueueLog
 from apps.reports.services.lost_and_found import build_lost_and_found
@@ -386,29 +387,12 @@ def pause_queue_member(request):
     if not isinstance(paused, bool):
         return JsonResponse({"error": "paused must be a boolean", "received": repr(paused), "type": type(paused).__name__}, status=400)
 
-    client = None
     try:
-        client = AMIClient(
-            address=settings.ASTERISK_MANAGER_HOST,
-            port=settings.ASTERISK_MANAGER_PORT,
-        )
-        client.login(
-            username=settings.ASTERISK_MANAGER_USERNAME,
-            secret=settings.ASTERISK_MANAGER_SECRET,
-        )
-        future = client.send_action(
-            SimpleAction("QueuePause", Interface=interface, Paused="true" if paused else "false")
-        )
-        response = future.response
+        with AsteriskManagementInterface(timeout=settings.ASTERISK_AMI_QUICK_TIMEOUT) as ami:
+            response = ami.queue_pause(interface=interface, paused=paused)
     except Exception as e:
         logger.error(f"AMI QueuePause error for {interface}: {e}")
         return JsonResponse({"error": str(e)}, status=502)
-    finally:
-        if client is not None:
-            try:
-                client.logoff()
-            except Exception:
-                pass
 
     if response is None:
         return JsonResponse({"error": "No response from AMI"}, status=502)

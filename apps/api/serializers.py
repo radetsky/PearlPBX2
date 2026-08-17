@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.api.models import CustomListNames, CustomListEntries
 from core.models import Blacklist, Whitelist, Contact
+from core.validators import validate_asterisk_interface
 
 
 class CustomListNameSerializer(serializers.ModelSerializer):
@@ -171,3 +172,68 @@ class ConferenceSerializer(_CallOriginationFieldsSerializer):
             kwargs_list.append(kwargs)
 
         return room, kwargs_list
+
+
+class QueueMemberPauseSerializer(serializers.Serializer):
+    interface = serializers.CharField(
+        max_length=128,
+        validators=[validate_asterisk_interface],
+        help_text="Queue member interface, e.g. 'PJSIP/101'.",
+    )
+    paused = serializers.BooleanField(help_text="True to pause, false to unpause.")
+    queue = serializers.CharField(
+        max_length=64,
+        required=False,
+        allow_blank=True,
+        help_text=(
+            "Limit the pause/unpause to one queue. Omitted, it applies to the "
+            "member in every queue it belongs to."
+        ),
+    )
+
+
+class QueueMemberStatusSerializer(serializers.Serializer):
+    """Read-only shape of a queue member returned by the members list endpoint."""
+
+    queue = serializers.CharField()
+    name = serializers.CharField()
+    location = serializers.CharField()
+    state_interface = serializers.CharField()
+    membership = serializers.CharField()
+    penalty = serializers.IntegerField()
+    calls_taken = serializers.IntegerField()
+    last_call = serializers.IntegerField()
+    in_call = serializers.BooleanField()
+    status = serializers.CharField(help_text="Raw AMI device status code.")
+    paused = serializers.BooleanField()
+
+    @staticmethod
+    def from_ami_event(event) -> dict:
+        """Map a raw AMI QueueMember event into this serializer's field shape."""
+        keys = event.keys
+
+        def _int(name):
+            try:
+                return int(keys.get(name, 0))
+            except (TypeError, ValueError):
+                return 0
+
+        return {
+            "queue": keys.get("Queue", ""),
+            "name": keys.get("Name", ""),
+            "location": keys.get("Location", ""),
+            "state_interface": keys.get("StateInterface", ""),
+            "membership": keys.get("Membership", ""),
+            "penalty": _int("Penalty"),
+            "calls_taken": _int("CallsTaken"),
+            "last_call": _int("LastCall"),
+            "in_call": keys.get("InCall") == "1",
+            "status": keys.get("Status", ""),
+            "paused": keys.get("Paused") == "1",
+        }
+
+
+class QueueMemberListSerializer(serializers.Serializer):
+    """Response shape of GET /api/v1/queues/members/."""
+
+    members = QueueMemberStatusSerializer(many=True)

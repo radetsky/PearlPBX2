@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from apps.api.serializers import OriginateSerializer, ConferenceSerializer
+from apps.api.views.common import asterisk_disabled_response, ami_unavailable_response
 from core.ami import AsteriskManagementInterface
 
 
@@ -23,16 +24,6 @@ def _classify_originate_response(response) -> tuple[bool, str]:
     if response.is_error():
         return False, response.keys.get("Message", "Originate failed.")
     return True, response.keys.get("Message", "")
-
-
-def _asterisk_disabled_response():
-    """Return a 503 Response if Asterisk is disabled in this DEVMODE, else None."""
-    if settings.DEVMODE == settings.DEVMODE_WITHOUT_ASTERISK:
-        return Response(
-            {"detail": "Asterisk is disabled in this DEVMODE."},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-    return None
 
 
 class OriginateView(APIView):
@@ -52,21 +43,20 @@ class OriginateView(APIView):
         serializer = OriginateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        disabled = _asterisk_disabled_response()
+        disabled = asterisk_disabled_response()
         if disabled:
             return disabled
 
         ami_kwargs = serializer.to_ami_kwargs()
-        wait_seconds = math.ceil(ami_kwargs["timeout_ms"] / 1000) + 5
+        wait_seconds = (
+            math.ceil(ami_kwargs["timeout_ms"] / 1000) + settings.ASTERISK_AMI_RESPONSE_MARGIN
+        )
 
         try:
             with AsteriskManagementInterface(timeout=wait_seconds) as ami:
                 response = ami.originate(**ami_kwargs)
         except Exception:
-            return Response(
-                {"detail": "AMI unavailable."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return ami_unavailable_response()
 
         ok, message = _classify_originate_response(response)
         if not ok:
@@ -97,13 +87,15 @@ class ConferenceView(APIView):
         serializer = ConferenceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        disabled = _asterisk_disabled_response()
+        disabled = asterisk_disabled_response()
         if disabled:
             return disabled
 
         room, ami_kwargs_list = serializer.to_originate_kwargs_list()
         timeout_ms = serializer.validated_data["timeout_ms"]
-        wait_seconds = math.ceil(timeout_ms / 1000) + 5
+        wait_seconds = (
+            math.ceil(timeout_ms / 1000) + settings.ASTERISK_AMI_RESPONSE_MARGIN
+        )
 
         try:
             with AsteriskManagementInterface(timeout=wait_seconds) as ami:
@@ -121,10 +113,7 @@ class ConferenceView(APIView):
                         {"channel": channel, "queued": ok, "detail": message}
                     )
         except Exception:
-            return Response(
-                {"detail": "AMI unavailable."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return ami_unavailable_response()
 
         # Actual answer/hangup progress for each leg is reported separately
         # through the call.* webhooks, matched by the resulting call uniqueid.

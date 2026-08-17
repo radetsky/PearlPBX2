@@ -2,8 +2,8 @@ openapi: 3.0.3
 info:
   title: PearlPBX2 API
   version: 1.0.0
-  description: REST API for PearlPBX2 — blacklist, whitelist, contacts, and custom
-    lists.
+  description: REST API for PearlPBX2 — blacklist, whitelist, contacts, custom lists,
+    call origination, and call recordings.
 paths:
   /api/v1/blacklist/:
     get:
@@ -203,6 +203,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/calls/conference/:
+    post:
+      operationId: calls_conference_create
+      summary: Originate several parties into a shared ConfBridge conference room
+      tags:
+      - calls
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Conference'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Conference'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Conference'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '202':
+          description: Conference legs queued (see per-party results).
+        '400':
+          description: Invalid request body.
+        '401':
+          description: Authentication credentials were not provided.
+        '502':
+          description: AMI error or Asterisk unreachable.
+        '503':
+          description: Asterisk is disabled in this DEVMODE.
   /api/v1/calls/originate/:
     post:
       operationId: calls_originate_create
@@ -679,6 +710,90 @@ paths:
       responses:
         '204':
           description: Entry deleted
+  /api/v1/queues/members/:
+    get:
+      operationId: queues_members_retrieve
+      summary: List queue members and their current status
+      parameters:
+      - in: query
+        name: queue
+        schema:
+          type: string
+        description: Limit results to one queue. Omit to list members of every queue.
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMemberList'
+          description: ''
+        '401':
+          description: Authentication credentials were not provided.
+        '502':
+          description: AMI error or Asterisk unreachable.
+        '503':
+          description: Asterisk is disabled in this DEVMODE.
+  /api/v1/queues/members/pause/:
+    post:
+      operationId: queues_members_pause_create
+      summary: Pause or unpause a queue member
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueMemberPause'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QueueMemberPause'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QueueMemberPause'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Pause state updated.
+        '400':
+          description: Invalid request body.
+        '401':
+          description: Authentication credentials were not provided.
+        '404':
+          description: Interface not found in the queue(s).
+        '502':
+          description: AMI error or Asterisk unreachable.
+        '503':
+          description: Asterisk is disabled in this DEVMODE.
+  /api/v1/recordings/{uniqueid}/:
+    get:
+      operationId: recordings_retrieve
+      description: Returns the recorded call audio for the given Asterisk uniqueid.
+        The URL is deterministic and is delivered to CRM systems in webhook payloads
+        as recording_url.
+      summary: Fetch a call recording by Asterisk uniqueid
+      parameters:
+      - in: path
+        name: uniqueid
+        schema:
+          type: string
+        required: true
+      tags:
+      - recordings
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: The recording audio file (wav or mp3). Supports Range requests.
+        '401':
+          description: Authentication credentials were not provided.
+        '404':
+          description: No recording exists for this uniqueid.
   /api/v1/whitelist/:
     get:
       operationId: whitelist_list
@@ -915,6 +1030,42 @@ components:
       required:
       - callerid
       - id
+    Conference:
+      type: object
+      description: Fields shared by every endpoint that originates one or more AMI
+        calls.
+      properties:
+        callerid:
+          type: string
+          description: Caller ID applied to the call, format 'name<number>', e.g.
+            '380443333333<0675653380>'.
+          maxLength: 128
+        timeout_ms:
+          type: integer
+          maximum: 120000
+          minimum: 1000
+          default: 30000
+          description: Max time to wait for the call to answer, in milliseconds.
+        parties:
+          type: array
+          items:
+            type: string
+            maxLength: 256
+          description: Channels to originate into the same conference room, e.g. ["PJSIP/101",
+            "PJSIP/0504139380@mega-provider", "Local/2222@internal"].
+          minItems: 2
+        room:
+          type: string
+          description: Conference room number. If omitted, a new one is generated
+            and returned in the response.
+          maxLength: 64
+        context:
+          type: string
+          description: Dialplan context that lands each leg into ConfBridge. Defaults
+            to settings.PEARLPBX_CONFERENCE_CONTEXT.
+          maxLength: 128
+      required:
+      - parties
     Contact:
       type: object
       properties:
@@ -985,7 +1136,20 @@ components:
       - name
     Originate:
       type: object
+      description: Fields shared by every endpoint that originates one or more AMI
+        calls.
       properties:
+        callerid:
+          type: string
+          description: Caller ID applied to the call, format 'name<number>', e.g.
+            '380443333333<0675653380>'.
+          maxLength: 128
+        timeout_ms:
+          type: integer
+          maximum: 120000
+          minimum: 1000
+          default: 30000
+          description: Max time to wait for the call to answer, in milliseconds.
         channel:
           type: string
           description: First leg to dial, e.g. 'Local/0503856087@default' or 'PJSIP/101'.
@@ -1004,21 +1168,11 @@ components:
           minimum: 1
           default: 1
           description: Dialplan priority.
-        callerid:
-          type: string
-          description: Caller ID, format 'name<number>', e.g. '380443333333<0675653380>'.
-          maxLength: 128
         variable:
           type: object
           additionalProperties:
             type: string
           description: 'Channel variables, e.g. {"userId": "0"}.'
-        timeout_ms:
-          type: integer
-          maximum: 120000
-          minimum: 1000
-          default: 30000
-          description: Max time to wait for the originate in milliseconds.
       required:
       - channel
       - exten
@@ -1232,6 +1386,74 @@ components:
           title: Дата закінчення
           description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
             — запис постійний.
+    QueueMemberList:
+      type: object
+      description: Response shape of GET /api/v1/queues/members/.
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueMemberStatus'
+      required:
+      - members
+    QueueMemberPause:
+      type: object
+      properties:
+        interface:
+          type: string
+          description: Queue member interface, e.g. 'PJSIP/101'.
+          maxLength: 128
+        paused:
+          type: boolean
+          description: True to pause, false to unpause.
+        queue:
+          type: string
+          description: Limit the pause/unpause to one queue. Omitted, it applies to
+            the member in every queue it belongs to.
+          maxLength: 64
+      required:
+      - interface
+      - paused
+    QueueMemberStatus:
+      type: object
+      description: Read-only shape of a queue member returned by the members list
+        endpoint.
+      properties:
+        queue:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        state_interface:
+          type: string
+        membership:
+          type: string
+        penalty:
+          type: integer
+        calls_taken:
+          type: integer
+        last_call:
+          type: integer
+        in_call:
+          type: boolean
+        status:
+          type: string
+          description: Raw AMI device status code.
+        paused:
+          type: boolean
+      required:
+      - calls_taken
+      - in_call
+      - last_call
+      - location
+      - membership
+      - name
+      - paused
+      - penalty
+      - queue
+      - state_interface
+      - status
     Whitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).

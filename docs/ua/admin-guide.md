@@ -907,6 +907,9 @@ python manage.py drf_create_token <username>
 | `/api/v1/lists/<uuid>/entries/` | GET, POST | Перегляд / додавання записів до списку |
 | `/api/v1/lists/<uuid>/entries/<uuid>/` | DELETE | Видалення запису зі списку |
 | `/api/v1/calls/originate/` | POST | Ініціювати вихідний дзвінок через AMI (повертає 503, якщо `DEVMODE=without_asterisk_on_localhost`) |
+| `/api/v1/calls/conference/` | POST | Завести кілька учасників у спільну ConfBridge-кімнату через AMI |
+| `/api/v1/queues/members/pause/` | POST | Поставити/зняти паузу з члена черги через AMI `QueuePause` |
+| `/api/v1/queues/members/` | GET | Список членів черги та їхній поточний стан (опційний `?queue=<name>`) |
 | `/api/v1/recordings/<uniqueid>/` | GET | Отримати аудіофайл запису розмови (підтримка Range-запитів) |
 | `/api/v1/docs/`, `/api/v1/redoc/`, `/api/v1/schema/` | GET | Swagger/Redoc UI та OpenAPI-схема |
 

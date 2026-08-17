@@ -1,4 +1,5 @@
-.PHONY: test test-coverage test-quick test-app test-build test-down api-docs
+.PHONY: test test-coverage test-quick test-app test-build test-down api-docs \
+	integration-build integration-test integration-down
 
 # Generate the API reference for third-party developers:
 #   docs/en/openapi.yaml  — machine-readable OpenAPI 3.0 schema (Postman/Insomnia, SDK codegen)
@@ -26,3 +27,16 @@ test-app: test-build
 
 test-down:
 	docker compose -f docker-compose.test.yml down -v
+
+# Integration tests against a REAL Asterisk container (tests/integration/) —
+# slower than `make test` (Asterisk boot + config reload), isolated stack,
+# separate from the dev (docker-compose.yml) and mocked-test
+# (docker-compose.test.yml) stacks. See docker-compose.integration.yml.
+integration-build:
+	docker compose -f docker-compose.integration.yml build
+
+integration-test: integration-build
+	docker compose -f docker-compose.integration.yml run --rm integration-test
+
+integration-down:
+	docker compose -f docker-compose.integration.yml down -v

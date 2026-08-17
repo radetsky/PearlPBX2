@@ -52,6 +52,14 @@ def validate_asterisk_context(value):
         raise ValidationError("Context name is too long (max 80 characters).")
 
 
+def validate_asterisk_interface(value):
+    """Validator for an AMI queue member Interface (e.g. 'PJSIP/101')."""
+    if not re.fullmatch(r"[a-zA-Z0-9_.\-/@]+", value):
+        raise ValidationError(
+            "Interface must contain only letters, digits, and '_.-/@' characters."
+        )
+
+
 def validate_ael_variable_name(value):
     """Validator for AEL global variable name."""
     if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", value):
