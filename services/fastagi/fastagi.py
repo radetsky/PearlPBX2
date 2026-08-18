@@ -583,14 +583,6 @@ class FastAGIHandler:
             )
         yield self.agi.finish()
 
-    def async_sleep(self, seconds: float) -> Deferred:
-        """
-        Asynchronous sleep function to yield control back to the reactor.
-        """
-        d = Deferred()
-        reactor.callLater(seconds, d.callback, None)
-        return d
-
     @inlineCallbacks
     def dial_with_retry(
         self, peers: list[str], extension: str, max_attempts: int
@@ -606,7 +598,7 @@ class FastAGIHandler:
             peer_index = (attempt - 1) % len(peers)
             peer = peers[peer_index]
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "rT")
+            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "rtT")
             try:
                 status = yield self.agi.getVariable("DIALSTATUS")
             except AGICommandFailure as err:
@@ -623,17 +615,14 @@ class FastAGIHandler:
                 yield self.agi.setVariable("TRUNK_GROUP_DIALLED", "1")
                 yield self.agi.finish()
                 return status
-            if status == "BUSY":
-                logger.warning(f"Peer {peer} is busy, retrying...")
-                yield self.async_sleep(10)  # Wait before retrying
-            elif status in ["NOANSWER", "CHANUNAVAIL", "CONGESTION"]:
-                logger.warning(f"Peer {peer} returned status {status}, retrying...")
-                yield self.async_sleep(1)  # Wait before retrying
-            else:
-                yield self.async_sleep(2)  # Short wait for unexpected statuses
-                logger.error(
-                    f"Unexpected DIALSTATUS {status} for peer {peer}, retrying..."
+            if status in ("BUSY", "NOANSWER"):
+                logger.warning(
+                    f"Peer {peer} returned {status}, stopping retries"
                 )
+                yield self.agi.setVariable("TRUNK_GROUP_DIALLED", "0")
+                yield self.agi.finish()
+                return status
+            logger.warning(f"Peer {peer} returned status {status}, retrying...")
         logger.error(
             f"All attempts to dial trunk group {peers} failed after {max_attempts} attempts"
         )
