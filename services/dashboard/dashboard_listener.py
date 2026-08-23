@@ -77,7 +77,12 @@ class DashboardAMIListener:
         self.queue_state = {}
         self.channels_state = {}  # State of all active channels
         self.event_handlers = self.set_event_handlers()
-        self.webhooks = WebhookManager(self.redis_client, self.logger)
+        self.webhook_channel_vars = self.params.get("webhook_channel_vars", ["ULINE"])
+        self.webhooks = WebhookManager(
+            self.redis_client,
+            self.logger,
+            send_system_channels=self.params.get("send_system_channels", False),
+        )
 
         self.slack_webhook_url = self.params.get("slack_missed_call_webhook_url", "")
         self.slack_timeout = int(self.params.get("slack_timeout", 4))
@@ -258,10 +263,17 @@ class DashboardAMIListener:
         except Exception as e:
             self.logger.error(f"Error deleting uid state: {e}")
 
-    def _build_channel_state(self, event):
-        return {
+    def _build_channel_state(self, event, existing=None):
+        """Build fresh channel state from an AMI event.
+
+        `existing` carries over `variables` collected via VarSet — used when
+        rebuilding state from CoreShowChannel after an AMI reconnect, so
+        already-observed channel variables (e.g. ULINE) are not lost.
+        """
+        state = {
             "channel": event.get("Channel"),
             "uniqueid": event.get("Uniqueid"),
+            "linkedid": event.get("Linkedid"),
             "state": event.get("ChannelState"),
             "state_desc": event.get("ChannelStateDesc"),
             "caller_id_num": event.get("CallerIDNum"),
@@ -274,6 +286,14 @@ class DashboardAMIListener:
             "bridge_id": event.get("BridgeId"),
             "application": event.get("Application"),
         }
+        if existing and existing.get("variables"):
+            state["variables"] = existing["variables"]
+        return state
+
+    def _channel_vars(self, channel):
+        """Allow-listed channel variables (WEBHOOK_CHANNEL_VARS) for webhook payloads."""
+        tracked = self.channels_state.get(channel, {}).get("variables", {})
+        return {k: v for k, v in tracked.items() if k in self.webhook_channel_vars}
 
     def _ensure_queue_state(self, queue_name):
         if queue_name not in self.queue_state:
@@ -289,6 +309,7 @@ class DashboardAMIListener:
         """Handle new channel creation."""
         channel = event.get("Channel")
         uniqueid = event.get("Uniqueid")
+        linkedid = event.get("Linkedid")
         caller_id_num = event.get("CallerIDNum")
         caller_id_name = event.get("CallerIDName")
         channel_state_desc = event.get("ChannelStateDesc")
@@ -318,6 +339,8 @@ class DashboardAMIListener:
             notified = await self.webhooks.on_incoming(
                 {
                     "uniqueid": uniqueid,
+                    "linkedid": linkedid,
+                    "channel": channel,
                     "caller_id_num": caller_id_num,
                     "caller_id_name": caller_id_name,
                     "exten": exten,
@@ -325,6 +348,7 @@ class DashboardAMIListener:
                     "queue": None,
                     # AGI that decides on recording has not run yet at Newchannel
                     "recording_expected": None,
+                    "channel_vars": self._channel_vars(channel),
                 }
             )
             if notified:
@@ -344,11 +368,13 @@ class DashboardAMIListener:
             outgoing_notified = await self.webhooks.on_outgoing(
                 {
                     "uniqueid": uniqueid,
+                    "linkedid": linkedid,
                     "channel": channel,
                     "caller_id_num": caller_id_num,
                     "caller_id_name": caller_id_name,
                     "exten": exten,
                     "context": context,
+                    "channel_vars": self._channel_vars(channel),
                 }
             )
             if outgoing_notified:
@@ -462,6 +488,7 @@ class DashboardAMIListener:
                     "uniqueid": uniqueid,
                     "dial_status": dial_status,
                     "dest_channel": destination,
+                    "channel_vars": self._channel_vars(channel),
                 }
             )
             if notified:
@@ -562,6 +589,7 @@ class DashboardAMIListener:
                 "cause": cause,
                 "cause_txt": cause_txt,
                 "variables": channel_data.get("variables", {}),
+                "channel_vars": self._channel_vars(channel),
             }
         )
         if notified:
@@ -647,7 +675,8 @@ class DashboardAMIListener:
         value = event.get("Value")
         uniqueid = event.get("Uniqueid")
 
-        # Track only important variables
+        # Track only important variables, plus whatever WEBHOOK_CHANNEL_VARS
+        # allow-lists for CRM webhook payloads (e.g. ULINE).
         important_vars = [
             "ANSWEREDTIME",
             "DIALEDTIME",
@@ -655,6 +684,7 @@ class DashboardAMIListener:
             "CDR(billsec)",
             "MIXMONITOR",
             "MIXMONITOR_FILENAME",
+            *self.webhook_channel_vars,
         ]
 
         if variable in important_vars:
@@ -681,7 +711,15 @@ class DashboardAMIListener:
         if not channel or channel in self.channels_state:
             return
 
-        self.channels_state[channel] = self._build_channel_state(event)
+        existing = None
+        try:
+            raw = await self.redis_client.get(f"asterisk:channel:{channel}")
+            if raw:
+                existing = json.loads(raw)
+        except Exception as e:
+            self.logger.error(f"Error reading previous channel state for {channel}: {e}")
+
+        self.channels_state[channel] = self._build_channel_state(event, existing=existing)
 
         await asyncio.gather(
             self.update_channel_state(channel, self.channels_state[channel]),
@@ -856,6 +894,8 @@ class DashboardAMIListener:
             notified = await self.webhooks.on_incoming(
                 {
                     "uniqueid": uniqueid,
+                    "linkedid": channel_data.get("linkedid"),
+                    "channel": channel,
                     "caller_id_num": caller_id,
                     "caller_id_name": event.get("CallerIDName"),
                     "exten": channel_data.get("exten"),
@@ -863,6 +903,7 @@ class DashboardAMIListener:
                     "queue": queue_name,
                     # AGI usually runs before Queue(), so MIXMONITOR is known here
                     "recording_expected": None if mixmonitor is None else mixmonitor == "1",
+                    "channel_vars": self._channel_vars(channel),
                 }
             )
             if notified:
@@ -930,6 +971,7 @@ class DashboardAMIListener:
                     "queue": queue_name,
                     "caller_id_num": caller_id,
                     "wait_time": self._queue_wait_time(call),
+                    "channel_vars": self._channel_vars((call or {}).get("channel")),
                 }
             )
             if notified:
@@ -1015,6 +1057,7 @@ class DashboardAMIListener:
                     "member_number": member_number,
                     "ringtime": ringtime,
                     "holdtime": holdtime,
+                    "channel_vars": self._channel_vars(channel),
                 }
             )
             if notified:
@@ -1194,6 +1237,12 @@ def read_env_vars(args):
     slack_timeout = int(os.getenv("SLACK_TIMEOUT", "4"))
     slack_username = os.getenv("SLACK_USERNAME", "PearlPBX2")
     missed_call_debounce_seconds = int(os.getenv("MISSED_CALL_DEBOUNCE_SECONDS", "60"))
+    send_system_channels = (
+        os.getenv("WEBHOOK_SEND_SYSTEM_CHANNELS", "false").lower() == "true"
+    )
+    webhook_channel_vars = [
+        v.strip() for v in os.getenv("WEBHOOK_CHANNEL_VARS", "ULINE").split(",") if v.strip()
+    ]
 
     return {
         "ami_host": ami_host,
@@ -1207,6 +1256,8 @@ def read_env_vars(args):
         "slack_timeout": slack_timeout,
         "slack_username": slack_username,
         "missed_call_debounce_seconds": missed_call_debounce_seconds,
+        "send_system_channels": send_system_channels,
+        "webhook_channel_vars": webhook_channel_vars,
     }
 
 

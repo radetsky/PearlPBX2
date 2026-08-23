@@ -279,6 +279,14 @@ NoOp(Parking slot: ${ULINE});
 2. Released automatically by sweep job when call channel disappears (requires dashboard service running)
 3. Released by `flush` action from the ULINE monitor in the web UI
 
+**CRM visibility:** `services/dashboard`'s webhook pipeline picks up `ULINE`
+(and any other variable listed in `WEBHOOK_CHANNEL_VARS`, see
+`services/dashboard/README.md`) via the AMI `VarSet` event and forwards it to
+CRM webhooks as `channel_vars`. This only works if the dialplan calls
+`AGI(agi://127.0.0.1:4573/parking-uline)` *before* `Dial()`/`Queue()` — `ULINE`
+is set without an inheritance prefix (`_`/`__`), so it never appears on a
+dialed/child channel, only on the channel that ran the AGI.
+
 ---
 
 ### queue-status

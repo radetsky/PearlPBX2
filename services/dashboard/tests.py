@@ -14,6 +14,7 @@ from webhook_sender import (
     WEBHOOKS_CONFIG_KEY,
     WebhookManager,
     extract_endpoint,
+    is_dialed_number,
     render_template,
 )
 
@@ -60,11 +61,11 @@ def make_config(sip_users=None, **overrides):
     }
 
 
-def make_manager(config=None):
+def make_manager(config=None, **manager_kwargs):
     redis = FakeRedis()
     if config is not None:
         redis.store[WEBHOOKS_CONFIG_KEY] = json.dumps(config)
-    manager = WebhookManager(redis, logger)
+    manager = WebhookManager(redis, logger, **manager_kwargs)
     return manager, redis
 
 
@@ -605,6 +606,68 @@ class TestOutgoing:
         assert notified == []
         assert fired == []
 
+    def test_placeholder_exten_never_fires_by_default(self):
+        """A channel Originate()'d but not yet Goto()'d to a real extension
+        (exten still "s") is system noise, not a dialed call — skip it."""
+        manager, _ = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        fired = fired_events(manager)
+
+        notified = run(manager.on_outgoing(self.outgoing_info(exten="s")))
+
+        assert notified == []
+        assert fired == []
+
+    def test_placeholder_exten_fires_when_system_channels_enabled(self):
+        manager, redis = make_manager(
+            self.outgoing_config(), send_system_channels=True
+        )
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        notified = run(manager.on_outgoing(self.outgoing_info(exten="s")))
+
+        assert notified == ["crm"]
+        assert calls[0][2]["exten"] == "s"
+
+    def test_plus_prefixed_number_fires_by_default(self):
+        manager, _ = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        notified = run(
+            manager.on_outgoing(self.outgoing_info(exten="+380671112233"))
+        )
+
+        assert notified == ["crm"]
+        assert calls[0][2]["exten"] == "+380671112233"
+
+    def test_linkedid_and_channel_vars_pass_through(self):
+        manager, _ = make_manager(self.outgoing_config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        run(
+            manager.on_outgoing(
+                self.outgoing_info(
+                    linkedid="111.111", channel_vars={"ULINE": "42"}
+                )
+            )
+        )
+
+        assert calls[0][2]["linkedid"] == "111.111"
+        assert calls[0][2]["channel_vars"] == {"ULINE": "42"}
+
+
+class TestIsDialedNumber:
+    def test_placeholders_rejected(self):
+        for exten in ["s", "h", "i", "t", "", None, "failed", "*72"]:
+            assert is_dialed_number(exten) is False
+
+    def test_real_numbers_accepted(self):
+        for exten in ["279", "380671112233", "+380671112233"]:
+            assert is_dialed_number(exten) is True
+
 
 class TestOutgoingChain:
     def config(self, **overrides):
@@ -666,6 +729,52 @@ class TestOutgoingChain:
         assert ended_vars["answered"] is True
         assert ended_vars["dial_status"] == "ANSWER"
         assert ended_vars["direction"] == "outbound"
+        assert f"{NOTIFIED_KEY_PREFIX}111.222" not in redis.store
+
+    def test_placeholder_exten_suppresses_whole_chain(self):
+        """No marker is written for a suppressed system channel, so the
+        answered/ended events downstream never fire either."""
+        manager, redis = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        notified = run(
+            manager.on_outgoing(
+                {
+                    "uniqueid": "111.222",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "caller_id_name": "Operator",
+                    "exten": "s",
+                    "context": "outbound-users",
+                }
+            )
+        )
+        answered = run(
+            manager.on_dial_end(
+                {
+                    "uniqueid": "111.222",
+                    "dial_status": "ANSWER",
+                    "dest_channel": "PJSIP/trunk1-0000000b",
+                }
+            )
+        )
+        ended, direction = run(
+            manager.on_hangup(
+                {
+                    "uniqueid": "111.222",
+                    "cause": "16",
+                    "cause_txt": "Normal Clearing",
+                    "variables": {},
+                }
+            )
+        )
+
+        assert notified == []
+        assert answered == []
+        assert ended == []
+        assert direction is None
+        assert calls == []
         assert f"{NOTIFIED_KEY_PREFIX}111.222" not in redis.store
 
     def test_repeated_dial_end_answer_does_not_duplicate(self):
@@ -940,11 +1049,13 @@ class TestFullPlaceholderTemplate:
             await manager.on_outgoing(
                 {
                     "uniqueid": "1.2",
+                    "linkedid": "1.1",
                     "channel": "PJSIP/1001-0000000a",
                     "caller_id_num": "1001",
                     "caller_id_name": "Operator",
                     "exten": "0501234567",
                     "context": "outbound-users",
+                    "channel_vars": {"ULINE": "42"},
                 }
             )
             await manager.wait_pending()
@@ -954,6 +1065,11 @@ class TestFullPlaceholderTemplate:
         payload = json.loads(sent["body"])
         assert payload["event"] == "call.outgoing"
         assert payload["direction"] == "outbound"
+        assert payload["linkedid"] == "1.1"
+        assert payload["channel"] == "PJSIP/1001-0000000a"
+        # channel_vars is a placeholder standing in for the whole value, so it
+        # must survive as a JSON object, not get stringified into "${...}".
+        assert payload["channel_vars"] == {"ULINE": "42"}
         for absent_field in ("duration", "cause", "member_name", "dest_channel"):
             assert "$" not in payload[absent_field]
 
@@ -999,6 +1115,7 @@ class TestFullPlaceholderTemplate:
             await manager.on_outgoing(
                 {
                     "uniqueid": "1.2",
+                    "linkedid": "1.1",
                     "channel": "PJSIP/1001-0000000a",
                     "caller_id_num": "1001",
                     "caller_id_name": "Operator",
@@ -1012,6 +1129,7 @@ class TestFullPlaceholderTemplate:
                     "cause": "16",
                     "cause_txt": "Normal Clearing",
                     "variables": {},
+                    "channel_vars": {"ULINE": "42"},
                 }
             )
             await manager.wait_pending()
@@ -1021,6 +1139,11 @@ class TestFullPlaceholderTemplate:
         payload = json.loads(sent["body"])
         assert payload["event"] == "call.outgoing_ended"
         assert payload["direction"] == "outbound"
+        # linkedid/channel are announced once on call.outgoing and must still
+        # be present here, echoed from the marker rather than re-passed.
+        assert payload["linkedid"] == "1.1"
+        assert payload["channel"] == "PJSIP/1001-0000000a"
+        assert payload["channel_vars"] == {"ULINE": "42"}
         for field in ("duration", "cause", "member_name", "answered", "dial_status"):
             assert "$" not in payload[field]
 
@@ -1040,6 +1163,25 @@ class TestRenderTemplate:
     def test_unknown_placeholder_left_as_is(self):
         result = render_template({"x": "${not_provided}"}, {})
         assert result == {"x": "${not_provided}"}
+
+    def test_whole_placeholder_dict_value_kept_as_object(self):
+        result = render_template(
+            {"channel_vars": "${channel_vars}"}, {"channel_vars": {"ULINE": "42"}}
+        )
+        assert result == {"channel_vars": {"ULINE": "42"}}
+
+    def test_dict_value_embedded_in_larger_string_is_stringified(self):
+        """Only a template string that IS exactly one placeholder gets the
+        object substitution; embedding it in surrounding text falls back to
+        normal string substitution of the dict's str()."""
+        result = render_template(
+            {"note": "vars: ${channel_vars}"}, {"channel_vars": {"ULINE": "42"}}
+        )
+        assert result == {"note": "vars: {'ULINE': '42'}"}
+
+    def test_empty_dict_value_kept_as_object(self):
+        result = render_template({"channel_vars": "${channel_vars}"}, {"channel_vars": {}})
+        assert result == {"channel_vars": {}}
 
 
 class TestExtractMemberNumber:

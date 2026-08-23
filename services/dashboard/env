@@ -14,3 +14,15 @@ SLACK_USERNAME=PearlPBX2
 # Aggregate all abandons within this window (seconds) into a single Slack message.
 MISSED_CALL_DEBOUNCE_SECONDS=60
 
+# Send call.outgoing (and its answered/ended chain) for channels Asterisk
+# created via Dial()/Originate() that have not yet been Goto()'d to a real
+# extension (exten is still the dialplan placeholder "s"). Off by default —
+# these are system-internal channels with no dialed number to show the CRM.
+WEBHOOK_SEND_SYSTEM_CHANNELS=false
+
+# Comma-separated channel variable names to expose to CRM webhooks as
+# "channel_vars" (e.g. ULINE, set by services/fastagi's parking-uline handler).
+# Only variables listed here are tracked and forwarded; anything else set via
+# VarSet is ignored for webhook purposes.
+WEBHOOK_CHANNEL_VARS=ULINE
+

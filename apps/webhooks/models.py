@@ -38,6 +38,9 @@ TEMPLATE_VARIABLES = frozenset(
         "dest_channel",
         "dial_status",
         "answered",
+        "linkedid",
+        "channel",
+        "channel_vars",
     }
 )
 

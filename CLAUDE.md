@@ -26,9 +26,8 @@ PearlPBX2 is a Django-based web management interface for Asterisk PBX. The syste
 
 **Standalone Services (`services/`)**
 - `callback/`: Python daemon that monitors PostgreSQL for callback requests and initiates calls via Asterisk AMI
-- `express/`: FastAGI service for Express Taxi API integration with ULINE (Unique Line Number) management for call parking
+- `fastagi/`: General-purpose FastAGI server (blacklist/whitelist checks, call recording, ULINE parking slot allocation for call parking, queue status, callback scheduling)
 - `dashboard/`: AMI event listener that publishes to Redis for WebSocket consumers
-- `fastagi/`: General-purpose FastAGI server framework
 
 ### Data Flow
 
@@ -128,17 +127,17 @@ python callback.py --process_count=4
 python callback.py --dump_config
 ```
 
-**Express FastAGI Service**
+**FastAGI Service**
 ```bash
 # Using systemd (production)
-sudo systemctl start express-fastagi
-sudo systemctl status express-fastagi
-sudo journalctl -u express-fastagi -f
+sudo systemctl start pearlpbx2-fastagi
+sudo systemctl status pearlpbx2-fastagi
+sudo journalctl -u pearlpbx2-fastagi -f
 
 # Manual run (development)
-cd /opt/express-fastagi
-source venv/bin/activate
-python express_fastagi.py
+cd services/fastagi
+source .python-venv/bin/activate
+python fastagi.py
 ```
 
 **Dashboard Service**
