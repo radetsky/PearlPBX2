@@ -834,7 +834,7 @@ def make_dialplan_globals():
     for variable in variables:
         if variable.description:
             plaintext += f"    // {variable.description}\n"
-        plaintext += f"    {variable.name} = {variable.value};\n"
+        plaintext += f"    {variable.name}={variable.value};\n"
     plaintext += "}\n"
     return plaintext
 
