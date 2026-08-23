@@ -187,7 +187,7 @@ Dial through a trunk group with automatic failover and retry logic.
 
 **Dialplan (AEL):**
 ```
-AGI(agi://127.0.0.1:4573/dial-trunk-group,my_trunk_group,${EXTEN},5);
+AGI(agi://127.0.0.1:4573/dial-trunk-group,my_trunk_group,${EXTEN},5,120,tT);
 if (${TRUNK_GROUP_DIALLED} = 0) {
     Playback(all-circuits-busy);
     Hangup();
@@ -198,6 +198,8 @@ if (${TRUNK_GROUP_DIALLED} = 0) {
 1. Trunk group name
 2. Extension to dial
 3. Maximum attempts (default: 5)
+4. Dial timeout in seconds (default: `DIAL_TRUNK_GROUP_TIMEOUT` env var, default 120)
+5. Dial() options (default: `DIAL_TRUNK_GROUP_OPTIONS` env var, default tT)
 
 **Channel variables set:**
 - `TRUNK_GROUP_DIALLED` - "1" if call answered, "0" otherwise

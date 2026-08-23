@@ -34,6 +34,10 @@ fastagi.log.setLevel(logging.DEBUG)
 # ---------- Database Setup ----------
 Base = declarative_base()
 
+# ---------------- Dial Trunk Group Settings ----------------
+DIAL_TRUNK_GROUP_TIMEOUT = os.environ.get("DIAL_TRUNK_GROUP_TIMEOUT", "120")
+DIAL_TRUNK_GROUP_OPTIONS = os.environ.get("DIAL_TRUNK_GROUP_OPTIONS", "tT")
+
 
 def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"):
     """Create the directory for the file if not exists"""
@@ -585,7 +589,12 @@ class FastAGIHandler:
 
     @inlineCallbacks
     def dial_with_retry(
-        self, peers: list[str], extension: str, max_attempts: int
+        self,
+        peers: list[str],
+        extension: str,
+        max_attempts: int,
+        timeout: str,
+        dial_options: str,
     ) -> Generator[Deferred, None, None]:
         """
         Dial each peer with the specified extension, retrying up to max_attempts.
@@ -598,7 +607,9 @@ class FastAGIHandler:
             peer_index = (attempt - 1) % len(peers)
             peer = peers[peer_index]
             logger.debug(f"Attempt {attempt}: Dialing {peer}/{extension}")
-            yield self.agi.execute("DIAL", f"PJSIP/{extension}@{peer}", "120", "rtT")
+            yield self.agi.execute(
+                "DIAL", f"PJSIP/{extension}@{peer}", timeout, dial_options
+            )
             try:
                 status = yield self.agi.getVariable("DIALSTATUS")
             except AGICommandFailure as err:
@@ -634,8 +645,15 @@ class FastAGIHandler:
         trunk_group_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
         extension = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
         max_attempts = self.agi.variables.get(b"agi_arg_3", b"5").decode("utf-8")
+        timeout = self.agi.variables.get(
+            b"agi_arg_4", DIAL_TRUNK_GROUP_TIMEOUT.encode("utf-8")
+        ).decode("utf-8")
+        dial_options = self.agi.variables.get(
+            b"agi_arg_5", DIAL_TRUNK_GROUP_OPTIONS.encode("utf-8")
+        ).decode("utf-8")
         logger.debug(
-            f"Handling DIAL TRUNK GROUP Trunk Group: {trunk_group_name}, Extension: {extension}, Max Attempts: {max_attempts}"
+            f"Handling DIAL TRUNK GROUP Trunk Group: {trunk_group_name}, Extension: {extension}, "
+            f"Max Attempts: {max_attempts}, Timeout: {timeout}, Options: {dial_options}"
         )
         if not trunk_group_name or not extension:
             logger.error(
@@ -651,7 +669,9 @@ class FastAGIHandler:
             self.sequence.append(self.agi.finish)
             return self.sequence()
 
-        return self.dial_with_retry(trunk_group_entries, extension, int(max_attempts))
+        return self.dial_with_retry(
+            trunk_group_entries, extension, int(max_attempts), timeout, dial_options
+        )
 
 
 # ---------------- Parking ULINE Sweep ----------------
