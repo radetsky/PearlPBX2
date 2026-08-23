@@ -79,6 +79,13 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 
 **Обов'язково** потрібно вибрати хоча б один контекст, routing table або чергу — інакше форма не збережеться: саме це визначає, для яких «сценаріїв» дзвінків спрацьовує веб-хук.
 
+Два налаштування діють одразу на всі веб-хуки й задаються змінними середовища сервісу (`services/dashboard/env`), а не в адмінці:
+
+| Змінна | За замовчуванням | Опис |
+|--------|-------------------|------|
+| `WEBHOOK_SEND_SYSTEM_CHANNELS` | `false` | Канал, який Asterisk створює через `Dial()`/`Originate()`, у момент `Newchannel` ще не має `Goto()` на реальний номер — `exten` тоді дорівнює службовому плейсхолдеру `"s"`. За замовчуванням `call.outgoing` (і весь ланцюг `outgoing_answered`/`outgoing_ended`) для такого каналу не надсилається — CRM немає що показати без номера. Увімкніть `true`, щоб надсилати і їх. |
+| `WEBHOOK_CHANNEL_VARS` | `ULINE` | Список імен змінних каналу Asterisk (через кому), які потрапляють у payload як `channel_vars`. Усе, що не в цьому списку, ігнорується. |
+
 Зміни в адмінці застосовуються **без перезапуску сервісу**: при кожному збереженні Django серіалізує активні веб-хуки в Redis-ключ `webhooks:config`, а `dashboard_listener` перечитує цей ключ при старті й на кожному циклі перевірки здоров'я (кожні 30 секунд). Якщо потрібно примусово синхронізувати конфіг вручну (наприклад, після втрати даних Redis):
 
 ```bash
@@ -95,6 +102,8 @@ python manage.py sync_webhooks
 {
   "event": "call.incoming",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "exten": "s",
@@ -102,7 +111,8 @@ python manage.py sync_webhooks
   "queue": null,
   "timestamp": "2026-07-21T18:58:51.811673",
   "recording_expected": null,
-  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/"
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
+  "channel_vars": {}
 }
 ```
 
@@ -112,6 +122,8 @@ python manage.py sync_webhooks
 {
   "event": "call.answered",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "queue": "support",
@@ -120,7 +132,8 @@ python manage.py sync_webhooks
   "member_number": "101",
   "ringtime": "3500",
   "holdtime": "18",
-  "timestamp": "2026-07-21T18:58:51.812900"
+  "timestamp": "2026-07-21T18:58:51.812900",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -132,6 +145,8 @@ python manage.py sync_webhooks
 {
   "event": "call.ended",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "exten": "s",
@@ -148,7 +163,8 @@ python manage.py sync_webhooks
   "answered_by_interface": "PJSIP/101",
   "recorded": true,
   "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
-  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav"
+  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -160,10 +176,13 @@ python manage.py sync_webhooks
 {
   "event": "call.missed",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "queue": "support",
   "wait_time": 21,
-  "timestamp": "2026-07-21T18:58:51.813698"
+  "timestamp": "2026-07-21T18:58:51.813698",
+  "channel_vars": {}
 }
 ```
 
@@ -175,12 +194,15 @@ python manage.py sync_webhooks
 {
   "event": "call.outgoing",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
   "context": "outbound-users",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:51.811673"
+  "timestamp": "2026-08-11T18:58:51.811673",
+  "channel_vars": {}
 }
 ```
 
@@ -190,6 +212,8 @@ python manage.py sync_webhooks
 {
   "event": "call.outgoing_answered",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
@@ -197,7 +221,8 @@ python manage.py sync_webhooks
   "dest_channel": "PJSIP/trunk1-0000002a",
   "dial_status": "ANSWER",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:56.203112"
+  "timestamp": "2026-08-11T18:58:56.203112",
+  "channel_vars": {}
 }
 ```
 
@@ -209,6 +234,8 @@ python manage.py sync_webhooks
 {
   "event": "call.outgoing_ended",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
@@ -228,7 +255,8 @@ python manage.py sync_webhooks
   "answered_by_interface": null,
   "recorded": false,
   "recording_url": null,
-  "recording_file": null
+  "recording_file": null,
+  "channel_vars": {}
 }
 ```
 
@@ -317,9 +345,13 @@ function verify(secret, rawBody, headerValue) {
 }
 ```
 
-Доступні плейсхолдери: `event`, `uniqueid`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`.
+Доступні плейсхолдери: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
 
 Використання невідомого плейсхолдера викликає помилку валідації форми — адмінка не дасть зберегти такий шаблон. Якщо поле лишити порожнім, надсилається стандартний payload для кожної події.
+
+**`linkedid`** — власний механізм кореляції Asterisk: усі канали одного логічного дзвінка (наприклад, дві ноги внутрішнього дзвінка) мають однаковий `linkedid`, що дорівнює `uniqueid` каналу, який ініціював дзвінок. Саме за ним, а не за близькістю `uniqueid`/`timestamp` двох різних подій, слід об'єднувати кілька webhook-доставок в один дзвінок у CRM.
+
+**`channel_vars`** — об'єкт зі змінними каналу Asterisk, дозволеними у `WEBHOOK_CHANNEL_VARS` (див. п.2), наприклад `{"ULINE": "42"}`. У шаблоні `${channel_vars}` як єдиний вміст рядкового поля підставляється як вкладений JSON-об'єкт; усередині більшого рядка (`"vars: ${channel_vars}"`) — як текстове представлення. Поле завжди присутнє (порожній об'єкт `{}`, якщо змінних ще немає).
 
 ## 7. Поведінка при збоях доставки
 

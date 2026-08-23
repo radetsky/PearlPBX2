@@ -117,6 +117,22 @@ outbound chain, per the two-chain split above.
   string rather than leaking the literal `${...}` text, so the full default
   template is safe to use unmodified across all seven events.
 
+Two service-level settings apply across all webhooks (env vars, `services/dashboard/env`):
+
+- **`WEBHOOK_SEND_SYSTEM_CHANNELS`** (default `false`) — a channel Asterisk
+  creates via `Dial()`/`Originate()` is not yet `Goto()`'d to a real extension
+  at `Newchannel` time, so `exten` is still the dialplan placeholder `"s"`
+  rather than a dialed number. By default `call.outgoing` (and its
+  `outgoing_answered`/`outgoing_ended` chain) is skipped entirely for such a
+  channel — there is nothing meaningful to tell a CRM. Set to `true` to send
+  these too.
+- **`WEBHOOK_CHANNEL_VARS`** (default `ULINE`) — comma-separated list of
+  Asterisk channel variable names to expose to webhooks as `channel_vars`.
+  Only listed variables are tracked; anything else set via `VarSet` is
+  ignored for webhook purposes. `ULINE` is set by `services/fastagi`'s
+  `parking-uline` AGI handler and is only present on calls whose dialplan
+  invokes it before `Dial()`/`Queue()`.
+
 Changes take effect without restarting the service: Django serializes the
 active configuration into the Redis key `webhooks:config` on every save
 (via signals), and the listener re-reads that key on startup and on every
@@ -133,6 +149,8 @@ python manage.py sync_webhooks
 {
   "event": "call.incoming",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "exten": "s",
@@ -140,7 +158,8 @@ python manage.py sync_webhooks
   "queue": null,
   "timestamp": "2026-07-21T18:58:51.811673",
   "recording_expected": null,
-  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/"
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
+  "channel_vars": {}
 }
 ```
 
@@ -148,6 +167,8 @@ python manage.py sync_webhooks
 {
   "event": "call.answered",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "queue": "support",
@@ -156,7 +177,8 @@ python manage.py sync_webhooks
   "member_number": "101",
   "ringtime": "3500",
   "holdtime": "18",
-  "timestamp": "2026-07-21T18:58:51.812900"
+  "timestamp": "2026-07-21T18:58:51.812900",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -164,6 +186,8 @@ python manage.py sync_webhooks
 {
   "event": "call.ended",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Customer",
   "exten": "s",
@@ -180,7 +204,8 @@ python manage.py sync_webhooks
   "answered_by_interface": "PJSIP/101",
   "recorded": true,
   "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
-  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav"
+  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -188,10 +213,13 @@ python manage.py sync_webhooks
 {
   "event": "call.missed",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "queue": "support",
   "wait_time": 21,
-  "timestamp": "2026-07-21T18:58:51.813698"
+  "timestamp": "2026-07-21T18:58:51.813698",
+  "channel_vars": {}
 }
 ```
 
@@ -205,12 +233,15 @@ Outbound chain — fired for a call placed by a SIP user:
 {
   "event": "call.outgoing",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Operator Petrenko",
   "exten": "380671112233",
   "context": "outbound-users",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:51.811673"
+  "timestamp": "2026-08-11T18:58:51.811673",
+  "channel_vars": {}
 }
 ```
 
@@ -218,6 +249,8 @@ Outbound chain — fired for a call placed by a SIP user:
 {
   "event": "call.outgoing_answered",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Operator Petrenko",
   "exten": "380671112233",
@@ -225,7 +258,8 @@ Outbound chain — fired for a call placed by a SIP user:
   "dest_channel": "PJSIP/trunk1-0000002a",
   "dial_status": "ANSWER",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:56.203112"
+  "timestamp": "2026-08-11T18:58:56.203112",
+  "channel_vars": {}
 }
 ```
 
@@ -233,6 +267,8 @@ Outbound chain — fired for a call placed by a SIP user:
 {
   "event": "call.outgoing_ended",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Operator Petrenko",
   "exten": "380671112233",
@@ -252,7 +288,8 @@ Outbound chain — fired for a call placed by a SIP user:
   "answered_by_interface": null,
   "recorded": false,
   "recording_url": null,
-  "recording_file": null
+  "recording_file": null,
+  "channel_vars": {}
 }
 ```
 
@@ -265,13 +302,29 @@ always carries the last known `dial_status` and `answered` (`true` only if
 correctly-flagged ended event with no answered event before it.
 
 Template variables available for `payload_template`: `event`, `uniqueid`,
-`caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`,
-`duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`,
-`recording_expected`, `recording_url`, `recording_file`, `missed`,
-`wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`,
-`holdtime`, `answered_by_member`, `answered_by_interface`, `direction`,
-`dest_channel`, `dial_status`, `answered`. Fields not relevant to a given
-event are `null`.
+`linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`,
+`queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`,
+`billsec`, `recorded`, `recording_expected`, `recording_url`,
+`recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`,
+`member_number`, `ringtime`, `holdtime`, `answered_by_member`,
+`answered_by_interface`, `direction`, `dest_channel`, `dial_status`,
+`answered`, `channel_vars`. Fields not relevant to a given event are `null`
+(`channel_vars` is always an object, `{}` when empty). A template string that
+is exactly `${channel_vars}` keeps it as a nested JSON object; embedding it in
+a larger string (`"vars: ${channel_vars}"`) falls back to stringifying it.
+
+`linkedid` is Asterisk's own cross-channel correlation id: two channels
+belonging to the same logical call (e.g. the two legs of an internal call, or
+a Local channel pair) share one `linkedid`, which equals the `uniqueid` of
+whichever channel started the call. Use it, not proximity of `uniqueid`s or
+timestamps, to group separate webhook deliveries into one call.
+
+`channel_vars` carries Asterisk channel variables allow-listed via
+`WEBHOOK_CHANNEL_VARS` (default `ULINE`, see Configuration above) — e.g.
+`{"ULINE": "42"}` for a call parked on ULINE slot 42 by
+`services/fastagi`'s `parking-uline` handler. Only present once the dialplan
+has actually set the variable, so it is commonly empty on `call.incoming`/
+`call.outgoing` and populated by the time `call.answered`/`call.ended` fire.
 
 ### Call recordings
 

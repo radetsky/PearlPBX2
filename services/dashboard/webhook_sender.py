@@ -27,6 +27,7 @@ SIGNATURE_HEADER = "X-PearlPBX-Signature"
 RETRY_DELAY_SECONDS = 2
 
 _ENDPOINT_RE = re.compile(r"^(?:PJSIP|SIP)/(.+)-[0-9a-f]{8}(?:;\d+)?$", re.IGNORECASE)
+_WHOLE_PLACEHOLDER_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 
 
 def extract_endpoint(channel):
@@ -36,6 +37,15 @@ def extract_endpoint(channel):
         return None
     match = _ENDPOINT_RE.match(channel)
     return match.group(1) if match else None
+
+
+def is_dialed_number(exten):
+    """True if exten looks like a real dialed number rather than a dialplan
+    placeholder (e.g. "s", "h", "i", "t", "") left by a channel that has not
+    yet been Goto()'d to its target extension."""
+    if not exten:
+        return False
+    return exten.lstrip("+").isdigit()
 
 # Keep in sync with apps.webhooks.models.TEMPLATE_VARIABLES. A custom template
 # may list any of these placeholders regardless of event type; ones not
@@ -73,6 +83,9 @@ ALL_TEMPLATE_VARIABLES = frozenset(
         "dest_channel",
         "dial_status",
         "answered",
+        "linkedid",
+        "channel",
+        "channel_vars",
     }
 )
 
@@ -90,9 +103,17 @@ def post_json(url, body, headers, timeout):
 
 
 def render_template(template, variables):
-    """Substitute ${placeholders} in every string value of a JSON-like object."""
+    """Substitute ${placeholders} in every string value of a JSON-like object.
+
+    A template string that is exactly one placeholder (e.g. "${channel_vars}")
+    and whose variable holds a dict/list is replaced with that object itself,
+    rather than stringified, so nested structures survive into the payload.
+    """
     str_vars = {k: "" if v is None else str(v) for k, v in variables.items()}
     if isinstance(template, str):
+        whole = _WHOLE_PLACEHOLDER_RE.match(template)
+        if whole and isinstance(variables.get(whole.group(1)), (dict, list)):
+            return variables[whole.group(1)]
         return Template(template).safe_substitute(str_vars)
     if isinstance(template, dict):
         return {k: render_template(v, variables) for k, v in template.items()}
@@ -102,7 +123,7 @@ def render_template(template, variables):
 
 
 class WebhookManager:
-    def __init__(self, redis_client, logger=None):
+    def __init__(self, redis_client, logger=None, send_system_channels=False):
         self.redis = redis_client
         self.logger = logger or logging.getLogger("dashboard")
         self.webhooks = []
@@ -110,6 +131,7 @@ class WebhookManager:
         self.sip_users = {}
         self._raw_config = None
         self._tasks = set()
+        self.send_system_channels = send_system_channels
 
     @property
     def enabled(self):
@@ -268,6 +290,8 @@ class WebhookManager:
         recording_expected = call_info.get("recording_expected")
         variables = {
             "uniqueid": uniqueid,
+            "linkedid": call_info.get("linkedid"),
+            "channel": call_info.get("channel"),
             "caller_id_num": call_info.get("caller_id_num"),
             "caller_id_name": call_info.get("caller_id_name"),
             "exten": call_info.get("exten"),
@@ -276,6 +300,7 @@ class WebhookManager:
             "timestamp": datetime.now().isoformat(),
             "recording_expected": recording_expected,
             "recording_url": self._recording_url(uniqueid),
+            "channel_vars": call_info.get("channel_vars") or {},
         }
         for wh in targets:
             self._fire(wh, "call.incoming", variables)
@@ -284,6 +309,8 @@ class WebhookManager:
         call.update(
             {
                 "direction": "inbound",
+                "linkedid": call_info.get("linkedid") or call.get("linkedid"),
+                "channel": call_info.get("channel") or call.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
                 "caller_id_name": call_info.get("caller_id_name"),
                 "exten": call_info.get("exten"),
@@ -305,6 +332,15 @@ class WebhookManager:
         uniqueid = call_info.get("uniqueid")
         if not self.enabled or not uniqueid:
             return []
+        if not self.send_system_channels and not is_dialed_number(
+            call_info.get("exten")
+        ):
+            # A channel Asterisk created via Dial()/Originate() that has not
+            # yet been Goto()'d to a real extension (exten is still the
+            # dialplan placeholder "s"). Nothing meaningful to tell the CRM,
+            # so skip it entirely — including the answered/ended chain, since
+            # no marker is written for it.
+            return []
         endpoint = extract_endpoint(call_info.get("channel"))
         routing_table = self.sip_users.get(endpoint) if endpoint else None
         if routing_table is None:
@@ -323,12 +359,15 @@ class WebhookManager:
 
         variables = {
             "uniqueid": uniqueid,
+            "linkedid": call_info.get("linkedid"),
+            "channel": call_info.get("channel"),
             "caller_id_num": call_info.get("caller_id_num"),
             "caller_id_name": call_info.get("caller_id_name"),
             "exten": call_info.get("exten"),
             "context": call_info.get("context"),
             "direction": "outbound",
             "timestamp": datetime.now().isoformat(),
+            "channel_vars": call_info.get("channel_vars") or {},
         }
         for wh in targets:
             self._fire(wh, "call.outgoing", variables)
@@ -337,6 +376,8 @@ class WebhookManager:
         call.update(
             {
                 "direction": "outbound",
+                "linkedid": call_info.get("linkedid"),
+                "channel": call_info.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
                 "caller_id_name": call_info.get("caller_id_name"),
                 "exten": call_info.get("exten"),
@@ -363,12 +404,15 @@ class WebhookManager:
             call = (marker or {}).get("call", {})
             variables = {
                 "uniqueid": uniqueid,
+                "linkedid": call.get("linkedid"),
+                "channel": call.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
                 "exten": call.get("exten"),
                 "context": call.get("context"),
                 "queue": call_info.get("queue"),
                 "wait_time": call_info.get("wait_time"),
                 "timestamp": datetime.now().isoformat(),
+                "channel_vars": call_info.get("channel_vars") or {},
             }
             for wh in matched:
                 self._fire(wh, "call.missed", variables)
@@ -388,6 +432,8 @@ class WebhookManager:
             call = (marker or {}).get("call", {})
             variables = {
                 "uniqueid": uniqueid,
+                "linkedid": call.get("linkedid"),
+                "channel": call.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
                 "caller_id_name": call_info.get("caller_id_name"),
                 "exten": call.get("exten"),
@@ -399,6 +445,7 @@ class WebhookManager:
                 "ringtime": call_info.get("ringtime"),
                 "holdtime": call_info.get("holdtime"),
                 "timestamp": datetime.now().isoformat(),
+                "channel_vars": call_info.get("channel_vars") or {},
             }
             for wh in matched:
                 self._fire(wh, "call.answered", variables)
@@ -444,6 +491,8 @@ class WebhookManager:
 
         variables = {
             "uniqueid": uniqueid,
+            "linkedid": call.get("linkedid"),
+            "channel": call.get("channel"),
             "caller_id_num": call.get("caller_id_num"),
             "caller_id_name": call.get("caller_id_name"),
             "exten": call.get("exten"),
@@ -452,6 +501,7 @@ class WebhookManager:
             "dial_status": dial_status,
             "direction": "outbound",
             "timestamp": datetime.now().isoformat(),
+            "channel_vars": dial_info.get("channel_vars") or {},
         }
         for wh in targets:
             self._fire(wh, "call.outgoing_answered", variables)
@@ -484,11 +534,13 @@ class WebhookManager:
         if not targets:
             return [], direction
 
-        channel_vars = hangup_info.get("variables") or {}
-        mixmonitor = channel_vars.get("MIXMONITOR")
+        tracked_vars = hangup_info.get("variables") or {}
+        mixmonitor = tracked_vars.get("MIXMONITOR")
         recorded = None if mixmonitor is None else mixmonitor == "1"
         variables = {
             "uniqueid": uniqueid,
+            "linkedid": call.get("linkedid"),
+            "channel": call.get("channel"),
             "caller_id_num": call.get("caller_id_num"),
             "caller_id_name": call.get("caller_id_name"),
             "exten": call.get("exten"),
@@ -501,14 +553,15 @@ class WebhookManager:
             "duration": self._call_duration(call.get("started_at")),
             "cause": hangup_info.get("cause"),
             "cause_txt": hangup_info.get("cause_txt"),
-            "answered_time": channel_vars.get("ANSWEREDTIME"),
-            "billsec": channel_vars.get("CDR(billsec)"),
+            "answered_time": tracked_vars.get("ANSWEREDTIME"),
+            "billsec": tracked_vars.get("CDR(billsec)"),
             "missed": bool(call.get("missed")),
             "answered_by_member": call.get("answered_by_member"),
             "answered_by_interface": call.get("answered_by_interface"),
             "recorded": recorded,
             "recording_url": self._recording_url(uniqueid) if recorded else None,
-            "recording_file": channel_vars.get("MIXMONITOR_FILENAME"),
+            "recording_file": tracked_vars.get("MIXMONITOR_FILENAME"),
+            "channel_vars": hangup_info.get("channel_vars") or {},
         }
         for wh in targets:
             self._fire(wh, event_name, variables)
@@ -555,11 +608,12 @@ class WebhookManager:
         template = wh.get("payload_template")
         if template:
             full_vars = {name: None for name in ALL_TEMPLATE_VARIABLES}
+            full_vars["channel_vars"] = {}
             full_vars.update(variables)
             full_vars["event"] = event
             payload = render_template(template, full_vars)
         else:
-            payload = {"event": event, **variables}
+            payload = {"event": event, "channel_vars": {}, **variables}
         return json.dumps(payload).encode("utf-8")
 
     def _fire(self, wh, event, variables):

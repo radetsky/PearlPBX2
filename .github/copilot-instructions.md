@@ -10,14 +10,14 @@ PearlPBX2 is a modular telephony platform built on Asterisk PBX. It integrates v
 - **Core Services**: Found in `core/`, this includes utilities, validators, and shared logic.
 - **Standalone Services**: Independent Python services for specific tasks:
   - `callback`: Processes callback requests via Asterisk AMI.
-  - `express`: FastAGI service for Express Taxi API integration.
+  - `fastagi`: General-purpose FastAGI server (blacklist/whitelist checks, call recording, ULINE parking slot allocation, queue status, callback scheduling).
   - `dashboard`: WebSocket-based operator dashboard.
 - **Configuration Files**: Located in `contrib/configs/`, these define Asterisk settings.
 
 ### Data Flow
 - **Callback Service**: Monitors a PostgreSQL database for callback requests and triggers calls via Asterisk AMI.
 - **Dashboard**: Uses Redis and Django Channels to provide real-time updates to users.
-- **Express Service**: Handles FastAGI requests and communicates with external APIs.
+- **FastAGI Service**: Handles FastAGI requests from the Asterisk dialplan (recording decisions, ULINE parking, blacklist checks, etc.).
 
 ## Developer Workflows
 
@@ -42,9 +42,9 @@ PearlPBX2 is a modular telephony platform built on Asterisk PBX. It integrates v
   ```bash
   python services/callback/callback.py
   ```
-- **Express Service**:
+- **FastAGI Service**:
   ```bash
-  sudo systemctl start express-fastagi
+  sudo systemctl start pearlpbx2-fastagi
   ```
 
 ### Testing
@@ -66,7 +66,7 @@ python manage.py test
 ## Integration Points
 - **Asterisk AMI**: Used for call management in the callback service.
 - **Redis**: Provides real-time messaging for the dashboard.
-- **External APIs**: The express service communicates with the Express Taxi API.
+- **CRM Webhooks**: `services/dashboard` posts call-lifecycle events to CRM-configured URLs (see `apps/webhooks` and `services/dashboard/README.md`).
 
 ## Key Files and Directories
 - `apps/`: Django apps for extended functionality.

@@ -45,7 +45,8 @@ PearlPBX2 — система управління телефонією підп�
 ## 2. Термінологія
 
 - **Дзвінок (call)** — телефонний виклик від моменту надходження до моменту завершення.
-- **uniqueid** — унікальний ідентифікатор дзвінка в межах системи, наприклад: `1753000000.42`. Не є номером телефону чи ідентифікатором клієнта — використовується виключно для ідентифікації телефонної сесії. Присвоюється в момент початку дзвінка і зберігає актуальність протягом усього його життєвого циклу. Є основним ключем для зіставлення подій, що належать одному дзвінку.
+- **uniqueid** — унікальний ідентифікатор **одного каналу** Asterisk, наприклад: `1753000000.42`. Не є номером телефону чи ідентифікатором клієнта. Присвоюється в момент створення каналу. Є ключем для зіставлення подій одного й того самого ланцюга (`call.incoming` → `call.answered`/`call.missed` → `call.ended`, або `call.outgoing` → `call.outgoing_answered` → `call.outgoing_ended`) — усі вони стосуються одного каналу й несуть однаковий `uniqueid`.
+- **linkedid** — ідентифікатор, спільний для **всіх каналів одного логічного дзвінка** (наприклад, обох ніг внутрішнього дзвінка між двома співробітниками — кожна нога має власний `uniqueid`, але однаковий `linkedid`, що дорівнює `uniqueid` каналу, який дзвінок ініціював). Якщо CRM потрібно об'єднати кілька окремих webhook-подій (наприклад, два `call.outgoing` від двох різних SIP-користувачів) в один запис про дзвінок — слід порівнювати саме `linkedid`, а не покладатися на близькість `uniqueid` чи `timestamp`.
 - **Caller ID** — номер (і за наявності — ім'я) абонента, який здійснює виклик. Передається у полях `caller_id_num` / `caller_id_name`.
 - **Контекст (context) та внутрішній номер (exten)** — параметри внутрішньої маршрутизації АТС, що визначають напрямок і кінцеву точку дзвінка. Для інтеграції CRM зазвичай достатньо знати про існування цих полів без деталізації логіки dialplan.
 - **Черга (queue)** — якщо підприємство використовує розподіл дзвінків між кількома операторами, виклик спершу потрапляє в чергу обслуговування, з якої передається вільному оператору. Якщо дзвінок здійснюється напряму, без черги, поле `queue` матиме значення `null`.
@@ -101,6 +102,8 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.incoming",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Іван Іванович",
   "exten": "s",
@@ -108,7 +111,8 @@ PearlPBX2 — система управління телефонією підп�
   "queue": null,
   "timestamp": "2026-07-21T18:58:51.811673",
   "recording_expected": null,
-  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/"
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
+  "channel_vars": {}
 }
 ```
 
@@ -123,6 +127,8 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.answered",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Іван Іванович",
   "queue": "support",
@@ -131,7 +137,8 @@ PearlPBX2 — система управління телефонією підп�
   "member_number": "101",
   "ringtime": "3500",
   "holdtime": "18",
-  "timestamp": "2026-07-21T18:58:51.812900"
+  "timestamp": "2026-07-21T18:58:51.812900",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -150,10 +157,13 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.missed",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "queue": "support",
   "wait_time": 21,
-  "timestamp": "2026-07-21T18:58:51.813698"
+  "timestamp": "2026-07-21T18:58:51.813698",
+  "channel_vars": {}
 }
 ```
 
@@ -165,6 +175,8 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.ended",
   "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-0000001a",
   "caller_id_num": "380501234567",
   "caller_id_name": "Іван Іванович",
   "exten": "s",
@@ -181,7 +193,8 @@ PearlPBX2 — система управління телефонією підп�
   "answered_by_interface": "PJSIP/101",
   "recorded": true,
   "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.42/",
-  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav"
+  "recording_file": "/var/spool/asterisk/monitor/2026/07/21/x.wav",
+  "channel_vars": {"ULINE": "42"}
 }
 ```
 
@@ -202,12 +215,15 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.outgoing",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
   "context": "outbound-users",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:51.811673"
+  "timestamp": "2026-08-11T18:58:51.811673",
+  "channel_vars": {}
 }
 ```
 
@@ -216,6 +232,7 @@ PearlPBX2 — система управління телефонією підп�
 - `exten` — номер, який набрав співробітник (номер клієнта).
 - `direction` — завжди `"outbound"` для цієї події; поле присутнє в усіх подіях обох ланцюгів і дозволяє однією перевіркою визначити, до якого з них належить подія, не аналізуючи саму назву `event`.
 - Ця подія надсилається лише тоді, коли дзвінок ініціює саме внутрішній SIP-користувач (співробітник), а не транк (з'єднання з телефонним провайдером). Дзвінки, що приходять ззовні через транк, завжди йдуть через `call.incoming`, ніколи через `call.outgoing`.
+- За замовчуванням АТС також не надсилає `call.outgoing` для внутрішнього каналу, який Asterisk щойно створив (через `Dial()`/`Originate()`), але ще не з'єднав з конкретним номером — у такий момент `exten` дорівнює службовому значенню `"s"`, а не реальному номеру, і показувати CRM таку подію немає сенсу. Якщо цей behavior потрібно змінити — уточніть у адміністратора АТС (налаштування `WEBHOOK_SEND_SYSTEM_CHANNELS`).
 
 ### 5.6. `call.outgoing_answered` — викликана сторона підняла слухавку
 
@@ -223,6 +240,8 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.outgoing_answered",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
@@ -230,7 +249,8 @@ PearlPBX2 — система управління телефонією підп�
   "dest_channel": "PJSIP/trunk1-0000002a",
   "dial_status": "ANSWER",
   "direction": "outbound",
-  "timestamp": "2026-08-11T18:58:56.203112"
+  "timestamp": "2026-08-11T18:58:56.203112",
+  "channel_vars": {}
 }
 ```
 
@@ -246,6 +266,8 @@ PearlPBX2 — система управління телефонією підп�
 {
   "event": "call.outgoing_ended",
   "uniqueid": "1753000000.55",
+  "linkedid": "1753000000.55",
+  "channel": "PJSIP/1001-0000002a",
   "caller_id_num": "1001",
   "caller_id_name": "Оператор Петренко",
   "exten": "380671112233",
@@ -265,7 +287,8 @@ PearlPBX2 — система управління телефонією підп�
   "answered_by_interface": null,
   "recorded": false,
   "recording_url": null,
-  "recording_file": null
+  "recording_file": null,
+  "channel_vars": {}
 }
 ```
 
@@ -640,7 +663,9 @@ function isSignatureValid(rawBody, headerValue) {
 }
 ```
 
-Перелік усіх доступних змінних для підстановки: `event`, `uniqueid`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`.
+Перелік усіх доступних змінних для підстановки: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+
+`channel_vars` — об'єкт із дозволеними адміністратором АТС змінними каналу Asterisk (наприклад, `{"ULINE": "42"}`); порожній об'єкт `{}`, якщо жодна ще не встановлена. У шаблоні `${channel_vars}` як єдиний вміст рядкового поля підставляється вкладеним JSON-об'єктом, а не текстом.
 
 Налаштування шаблону виконується виключно на стороні адміністратора АТС і не потребує участі розробника CRM. За потреби зміни стандартного формату достатньо звернутися до адміністратора з відповідним запитом. Під час створення нового веб-хука поле шаблону в адміністративній панелі вже заповнене прикладом з переліком усіх доступних змінних — редагування зводиться до видалення зайвих рядків.
 
