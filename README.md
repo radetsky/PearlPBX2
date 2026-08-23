@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.7.1`
+# PearlPBX2 `v2.7.2`
 
 [![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/License-PolyForm%20Shield%201.0.0-blue.svg)](https://polyformproject.org/licenses/shield/1.0.0)
 [![Quick Start](https://img.shields.io/badge/docs-Quick%20Start-brightgreen.svg)](QUICKSTART.md)

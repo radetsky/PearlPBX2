@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.7.2] - 2026-08-23
+
 ### Added
 
 - **SIP trunk `[identify]` escape hatch: `custom_identify_settings`** — `SIPPeer` gained a free-text field for the body of the generated `[identify]` section (migration `0081_sippeer_custom_identify_settings.py`), exposed in the admin's "Advanced" fieldset next to `custom_aor_settings`. `core/conf.py`'s `[identify]` generation previously only supported IP-based `match`, which can't distinguish multiple lines behind the same source IP — e.g. a GSM gateway where each of 4 ports registers from the same address and inbound calls only carry a distinguishing `Contact: 0001` header. When the field is set, `__section_trunk_endpoint()` also derives `identify_by` from its content instead of the old single `identify_by=ip` check: `header` if the text contains `match_header`, `ip` if it contains `match=`, plus `username` whenever `registrationHere` is enabled. This isn't cosmetic — Asterisk's `identify_by` default (`username,ip`) has no `header` value, and REGISTER-to-AOR resolution requires listing a method Asterisk documents as AOR-capable (only `username` qualifies among the ones used here), so a header-matched trunk that also registers needs both `header` (for inbound INVITEs, since From/To carry real phone numbers, not the port id) and `username` (for REGISTER, since the gateway's own username per line does match the AOR name) at once. Trunks that leave the field empty are unaffected — `identify_by=ip` is still emitted exactly as before. Covered by new tests in `core/tests.py`.
