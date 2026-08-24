@@ -170,7 +170,13 @@
     --fastagi-secret={{ pearlpbx2_ami_fastagi_pass }}
   args:
     chdir: "{{ pearlpbx2_install_dir }}"
-  environment: "{{ pearlpbx2_django_env }}"
+  environment: "{{ pearlpbx2_django_env | combine({
+    'ASTERISK_MANAGER_HOST': '127.0.0.1',
+    'ASTERISK_MANAGER_PORT': '5038',
+    'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
+    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+  }) }}"
   become_user: "{{ pearlpbx2_user }}"
   no_log: true
 
@@ -179,7 +185,13 @@
     {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py seed_quickstart
   args:
     chdir: "{{ pearlpbx2_install_dir }}"
-  environment: "{{ pearlpbx2_django_env }}"
+  environment: "{{ pearlpbx2_django_env | combine({
+    'ASTERISK_MANAGER_HOST': '127.0.0.1',
+    'ASTERISK_MANAGER_PORT': '5038',
+    'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
+    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+  }) }}"
   become_user: "{{ pearlpbx2_user }}"
   when: not pearlpbx2_env_stat.stat.exists
 
