@@ -1,3 +1,5 @@
+*Also available in: [English](../en/admin-guide.md) | [Українська](admin-guide.md) | [Español](../es/admin-guide.md)*
+
 # Посібник адміністратора PearlPBX2
 
 **Версія:** 2.7.2
@@ -874,7 +876,7 @@ context check_blacklist {
 
 ## 18. REST API
 
-Система надає REST API для зовнішньої інтеграції. Докладна документація: [docs/en/API.md](../en/API.md), а також живий Swagger UI на `/api/v1/docs/` і OpenAPI-схема на `/api/v1/schema/`.
+Система надає REST API для зовнішньої інтеграції. Докладна документація: [API.md](API.md), а також живий Swagger UI на `/api/v1/docs/` і OpenAPI-схема на `/api/v1/schema/`.
 
 Для інтеграції з CRM-системами (веб-хуки про дзвінки, розділ 17 вище) та доступ до записів розмов через API див. окремий гайд: [docs/ua/crm-integration.md](crm-integration.md).
 

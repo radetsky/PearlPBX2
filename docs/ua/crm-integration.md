@@ -1,3 +1,5 @@
+*Also available in: [English](../en/crm-integration.md) | [Українська](crm-integration.md) | [Español](../es/crm-integration.md)*
+
 # Інтеграція з CRM
 
 **Версія:** 2.7.2
@@ -434,5 +436,5 @@ def fetch_recording(uniqueid: str, recording_url: str) -> None:
 ---
 
 Пов'язана документація:
-- [docs/en/API.md](../en/API.md) — повний довідник REST API PearlPBX2 (англійською)
+- [API.md](API.md) — повний довідник REST API PearlPBX2
 - [services/dashboard/README.md](../../services/dashboard/README.md) — технічні деталі роботи сервісу dashboard і формату Redis-подій (англійською)

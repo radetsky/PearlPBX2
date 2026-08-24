@@ -1,3 +1,5 @@
+*Also available in: [English](../en/user-guide.md) | [Українська](user-guide.md) | [Español](../es/user-guide.md)*
+
 # Посібник користувача PearlPBX2
 
 **Версія:** 2.7.2

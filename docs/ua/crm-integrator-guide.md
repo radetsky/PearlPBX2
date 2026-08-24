@@ -1,3 +1,5 @@
+*Also available in: [English](../en/crm-integrator-guide.md) | [Українська](crm-integrator-guide.md) | [Español](../es/crm-integrator-guide.md)*
+
 # Інтеграція CRM-систем з PearlPBX2: технічний посібник
 
 **Версія:** 2.7.2

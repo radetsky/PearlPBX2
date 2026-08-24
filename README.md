@@ -1,7 +1,7 @@
 # PearlPBX2 `v2.7.2`
 
 [![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/License-PolyForm%20Shield%201.0.0-blue.svg)](https://polyformproject.org/licenses/shield/1.0.0)
-[![Quick Start](https://img.shields.io/badge/docs-Quick%20Start-brightgreen.svg)](QUICKSTART.md)
+[![Quick Start](https://img.shields.io/badge/docs-Quick%20Start-brightgreen.svg)](docs/en/quickstart.md)
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
 
@@ -62,7 +62,20 @@ Callback daemon ─────────────► Asterisk AMI (outboun
 
 ## Quick Start
 
-See [QUICKSTART.md](QUICKSTART.md) for two ways to get running: Ansible (production install) and Docker Compose (recommended for evaluation/development).
+See [docs/en/quickstart.md](docs/en/quickstart.md) for two ways to get running: Ansible (production install) and Docker Compose (recommended for evaluation/development). Also available in [Українська](docs/ua/quickstart.md) and [Español](docs/es/quickstart.md).
+
+## Documentation
+
+| | English | Українська | Español |
+|---|---|---|---|
+| Quick Start | [quickstart.md](docs/en/quickstart.md) | [quickstart.md](docs/ua/quickstart.md) | [quickstart.md](docs/es/quickstart.md) |
+| Admin Guide | [admin-guide.md](docs/en/admin-guide.md) | [admin-guide.md](docs/ua/admin-guide.md) | [admin-guide.md](docs/es/admin-guide.md) |
+| User Guide | [user-guide.md](docs/en/user-guide.md) | [user-guide.md](docs/ua/user-guide.md) | [user-guide.md](docs/es/user-guide.md) |
+| CRM Webhooks | [crm-integration.md](docs/en/crm-integration.md) | [crm-integration.md](docs/ua/crm-integration.md) | [crm-integration.md](docs/es/crm-integration.md) |
+| CRM Integrator Guide | [crm-integrator-guide.md](docs/en/crm-integrator-guide.md) | [crm-integrator-guide.md](docs/ua/crm-integrator-guide.md) | [crm-integrator-guide.md](docs/es/crm-integrator-guide.md) |
+| REST API | [API.md](docs/en/API.md) / [openapi.yaml](docs/en/openapi.yaml) | [API.md](docs/ua/API.md) | [API.md](docs/es/API.md) |
+
+`openapi.yaml` is the single machine-readable OpenAPI schema (also served live at `/api/v1/schema/`) and is not translated.
 
 ## Configuration
 

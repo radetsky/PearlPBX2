@@ -1,6 +1,8 @@
+*Also available in: [English](quickstart.md) | [Українська](../ua/quickstart.md) | [Español](../es/quickstart.md)*
+
 # PearlPBX2 — Quick Start
 
-Two ways to get PearlPBX2 running, depending on what you're doing. See [README.md](README.md) for the full feature list, architecture, and configuration reference.
+Two ways to get PearlPBX2 running, depending on what you're doing. See [README.md](../../README.md) for the full feature list, architecture, and configuration reference.
 
 ## Requirements
 
@@ -185,7 +187,7 @@ asterisk -rx "pjsip show registrations"
   `services/fastagi/README.md` for trunk groups with failover.
 - **Music on hold** for the queues uses `contrib/moh/on_hold_music.wav` — replace
   the files under the `default` MOH class with your own.
-- **Call recording** is not enabled by default; see `docs/ua/admin-guide.md` for
+- **Call recording** is not enabled by default; see [admin-guide.md](admin-guide.md) for
   `MixMonitor` setup.
 - **The quick-start seed itself** is `manage.py seed_quickstart` — it checks
   whether any `Queue`, `SIPPeer`, or `Incoming`/`Outgoing` routing table already

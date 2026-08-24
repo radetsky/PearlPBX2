@@ -1,3 +1,5 @@
+*Also available in: [English](API.md) | [Українська](../ua/API.md) | [Español](../es/API.md)*
+
 # PearlPBX2 REST API
 
 All endpoints are available under the `/api/v1/` prefix.
@@ -395,8 +397,8 @@ without translation.
 **`GET /api/v1/recordings/<uniqueid>/`**
 
 Fetch a recorded call's audio by Asterisk uniqueid. This is the endpoint referenced
-by `recording_url` in CRM webhook payloads — see
-[CRM integration guide (Ukrainian)](../ua/crm-integration.md) for the full webhook
+by `recording_url` in CRM webhook payloads — see the
+[CRM integration guide](crm-integration.md) for the full webhook
 reference. Supports HTTP `Range` requests for streaming/seeking, and a
 `?download=1` query parameter to force a `Content-Disposition: attachment` response.
 
