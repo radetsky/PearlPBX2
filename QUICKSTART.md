@@ -93,15 +93,8 @@ Notes:
 ## Get your SIP credentials
 
 The 201–210 passwords are generated randomly and only ever stored in the database.
-Export them (and register your softphones) with:
-
-```bash
-./manage.sh export_sip_test_accounts          # Ansible install
-docker compose exec django python manage.py export_sip_test_accounts   # Docker
-```
-
-This prints YAML with each user's username/password/extension. Grab two of them —
-these instructions use **201** and **202**.
+In the admin, go to **SIP Users**, open **201** (or any other), and reveal the
+**Password** field — these instructions use **201** and **202**.
 
 ## Register two softphones
 
@@ -110,7 +103,7 @@ the credentials above:
 
 - **Server**: your PBX host/IP
 - **Transport**: UDP, port `5060`
-- **Username / Password**: from `export_sip_test_accounts` (e.g. `ppbxuser201`)
+- **Username / Password**: `ppbxuser201` / the password from the admin (and likewise for 202)
 
 ## Apply Changes
 

@@ -64,9 +64,15 @@
   systemd:
     daemon_reload: yes
 
-- name: Enable and start services
+- name: Enable and restart services
+  # restarted (not started): this role always runs after pearlpbx2's
+  # migrate/sync_manager_users/seed_quickstart, so a service that was
+  # already running from an earlier install attempt must pick up the fresh
+  # DB state and AMI credentials rather than keep whatever it loaded on its
+  # own earlier start (dashboard-listener's in-memory queue state in
+  # particular never self-corrects otherwise).
   systemd:
     name: "{{ item.unit }}"
     enabled: yes
-    state: started
+    state: restarted
   loop: "{{ pearlpbx2_services }}"

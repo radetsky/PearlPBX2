@@ -81,6 +81,12 @@ QUICKSTART_SERVICES_EXTENSIONS = {
 
 OUTBOUND_EXTERNAL_EXTENSIONS = {
     "_X.": (
+        "NoOp(CALL BEGIN >>>> :'${CALLERID(name)}'@<${CALLERID(num)}>);\n"
+        "Set(CHANNEL(language)=ua);\n"
+        "Set(TIMEOUT(absolute)=3600);\n"
+        "// Set(CALLERID(num)=?\n"
+        "// Turn on record of the call except rules in the database\n"
+        "AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});\n"
         "NoOp(Outbound call to ${EXTEN} via myprovider);\n"
         "Dial(PJSIP/${EXTEN}@myprovider,120,tT);\n"
         "Hangup();",
