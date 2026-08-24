@@ -18,6 +18,7 @@
       - rsync
       - lame
       - lsof
+      - cron
     state: present
     update_cache: yes
   environment:
