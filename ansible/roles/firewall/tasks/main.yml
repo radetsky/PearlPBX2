@@ -5,8 +5,12 @@
     state: present
     update_cache: yes
 
-- name: Detect SSH port from sshd_config
-  shell: awk '/^Port /{print $2}' /etc/ssh/sshd_config
+- name: Detect effective SSH port
+  # sshd -T dumps sshd's own resolved configuration (respects Include
+  # directives such as /etc/ssh/sshd_config.d/*.conf, which a plain grep/awk
+  # over sshd_config would miss on most current Debian/Ubuntu images) —
+  # this is the same value sshd itself will actually bind to.
+  shell: sshd -T | awk '/^port /{print $2; exit}'
   register: sshd_port_result
   changed_when: false
   failed_when: false
@@ -15,19 +19,25 @@
   set_fact:
     ssh_port: "{{ sshd_port_result.stdout | trim if sshd_port_result.stdout | trim else '22' }}"
 
-- name: Confirm SSH port before applying firewall
-  pause:
-    prompt: |
+- name: Show detected SSH port before applying firewall
+  # A separate task (rather than folding this into the pause prompt below)
+  # so the full message is guaranteed to print before the terminal blocks
+  # waiting for input — a multi-line pause prompt can otherwise appear only
+  # after Enter is pressed, leaving the operator staring at a bare ":".
+  debug:
+    msg: |
 
       ============================================================
        FIREWALL: SSH port detected as {{ ssh_port }}
        This port will be opened in nftables rules.
 
-       If this is WRONG — press Ctrl+C now, then fix Port in
-       /etc/ssh/sshd_config and re-run the installer.
-
-       Press Enter to continue...
+       If this is WRONG — press Ctrl+C now, then fix the SSH port
+       and re-run the installer.
       ============================================================
+
+- name: Confirm SSH port before applying firewall
+  pause:
+    prompt: "Press Enter to continue"
 
 - name: Deploy nftables ruleset
   template:

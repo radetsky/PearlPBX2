@@ -195,6 +195,29 @@
   become_user: "{{ pearlpbx2_user }}"
   when: not pearlpbx2_env_stat.stat.exists
 
+- name: Apply the seeded configuration and hard-restart Asterisk (fresh installs only)
+  # Writes the quick-start data seeded above out to /etc/asterisk and does a
+  # hard "core restart now" over AMI — the non-interactive equivalent of an
+  # admin clicking Apply Changes. Without this, a fresh install leaves
+  # Asterisk running only contrib/configs/'s empty baseline until someone
+  # logs in and clicks Apply Changes by hand. The dashboard/callback/fastagi
+  # services (started later, in the services role) reconnect to AMI and
+  # reload their own state on restart regardless of Asterisk's uptime, so no
+  # extra ordering is needed here beyond running after seed_quickstart.
+  command: >
+    {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py apply_changes
+  args:
+    chdir: "{{ pearlpbx2_install_dir }}"
+  environment: "{{ pearlpbx2_django_env | combine({
+    'ASTERISK_MANAGER_HOST': '127.0.0.1',
+    'ASTERISK_MANAGER_PORT': '5038',
+    'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
+    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+  }) }}"
+  become_user: "{{ pearlpbx2_user }}"
+  when: not pearlpbx2_env_stat.stat.exists
+
 - name: Collect static files
   command: >
     {{ pearlpbx2_install_dir }}/.venv/bin/python manage.py collectstatic --noinput
