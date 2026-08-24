@@ -136,8 +136,9 @@ class Command(BaseCommand):
     def _build_voip_provider(self, peer, domain, pbx_port, local_port):
         account = {"id": _QuotedStr(peer.name), "type": "voip_provider"}
 
-        if peer.host_port:
-            parts = peer.host_port.strip().split(":")
+        host_port = peer.contact_uri or peer.registration_uri
+        if host_port:
+            parts = host_port.strip().split(":")
             account["domain"] = parts[0].strip()
             account["port"] = int(parts[1]) if len(parts) > 1 else pbx_port
         else:
