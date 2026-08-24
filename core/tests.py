@@ -15,11 +15,13 @@ from core.models import (
     CallQueueGlobalSettings,
     Queue,
     QueueAnnouncements,
+    QueueMember,
     QueueRule,
     PenaltyChange,
     MusicOnHold,
     MusicOnHoldPlaylistEntry,
 )
+from core.validators import validate_dialplan_field
 from core.conf import (
     make_pjsip_conf_transports,
     make_pjsip_conf_uplinks,
@@ -716,8 +718,8 @@ class TestMakeDialplanGlobals(TestCase):
             result = make_dialplan_globals()
             self.assertIn("globals {", result)
             self.assertIn("// Default outbound CallerID", result)
-            self.assertIn("OUTBOUND_CID = 380441234567;", result)
-            self.assertIn("RECORD_ALL = yes;", result)
+            self.assertIn("OUTBOUND_CID=380441234567;", result)
+            self.assertIn("RECORD_ALL=yes;", result)
             self.assertIn("}\n", result)
             self.assertLess(
                 result.index("OUTBOUND_CID"), result.index("RECORD_ALL")
@@ -853,6 +855,96 @@ class TestSyncManagerUsersCommand(TestCase):
         self.assertEqual(
             ManagerUsers.objects.get(username="callback").secret, "new"
         )
+
+
+class TestSeedQuickstartCommand(TestCase):
+    def test_seeds_queues_ivr_trunk_and_routing(self):
+        from django.core.management import call_command
+
+        call_command("seed_quickstart")
+
+        self.assertEqual(Queue.objects.filter(name__in=("Sales", "Support")).count(), 2)
+        for queue_name in ("Sales", "Support"):
+            members = QueueMember.objects.filter(queue__name=queue_name)
+            self.assertEqual(members.count(), 10)
+            self.assertNotIn(None, members.values_list("member_name", flat=True))
+
+        self.assertTrue(SIPPeer.objects.filter(name="myprovider").exists())
+
+        self.assertTrue(RoutingTable.objects.filter(name="Incoming").exists())
+        self.assertTrue(RoutingTable.objects.filter(name="Outgoing").exists())
+
+        self.assertTrue(DialplanContext.objects.filter(name="ivr-main").exists())
+        self.assertTrue(
+            DialplanContext.objects.filter(name="quickstart-services").exists()
+        )
+        self.assertTrue(
+            DialplanContext.objects.filter(name="outbound-external").exists()
+        )
+
+        self.assertTrue(
+            DialplanGlobalVariable.objects.filter(
+                name="TRANSFER_CONTEXT", value="Outgoing"
+            ).exists()
+        )
+
+        outgoing = RoutingTable.objects.get(name="Outgoing")
+        self.assertEqual(
+            SIPUser.objects.exclude(routing_table=outgoing).count(), 0
+        )
+
+        result = make_extensions_ael()
+        self.assertIn("context ivr-main {", result)
+        self.assertIn("context Outgoing {", result)
+        self.assertIn("TRANSFER_CONTEXT=Outgoing;", result)
+        # Within the Outgoing routing table, the catch-all _X. outbound record
+        # must sort after the more specific _2XX users record, or it would
+        # swallow internal calls first.
+        # Each routing record renders as "prefix => { goto ctx,${EXTEN},1; }\n"
+        # on a single line, so a bare "}\n" also matches mid-block; only the
+        # context's own closing brace sits alone on its line, i.e. "\n}\n".
+        outgoing_start = result.index("context Outgoing {")
+        outgoing_end = result.index("\n}\n", outgoing_start)
+        outgoing_block = result[outgoing_start:outgoing_end]
+        self.assertLess(
+            outgoing_block.index("_2XX =>"), outgoing_block.index("_X. =>")
+        )
+
+        queues_conf = make_queues_conf()
+        self.assertNotIn(",None,", queues_conf)
+
+        for extension in DialplanExtension.objects.filter(
+            context__name__in=("ivr-main", "quickstart-services", "outbound-external")
+        ):
+            validate_dialplan_field(extension.dialplan)
+
+    def test_is_idempotent(self):
+        from django.core.management import call_command
+
+        call_command("seed_quickstart")
+        queue_count = Queue.objects.count()
+        record_count = RoutingRecord.objects.count()
+
+        call_command("seed_quickstart")
+
+        self.assertEqual(Queue.objects.count(), queue_count)
+        self.assertEqual(RoutingRecord.objects.count(), record_count)
+
+    def test_skips_seeding_on_populated_db_without_force(self):
+        from django.core.management import call_command
+
+        SIPPeer.objects.create(name="already-there", secret="x")
+        call_command("seed_quickstart")
+
+        self.assertFalse(Queue.objects.filter(name="Sales").exists())
+
+    def test_force_seeds_despite_existing_data(self):
+        from django.core.management import call_command
+
+        SIPPeer.objects.create(name="already-there", secret="x")
+        call_command("seed_quickstart", "--force")
+
+        self.assertTrue(Queue.objects.filter(name="Sales").exists())
 
 
 class TestMakeQueuesConf(TestCase):

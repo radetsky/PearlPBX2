@@ -2,6 +2,7 @@
 set -e
 
 python manage.py migrate --noinput
+python manage.py seed_quickstart
 python manage.py collectstatic --noinput --clear
 
 exec "$@"
