@@ -947,6 +947,63 @@ class TestSeedQuickstartCommand(TestCase):
         self.assertTrue(Queue.objects.filter(name="Sales").exists())
 
 
+class TestExportSipTestAccountsCommand(TestCase):
+    def test_voip_provider_peer_uses_contact_or_registration_uri(self):
+        import io
+
+        import yaml
+        from django.core.management import call_command
+
+        transport = SIPTransport.objects.filter(protocol="udp").first()
+        SIPPeer.objects.create(
+            name="test-provider",
+            username="test",
+            secret="secret",
+            registrationThere=True,
+            registration_uri="reg.example.com:5060",
+            contact_uri="sbc.example.com:5061",
+            transport=transport,
+        )
+
+        out = io.StringIO()
+        call_command("export_sip_test_accounts", stdout=out)
+
+        parsed = yaml.safe_load(out.getvalue())
+        provider = next(
+            a for a in parsed["accounts"] if a["id"] == "test-provider"
+        )
+        # contact_uri wins over registration_uri when both are set, mirroring
+        # core.conf's own AOR-contact precedence.
+        self.assertEqual(provider["domain"], "sbc.example.com")
+        self.assertEqual(provider["port"], 5061)
+
+    def test_voip_provider_peer_falls_back_to_registration_uri(self):
+        import io
+
+        import yaml
+        from django.core.management import call_command
+
+        transport = SIPTransport.objects.filter(protocol="udp").first()
+        SIPPeer.objects.create(
+            name="test-provider-2",
+            username="test",
+            secret="secret",
+            registrationThere=True,
+            registration_uri="reg.example.com:5060",
+            transport=transport,
+        )
+
+        out = io.StringIO()
+        call_command("export_sip_test_accounts", stdout=out)
+
+        parsed = yaml.safe_load(out.getvalue())
+        provider = next(
+            a for a in parsed["accounts"] if a["id"] == "test-provider-2"
+        )
+        self.assertEqual(provider["domain"], "reg.example.com")
+        self.assertEqual(provider["port"], 5060)
+
+
 class TestMakeQueuesConf(TestCase):
     def test_basic_queues_conf_structure(self):
         result = make_queues_conf()

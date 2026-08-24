@@ -91,12 +91,16 @@
       become_user: "{{ pearlpbx2_user }}"
 
     - name: Parse env file into dict
+      # pearlpbx2.env.j2 never quotes values, so there is nothing to strip —
+      # keeping the pattern free of literal quote characters avoids relying
+      # on how a given Ansible/Jinja version escapes them inside a folded
+      # block scalar (that mismatch is what broke this on some hosts).
       set_fact:
         pearlpbx2_django_env: >-
           {{
             dict(
               lookup('file', pearlpbx2_etc_dir + '/PearlPBX2/env')
-              | regex_findall('^([A-Z_][A-Z0-9_]*)=[\"\']?(.*?)[\"\']?$', multiline=True)
+              | regex_findall('^([A-Z_][A-Z0-9_]*)=(.*)$', multiline=True)
             )
           }}
       no_log: true
