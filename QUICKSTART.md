@@ -122,7 +122,7 @@ Do these in order — each one builds on the last.
 |---|---|---|---|
 | 1 | Echo test | `130` | You hear your own voice looped back. `asterisk -rx "core show channels"` shows the call. |
 | 2 | Internal call | 201 dials `202` | 202 rings. `asterisk -rx "pjsip show endpoints"` shows both as `Avail`. |
-| 3 | Transfer | Mid-call, blind-transfer with `#1` or attended with `#2`, target `202` or `141` | See [Transfer](#transfer) below — needs `TRANSFER_CONTEXT`. |
+| 3 | Transfer | Mid-call, blind-transfer with `#` or attended with `*`, target `202` or `141` | See [Transfer](#transfer) below |
 | 4 | Outbound to the outside world | Dial any external number | Fails until you [replace the example trunk](#replace-the-example-trunk). Then `asterisk -rx "pjsip show registrations"` should show `myprovider` as `Registered`. |
 | 5 | IVR from an internal phone | `140`, then press `1` or `2` | You land in Sales or Support. `asterisk -rx "queue show Sales"` shows the call. |
 | 6 | Production inbound call | Call your DID from the outside world | Routed via **Incoming** → `ivr-main`. `asterisk -rx "pjsip set logger on"` to watch the SIP trace live. |
@@ -132,9 +132,11 @@ Do these in order — each one builds on the last.
 ### Transfer
 
 Transfer feature codes come from `contrib/configs/features.conf`:
-`#1` = blind transfer, `#2` = attended transfer (`[featuremap]` section). Both
+`#` = blind transfer, `*` = attended transfer (`[featuremap]` section). Both
 require the `t`/`T` options on the `Dial()` the call came in on — already present
 on every seeded extension (e.g. `Dial(PJSIP/${EXTEN}@myprovider,120,tT)`).
+
+You can call from extension 201 to 202, and mid-call, press `#130#` to transfer your call to the echo test. Your call should end, and the other party should hear the `demo-echotest` greeting.
 
 Once a transfer is initiated, Asterisk resolves the dialed digits through the
 **`TRANSFER_CONTEXT`** global variable rather than the channel's own context —
