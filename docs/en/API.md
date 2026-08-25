@@ -266,13 +266,13 @@ Originate a call via Asterisk AMI. Replaces direct HTTP calls to Asterisk `rawma
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `channel` | string | yes | — | First leg to dial, e.g. `"Local/0503856087@default"` or `"PJSIP/101"` |
-| `exten` | string | yes | — | Extension/number the first leg connects to, e.g. `"0675653380"` |
-| `context` | string | no | `"default"` | Dialplan context |
-| `priority` | integer | no | `1` | Dialplan priority (min: 1) |
-| `callerid` | string | no | — | Caller ID in format `name<number>`, e.g. `"380443333333<0675653380>"` |
+| `channel` | string | yes | — | First leg to dial, e.g. `"Local/0441231231@Outgoing"` or `"PJSIP/2101"` |
+| `exten` | string | yes | — | External number the first leg connects to, e.g. `"0123123123"` |
+| `context` | string | yes | `"Outgoing"` | Routing table that has access to external calls |
+| `priority` | integer | yes | `1` | Dialplan priority (leave: 1) |
+| `callerid` | string | yes | — | Caller ID in format `name<number>`, e.g. `"PearlPBX2 Auto Call<number_you_are_calling>"` |
 | `variable` | object | no | — | Channel variables as key-value pairs, e.g. `{"userId": "0"}` |
-| `timeout_ms` | integer | no | `30000` | Asterisk-side Originate timeout in ms (1000–120000). This is also the server-side wait budget: the API worker will not block waiting for the AMI response longer than `timeout_ms + 5s`. |
+| `timeout_ms` | integer | yes | `30000` | Asterisk-side Originate timeout in ms (1000–120000). This is also the server-side wait budget: the API worker will not block waiting for the AMI response longer than `timeout_ms + 5s`. |
 
 **Responses:**
 

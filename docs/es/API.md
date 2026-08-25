@@ -266,13 +266,13 @@ Inicia una llamada a través de Asterisk AMI. Sustituye a las llamadas HTTP dire
 
 | Campo | Tipo | Obligatorio | Valor por defecto | Descripción |
 |-------|------|----------|---------|-------------|
-| `channel` | cadena | sí | — | La primera pierna a marcar, p. ej. `"Local/0503856087@default"` o `"PJSIP/101"` |
-| `exten` | cadena | sí | — | La extensión/número al que se conecta la primera pierna, p. ej. `"0675653380"` |
-| `context` | cadena | no | `"default"` | Contexto del plan de marcado |
-| `priority` | entero | no | `1` | Prioridad del plan de marcado (mínimo: 1) |
-| `callerid` | cadena | no | — | Caller ID en formato `nombre<número>`, p. ej. `"380443333333<0675653380>"` |
+| `channel` | cadena | sí | — | La primera pierna a marcar, p. ej. `"Local/0441231231@Outgoing"` o `"PJSIP/2101"` |
+| `exten` | cadena | sí | — | El número externo al que se conecta la primera pierna, p. ej. `"0123123123"` |
+| `context` | cadena | sí | `"Outgoing"` | Tabla de enrutamiento que tiene acceso a llamadas externas |
+| `priority` | entero | sí | `1` | Prioridad del plan de marcado (dejar: 1) |
+| `callerid` | cadena | sí | — | Caller ID en formato `nombre<número>`, p. ej. `"PearlPBX2 Auto Call<número_al_que_llama>"` |
 | `variable` | objeto | no | — | Variables de canal como pares clave-valor, p. ej. `{"userId": "0"}` |
-| `timeout_ms` | entero | no | `30000` | Timeout de Originate en el lado de Asterisk, en ms (1000–120000). Este es también el presupuesto de espera del lado del servidor: el worker de la API no bloqueará esperando la respuesta de AMI más de `timeout_ms + 5s` |
+| `timeout_ms` | entero | sí | `30000` | Timeout de Originate en el lado de Asterisk, en ms (1000–120000). Este es también el presupuesto de espera del lado del servidor: el worker de la API no bloqueará esperando la respuesta de AMI más de `timeout_ms + 5s` |
 
 **Respuestas:**
 
