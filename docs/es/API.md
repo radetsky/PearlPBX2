@@ -287,17 +287,25 @@ Inicia una llamada a través de Asterisk AMI. Sustituye a las llamadas HTTP dire
 **Ejemplo:**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
-  -H "Authorization: Token <tu-token>" \
-  -H "Content-Type: application/json" \
+curl -k -X 'POST' \
+  'https://<tu-servidor>/api/v1/calls/originate/' \
+  -H 'accept: */*' \
+  -H 'Authorization: Token <tu-token>' \
+  -H 'Content-Type: application/json' \
+  -H 'X-CSRFTOKEN: <tu-csrf-token>' \
   -d '{
-        "channel": "Local/0503856087@default",
-        "exten": "0675653380",
-        "context": "default",
-        "callerid": "380443333333<0675653380>",
-        "variable": {"userId": "0"}
-      }'
+  "callerid": "0504139380",
+  "timeout_ms": 30000,
+  "channel": "PJSIP/2101",
+  "exten": "0504139380",
+  "context": "Outgoing",
+  "priority": 1
+}'
 ```
+
+> **Notas:**
+> - `timeout_ms` se expresa en **milisegundos** y solo limita la creación de la **primera pierna** de la llamada — el `channel` del ejemplo (`PJSIP/2101`, una extensión SIP interna). No afecta cuánto tiempo suena la segunda pierna (`exten`).
+> - Si la respuesta es `Originate failed`, significa que Asterisk no pudo crear ese primer canal. Causas habituales: la extensión (`PJSIP/2101`) no existe o no está registrada, el operador no contestó, o el operador rechazó/colgó la llamada antes de conectarse.
 
 **Correspondencia con los parámetros antiguos de rawman:**
 

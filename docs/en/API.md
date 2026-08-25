@@ -287,17 +287,25 @@ Originate a call via Asterisk AMI. Replaces direct HTTP calls to Asterisk `rawma
 **Example:**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
-  -H "Authorization: Token <your-token>" \
-  -H "Content-Type: application/json" \
+curl -k -X 'POST' \
+  'https://<your-server>/api/v1/calls/originate/' \
+  -H 'accept: */*' \
+  -H 'Authorization: Token <your-token>' \
+  -H 'Content-Type: application/json' \
+  -H 'X-CSRFTOKEN: <your-csrf-token>' \
   -d '{
-        "channel": "Local/0503856087@default",
-        "exten": "0675653380",
-        "context": "default",
-        "callerid": "380443333333<0675653380>",
-        "variable": {"userId": "0"}
-      }'
+  "callerid": "0504139380",
+  "timeout_ms": 30000,
+  "channel": "PJSIP/2101",
+  "exten": "0504139380",
+  "context": "Outgoing",
+  "priority": 1
+}'
 ```
+
+> **Notes:**
+> - `timeout_ms` is in **milliseconds** and only bounds the creation of the **first leg** — the `channel` above (`PJSIP/2101`, an internal SIP extension). It has nothing to do with how long the second leg (`exten`) is allowed to ring.
+> - If the response is `Originate failed`, Asterisk was unable to establish that first channel at all. Common causes: the extension (`PJSIP/2101`) doesn't exist/isn't registered, the operator's phone didn't answer, or the operator rejected/hung up the call before it connected.
 
 **Mapping from old rawman parameters:**
 

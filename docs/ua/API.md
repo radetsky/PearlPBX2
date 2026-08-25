@@ -287,17 +287,25 @@ POST використовує upsert-логіку за ключем `callerid`.
 **Приклад:**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/calls/originate/ \
-  -H "Authorization: Token <ваш-токен>" \
-  -H "Content-Type: application/json" \
+curl -k -X 'POST' \
+  'https://<ваш-сервер>/api/v1/calls/originate/' \
+  -H 'accept: */*' \
+  -H 'Authorization: Token <ваш-токен>' \
+  -H 'Content-Type: application/json' \
+  -H 'X-CSRFTOKEN: <ваш-csrf-токен>' \
   -d '{
-        "channel": "Local/0503856087@default",
-        "exten": "0675653380",
-        "context": "default",
-        "callerid": "380443333333<0675653380>",
-        "variable": {"userId": "0"}
-      }'
+  "callerid": "0504139380",
+  "timeout_ms": 30000,
+  "channel": "PJSIP/2101",
+  "exten": "0504139380",
+  "context": "Outgoing",
+  "priority": 1
+}'
 ```
+
+> **Примітки:**
+> - `timeout_ms` вказується у **мілісекундах** і обмежує лише час на створення **першого плеча** дзвінка — каналу `channel` (у прикладі `PJSIP/2101`, внутрішній номер). До того, скільки дзвонитиме друге плече (`exten`), це поле відношення не має.
+> - Якщо у відповіді прийде `Originate failed`, це означає, що Asterisk не зміг створити перший канал. Найчастіші причини: внутрішнього номера (`PJSIP/2101`) не існує / він не зареєстрований, оператор не відповів на дзвінок, або оператор скинув його, не піднявши слухавку.
 
 **Відповідність старих параметрів rawman:**
 
