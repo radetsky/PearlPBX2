@@ -1,0 +1,5 @@
+{% load i18n %}{% load form_extras %}{% blocktrans with formatted_date=report_date|date:"d.m.Y" %}Longest calls for {{ formatted_date }}{% endblocktrans %}
+
+{% for row in rows %}{{ row.start|date:"d.m.Y H:i:s" }}  {{ row.src }} -> {{ row.dst }}  {{ row.channel|format_channel }}  {{ row.duration|duration_hms }}{% if row.recording_url %}  {{ row.recording_url }}{% endif %}
+{% empty %}{% trans "No calls found for this period." %}
+{% endfor %}

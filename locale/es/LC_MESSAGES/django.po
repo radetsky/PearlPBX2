@@ -3233,5 +3233,37 @@ msgstr "Ninguna disponible"
 msgid "Unknown content"
 msgstr "Contenido desconocido"
 
+#: apps/reports/management/commands/mail_report.py:126
+#, python-format
+msgid "Longest calls report for %(date)s"
+msgstr "Informe de llamadas más largas del %(date)s"
+
+#: apps/reports/templates/emails/longest_calls_report.html:14
+#: apps/reports/templates/emails/longest_calls_report.txt:1
+#, python-format
+msgid "Longest calls for %(formatted_date)s"
+msgstr "Llamadas más largas del %(formatted_date)s"
+
+#: apps/reports/templates/emails/longest_calls_report.html:20
+msgid "Date and time"
+msgstr "Fecha y hora"
+
+#: apps/reports/templates/emails/longest_calls_report.html:21
+msgid "From"
+msgstr "Desde"
+
+#: apps/reports/templates/emails/longest_calls_report.html:22
+msgid "To"
+msgstr "Hasta"
+
+#: apps/reports/templates/emails/longest_calls_report.html:34
+msgid "Listen"
+msgstr "Escuchar"
+
+#: apps/reports/templates/emails/longest_calls_report.html:41
+#: apps/reports/templates/emails/longest_calls_report.txt:3
+msgid "No calls found for this period."
+msgstr "No se encontraron llamadas para este período."
+
 #~ msgid "Welcome to PearlPBX2"
 #~ msgstr "Bienvenido a PearlPBX2"

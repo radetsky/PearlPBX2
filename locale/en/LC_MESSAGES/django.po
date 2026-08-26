@@ -3108,3 +3108,35 @@ msgstr ""
 #: templates/admin/index.html:42
 msgid "Unknown content"
 msgstr ""
+
+#: apps/reports/management/commands/mail_report.py:126
+#, python-format
+msgid "Longest calls report for %(date)s"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:14
+#: apps/reports/templates/emails/longest_calls_report.txt:1
+#, python-format
+msgid "Longest calls for %(formatted_date)s"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:20
+msgid "Date and time"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:21
+msgid "From"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:22
+msgid "To"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:34
+msgid "Listen"
+msgstr ""
+
+#: apps/reports/templates/emails/longest_calls_report.html:41
+#: apps/reports/templates/emails/longest_calls_report.txt:3
+msgid "No calls found for this period."
+msgstr ""

@@ -3214,5 +3214,37 @@ msgstr "Немає доступних"
 msgid "Unknown content"
 msgstr "Невідомий вміст"
 
+#: apps/reports/management/commands/mail_report.py:126
+#, python-format
+msgid "Longest calls report for %(date)s"
+msgstr "Звіт про найдовші дзвінки за %(date)s"
+
+#: apps/reports/templates/emails/longest_calls_report.html:14
+#: apps/reports/templates/emails/longest_calls_report.txt:1
+#, python-format
+msgid "Longest calls for %(formatted_date)s"
+msgstr "Найдовші дзвінки за %(formatted_date)s"
+
+#: apps/reports/templates/emails/longest_calls_report.html:20
+msgid "Date and time"
+msgstr "Дата і час"
+
+#: apps/reports/templates/emails/longest_calls_report.html:21
+msgid "From"
+msgstr "Звідки"
+
+#: apps/reports/templates/emails/longest_calls_report.html:22
+msgid "To"
+msgstr "Куди"
+
+#: apps/reports/templates/emails/longest_calls_report.html:34
+msgid "Listen"
+msgstr "Слухати"
+
+#: apps/reports/templates/emails/longest_calls_report.html:41
+#: apps/reports/templates/emails/longest_calls_report.txt:3
+msgid "No calls found for this period."
+msgstr "За цей період дзвінків не знайдено."
+
 #~ msgid "Welcome to PearlPBX2"
 #~ msgstr "Ласкаво просимо до PearlPBX2"

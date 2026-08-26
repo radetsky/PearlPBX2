@@ -202,6 +202,14 @@ All settings are supplied via environment variables. Example: [env.sample](../..
 | `PHONE_REQUIRED_LEN` | Expected full-number length during normalization | `10` |
 | `PHONE_CITYCODE_LEN` | City code length during normalization | `7` |
 | `PEARLPBX_PUBLIC_URL` | Public base URL of the web interface (used for call-recording links in CRM webhooks) | `http://localhost:8000` |
+| `MAIL_REPORT_RECIPIENTS` | Comma-separated recipients of the nightly longest-calls report; empty disables it | — |
+| `MAIL_REPORT_LIMIT` | Number of rows in the longest-calls table | `10` |
+| `EMAIL_HOST` | Outgoing SMTP relay; without it mail is printed to stdout instead of sent | — |
+| `EMAIL_PORT` | SMTP port | `25` |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | SMTP credentials | — |
+| `EMAIL_USE_TLS` / `EMAIL_USE_SSL` | SMTP encryption (mutually exclusive) | `False` |
+| `EMAIL_TIMEOUT` | SMTP connection timeout, seconds | `30` |
+| `DEFAULT_FROM_EMAIL` | From address for outgoing mail | `pearlpbx2@localhost` |
 
 ---
 
@@ -961,6 +969,28 @@ In addition, the Ansible installation sets up two daily cron jobs:
   `RETENTION_DAYS` retention period (default 14 days). Configuration lives at
   `/etc/PearlPBX/backup_asterisk/env` (template `backup_asterisk.env.j2`); you can optionally set
   `SLACK_WEBHOOK_URL` for failure notifications.
+
+### Longest calls report
+
+A daily email listing the top longest calls of the previous day, with a link to each call's
+recording.
+
+Configure `MAIL_REPORT_RECIPIENTS` (comma-separated) and the `EMAIL_*` variables (see
+[Configuration via Environment Variables](#4-configuration-via-environment-variables)); leaving
+`MAIL_REPORT_RECIPIENTS` empty disables the report and skips installing its cron job. Make sure
+`PEARLPBX_PUBLIC_URL` is set to the externally reachable URL, or the recording links in the email
+will point at `http://localhost:8000`.
+
+The Ansible installation sets up a daily cron job, `pearlpbx2_mail_report`, running at 06:00 (after
+recordings have been moved and converted by `syncmp3`/`wav2mp3_monitor`).
+
+To run it manually:
+
+```bash
+/usr/local/PearlPBX2/manage.sh mail_report --dry-run                  # preview, sends nothing
+/usr/local/PearlPBX2/manage.sh mail_report --to=you@example.com       # send to a specific address
+/usr/local/PearlPBX2/manage.sh mail_report --date=2026-08-25 --limit=20
+```
 
 ### Migrating from PearlPBX1
 

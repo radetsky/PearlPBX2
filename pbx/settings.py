@@ -240,6 +240,40 @@ REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")
 # (e.g. call recording URLs in CRM webhook payloads).
 PEARLPBX_PUBLIC_URL = env.str("PEARLPBX_PUBLIC_URL", default="http://localhost:8000")
 
+# Outgoing email. SMTP is used as soon as EMAIL_HOST is set; otherwise mail is
+# printed to stdout so a dev machine can never accidentally send a real report.
+# On a typical Asterisk host with a local MTA, EMAIL_HOST=localhost is enough.
+EMAIL_HOST = env.str("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+# Without a timeout smtplib blocks forever on an unresponsive relay, which would
+# hang the nightly cron job indefinitely instead of failing it.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=30)
+DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", default="pearlpbx2@localhost")
+
+EMAIL_BACKEND = env.str(
+    "EMAIL_BACKEND",
+    default=(
+        "django.core.mail.backends.smtp.EmailBackend"
+        if EMAIL_HOST
+        else "django.core.mail.backends.console.EmailBackend"
+    ),
+)
+
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ImproperlyConfigured(
+        "EMAIL_USE_TLS and EMAIL_USE_SSL are mutually exclusive - set only one."
+    )
+
+# Default recipients of `manage.py mail_report` (comma-separated).
+# Empty means the report is not configured and the command is a no-op.
+MAIL_REPORT_RECIPIENTS = env.list("MAIL_REPORT_RECIPIENTS", default=[])
+# Default number of rows in the longest-calls table.
+MAIL_REPORT_LIMIT = env.int("MAIL_REPORT_LIMIT", default=10)
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",

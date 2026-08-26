@@ -202,6 +202,14 @@ Toda la configuración se suministra mediante variables de entorno. Ejemplo: [en
 | `PHONE_REQUIRED_LEN` | Longitud esperada del número completo al normalizar | `10` |
 | `PHONE_CITYCODE_LEN` | Longitud del código de ciudad al normalizar | `7` |
 | `PEARLPBX_PUBLIC_URL` | URL base pública de la interfaz web (usada para los enlaces a grabaciones en los webhooks de CRM) | `http://localhost:8000` |
+| `MAIL_REPORT_RECIPIENTS` | Destinatarios del informe diario de llamadas más largas, separados por comas; vacío lo desactiva | — |
+| `MAIL_REPORT_LIMIT` | Número de filas en la tabla de llamadas más largas | `10` |
+| `EMAIL_HOST` | Relay SMTP saliente; sin él, el correo se imprime en stdout en lugar de enviarse | — |
+| `EMAIL_PORT` | Puerto SMTP | `25` |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | Credenciales SMTP | — |
+| `EMAIL_USE_TLS` / `EMAIL_USE_SSL` | Cifrado SMTP (mutuamente excluyentes) | `False` |
+| `EMAIL_TIMEOUT` | Tiempo de espera de conexión SMTP, segundos | `30` |
+| `DEFAULT_FROM_EMAIL` | Dirección de remitente del correo saliente | `pearlpbx2@localhost` |
 
 ---
 
@@ -961,6 +969,28 @@ Además, la instalación con Ansible configura dos tareas cron diarias:
   período de retención `RETENTION_DAYS` (por defecto 14 días). La configuración está en
   `/etc/PearlPBX/backup_asterisk/env` (plantilla `backup_asterisk.env.j2`); opcionalmente puedes definir
   `SLACK_WEBHOOK_URL` para notificaciones de fallo.
+
+### Informe de llamadas más largas
+
+Un correo diario con las llamadas más largas del día anterior y un enlace a la grabación de cada
+llamada.
+
+Configura `MAIL_REPORT_RECIPIENTS` (separado por comas) y las variables `EMAIL_*` (ver
+[Configuración mediante variables de entorno](#4-configuración-mediante-variables-de-entorno));
+dejar `MAIL_REPORT_RECIPIENTS` vacío desactiva el informe y omite la instalación de su tarea cron.
+Asegúrate de que `PEARLPBX_PUBLIC_URL` apunte a la URL accesible externamente, o los enlaces de
+grabación en el correo apuntarán a `http://localhost:8000`.
+
+La instalación con Ansible configura una tarea cron diaria, `pearlpbx2_mail_report`, a las 06:00
+(después de que `syncmp3`/`wav2mp3_monitor` hayan movido y convertido las grabaciones).
+
+Para ejecutarlo manualmente:
+
+```bash
+/usr/local/PearlPBX2/manage.sh mail_report --dry-run                  # vista previa, no envía nada
+/usr/local/PearlPBX2/manage.sh mail_report --to=you@example.com       # enviar a una dirección concreta
+/usr/local/PearlPBX2/manage.sh mail_report --date=2026-08-25 --limit=20
+```
 
 ### Migración desde PearlPBX1
 

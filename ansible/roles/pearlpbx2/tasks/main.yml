@@ -320,3 +320,12 @@
     user: root
     job: "{{ pearlpbx2_install_dir }}/bin/backup_asterisk.sh"
     state: present
+
+- name: Install mail_report cron job (daily at 06:00)
+  cron:
+    name: pearlpbx2_mail_report
+    minute: "0"
+    hour: "6"
+    user: root
+    job: "{{ pearlpbx2_install_dir }}/manage.sh mail_report"
+    state: "{{ 'present' if pearlpbx2_mail_report_recipients else 'absent' }}"

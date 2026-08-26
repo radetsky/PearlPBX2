@@ -19,3 +19,7 @@ tftp_dir: /var/lib/tftpboot
 # rollback.yml). Each entry is a few hundred bytes; 10 is ample headroom
 # without letting /var/backups/pearlpbx2 grow unbounded.
 deploy_history_retention: 10
+
+# Comma-separated recipients of the nightly longest-calls email report.
+# Empty disables the report and its cron job.
+pearlpbx2_mail_report_recipients: ""

@@ -1,17 +1,24 @@
 import csv
+import datetime
 import io
 import os
 import tempfile
 from datetime import timedelta
+from smtplib import SMTPException
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core import mail
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Contact, MonitorFilenames, SIPPeer, SIPUser
 
 from apps.reports.models import CDR, QueueLog
+from apps.reports.services.longest_calls import build_longest_calls, external_filter_available
 from apps.reports.services.lost_and_found import build_lost_and_found
 from apps.reports.services.recordings import find_recording_path_by_uniqueid
 from apps.reports.views import (
@@ -34,7 +41,17 @@ def _make_queuelog(callid, event, time, queuename="testqueue", agent="", data1="
     )
 
 
-def _make_cdr(src, dst, start, disposition="ANSWERED", dstchannel="", channel="", uniqueid=""):
+def _make_cdr(
+    src,
+    dst,
+    start,
+    disposition="ANSWERED",
+    dstchannel="",
+    channel="",
+    uniqueid="",
+    duration=0,
+    sequence=None,
+):
     return CDR.objects.create(
         src=src,
         dst=dst,
@@ -43,6 +60,8 @@ def _make_cdr(src, dst, start, disposition="ANSWERED", dstchannel="", channel=""
         dstchannel=dstchannel,
         channel=channel,
         uniqueid=uniqueid or f"uid-{src}-{dst}-{start.timestamp()}",
+        duration=duration,
+        sequence=sequence,
         accountcode="",
         dcontext="",
         clid="",
@@ -506,3 +525,194 @@ class FindRecordingPathByUniqueidTest(TestCase):
     def test_invalid_uniqueid_returns_none(self):
         self.assertIsNone(find_recording_path_by_uniqueid("../../etc/passwd"))
         self.assertIsNone(find_recording_path_by_uniqueid(""))
+
+
+class AudioFileByUniqueidViewPermissionTest(TestCase):
+    """Regression test: AudioFileByUniqueidView was missing from
+    VIEW_PERMISSION_MAPPING, so every request raised ImproperlyConfigured (500)
+    regardless of the caller's permissions. See apps/reports/mixins.py."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.settings_override = override_settings(
+            ASTERISK_MONITOR_DIR=self.tmpdir.name, ASTERISK_BACKUP_MONITOR_DIR=""
+        )
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+        with open(os.path.join(self.tmpdir.name, "123.456.wav"), "wb") as f:
+            f.write(b"audio")
+
+    def test_user_with_permission_gets_200_not_500(self):
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username="viewer", password="pass12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_call_recordings"))
+        self.client.login(username="viewer", password="pass12345")
+        response = self.client.get(reverse("audio_file_by_uniqueid", kwargs={"uniqueid": "123.456"}))
+        self.assertEqual(response.status_code, 200)
+
+    def test_user_without_permission_is_denied_not_500(self):
+        get_user_model().objects.create_user(username="nobody", password="pass12345")
+        self.client.login(username="nobody", password="pass12345")
+        response = self.client.get(reverse("audio_file_by_uniqueid", kwargs={"uniqueid": "123.456"}))
+        self.assertIn(response.status_code, (302, 403))
+
+
+class BuildLongestCallsTest(TestCase):
+    def setUp(self):
+        self.tz = timezone.get_current_timezone()
+        self.report_date = datetime.date(2026, 8, 25)
+
+    def _at(self, date, hour, minute=0, second=0):
+        return timezone.make_aware(datetime.datetime(date.year, date.month, date.day, hour, minute, second), self.tz)
+
+    def test_orders_by_duration_descending_and_respects_limit(self):
+        _make_cdr("100", "200", self._at(self.report_date, 10), duration=50)
+        _make_cdr("101", "201", self._at(self.report_date, 11), duration=200)
+        _make_cdr("102", "202", self._at(self.report_date, 12), duration=100)
+        rows = build_longest_calls(self.report_date, limit=2)
+        self.assertEqual([r["duration"] for r in rows], [200, 100])
+
+    def test_day_boundaries_are_half_open(self):
+        prev_day = self.report_date - timedelta(days=1)
+        next_day = self.report_date + timedelta(days=1)
+        _make_cdr("a", "b", self._at(prev_day, 23, 59, 59), duration=999, uniqueid="before")
+        _make_cdr("c", "d", self._at(self.report_date, 0, 0, 0), duration=10, uniqueid="start")
+        _make_cdr("e", "f", self._at(self.report_date, 23, 59, 59), duration=20, uniqueid="end")
+        _make_cdr("g", "h", self._at(next_day, 0, 0, 0), duration=999, uniqueid="after")
+        rows = build_longest_calls(self.report_date, limit=10)
+        uniqueids = {r["uniqueid"] for r in rows}
+        self.assertEqual(uniqueids, {"start", "end"})
+
+    def test_duplicate_legs_sharing_uniqueid_collapse_to_one_row(self):
+        _make_cdr("100", "200", self._at(self.report_date, 10), duration=100, uniqueid="shared", sequence=None)
+        _make_cdr("100", "200", self._at(self.report_date, 10), duration=300, uniqueid="shared", sequence=None)
+        rows = build_longest_calls(self.report_date, limit=10)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["duration"], 300)
+
+    def test_unanswered_excluded_by_default(self):
+        _make_cdr("100", "200", self._at(self.report_date, 10), duration=500, disposition="NO ANSWER")
+        self.assertEqual(build_longest_calls(self.report_date, limit=10), [])
+        rows = build_longest_calls(self.report_date, limit=10, answered_only=False)
+        self.assertEqual(len(rows), 1)
+
+    def test_no_calls_returns_empty_list(self):
+        self.assertEqual(build_longest_calls(self.report_date, limit=10), [])
+
+    def test_external_only_without_sip_peers_does_not_return_empty(self):
+        _make_cdr("100", "200", self._at(self.report_date, 10), duration=100)
+        self.assertFalse(external_filter_available())
+        rows = build_longest_calls(self.report_date, limit=10, external_only=True)
+        self.assertEqual(len(rows), 1)
+
+
+@override_settings(ASTERISK_BACKUP_MONITOR_DIR="")
+class LongestCallsRecordingUrlTest(TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.settings_override = override_settings(
+            ASTERISK_MONITOR_DIR=self.tmpdir.name,
+            PEARLPBX_PUBLIC_URL="https://pbx.example.com/",
+        )
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+        self.report_date = datetime.date(2026, 8, 25)
+        self.start = timezone.make_aware(datetime.datetime(2026, 8, 25, 10, 0, 0))
+
+    def test_recording_url_is_absolute_for_flat_layout_file(self):
+        with open(os.path.join(self.tmpdir.name, "1690000000.1.mp3"), "wb") as f:
+            f.write(b"audio")
+        _make_cdr("100", "200", self.start, duration=100, uniqueid="1690000000.1")
+        rows = build_longest_calls(self.report_date, limit=10)
+        self.assertEqual(
+            rows[0]["recording_url"],
+            "https://pbx.example.com/reports/audio/uid/1690000000.1/",
+        )
+
+    def test_recording_url_via_monitor_filenames(self):
+        path = os.path.join(self.tmpdir.name, "2026/08/25")
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, "call.mp3"), "wb") as f:
+            f.write(b"audio")
+        MonitorFilenames.objects.create(
+            src="100", dst="200", filename="2026/08/25/call", cdr_uniqueid="1690000000.2"
+        )
+        _make_cdr("100", "200", self.start, duration=100, uniqueid="1690000000.2")
+        rows = build_longest_calls(self.report_date, limit=10)
+        self.assertEqual(
+            rows[0]["recording_url"],
+            "https://pbx.example.com/reports/audio/uid/1690000000.2/",
+        )
+
+    def test_missing_recording_yields_none(self):
+        _make_cdr("100", "200", self.start, duration=100, uniqueid="1690000000.3")
+        rows = build_longest_calls(self.report_date, limit=10)
+        self.assertIsNone(rows[0]["recording_url"])
+
+
+@override_settings(
+    PEARLPBX_PUBLIC_URL="https://pbx.example.com/",
+    MAIL_REPORT_RECIPIENTS=["ops@example.com"],
+    DEFAULT_FROM_EMAIL="pbx@example.com",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class MailReportCommandTest(TestCase):
+    def setUp(self):
+        self.report_date = datetime.date(2026, 8, 25)
+        self.start = timezone.make_aware(datetime.datetime(2026, 8, 25, 10, 0, 0))
+        _make_cdr("100", "200", self.start, duration=100, uniqueid="1690000000.10")
+
+    def test_sends_one_email_to_settings_recipients(self):
+        call_command("mail_report", "--date=2026-08-25", stdout=io.StringIO())
+        self.assertEqual(len(mail.outbox), 1)
+        msg = mail.outbox[0]
+        self.assertEqual(msg.to, ["ops@example.com"])
+        self.assertEqual(msg.from_email, "pbx@example.com")
+        self.assertIn("25.08.2026", msg.subject)
+        self.assertEqual(msg.alternatives[0][1], "text/html")
+
+    def test_to_option_overrides_settings_recipients_and_strips_whitespace(self):
+        call_command(
+            "mail_report", "--date=2026-08-25", "--to= a@x.ua , b@x.ua ", stdout=io.StringIO()
+        )
+        self.assertEqual(mail.outbox[0].to, ["a@x.ua", "b@x.ua"])
+
+    def test_no_recipients_sends_nothing_and_exits_cleanly(self):
+        with override_settings(MAIL_REPORT_RECIPIENTS=[]):
+            call_command("mail_report", "--date=2026-08-25", stdout=io.StringIO())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_empty_result_skips_send_unless_send_empty(self):
+        call_command("mail_report", "--date=2026-08-01", stdout=io.StringIO())
+        self.assertEqual(len(mail.outbox), 0)
+        call_command(
+            "mail_report", "--date=2026-08-01", "--send-empty", stdout=io.StringIO()
+        )
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_dry_run_does_not_send(self):
+        out = io.StringIO()
+        call_command("mail_report", "--date=2026-08-25", "--dry-run", stdout=out)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertIn("100", out.getvalue())
+
+    def test_invalid_date_raises_command_error(self):
+        with self.assertRaises(CommandError):
+            call_command("mail_report", "--date=not-a-date", stdout=io.StringIO())
+
+    def test_smtp_failure_raises_command_error(self):
+        with patch(
+            "django.core.mail.message.EmailMessage.send",
+            side_effect=SMTPException("boom"),
+        ):
+            with self.assertRaises(CommandError):
+                call_command("mail_report", "--date=2026-08-25", stdout=io.StringIO())
+
+    def test_english_subject_with_language_option(self):
+        call_command(
+            "mail_report", "--date=2026-08-25", "--language=en", stdout=io.StringIO()
+        )
+        self.assertIn("Longest calls report for", mail.outbox[0].subject)

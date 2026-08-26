@@ -202,6 +202,14 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 | `PHONE_REQUIRED_LEN` | Очікувана довжина повного номера при нормалізації | `10` |
 | `PHONE_CITYCODE_LEN` | Довжина міського коду при нормалізації | `7` |
 | `PEARLPBX_PUBLIC_URL` | Публічний базовий URL веб-інтерфейсу (використовується для посилань на записи розмов у веб-хуках CRM) | `http://localhost:8000` |
+| `MAIL_REPORT_RECIPIENTS` | Одержувачі щоденного звіту про найдовші дзвінки через кому; порожнє значення вимикає звіт | — |
+| `MAIL_REPORT_LIMIT` | Кількість рядків у таблиці найдовших дзвінків | `10` |
+| `EMAIL_HOST` | SMTP-сервер для вихідної пошти; без нього листи друкуються у stdout, а не надсилаються | — |
+| `EMAIL_PORT` | Порт SMTP | `25` |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | Облікові дані SMTP | — |
+| `EMAIL_USE_TLS` / `EMAIL_USE_SSL` | Шифрування SMTP (взаємовиключні) | `False` |
+| `EMAIL_TIMEOUT` | Таймаут з'єднання SMTP, секунди | `30` |
+| `DEFAULT_FROM_EMAIL` | Адреса відправника вихідної пошти | `pearlpbx2@localhost` |
 
 ---
 
@@ -961,6 +969,28 @@ python manage.py drf_create_token <username>
   `RETENTION_DAYS` (типово 14 днів). Конфігурація — `/etc/PearlPBX/backup_asterisk/env`
   (шаблон `backup_asterisk.env.j2`); опційно можна вказати `SLACK_WEBHOOK_URL` для сповіщення
   про збій.
+
+### Звіт про найдовші дзвінки
+
+Щоденний лист зі списком найдовших дзвінків за попередню добу та посиланням на запис кожного
+дзвінка.
+
+Налаштуйте `MAIL_REPORT_RECIPIENTS` (через кому) та змінні `EMAIL_*` (див.
+[Конфігурація через змінні середовища](#4-конфігурація-через-змінні-середовища)); порожній
+`MAIL_REPORT_RECIPIENTS` вимикає звіт і не встановлює його cron-завдання. Переконайтеся, що
+`PEARLPBX_PUBLIC_URL` вказує на зовнішньо доступний URL, інакше посилання на записи в листі
+вестимуть на `http://localhost:8000`.
+
+Ansible-інсталяція налаштовує щоденне cron-завдання `pearlpbx2_mail_report` о 06:00 (після того,
+як `syncmp3`/`wav2mp3_monitor` перенесли й конвертували записи).
+
+Запустити вручну:
+
+```bash
+/usr/local/PearlPBX2/manage.sh mail_report --dry-run                  # перегляд без відправки
+/usr/local/PearlPBX2/manage.sh mail_report --to=you@example.com       # надіслати на конкретну адресу
+/usr/local/PearlPBX2/manage.sh mail_report --date=2026-08-25 --limit=20
+```
 
 ### Міграція з PearlPBX1
 

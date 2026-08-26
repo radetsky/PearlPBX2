@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Daily "longest calls" email report** — `python manage.py mail_report` sends a top-N table of the previous day's longest calls, with a link to each call's recording, to `MAIL_REPORT_RECIPIENTS`. Query logic lives in `apps/reports/services/longest_calls.py` (de-duplicates CDR legs sharing a `uniqueid`, keeping the longest); new `EMAIL_*`/`MAIL_REPORT_*` settings in `pbx/settings.py`; new Ansible cron task `pearlpbx2_mail_report` (daily at 06:00, installed only when `pearlpbx2_mail_report_recipients` is set).
+
+### Fixed
+
+- **`AudioFileByUniqueidView` returned HTTP 500 for every request** — it was missing from `ReportViewPermissionMixin.VIEW_PERMISSION_MAPPING` (`apps/reports/mixins.py`), so `get_permission_required()` always raised `ImproperlyConfigured` regardless of the caller's permissions. Found while wiring recording links into the new `mail_report` command.
+
 ## [2.7.2] - 2026-08-23
 
 ### Added

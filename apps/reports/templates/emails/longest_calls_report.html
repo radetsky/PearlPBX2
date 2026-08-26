@@ -1,0 +1,52 @@
+{% load i18n %}{% load form_extras %}{% get_current_language as LANGUAGE_CODE %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+<meta charset="utf-8">
+<title>{% blocktrans with formatted_date=report_date|date:"d.m.Y" %}Longest calls for {{ formatted_date }}{% endblocktrans %}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f4;">
+<tr>
+<td align="center" style="padding:16px;">
+<table role="presentation" width="800" cellpadding="0" cellspacing="0" border="0" style="max-width:800px; width:100%; background-color:#ffffff;">
+<tr>
+<td style="padding:16px 20px; font-family:Arial,Helvetica,sans-serif;">
+<h2 style="margin:0 0 12px 0; font-size:18px; color:#222222;">
+{% blocktrans with formatted_date=report_date|date:"d.m.Y" %}Longest calls for {{ formatted_date }}{% endblocktrans %}
+</h2>
+
+{% if rows %}
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" border="0" style="border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:13px;">
+<tr>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "Date and time" %}</th>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "From" %}</th>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "To" %}</th>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "Channel" %}</th>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "Duration" %}</th>
+<th align="left" style="border:1px solid #dddddd; background-color:#f0f0f0; padding:8px;">{% trans "Recording" %}</th>
+</tr>
+{% for row in rows %}
+<tr>
+<td style="border:1px solid #dddddd; padding:8px;">{{ row.start|date:"d.m.Y H:i:s" }}</td>
+<td style="border:1px solid #dddddd; padding:8px;">{{ row.src }}</td>
+<td style="border:1px solid #dddddd; padding:8px;">{{ row.dst }}</td>
+<td style="border:1px solid #dddddd; padding:8px;">{{ row.channel|format_channel }}</td>
+<td style="border:1px solid #dddddd; padding:8px;">{{ row.duration|duration_hms }}</td>
+<td style="border:1px solid #dddddd; padding:8px;">
+{% if row.recording_url %}<a href="{{ row.recording_url }}" style="color:#1a73e8;">{% trans "Listen" %}</a>{% else %}&mdash;{% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+{% else %}
+<p style="font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#555555;">{% trans "No calls found for this period." %}</p>
+{% endif %}
+
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>

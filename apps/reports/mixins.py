@@ -12,6 +12,7 @@ class ReportViewPermissionMixin(PermissionRequiredMixin):
         "CDRReportView": "view_cdr_report",
         "MonitorReportView": "view_call_recordings",
         "AudioFileView": "view_call_recordings",
+        "AudioFileByUniqueidView": "view_call_recordings",
         "QueueLogReportView": "view_queue_reports",
         "QueueLogRecordsByCallIdView": "view_queue_reports",
         "CallbackNumberReportView": "view_callback_statistics",
