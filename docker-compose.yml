@@ -18,6 +18,7 @@ services:
       - ASTERISK_MANAGER_BIND=0.0.0.0
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DEVMODE=${DEVMODE:-Development}
+      - PEARLPBX2_DOCKER=1
       - ALLOWED_HOSTS=localhost,127.0.0.1,django
       - ASTERISK_CONFIG_DIR=/etc/asterisk
       - ASTERISK_ROOT_DIR=/
@@ -25,6 +26,12 @@ services:
     volumes:
       - asterisk_config:/etc/asterisk
       - asterisk_lib:/var/lib/asterisk
+      # The andrius/asterisk:22 image declares /var/lib/asterisk/sounds as its
+      # own VOLUME, which shadows this subpath from the broader asterisk_lib
+      # mount above with a separate anonymous volume inside the asterisk
+      # container — so sound files written here were invisible to Asterisk.
+      # Mounting a named volume at the exact same subpath takes it back over.
+      - asterisk_sounds:/var/lib/asterisk/sounds
       - asterisk_spool:/var/spool/asterisk
     restart: unless-stopped
     networks:
@@ -33,6 +40,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      asterisk:
         condition: service_healthy
 
   # Seeds Asterisk config that must exist before its first boot into the
@@ -44,6 +53,9 @@ services:
   #  - modules.conf (res_crypto.so): the image's own healthcheck.sh
   #    requires this module, but the image's own default modules.conf
   #    doesn't load it. No-op once already patched.
+  #  - core sounds (asterisk-core-sounds-en-gsm): the image ships with an
+  #    empty /var/lib/asterisk/sounds, no standard prompts at all. No-op
+  #    once already downloaded.
   asterisk-init:
     image: alpine:3.20
     container_name: pearlpbx2-asterisk-init
@@ -54,6 +66,7 @@ services:
       - ASTERISK_MANAGER_SECRET=${ASTERISK_MANAGER_SECRET:-admin}
     volumes:
       - asterisk_config:/etc/asterisk
+      - asterisk_sounds:/var/lib/asterisk/sounds
       - ./docker/asterisk-bootstrap.sh:/asterisk-bootstrap.sh:ro
     command: ["sh", "/asterisk-bootstrap.sh"]
     networks:
@@ -66,10 +79,18 @@ services:
       - "5060:5060/udp"
       - "5060:5060/tcp"
       - "10000-10099:10000-10099/udp"
+      - "8088:8088/tcp"
     volumes:
       - asterisk_config:/etc/asterisk
       - asterisk_lib:/var/lib/asterisk
+      - asterisk_sounds:/var/lib/asterisk/sounds
       - asterisk_spool:/var/spool/asterisk
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show channels count"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - pearlpbx
@@ -190,4 +211,5 @@ volumes:
   redis_data:
   asterisk_config:
   asterisk_lib:
+  asterisk_sounds:
   asterisk_spool:

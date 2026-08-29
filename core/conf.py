@@ -443,7 +443,7 @@ def __make_pjsip_conf_webrtc_user(user: SIPUser):
     result = "; ==== WebRTC user ====\n"
     result += f"[{user.username}](webrtc-template-endpoint)\n"
     result += "type=endpoint\n"
-    result += f"context={user.username}\n"
+    result += f"context={user.routing_table.name}\n"
     result += f"transport={user.transport.name}\n"
     result += f"auth={user.username}\n"
     result += f"aors={user.username}\n"

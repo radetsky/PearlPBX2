@@ -20,6 +20,11 @@ DEVMODE_PRODUCTION = "Production"  # Production server
 DEVMODE_STAGING = "Staging"  # Staging server
 DEVMODE = env.str("DEVMODE", "Development")
 
+# Set by docker-compose.yml. Distinguishes the Docker Asterisk image (which
+# lacks a codec_opus.so translator — see seed_quickstart's WebRTC user
+# seeding) from a bare-metal/Ansible install, where Opus is expected to work.
+PEARLPBX2_DOCKER = env.bool("PEARLPBX2_DOCKER", default=False)
+
 DEBUG = False
 SECRET_KEY = env.str("DJANGO_SECRET_KEY", "")  # generate with: openssl rand -hex 50
 

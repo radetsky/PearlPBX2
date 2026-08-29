@@ -1,5 +1,7 @@
 import os
+import secrets
 import shutil
+import string
 
 from django.conf import settings
 from django.core.files import File
@@ -98,8 +100,9 @@ OUTBOUND_EXTERNAL_EXTENSIONS = {
 class Command(BaseCommand):
     help = (
         "Seed demo Sales/Support queues, an example inbound IVR (1=Sales, 2=Support), "
-        "an example SIP trunk, and Incoming/Outgoing routing tables. Intended to run "
-        "exactly once, on a fresh install — see --force to re-run on a populated DB."
+        "an example SIP trunk, Incoming/Outgoing routing tables, and 10 'webrtcuser*' "
+        "WebRTC (wss) SIP users each with a random password. Intended to run exactly once, "
+        "on a fresh install — see --force to re-run on a populated DB."
     )
 
     def add_arguments(self, parser):
@@ -132,8 +135,9 @@ class Command(BaseCommand):
                 "Dry run: would seed MOH, queue announcements, Sales/Support queues, "
                 "the welcome-quickstart sound file, the example 'myprovider' trunk, "
                 "the ivr-main/quickstart-services/outbound-external dialplan contexts, "
-                "the Incoming/Outgoing routing tables, TRANSFER_CONTEXT, and move all "
-                "SIP users onto the Outgoing routing table."
+                "the Incoming/Outgoing routing tables, TRANSFER_CONTEXT, a WebRTC (wss) "
+                "transport and 10 'webrtcuser*' SIP users each with a random password, "
+                "and move all SIP users onto the Outgoing routing table."
             )
             return
 
@@ -146,6 +150,7 @@ class Command(BaseCommand):
             incoming = self._get_or_create_routing_table("Incoming")
             outgoing = self._get_or_create_routing_table("Outgoing")
             self._seed_trunk(transport, incoming)
+            self._seed_webrtc_users(outgoing)
             self._seed_dialplan()
             self._seed_routing_records(incoming, outgoing)
             self._seed_globals()
@@ -305,6 +310,67 @@ class Command(BaseCommand):
             self.stdout.write("Created example SIP trunk 'myprovider'")
         return peer
 
+    def _get_or_create_wss_transport(self):
+        transport, created = SIPTransport.objects.get_or_create(
+            name="transport-wss",
+            defaults={
+                "description": "WebRTC (wss) transport",
+                "protocol": "wss",
+                "bind": "0.0.0.0",
+            },
+        )
+        if created:
+            self.stdout.write("Created WebRTC transport 'transport-wss'")
+        return transport
+
+    def _next_free_extension(self, start):
+        taken = set(SIPUser.objects.values_list("extension", flat=True))
+        ext = start
+        while str(ext) in taken:
+            ext += 1
+        return str(ext)
+
+    def _seed_webrtc_users(self, outgoing, count=10):
+        transport = self._get_or_create_wss_transport()
+
+        # The andrius/asterisk:22 Docker image has no codec_opus.so
+        # translator (only the runtime lib and the SDP attribute module), so
+        # negotiating opus there fails every Playback() with "Unable to find
+        # a codec translation path". g722/ulaw both have working translators
+        # in that image. A bare-metal/Ansible install is expected to have
+        # Opus compiled in, so its seeded users keep Settings.webrtc_template
+        # 's default allow list (opus first) untouched.
+        custom_settings = (
+            "disallow=all\nallow=g722,ulaw,vp9,vp8,h264\n"
+            if settings.PEARLPBX2_DOCKER
+            else ""
+        )
+
+        for i in range(1, count + 1):
+            username = "webrtcuser" if i == 1 else f"webrtcuser{i}"
+            if SIPUser.objects.filter(username=username).exists():
+                continue
+
+            secret = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(16)
+            )
+            SIPUser.objects.create(
+                name=f"WebRTC Test User {i}",
+                username=username,
+                secret=secret,
+                transport=transport,
+                extension=self._next_free_extension(211),
+                routing_table=outgoing,
+                auth_type="md5",
+                custom_settings=custom_settings,
+            )
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Created WebRTC test user '{username}' with password '{secret}' "
+                    "(run 'manage.py export_sip_test_accounts' to retrieve it again later)"
+                )
+            )
+
     def _seed_context(self, name, description, extensions):
         context, created = DialplanContext.objects.get_or_create(
             name=name, defaults={"description": description}
@@ -347,14 +413,19 @@ class Command(BaseCommand):
         services = DialplanContext.objects.get(name="quickstart-services")
         outbound_external = DialplanContext.objects.get(name="outbound-external")
         local_services = DialplanContext.objects.filter(name="local-services").first()
-        local_users = DialplanContext.objects.filter(name="pearlpbx-local-users").first()
+        # The per-user context SIPUser.save() maintains automatically (one
+        # "Dial(PJSIP/<actual username>, ...)" extension per user) — not
+        # "pearlpbx-local-users", which hardcodes a "ppbxuser${EXTEN}" Dial
+        # target and only ever worked for users literally named that way.
+        local_users = DialplanContext.getUsersOrCreateUsers()
         international = DialplanContext.objects.filter(name="international-calls").first()
 
-        records = [("Quick-start Sales/Support", "_14X", services)]
+        records = [
+            ("Quick-start Sales/Support", "_14X", services),
+            ("PearlPBX Local Users", "_2XX", local_users),
+        ]
         if local_services:
             records.append(("Local Services", "_13X", local_services))
-        if local_users:
-            records.append(("PearlPBX Local Users", "_2XX", local_users))
         if international:
             records.append(("Disable international calls", "_00X!", international))
         records.append(("Outbound external calls", "_X.", outbound_external))
@@ -389,7 +460,9 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(
             "Seeded numbering plan: 130-132 (echo/queue login/logout), "
-            "140 (IVR test), 141 (Sales), 142 (Support), 201-210 (users)"
+            "140 (IVR test), 141 (Sales), 142 (Support), 201-210 (users), "
+            "'webrtcuser'/'webrtcuser2'..'webrtcuser10' (extensions 211-220) on "
+            "transport-wss (see the WebRTC test user log lines above for their passwords)"
         )
         self.stdout.write(
             "Run 'manage.py export_sip_test_accounts' to get the 201-210 SIP passwords."
