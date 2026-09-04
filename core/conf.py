@@ -13,6 +13,7 @@ from core.models import (
     SIPTransport,
     SIPUser,
     Settings,
+    DEFAULT_LOCAL_USERS_DIAL_TEMPLATE,
     DialplanContext,
     DialplanExtension,
     DialplanMacro,
@@ -772,10 +773,55 @@ def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
     return (literal_count, -wildcard_count, length, -is_xbang)
 
 
+def make_local_users_context():
+    """
+    Generate the PEARLPBX-Users context live from active SIPUsers — one
+    literal "{extension} => { ... }" entry per user, no pattern matching.
+    Replaces the old approach of maintaining this context via DialplanExtension
+    rows written as a SIPUser.save()/delete() side effect (which missed users
+    created through Django migrations, whose historical models bypass custom
+    save() logic entirely).
+    """
+    context_name = settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+
+    settings_obj = Settings.objects.first()
+    template = (
+        settings_obj.local_users_dial_template
+        if settings_obj and settings_obj.local_users_dial_template
+        else DEFAULT_LOCAL_USERS_DIAL_TEMPLATE
+    )
+
+    excluded_ids = get_users_excluded_from_pjsip().values_list("pk", flat=True)
+    users = (
+        SIPUser.objects.exclude(pk__in=excluded_ids)
+        .exclude(extension__isnull=True)
+        .order_by("extension")
+    )
+
+    plaintext = "// ==== Auto-generated per-user local dial context ====\n"
+    plaintext += f"context {context_name} " + "{\n"
+    for user in users:
+        body = template.replace("${SIPUser.username}", user.username).replace("\r", "")
+        plaintext += f"    // Extension for {user.username}\n"
+        plaintext += f"    {user.extension} => " + "{\n"
+        plaintext += textwrap.indent(body, " " * 8)
+        if not body.endswith("\n"):
+            plaintext += "\n"
+        plaintext += "    }\n"
+    plaintext += "}\n"
+    return plaintext
+
+
 def make_dialplan_contexts():
     plaintext = "// ==== Printing data of dialplan contexts in PBX admin panel ====\n"
     plaintext += "// ==== Dialplan contexts ====\n"
-    for context in DialplanContext.objects.all():
+    # PEARLPBX_DEFAULT_ROUTING_RECORD ("PEARLPBX-Users") is rendered by
+    # make_local_users_context() instead — generated live from SIPUser data,
+    # not from stored DialplanExtension rows. Skip it here so it isn't
+    # rendered twice.
+    for context in DialplanContext.objects.exclude(
+        name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+    ):
         plaintext += f"// {context.description}\n"
         plaintext += f"context {context.name} {{\n"
         # Get all extensions for this context and sort them
@@ -845,6 +891,7 @@ def make_extensions_ael():
     plaintext += make_dialplan_globals()
     plaintext += make_dialplan_macros()
     plaintext += make_routing_tables()
+    plaintext += make_local_users_context()
     plaintext += make_dialplan_contexts()
     return plaintext
 

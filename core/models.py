@@ -7,7 +7,6 @@ import os
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
-from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinValueValidator,
@@ -17,7 +16,6 @@ from django.core.validators import (
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from collections.abc import Iterable
 from typing import Optional
 
 from hashlib import md5
@@ -445,59 +443,6 @@ class SIPUser(models.Model):
     def standard_pjsip_user(self):
         return f"PJSIP/{self.username}"
 
-    @property
-    def standard_extension(self):
-        return f"Dial({self.standard_pjsip_user}, 120, rtT);"
-
-    @transaction.atomic
-    def save(
-        self,
-        force_insert: bool = False,
-        force_update: bool = False,
-        using: Optional[str] = None,
-        update_fields: Optional[Iterable[str]] = None,
-    ) -> None:
-        if not self.pk:
-            default_users_context = DialplanContext.getUsersOrCreateUsers()
-            DialplanExtension.objects.create(
-                context=default_users_context,
-                ext=self.extension,
-                dialplan=self.custom_extension or self.standard_extension,
-                description=f"Extension for {self.username}",
-            )
-        else:
-            previous_extension = self.__class__.objects.get(pk=self.pk).extension
-            default_users_context = DialplanContext.getUsersOrCreateUsers()
-            try:
-                exten = DialplanExtension.objects.get(
-                    context=default_users_context, ext=previous_extension
-                )
-                exten.ext = self.extension
-                exten.dialplan = self.custom_extension or self.standard_extension
-                exten.description = f"Extension for {self.username}"
-                exten.save()
-            except DialplanExtension.DoesNotExist:
-                DialplanExtension.objects.create(
-                    context=default_users_context,
-                    ext=self.extension,
-                    dialplan=self.custom_extension or self.standard_extension,
-                    description=f"Extension for {self.username}",
-                )
-
-        return super().save(
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-            update_fields=update_fields,
-        )
-
-    def delete(self, *args, **kwargs):
-        default_users_context = DialplanContext.getUsersOrCreateUsers()
-        DialplanExtension.objects.filter(
-            context=default_users_context, ext=self.extension
-        ).delete()
-        return super().delete(*args, **kwargs)
-
     def __str__(self):
         return f"{self.username} ({self.name})"
 
@@ -779,6 +724,19 @@ class ManagerUsers(models.Model):
         verbose_name_plural = _("95. Manager users")
 
 
+# Default body for Settings.local_users_dial_template. Shared with
+# core.conf.make_local_users_context() as its fallback when no Settings row
+# exists or the field is blank.
+DEFAULT_LOCAL_USERS_DIAL_TEMPLATE = """NoOp(CALL BEGIN >>>> :'${CALLERID(name)}'@<${CALLERID(num)}>);
+Set(CHANNEL(language)=ua);
+Set(TIMEOUT(absolute)=3600);
+&callerid_normalization();
+AGI(agi://127.0.0.1:4573/mixmonitor,${CALLERID(num)},${EXTEN});
+Dial(PJSIP/${SIPUser.username},120,rtT);
+Hangup();
+"""
+
+
 class Settings(models.Model):
     ip_addr_for_provisioning = models.GenericIPAddressField(
         null=True,
@@ -877,6 +835,18 @@ auth_type=md5
 """,
         verbose_name=_("WebRTC auth template"),
         help_text=_("You may override it by custom settings in user form"),
+    )
+
+    local_users_dial_template = models.TextField(
+        default=DEFAULT_LOCAL_USERS_DIAL_TEMPLATE,
+        verbose_name=_("Local users dial template"),
+        help_text=_(
+            "AEL body used by core.conf.make_local_users_context() for every active "
+            "SIP user's extension in the auto-generated PEARLPBX-Users context. The "
+            "placeholder ${SIPUser.username} is substituted per user before rendering; "
+            "all other ${...} variables (${EXTEN}, ${CALLERID(...)}, etc.) are native "
+            "Asterisk variables and pass through unchanged."
+        ),
     )
 
     def save(self, *args, **kwargs):

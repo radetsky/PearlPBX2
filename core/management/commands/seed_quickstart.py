@@ -413,8 +413,8 @@ class Command(BaseCommand):
         services = DialplanContext.objects.get(name="quickstart-services")
         outbound_external = DialplanContext.objects.get(name="outbound-external")
         local_services = DialplanContext.objects.filter(name="local-services").first()
-        # The per-user context SIPUser.save() maintains automatically (one
-        # "Dial(PJSIP/<actual username>, ...)" extension per user) — not
+        # The context core.conf.make_local_users_context() renders live from
+        # SIPUser data (one literal extension per active user) — not
         # "pearlpbx-local-users", which hardcodes a "ppbxuser${EXTEN}" Dial
         # target and only ever worked for users literally named that way.
         local_users = DialplanContext.getUsersOrCreateUsers()
