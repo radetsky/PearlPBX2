@@ -19,9 +19,11 @@ python manage.py drf_create_token <username>
 
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
-**Виняток:** кожен метод на `/api/v1/sip-users/`, включно з `GET`, вимагає
-обліковий запис staff або superuser — див. [SIP Users](#sip-users) нижче.
-Дійсний токен звичайного користувача отримає `403 Forbidden` на цьому ресурсі.
+**Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/` та
+`/api/v1/sip-peers/`, включно з `GET`, вимагає обліковий запис staff або
+superuser — див. [SIP Users](#sip-users), [SIP Transports](#sip-transports)
+та [SIP Peers](#sip-peers) нижче. Дійсний токен звичайного користувача отримає
+`403 Forbidden` на цих ресурсах.
 
 ## Загальний формат відповіді
 
@@ -368,6 +370,226 @@ staff або superuser**; дійсний токен звичайного кор�
 
 ---
 
+## SIP Transports
+
+Керує PJSIP-транспортами. Як і [SIP Users](#sip-users), **кожен метод цього
+ресурсу — включно з `GET` — вимагає обліковий запис staff або superuser**;
+`cert_file` та `priv_key_file` містять матеріал TLS-сертифіката/приватного
+ключа у відкритому вигляді.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `cert_file`,
+`priv_key_file` та `ca_list_file` містять **вміст** PEM, а не шляхи до
+файлів — вони записуються на диск у каталог сертифікатів Asterisk лише під
+час "Apply Changes", і лише для транспорту з `protocol` `"tls"`.
+
+Зміна `protocol` у транспорту, який вже використовується, перегенеровує
+конфігурацію кожного приєднаного `SIPUser` і робить недійсним його
+`md5_cred` (він обчислюється з `protocol-username`). Видалення останнього
+`wss`-транспорту вимикає шаблони WebRTC-конфігурації для кожного
+WebRTC-користувача. Видалення транспорту, на який ще посилається `SIPUser`
+або `SIPPeer`, повертає `409 Conflict` замість помилки на рівні бази даних.
+
+### GET `/api/v1/sip-transports/`
+
+Повертає транспорти зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?protocol=<udp|tcp|tls|wss>` — фільтр за протоколом
+- `?search=<текст>` — пошук без урахування регістру за `name`, `description`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "transport-udp",
+      "description": "UDP transport",
+      "protocol": "udp",
+      "bind": "0.0.0.0:5060",
+      "local_nets": "10.0.0.0/16, 192.168.0.0/24",
+      "external_media_address": null,
+      "external_signaling_address": null,
+      "method": "default",
+      "verify_server": false,
+      "allow_reload": true,
+      "cert_file": "",
+      "priv_key_file": "",
+      "ca_list_file": "",
+      "has_tls_material": false,
+      "sip_users_count": 3,
+      "sip_peers_count": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`sip_users_count`/`sip_peers_count` — це кількість рядків `SIPUser`/`SIPPeer`
+на цьому транспорті (ті самі рядки, що блокують `DELETE`). `has_tls_material`
+дорівнює `true`, якщо заповнено хоча б одне з трьох полів сертифіката.
+
+### POST `/api/v1/sip-transports/`
+
+Створити транспорт.
+
+**Тіло запиту:**
+```json
+{
+  "name": "transport-udp-nat",
+  "protocol": "udp",
+  "bind": "0.0.0.0:5060",
+  "description": "UDP + NAT for remote users"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | літери/цифри/підкреслення/дефіси, унікальне, використовується як назва секції в `pjsip.conf` |
+| `protocol` | ні | `udp` (за замовчуванням), `tcp`, `tls`, `wss` |
+| `bind` | ні | `<ipv4>` або `<ipv4>:<port>`, за замовчуванням `0.0.0.0`; порт має бути 1024-65535 |
+| `description` | ні | один рядок, без `\n`/`\r` — записується як коментар у `pjsip.conf` |
+| `local_nets` | ні | мережі CIDR через кому, напр. `10.0.0.0/16, 192.168.0.0/24`; порожнє значення зберігається як `null` |
+| `external_media_address`, `external_signaling_address` | ні | IP-адреси |
+| `method`, `verify_server`, `allow_reload`, `cert_file`, `priv_key_file`, `ca_list_file` | ні | діють лише коли `protocol` дорівнює `tls` |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом транспорту, або `400`, якщо
+`name` вже зайняте чи не пройшло валідацію.
+
+### PATCH `/api/v1/sip-transports/<id>/`
+
+Часткове оновлення транспорту. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-transports/<id>/`
+
+Видалити транспорт. Повертає `204 No Content`, або `409 Conflict` із
+переліком рядків `SIPUser`/`SIPPeer`, що досі використовують цей транспорт.
+
+---
+
+## SIP Peers
+
+Керує SIP-транками/аплінками. Як і [SIP Users](#sip-users), **кожен метод
+цього ресурсу — включно з `GET` — вимагає обліковий запис staff або
+superuser**; цей ресурс надає доступ до облікових даних для дзвінків
+(відкритий `secret` та обчислений `md5_cred`).
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. Пір, збережений
+без `transport` або без `routing_table`, згенерує неповний запис у
+`pjsip.conf` (секція `[auth]` без `[endpoint]`/`[aor]`), тому обидва поля тут
+обов'язкові. Якщо встановлено `registration_there`, `registration_uri` та
+`username` також обов'язкові.
+
+Видалення піра, що досі належить до `TrunkGroup`, повертає `409 Conflict`
+замість мовчазного зменшення групи.
+
+### GET `/api/v1/sip-peers/`
+
+Повертає піри зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?routing_table=<id>` — фільтр за таблицею маршрутизації
+- `?search=<текст>` — пошук без урахування регістру за `name`, `description`, `username`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 5,
+      "name": "myprovider",
+      "description": "SIP trunk provider",
+      "username": "trunkuser",
+      "contact_user": "",
+      "auth_type": "userpass",
+      "secret": "s3cret123",
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "registration_uri": "reg.provider.com:5060",
+      "contact_uri": "",
+      "match_hosts": "",
+      "registration_here": false,
+      "registration_there": true,
+      "nat": false,
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "custom_identify_settings": "",
+      "auth_realm": "reg.provider.com",
+      "md5_cred": "a1b2c3...",
+      "trunk_groups": ["main-trunks"],
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`registration_here`/`registration_there` відповідають полям моделі
+`registrationHere`/`registrationThere`. `auth_realm` та `md5_cred` — це
+облікові дані RFC 2617 HA1, обчислені з `username`/`auth_realm`/`secret` —
+`auth_realm` це хост-частина `registration_uri`, або `"asterisk"`, якщо його
+не вказано. `trunk_groups` містить назви `TrunkGroup`, до яких належить цей
+пір; видалення піра, що належить хоча б до однієї групи, буде відхилено
+(див. вище).
+
+### POST `/api/v1/sip-peers/`
+
+Створити пір.
+
+**Тіло запиту:**
+```json
+{
+  "name": "myprovider",
+  "description": "SIP trunk provider",
+  "username": "trunkuser",
+  "secret": "s3cret123",
+  "auth_type": "userpass",
+  "transport": 1,
+  "routing_table": 1,
+  "registration_there": true,
+  "registration_uri": "reg.provider.com:5060"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | 3+ символи, лише літери/цифри, унікальне, використовується як назва секції в `pjsip.conf` |
+| `description` | так | один рядок, без `\n`/`\r` |
+| `transport` | так | ID існуючого `SIPTransport` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+| `username`, `contact_user` | ні | літери/цифри/дефіси/крапки/підкреслення |
+| `auth_type` | ні | `userpass` (за замовчуванням) або `md5` |
+| `secret` | ні | пароль SIP у відкритому вигляді |
+| `registration_uri`, `contact_uri` | ні | `host[:port]`; обов'язкові, якщо `registration_there` дорівнює `true` |
+| `match_hosts` | ні | хости/IP через кому, без портів |
+| `registration_here` | ні | за замовчуванням `false` — пір реєструється у нас (шлюзи GSM/E1/T1/FXS/FXO) |
+| `registration_there` | ні | за замовчуванням `false` — ми реєструємось у піра (провайдери); вимагає `registration_uri` та `username` |
+| `nat` | ні | за замовчуванням `false` |
+| `custom_auth_settings`, `custom_aor_settings`, `custom_identify_settings` | ні | сирі фрагменти `pjsip.conf`, записуються дослівно |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом піра, або `400`, якщо `name`
+вже зайняте чи не пройшло валідацію.
+
+### PATCH `/api/v1/sip-peers/<id>/`
+
+Часткове оновлення піра. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-peers/<id>/`
+
+Видалити пір. Повертає `204 No Content`, або `409 Conflict` із переліком
+`TrunkGroup`, до яких він досі належить.
+
+---
+
 ## Ініціювання дзвінка (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -546,7 +768,9 @@ curl -H "Authorization: Token <ваш-токен>" \
 ## Відомі обмеження
 
 - Немає фільтрації чи пошуку на GET-ендпоінтах, окрім `/api/v1/sip-users/`
-  (`?username=`, `?extension=`, `?search=`).
+  (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
+  (`?name=`, `?protocol=`, `?search=`) та `/api/v1/sip-peers/`
+  (`?name=`, `?routing_table=`, `?search=`).
 
 ---
 

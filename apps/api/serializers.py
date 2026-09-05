@@ -1,4 +1,6 @@
+import ipaddress
 import random
+import re
 
 from django.conf import settings
 
@@ -7,12 +9,20 @@ from rest_framework.validators import UniqueValidator
 from drf_spectacular.utils import extend_schema_field
 
 from apps.api.models import CustomListNames, CustomListEntries
-from core.models import Blacklist, Whitelist, Contact, SIPUser
+from core.models import Blacklist, Whitelist, Contact, SIPUser, SIPTransport, SIPPeer
 from core.validators import (
     validate_asterisk_interface,
     validate_alphanumeric,
+    validate_sip_username,
     min3len,
 )
+
+
+def _reject_line_breaks(value):
+    """Guard against values interpolated into a single pjsip.conf comment line."""
+    if value and re.search(r"[\r\n]", value):
+        raise serializers.ValidationError("Must not contain line breaks.")
+    return value
 
 
 class CustomListNameSerializer(serializers.ModelSerializer):
@@ -133,6 +143,11 @@ class SIPUserSerializer(serializers.ModelSerializer):
             "routing_table": {"required": True, "allow_null": False},
         }
 
+    def validate_name(self, value):
+        # core.conf.py interpolates name verbatim into a callerid=/comment
+        # line; a line break would let it inject a second pjsip.conf directive.
+        return _reject_line_breaks(value)
+
     @staticmethod
     def _if_transport(obj, value_fn):
         """obj.realm/obj.md5_cred raise if obj.transport is None (core.models.SIPUser)."""
@@ -149,6 +164,183 @@ class SIPUserSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_md5_cred(self, obj):
         return self._if_transport(obj, lambda o: o.md5_cred)
+
+
+class SIPTransportSerializer(serializers.ModelSerializer):
+    """A PJSIP transport. Saving here only updates the database — changes reach
+    Asterisk after a superuser runs "Apply Changes" in the admin.
+
+    `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
+    they are written to disk under the Asterisk certificate directory only
+    when "Apply Changes" runs, and only for `protocol="tls"`.
+    """
+
+    local_nets = serializers.CharField(
+        max_length=256,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Comma-separated CIDR networks, e.g. '10.0.0.0/16, 192.168.0.0/24'.",
+    )
+    has_tls_material = serializers.SerializerMethodField()
+    # default=0 covers create(): the freshly saved instance isn't re-fetched
+    # through the view's annotated queryset, so the annotation is absent —
+    # correctly so, since nothing can reference a transport that was just created.
+    sip_users_count = serializers.IntegerField(read_only=True, default=0)
+    sip_peers_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = SIPTransport
+        fields = [
+            "id",
+            "name",
+            "description",
+            "protocol",
+            "bind",
+            "local_nets",
+            "external_media_address",
+            "external_signaling_address",
+            "method",
+            "verify_server",
+            "allow_reload",
+            "cert_file",
+            "priv_key_file",
+            "ca_list_file",
+            "has_tls_material",
+            "sip_users_count",
+            "sip_peers_count",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+
+    def validate_description(self, value):
+        return _reject_line_breaks(value)
+
+    def validate_local_nets(self, value):
+        # DB stores None for "no networks"; an API client sending "" would
+        # otherwise emit a bare "local_net = " line into pjsip.conf
+        # (core.conf.make_pjsip_conf_transports() only checks `is not None`).
+        if not value or not value.strip():
+            return None
+        networks = [n.strip() for n in value.split(",") if n.strip()]
+        for net in networks:
+            try:
+                ipaddress.ip_network(net, strict=False)
+            except ValueError:
+                raise serializers.ValidationError(
+                    f"'{net}' is not a valid IP network, e.g. 10.0.0.0/16."
+                )
+        return ",".join(networks)
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_has_tls_material(self, obj):
+        return bool(
+            (obj.cert_file or "").strip()
+            or (obj.priv_key_file or "").strip()
+            or (obj.ca_list_file or "").strip()
+        )
+
+
+class SIPPeerSerializer(serializers.ModelSerializer):
+    """A SIP trunk/uplink. Saving here only updates the database — changes
+    reach Asterisk after a superuser runs "Apply Changes" in the admin.
+    """
+
+    name = serializers.CharField(
+        max_length=32,
+        validators=[
+            validate_alphanumeric,
+            min3len,
+            UniqueValidator(queryset=SIPPeer.objects.all()),
+        ],
+    )
+    registration_here = serializers.BooleanField(source="registrationHere", required=False)
+    registration_there = serializers.BooleanField(source="registrationThere", required=False)
+    transport_name = serializers.CharField(source="transport.name", read_only=True)
+    routing_table_name = serializers.CharField(source="routing_table.name", read_only=True)
+    auth_realm = serializers.CharField(read_only=True)
+    md5_cred = serializers.CharField(read_only=True)
+    trunk_groups = serializers.SlugRelatedField(
+        many=True, read_only=True, slug_field="name"
+    )
+
+    class Meta:
+        model = SIPPeer
+        fields = [
+            "id",
+            "name",
+            "description",
+            "username",
+            "contact_user",
+            "auth_type",
+            "secret",
+            "transport",
+            "transport_name",
+            "routing_table",
+            "routing_table_name",
+            "registration_uri",
+            "contact_uri",
+            "match_hosts",
+            "registration_here",
+            "registration_there",
+            "nat",
+            "custom_auth_settings",
+            "custom_aor_settings",
+            "custom_identify_settings",
+            "auth_realm",
+            "md5_cred",
+            "trunk_groups",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Both FKs are nullable in the DB but a null value here leaves the
+            # peer half-generated (no [endpoint]/[aor] section, only [auth]) —
+            # see core.conf.__section_trunk_endpoint()/__section_trunk_aor() —
+            # so the API requires them, matching SIPPeerForm.
+            "transport": {"required": True, "allow_null": False},
+            "routing_table": {"required": True, "allow_null": False},
+        }
+
+    def validate_description(self, value):
+        return _reject_line_breaks(value)
+
+    def validate_username(self, value):
+        validate_sip_username(value)
+        return value
+
+    def validate_contact_user(self, value):
+        validate_sip_username(value)
+        return value
+
+    def validate(self, attrs):
+        # A peer registering to the remote side with no registration_uri/username
+        # is silently skipped by core.conf.__section_trunk_remote_registration()
+        # instead of erroring — catch it here instead.
+        registration_there = attrs.get(
+            "registrationThere", getattr(self.instance, "registrationThere", False)
+        )
+        if registration_there:
+            registration_uri = attrs.get(
+                "registration_uri", getattr(self.instance, "registration_uri", "")
+            )
+            username = attrs.get("username", getattr(self.instance, "username", ""))
+            errors = {}
+            if not (registration_uri or "").strip():
+                errors["registration_uri"] = (
+                    "Required when registration_there is true."
+                )
+            if not (username or "").strip():
+                errors["username"] = "Required when registration_there is true."
+            if errors:
+                raise serializers.ValidationError(errors)
+        return attrs
 
 
 class _CallOriginationFieldsSerializer(serializers.Serializer):

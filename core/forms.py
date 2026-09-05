@@ -216,6 +216,24 @@ class SIPPeerForm(forms.ModelForm):
 
         widgets = {"secret": PasswordWithToggleInput()}
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # core.conf.__section_trunk_remote_registration() silently skips the
+        # [registration] section (with only a log warning) when registration_uri
+        # or username is missing, instead of erroring — catch it here instead.
+        if cleaned_data.get("registrationThere"):
+            if not (cleaned_data.get("registration_uri") or "").strip():
+                self.add_error(
+                    "registration_uri",
+                    _("Required when \"Outbound registration\" is enabled."),
+                )
+            if not (cleaned_data.get("username") or "").strip():
+                self.add_error(
+                    "username",
+                    _("Required when \"Outbound registration\" is enabled."),
+                )
+        return cleaned_data
+
 
 class DialplanExtensionForm(forms.ModelForm):
     DIALPLAN_TEMPLATE = """

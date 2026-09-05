@@ -63,7 +63,7 @@ class AuditFields(models.Model):
         abstract = True
 
 
-class SIPTransport(models.Model):
+class SIPTransport(AuditFields):
     PROTOCOL_CHOICES = [
         ("udp", _("UDP")),
         ("tcp", _("TCP")),
@@ -159,8 +159,11 @@ class SIPTransport(models.Model):
     # various TLS specific options below:
     # cipher - do not use in UI "until it sleeps". Too many values. Users usually do not know it.
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("01. SIP Transports")
+
+    def __str__(self):
+        return self.name
 
 
 class DialplanGlobalVariable(models.Model):
@@ -450,7 +453,7 @@ class SIPUser(AuditFields):
         verbose_name_plural = _("02. SIP Users")
 
 
-class SIPPeer(models.Model):
+class SIPPeer(AuditFields):
     AUTHTYPE_CHOICES = [
         ("userpass", _("Plaintext")),
         ("md5", _("MD5")),
@@ -598,7 +601,7 @@ class SIPPeer(models.Model):
             f"{self.username}:{self.auth_realm}:{self.secret}".encode("utf-8")
         ).hexdigest()
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("03. SIP Uplinks and Peers")
 
     def __str__(self) -> str:

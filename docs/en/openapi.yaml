@@ -794,6 +794,432 @@ paths:
           description: Authentication credentials were not provided.
         '404':
           description: No recording exists for this uniqueid.
+  /api/v1/sip-peers/:
+    get:
+      operationId: sip_peers_list
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPPeerList'
+          description: ''
+    post:
+      operationId: sip_peers_create
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-peers/{id}/:
+    get:
+      operationId: sip_peers_retrieve
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+    put:
+      operationId: sip_peers_update
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_peers_partial_update
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_peers_destroy
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Peer deleted.
+        '409':
+          description: Peer is still a member of a trunk group.
+  /api/v1/sip-transports/:
+    get:
+      operationId: sip_transports_list
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPTransportList'
+          description: ''
+    post:
+      operationId: sip_transports_create
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-transports/{id}/:
+    get:
+      operationId: sip_transports_retrieve
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+    put:
+      operationId: sip_transports_update
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_transports_partial_update
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_transports_destroy
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Transport deleted.
+        '409':
+          description: Transport is still used by a SIP user or peer.
   /api/v1/sip-users/:
     get:
       operationId: sip_users_list
@@ -1353,6 +1779,24 @@ components:
       required:
       - id
       - name
+    MethodEnum:
+      enum:
+      - default
+      - tlsv1
+      - tlsv1_1
+      - tlsv1_2
+      - sslv2
+      - sslv3
+      - sslv23
+      type: string
+      description: |-
+        * `default` - The default as defined by PJSIP. This is currently TLSv1
+        * `tlsv1` - TLSv1
+        * `tlsv1_1` - TLSv1.1
+        * `tlsv1_2` - TLSv1.2
+        * `sslv2` - SSLv2
+        * `sslv3` - SSLv3
+        * `sslv23` - SSLv2.3
     NullEnum:
       enum:
       - null
@@ -1490,6 +1934,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedSIPPeerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPPeer'
+    PaginatedSIPTransportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPTransport'
     PaginatedSIPUserList:
       type: object
       required:
@@ -1594,6 +2084,213 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedSIPPeer:
+      type: object
+      description: |-
+        A SIP trunk/uplink. Saving here only updates the database — changes
+        reach Asterisk after a superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 32
+        description:
+          type: string
+          description: Describe a peer
+          maxLength: 64
+        username:
+          type: string
+          nullable: true
+          description: Username for the connection used for remote side
+          maxLength: 32
+        contact_user:
+          type: string
+          nullable: true
+          description: Contact user for registration (overrides username if set, e.g.
+            the part after / in user:pass@host/contact_user)
+          maxLength: 64
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        secret:
+          type: string
+          title: Password
+          description: Clear text password for the connection used for remote side
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        registration_uri:
+          type: string
+          nullable: true
+          title: Registration URI host[:port]
+          description: Host[:port] of the registration server (e.g. reg.provider.com:5060)
+          maxLength: 256
+        contact_uri:
+          type: string
+          nullable: true
+          title: Contact URI host[:port]
+          description: Host[:port] for AOR contact (e.g. sbc.provider.com:5061)
+          maxLength: 256
+        match_hosts:
+          type: string
+          nullable: true
+          description: Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com,
+            192.0.2.1)
+          maxLength: 512
+        registration_here:
+          type: boolean
+        registration_there:
+          type: boolean
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom peer [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom peer [aor] section
+        custom_identify_settings:
+          type: string
+          nullable: true
+          title: Identify Settings
+          description: 'Custom peer [identify] section body (after endpoint=), e.g.
+            match_header=Contact: 0001'
+        auth_realm:
+          type: string
+          readOnly: true
+        md5_cred:
+          type: string
+          readOnly: true
+        trunk_groups:
+          type: array
+          items:
+            type: string
+            title: Trunk Group Name
+            description: Name of the trunk group
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedSIPTransport:
+      type: object
+      description: |-
+        A PJSIP transport. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
+        they are written to disk under the Asterisk certificate directory only
+        when "Apply Changes" runs, and only for `protocol="tls"`.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: 'Example: transport-udp-nat'
+          maxLength: 32
+        description:
+          type: string
+          description: 'Example: UDP + NAT for remote users'
+          maxLength: 64
+        protocol:
+          $ref: '#/components/schemas/ProtocolEnum'
+        bind:
+          type: string
+          maxLength: 256
+        local_nets:
+          type: string
+          nullable: true
+          description: Comma-separated CIDR networks, e.g. '10.0.0.0/16, 192.168.0.0/24'.
+          maxLength: 256
+        external_media_address:
+          type: string
+          nullable: true
+          title: External RTP IP address
+          description: This is the external IP address to use in RTP handling
+        external_signaling_address:
+          type: string
+          nullable: true
+          title: External SIP IP address
+          description: This is much like the external_media_address setting, but for
+            SIP signaling instead of RTP media.
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        verify_server:
+          type: boolean
+          title: Verify server certificate
+          description: Require and verify the server TLS certificate (verify_server=yes)
+        allow_reload:
+          type: boolean
+          description: Allow transport to be reloaded (allow_reload=yes)
+        cert_file:
+          type: string
+        priv_key_file:
+          type: string
+        ca_list_file:
+          type: string
+        has_tls_material:
+          type: boolean
+          readOnly: true
+        sip_users_count:
+          type: integer
+          readOnly: true
+          default: 0
+        sip_peers_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedSIPUser:
       type: object
       description: |-
@@ -1722,6 +2419,18 @@ components:
           nullable: true
           description: Expiration date for the whitelist entry. If not set, the entry
             is permanent.
+    ProtocolEnum:
+      enum:
+      - udp
+      - tcp
+      - tls
+      - wss
+      type: string
+      description: |-
+        * `udp` - UDP
+        * `tcp` - TCP
+        * `tls` - TLS
+        * `wss` - WSS
     QueueMemberList:
       type: object
       description: Response shape of GET /api/v1/queues/members/.
@@ -1790,6 +2499,236 @@ components:
       - queue
       - state_interface
       - status
+    SIPPeer:
+      type: object
+      description: |-
+        A SIP trunk/uplink. Saving here only updates the database — changes
+        reach Asterisk after a superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 32
+        description:
+          type: string
+          description: Describe a peer
+          maxLength: 64
+        username:
+          type: string
+          nullable: true
+          description: Username for the connection used for remote side
+          maxLength: 32
+        contact_user:
+          type: string
+          nullable: true
+          description: Contact user for registration (overrides username if set, e.g.
+            the part after / in user:pass@host/contact_user)
+          maxLength: 64
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        secret:
+          type: string
+          title: Password
+          description: Clear text password for the connection used for remote side
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        registration_uri:
+          type: string
+          nullable: true
+          title: Registration URI host[:port]
+          description: Host[:port] of the registration server (e.g. reg.provider.com:5060)
+          maxLength: 256
+        contact_uri:
+          type: string
+          nullable: true
+          title: Contact URI host[:port]
+          description: Host[:port] for AOR contact (e.g. sbc.provider.com:5061)
+          maxLength: 256
+        match_hosts:
+          type: string
+          nullable: true
+          description: Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com,
+            192.0.2.1)
+          maxLength: 512
+        registration_here:
+          type: boolean
+        registration_there:
+          type: boolean
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom peer [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom peer [aor] section
+        custom_identify_settings:
+          type: string
+          nullable: true
+          title: Identify Settings
+          description: 'Custom peer [identify] section body (after endpoint=), e.g.
+            match_header=Contact: 0001'
+        auth_realm:
+          type: string
+          readOnly: true
+        md5_cred:
+          type: string
+          readOnly: true
+        trunk_groups:
+          type: array
+          items:
+            type: string
+            title: Trunk Group Name
+            description: Name of the trunk group
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - auth_realm
+      - created_at
+      - created_by
+      - id
+      - md5_cred
+      - modified_at
+      - modified_by
+      - name
+      - routing_table
+      - routing_table_name
+      - transport
+      - transport_name
+      - trunk_groups
+    SIPTransport:
+      type: object
+      description: |-
+        A PJSIP transport. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
+        they are written to disk under the Asterisk certificate directory only
+        when "Apply Changes" runs, and only for `protocol="tls"`.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: 'Example: transport-udp-nat'
+          maxLength: 32
+        description:
+          type: string
+          description: 'Example: UDP + NAT for remote users'
+          maxLength: 64
+        protocol:
+          $ref: '#/components/schemas/ProtocolEnum'
+        bind:
+          type: string
+          maxLength: 256
+        local_nets:
+          type: string
+          nullable: true
+          description: Comma-separated CIDR networks, e.g. '10.0.0.0/16, 192.168.0.0/24'.
+          maxLength: 256
+        external_media_address:
+          type: string
+          nullable: true
+          title: External RTP IP address
+          description: This is the external IP address to use in RTP handling
+        external_signaling_address:
+          type: string
+          nullable: true
+          title: External SIP IP address
+          description: This is much like the external_media_address setting, but for
+            SIP signaling instead of RTP media.
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        verify_server:
+          type: boolean
+          title: Verify server certificate
+          description: Require and verify the server TLS certificate (verify_server=yes)
+        allow_reload:
+          type: boolean
+          description: Allow transport to be reloaded (allow_reload=yes)
+        cert_file:
+          type: string
+        priv_key_file:
+          type: string
+        ca_list_file:
+          type: string
+        has_tls_material:
+          type: boolean
+          readOnly: true
+        sip_users_count:
+          type: integer
+          readOnly: true
+          default: 0
+        sip_peers_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - has_tls_material
+      - id
+      - modified_at
+      - modified_by
+      - sip_peers_count
+      - sip_users_count
     SIPUser:
       type: object
       description: |-

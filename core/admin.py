@@ -82,7 +82,7 @@ class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
     )
 
 
-class SIPPeerAdmin(admin.ModelAdmin):
+class SIPPeerAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = SIPPeerForm
     list_display = ("name", "description")
     ordering = ["name", "description"]
@@ -124,10 +124,11 @@ class SIPPeerAdmin(admin.ModelAdmin):
                 "classes": ["collapse"],
             },
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
 
 
-class SIPTransportAdmin(admin.ModelAdmin):
+class SIPTransportAdmin(AuditAdminMixin, admin.ModelAdmin):
     fieldsets = [
         (_("Generic"), {"fields": ["description", "name"]}),
         (
@@ -146,6 +147,7 @@ class SIPTransportAdmin(admin.ModelAdmin):
             _("TLS Settings (only if TLS protocol is used)"),
             {"fields": ["method", "verify_server", "allow_reload", "cert_file", "priv_key_file", "ca_list_file"]},
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
     list_display = ("name", "description")
     ordering = ["name", "description"]

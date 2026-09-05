@@ -20,6 +20,8 @@ from core.models import (
     MonitorFilenames,
     SIPUser,
     SIPTransport,
+    SIPPeer,
+    TrunkGroup,
     RoutingTable,
 )
 from apps.provision.models import PhoneDevice
@@ -548,6 +550,376 @@ class SIPUserApiTests(APITestCase):
         user = SIPUser.objects.get(pk=pk)
         self.assertEqual(user.created_by, self.staff_user)
         self.assertEqual(user.modified_by, other_staff)
+
+
+class SIPTransportApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="transport_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="transport_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "api-transport-udp",
+            "protocol": "udp",
+            "bind": "0.0.0.0:5063",
+            "description": "Created via API",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        # core.migrations.0016_first_users seeds transport-udp/transport-tcp,
+        # so the table is never truly empty — filter to a name that can't exist.
+        response = self.client.get("/api/v1/sip-transports/?name=does-not-exist")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/sip-transports/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/sip-transports/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "api-transport-udp")
+        self.assertEqual(response.data["sip_users_count"], 0)
+        self.assertEqual(response.data["sip_peers_count"], 0)
+        self.assertFalse(response.data["has_tls_material"])
+
+    def test_created_row_lands_in_generated_pjsip_conf(self):
+        from core.conf import make_pjsip_conf_transports
+
+        self.client.post("/api/v1/sip-transports/", self._payload(), format="json")
+        result = make_pjsip_conf_transports()
+        self.assertIn("[api-transport-udp]", result)
+        self.assertIn("bind = 0.0.0.0:5063", result)
+
+    def test_delete_in_use_returns_409(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        transport_id = create.data["id"]
+        routing_table = RoutingTable.objects.get(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        )
+        SIPUser.objects.create(
+            name="Blocker",
+            username="blocker900",
+            extension="900",
+            secret="x",
+            transport_id=transport_id,
+            routing_table=routing_table,
+        )
+        response = self.client.delete(f"/api/v1/sip-transports/{transport_id}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(SIPTransport.objects.filter(pk=transport_id).exists())
+
+    def test_invalid_bind_400(self):
+        response = self.client.post(
+            "/api/v1/sip-transports/", self._payload(bind="not-an-ip"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("bind", response.data)
+
+    def test_invalid_name_400(self):
+        response = self.client.post(
+            "/api/v1/sip-transports/", self._payload(name="1-bad name"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_duplicate_name_400(self):
+        self.client.post("/api/v1/sip-transports/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(bind="0.0.0.0:5064"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_description_with_newline_400(self):
+        response = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(description="line1\nline2"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("description", response.data)
+
+    def test_blank_local_nets_stored_as_null(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/", self._payload(local_nets=""), format="json"
+        )
+        self.assertEqual(create.status_code, 201)
+        self.assertIsNone(create.data["local_nets"])
+        transport = SIPTransport.objects.get(pk=create.data["id"])
+        self.assertIsNone(transport.local_nets)
+
+    def test_invalid_local_net_400(self):
+        response = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(local_nets="10.0.0.0/16, not-a-network"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("local_nets", response.data)
+
+    def test_tls_material_roundtrip(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(
+                protocol="tls",
+                cert_file="-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----\n",
+            ),
+            format="json",
+        )
+        self.assertEqual(create.status_code, 201)
+        self.assertIn("BEGIN CERTIFICATE", create.data["cert_file"])
+        self.assertTrue(create.data["has_tls_material"])
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/sip-transports/{pk}/",
+            {"description": "Updated"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["description"], "Updated")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/sip-transports/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(SIPTransport.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/sip-transports/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/", self._payload(), format="json"
+        )
+        transport = SIPTransport.objects.get(pk=create.data["id"])
+        self.assertEqual(transport.created_by, self.staff_user)
+
+
+class SIPPeerApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="peer_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="peer_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+        self.transport = SIPTransport.objects.create(
+            name="test-peer-transport",
+            protocol="udp",
+            bind="0.0.0.0:5065",
+            description="Test transport",
+        )
+        self.routing_table = RoutingTable.objects.get(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        )
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "apipeer900",
+            "description": "Test peer",
+            "username": "peeruser",
+            "secret": "s3cret123",
+            "auth_type": "userpass",
+            "transport": self.transport.id,
+            "routing_table": self.routing_table.id,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/sip-peers/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/sip-peers/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/sip-peers/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "apipeer900")
+        self.assertEqual(response.data["secret"], "s3cret123")
+        self.assertEqual(response.data["registration_here"], False)
+        self.assertEqual(response.data["registration_there"], False)
+
+    def test_created_row_lands_in_generated_pjsip_conf(self):
+        from core.conf import make_pjsip_conf_uplinks
+
+        self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        result = make_pjsip_conf_uplinks()
+        self.assertIn("[apipeer900]", result)
+        self.assertIn("type=endpoint", result)
+
+    def test_create_without_transport_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/", self._payload(transport=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("transport", response.data)
+
+    def test_create_without_routing_table_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/", self._payload(routing_table=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("routing_table", response.data)
+
+    def test_registration_there_without_uri_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/",
+            self._payload(registration_there=True, username="provideruser"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("registration_uri", response.data)
+
+    def test_registration_there_without_username_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/",
+            self._payload(
+                registration_there=True,
+                registration_uri="reg.provider.com:5060",
+                username="",
+            ),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("username", response.data)
+
+    def test_non_alnum_name_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/", self._payload(name="bad.peer"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_short_name_400(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/", self._payload(name="ab"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_duplicate_name_400(self):
+        self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        response = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_md5_cred_matches_model(self):
+        create = self.client.post(
+            "/api/v1/sip-peers/",
+            self._payload(auth_type="md5"),
+            format="json",
+        )
+        peer = SIPPeer.objects.get(pk=create.data["id"])
+        self.assertEqual(create.data["md5_cred"], peer.md5_cred)
+
+    def test_auth_realm_from_registration_uri(self):
+        create = self.client.post(
+            "/api/v1/sip-peers/",
+            self._payload(registration_uri="reg.provider.com:5060"),
+            format="json",
+        )
+        self.assertEqual(create.data["auth_realm"], "reg.provider.com")
+
+    def test_registration_flags_are_snake_case(self):
+        response = self.client.post(
+            "/api/v1/sip-peers/",
+            self._payload(registration_here=True),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data["registration_here"])
+        self.assertNotIn("registrationHere", response.data)
+
+    def test_patch_200(self):
+        create = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/sip-peers/{pk}/", {"description": "Updated"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["description"], "Updated")
+
+    def test_delete_204(self):
+        create = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/sip-peers/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(SIPPeer.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/sip-peers/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_in_trunk_group_returns_409(self):
+        create = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        pk = create.data["id"]
+        group = TrunkGroup.objects.create(name="test-trunk-group")
+        group.sip_peers.add(pk)
+
+        response = self.client.delete(f"/api/v1/sip-peers/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(SIPPeer.objects.filter(pk=pk).exists())
+
+    def test_audit_created_by(self):
+        create = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
+        peer = SIPPeer.objects.get(pk=create.data["id"])
+        self.assertEqual(peer.created_by, self.staff_user)
 
 
 class OriginateApiTests(APITestCase):

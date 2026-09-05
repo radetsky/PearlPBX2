@@ -19,9 +19,11 @@ Or via Django admin / shell (`rest_framework.authtoken.models.Token`).
 
 There is no session-based or IP-based restriction. CSRF protection is not enforced (token auth only).
 
-**Exception:** every method on `/api/v1/sip-users/`, including `GET`, requires
-a staff or superuser account — see [SIP Users](#sip-users) below. A regular
-user's valid token receives `403 Forbidden` on that resource.
+**Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`
+and `/api/v1/sip-peers/`, including `GET`, requires a staff or superuser
+account — see [SIP Users](#sip-users), [SIP Transports](#sip-transports) and
+[SIP Peers](#sip-peers) below. A regular user's valid token receives
+`403 Forbidden` on those resources.
 
 ## Common Response Format
 
@@ -367,6 +369,225 @@ Delete a SIP user. Returns `204 No Content`. Cascades to any provisioned
 
 ---
 
+## SIP Transports
+
+Manages PJSIP transports. Like [SIP Users](#sip-users), **every method on this
+resource — including `GET` — requires a staff or superuser account**;
+`cert_file` and `priv_key_file` carry TLS certificate/private key material in
+plaintext.
+
+Saving here only updates the database. Changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `cert_file`, `priv_key_file` and
+`ca_list_file` hold PEM **contents**, not file paths — they are written to
+disk under the Asterisk certificate directory only when "Apply Changes" runs,
+and only for a transport with `protocol` `"tls"`.
+
+Changing `protocol` on a transport already in use rewrites how every attached
+`SIPUser` is generated, and invalidates their `md5_cred` (it is derived from
+`protocol-username`). Deleting the last `wss` transport disables the WebRTC
+config templates for every WebRTC user. Deleting a transport still referenced
+by a `SIPUser` or `SIPPeer` returns `409 Conflict` instead of failing at the
+database level.
+
+### GET `/api/v1/sip-transports/`
+
+Returns paginated transports. Supports:
+- `?name=<exact>` — filter by exact name
+- `?protocol=<udp|tcp|tls|wss>` — filter by protocol
+- `?search=<text>` — case-insensitive match against `name`, `description`
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "transport-udp",
+      "description": "UDP transport",
+      "protocol": "udp",
+      "bind": "0.0.0.0:5060",
+      "local_nets": "10.0.0.0/16, 192.168.0.0/24",
+      "external_media_address": null,
+      "external_signaling_address": null,
+      "method": "default",
+      "verify_server": false,
+      "allow_reload": true,
+      "cert_file": "",
+      "priv_key_file": "",
+      "ca_list_file": "",
+      "has_tls_material": false,
+      "sip_users_count": 3,
+      "sip_peers_count": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`sip_users_count`/`sip_peers_count` are read-only counts of the `SIPUser`/
+`SIPPeer` rows currently on this transport — the same rows that block a
+`DELETE`. `has_tls_material` is `true` if any of the three cert fields is set.
+
+### POST `/api/v1/sip-transports/`
+
+Create a transport.
+
+**Request body:**
+```json
+{
+  "name": "transport-udp-nat",
+  "protocol": "udp",
+  "bind": "0.0.0.0:5060",
+  "description": "UDP + NAT for remote users"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | letters/digits/underscores/hyphens, unique, used as the `pjsip.conf` section name |
+| `protocol` | no | `udp` (default), `tcp`, `tls`, `wss` |
+| `bind` | no | `<ipv4>` or `<ipv4>:<port>`, default `0.0.0.0`; port must be 1024-65535 |
+| `description` | no | single line, no `\n`/`\r` — written as a `pjsip.conf` comment |
+| `local_nets` | no | comma-separated CIDR networks, e.g. `10.0.0.0/16, 192.168.0.0/24`; blank is stored as `null` |
+| `external_media_address`, `external_signaling_address` | no | IP addresses |
+| `method`, `verify_server`, `allow_reload`, `cert_file`, `priv_key_file`, `ca_list_file` | no | only take effect when `protocol` is `tls` |
+
+**Response:** `HTTP 201` with the created transport object, or `400` if `name`
+is already taken or fails validation.
+
+### PATCH `/api/v1/sip-transports/<id>/`
+
+Partially update a transport. Same field rules as `POST`.
+
+### DELETE `/api/v1/sip-transports/<id>/`
+
+Delete a transport. Returns `204 No Content`, or `409 Conflict` naming the
+`SIPUser`/`SIPPeer` rows still on this transport.
+
+---
+
+## SIP Peers
+
+Manages SIP trunks/uplinks. Like [SIP Users](#sip-users), **every method on
+this resource — including `GET` — requires a staff or superuser account**;
+this resource exposes dial-out credentials (plaintext `secret` and the
+derived `md5_cred`).
+
+Saving here only updates the database. Changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. A peer saved with no `transport`
+or no `routing_table` would generate a half-complete `pjsip.conf` entry (an
+`[auth]` section with no `[endpoint]`/`[aor]`), which is why both fields are
+required here. If `registration_there` is set, `registration_uri` and
+`username` are also required.
+
+Deleting a peer that still belongs to a `TrunkGroup` returns `409 Conflict`
+rather than silently shrinking the group.
+
+### GET `/api/v1/sip-peers/`
+
+Returns paginated peers. Supports:
+- `?name=<exact>` — filter by exact name
+- `?routing_table=<id>` — filter by routing table
+- `?search=<text>` — case-insensitive match against `name`, `description`, `username`
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 5,
+      "name": "myprovider",
+      "description": "SIP trunk provider",
+      "username": "trunkuser",
+      "contact_user": "",
+      "auth_type": "userpass",
+      "secret": "s3cret123",
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "registration_uri": "reg.provider.com:5060",
+      "contact_uri": "",
+      "match_hosts": "",
+      "registration_here": false,
+      "registration_there": true,
+      "nat": false,
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "custom_identify_settings": "",
+      "auth_realm": "reg.provider.com",
+      "md5_cred": "a1b2c3...",
+      "trunk_groups": ["main-trunks"],
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`registration_here`/`registration_there` map to the model's
+`registrationHere`/`registrationThere` fields. `auth_realm` and `md5_cred` are
+the RFC 2617 HA1 credential derived from `username`/`auth_realm`/`secret` —
+`auth_realm` is the host part of `registration_uri`, or `"asterisk"` if none
+is set. `trunk_groups` lists the names of any `TrunkGroup` this peer belongs
+to; deleting a peer in at least one group is refused (see above).
+
+### POST `/api/v1/sip-peers/`
+
+Create a peer.
+
+**Request body:**
+```json
+{
+  "name": "myprovider",
+  "description": "SIP trunk provider",
+  "username": "trunkuser",
+  "secret": "s3cret123",
+  "auth_type": "userpass",
+  "transport": 1,
+  "routing_table": 1,
+  "registration_there": true,
+  "registration_uri": "reg.provider.com:5060"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | 3+ characters, letters/digits only, unique, used as the `pjsip.conf` section name |
+| `description` | yes | single line, no `\n`/`\r` |
+| `transport` | yes | ID of an existing `SIPTransport` |
+| `routing_table` | yes | ID of an existing `RoutingTable` |
+| `username`, `contact_user` | no | letters/digits/hyphens/dots/underscores |
+| `auth_type` | no | `userpass` (default) or `md5` |
+| `secret` | no | plaintext SIP password |
+| `registration_uri`, `contact_uri` | no | `host[:port]`; required when `registration_there` is `true` |
+| `match_hosts` | no | comma-separated hosts/IPs, no ports |
+| `registration_here` | no | default `false` — peer registers to us (GSM/E1/T1/FXS/FXO gateways) |
+| `registration_there` | no | default `false` — we register to the peer (providers); requires `registration_uri` and `username` |
+| `nat` | no | default `false` |
+| `custom_auth_settings`, `custom_aor_settings`, `custom_identify_settings` | no | raw `pjsip.conf` snippets, written verbatim |
+
+**Response:** `HTTP 201` with the created peer object, or `400` if `name` is
+already taken or fails validation.
+
+### PATCH `/api/v1/sip-peers/<id>/`
+
+Partially update a peer. Same field rules as `POST`.
+
+### DELETE `/api/v1/sip-peers/<id>/`
+
+Delete a peer. Returns `204 No Content`, or `409 Conflict` naming the
+`TrunkGroup`(s) it still belongs to.
+
+---
+
 ## Originate a call
 
 **`POST /api/v1/calls/originate/`**
@@ -545,7 +766,9 @@ same as the rest of this API.
 ## Known Limitations
 
 - No filtering or search on GET endpoints, except `/api/v1/sip-users/`
-  (`?username=`, `?extension=`, `?search=`).
+  (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
+  (`?name=`, `?protocol=`, `?search=`) and `/api/v1/sip-peers/`
+  (`?name=`, `?routing_table=`, `?search=`).
 
 ---
 

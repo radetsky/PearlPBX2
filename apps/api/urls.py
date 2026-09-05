@@ -6,7 +6,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 
-from apps.api.views import lists, calls, recordings, queues, sip_users
+from apps.api.views import lists, calls, recordings, queues, sip_users, sip_transports, sip_peers
 
 router = DefaultRouter()
 router.register("blacklist", lists.BlacklistViewSet, basename="blacklist")
@@ -14,6 +14,8 @@ router.register("whitelist", lists.WhitelistViewSet, basename="whitelist")
 router.register("contacts", lists.ContactViewSet, basename="contacts")
 router.register("lists", lists.CustomListViewSet, basename="lists")
 router.register("sip-users", sip_users.SIPUserViewSet, basename="sip-users")
+router.register("sip-transports", sip_transports.SIPTransportViewSet, basename="sip-transports")
+router.register("sip-peers", sip_peers.SIPPeerViewSet, basename="sip-peers")
 
 urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),

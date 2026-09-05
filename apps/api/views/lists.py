@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -26,6 +27,33 @@ class AuditMixin:
     def perform_update(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(modified_by=user)
+
+
+class FilteredQuerySetMixin:
+    """get_queryset() applying exact-match filters plus an OR'd icontains search.
+
+    Subclass declares `filter_fields` (query params filtered by exact match on
+    the same-named model field/FK) and `search_fields` (model fields OR'd
+    together under `?search=`).
+    """
+
+    filter_fields: list[str] = []
+    search_fields: list[str] = []
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        for field in self.filter_fields:
+            value = params.get(field)
+            if value:
+                qs = qs.filter(**{field: value})
+        search = params.get("search")
+        if search and self.search_fields:
+            query = Q()
+            for field in self.search_fields:
+                query |= Q(**{f"{field}__icontains": search})
+            qs = qs.filter(query)
+        return qs
 
 
 class UpsertCreateMixin:
