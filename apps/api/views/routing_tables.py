@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Value
 from django.db.models.functions import Coalesce
 
@@ -67,7 +68,11 @@ class RoutingTableViewSet(FilteredQuerySetMixin, AuditMixin, viewsets.ModelViewS
     search_fields = ["name"]
 
     def perform_destroy(self, instance):
-        if instance.webhooks.exists():
-            names = sorted(instance.webhooks.values_list("name", flat=True))
-            raise Conflict(f"Still used by webhook(s): {', '.join(names)}.")
-        super().perform_destroy(instance)
+        # RoutingTable.delete() itself already checks webhooks.exists() (so
+        # admin/shell deletes are covered too) — catch its ValidationError
+        # here instead of re-checking, to scan once and to report 409
+        # instead of the generic 400 apps.api.exceptions falls back to.
+        try:
+            super().perform_destroy(instance)
+        except DjangoValidationError as e:
+            raise Conflict("; ".join(e.messages))

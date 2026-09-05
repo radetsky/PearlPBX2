@@ -257,6 +257,14 @@ class RoutingTableAdmin(AuditAdminMixin, admin.ModelAdmin):
     search_fields = ["name"]
     inlines = [RoutingRecordInlineAdmin]
 
+    def has_delete_permission(self, request, obj=None):
+        # obj.delete() itself already raises ValidationError when a webhook
+        # still uses this table's routing-table filter — hide the button
+        # instead of letting the confirm page 500 after the click.
+        if obj is not None and obj.webhooks.exists():
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 class PenaltyChangeInlineAdmin(admin.TabularInline):
     min_num: Optional[int] = 1
@@ -497,26 +505,14 @@ class TrunkGroupAdmin(AuditAdminMixin, admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # obj.delete() itself already raises ValidationError when dialplan
         # still references this group's name — hide the button instead of
-        # letting the confirm page 500 after the click.
+        # letting the confirm page 500 after the click. Django's own bulk
+        # "Delete selected" action calls has_delete_permission(request, obj)
+        # for every selected object too (via get_deleted_objects()) and
+        # refuses the whole batch if any one fails, so no separate
+        # delete_queryset() override is needed here.
         if obj is not None and obj.find_dialplan_references(obj.name):
             return False
         return super().has_delete_permission(request, obj)
-
-    def delete_queryset(self, request, queryset):
-        # The "Delete selected" bulk action calls queryset.delete() directly,
-        # which bypasses each instance's overridden delete() — has_delete_permission
-        # above only gates the single-object confirm page, not this. Check per
-        # object here too, or a referenced group could be bulk-deleted anyway.
-        blocked = [obj for obj in queryset if obj.find_dialplan_references(obj.name)]
-        if blocked:
-            names = ", ".join(obj.name for obj in blocked)
-            self.message_user(
-                request,
-                _("Not deleted (still referenced by dialplan): %(names)s") % {"names": names},
-                level=messages.ERROR,
-            )
-            queryset = queryset.exclude(pk__in=[obj.pk for obj in blocked])
-        super().delete_queryset(request, queryset)
 
 
 admin.site.register(QueueAnnouncements)

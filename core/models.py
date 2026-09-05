@@ -306,6 +306,19 @@ class RoutingTable(AuditFields):
             )
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        # Webhook.routing_tables is a plain M2M (no PROTECT), unlike the four
+        # FKs onto this model — without this check, deleting a table still
+        # used by a webhook's routing-table filter would silently detach it
+        # via the admin or shell instead of raising, same as the API's
+        # RoutingTableViewSet.perform_destroy() already prevents.
+        if self.webhooks.exists():
+            names = ", ".join(self.webhooks.values_list("name", flat=True))
+            raise ValidationError(
+                _('Cannot delete: still used by webhook(s): %(names)s') % {"names": names}
+            )
+        super().delete(*args, **kwargs)
+
     @staticmethod
     def getDefaultOrCreateDefault():
         # Find default PEARLPBX routing table
@@ -1613,6 +1626,13 @@ class TrunkGroup(AuditFields):
 
         Cannot see a name reached only through an Asterisk variable (e.g.
         `${GROUPNAME}`) — that is a known limitation of a static text scan.
+
+        The match is intentionally case-sensitive: fastagi.py's raw SQL
+        compares the AGI arg with plain `=`, which Postgres evaluates
+        case-sensitively, so a differently-cased literal in dialplan was
+        never actually routing to this group in the first place. The
+        `icontains` lookups below are only a cheap case-insensitive
+        prefilter — the regex is what decides a real match.
         """
         pattern = re.compile(r"dial-trunk-group\s*,\s*" + re.escape(name) + r"\s*,")
         refs = []

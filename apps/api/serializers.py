@@ -426,6 +426,15 @@ class TrunkGroupSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        # The queryset annotation (set on the pre-update instance) goes stale
+        # the moment sip_peers is changed above — drop it so the getter below
+        # recomputes a fresh count instead of returning the pre-update value.
+        if hasattr(instance, "sip_peers_count"):
+            del instance.sip_peers_count
+        return instance
+
     @extend_schema_field(serializers.IntegerField())
     def get_sip_peers_count(self, obj):
         # The queryset annotation isn't present on the instance returned by

@@ -1828,7 +1828,11 @@ class TestTrunkGroupDialplanGuard(TestCase):
         admin_instance = TrunkGroupAdmin(TrunkGroup, AdminSite())
         self.assertFalse(admin_instance.has_delete_permission(None, obj=group))
 
-    def test_admin_bulk_delete_skips_referenced_groups(self):
+    def test_admin_has_delete_permission_checked_per_object_for_bulk_delete(self):
+        # Django's own "Delete selected" action calls has_delete_permission()
+        # per selected object (via get_deleted_objects()) and refuses the
+        # whole batch if any one fails — verify our override still returns
+        # True for an unreferenced object alongside a blocked one.
         from unittest.mock import MagicMock
 
         from core.admin import TrunkGroupAdmin
@@ -1838,9 +1842,58 @@ class TestTrunkGroupDialplanGuard(TestCase):
         blocked = TrunkGroup.objects.create(name="test-tg-bulk-blocked")
         allowed = TrunkGroup.objects.create(name="test-tg-bulk-allowed")
 
+        request = MagicMock()
+        request.user.has_perm.return_value = True
         admin_instance = TrunkGroupAdmin(TrunkGroup, AdminSite())
-        queryset = TrunkGroup.objects.filter(pk__in=[blocked.pk, allowed.pk])
-        admin_instance.delete_queryset(MagicMock(), queryset)
+        self.assertFalse(admin_instance.has_delete_permission(request, obj=blocked))
+        self.assertTrue(admin_instance.has_delete_permission(request, obj=allowed))
 
-        self.assertTrue(TrunkGroup.objects.filter(pk=blocked.pk).exists())
-        self.assertFalse(TrunkGroup.objects.filter(pk=allowed.pk).exists())
+
+class TestRoutingTableWebhookDeleteGuard(TestCase):
+    def tearDown(self):
+        from apps.webhooks.models import Webhook
+
+        Webhook.objects.filter(name__startswith="test-rt-guard-").delete()
+        RoutingTable.objects.filter(name__startswith="test-rt-guard-").delete()
+
+    def test_delete_blocked_while_used_by_webhook(self):
+        from django.core.exceptions import ValidationError
+
+        from apps.webhooks.models import Webhook
+
+        rt = RoutingTable.objects.create(name="test-rt-guard-1")
+        webhook = Webhook.objects.create(
+            name="test-rt-guard-webhook", url="https://example.com/hook"
+        )
+        webhook.routing_tables.add(rt)
+
+        with self.assertRaises(ValidationError):
+            rt.delete()
+        self.assertTrue(RoutingTable.objects.filter(pk=rt.pk).exists())
+
+    def test_delete_allowed_once_webhook_detached(self):
+        from apps.webhooks.models import Webhook
+
+        rt = RoutingTable.objects.create(name="test-rt-guard-2")
+        webhook = Webhook.objects.create(
+            name="test-rt-guard-webhook2", url="https://example.com/hook"
+        )
+        webhook.routing_tables.add(rt)
+        webhook.routing_tables.remove(rt)
+
+        rt.delete()  # must not raise
+        self.assertFalse(RoutingTable.objects.filter(pk=rt.pk).exists())
+
+    def test_admin_hides_delete_button_while_used_by_webhook(self):
+        from core.admin import RoutingTableAdmin
+        from django.contrib.admin.sites import AdminSite
+        from apps.webhooks.models import Webhook
+
+        rt = RoutingTable.objects.create(name="test-rt-guard-3")
+        webhook = Webhook.objects.create(
+            name="test-rt-guard-webhook3", url="https://example.com/hook"
+        )
+        webhook.routing_tables.add(rt)
+
+        admin_instance = RoutingTableAdmin(RoutingTable, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=rt))

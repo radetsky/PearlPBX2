@@ -1328,6 +1328,22 @@ class ApplyChangesApiTests(APITestCase):
         mock_ami.restart.assert_called_once()
         mock_ami.soft_reload.assert_not_called()
 
+    @patch("apps.api.views.config.AsteriskManagementInterface")
+    @patch("apps.api.views.config.redis.Redis")
+    @override_settings(DEVMODE="Development")
+    def test_apply_ami_failure_returns_500(self, mock_redis_cls, mock_ami_cls):
+        # The AMI reload call must be covered by the same try/except as
+        # apply_changes() — a failed reload must not escape as an unhandled
+        # exception.
+        mock_redis_cls.from_url.return_value.set.return_value = True
+        mock_ami_cls.return_value.__enter__.side_effect = Exception("AMI down")
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "soft"}, format="json"
+            )
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("detail", response.data)
+
     @patch("apps.api.views.config.redis.Redis")
     def test_apply_returns_409_when_lock_held(self, mock_redis_cls):
         mock_redis_cls.from_url.return_value.set.return_value = False

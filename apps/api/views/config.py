@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from contextlib import contextmanager
 
 import redis
@@ -21,6 +22,13 @@ logger = logging.getLogger(__name__)
 
 _APPLY_LOCK_KEY = "apply_changes:lock"
 _APPLY_LOCK_TTL = 300
+# Compare-and-delete: only release the lock if it still holds *our* token, so
+# a request whose TTL already expired (e.g. a slow hard restart) can't delete
+# a lock a different, later request has since acquired.
+_RELEASE_IF_OWNER_SCRIPT = (
+    "if redis.call('get', KEYS[1]) == ARGV[1] then "
+    "return redis.call('del', KEYS[1]) else return 0 end"
+)
 
 
 @contextmanager
@@ -33,9 +41,10 @@ def _apply_lock():
     """
     client = None
     holding = False
+    token = uuid.uuid4().hex
     try:
         client = redis.Redis.from_url(settings.REDIS_URL)
-        holding = bool(client.set(_APPLY_LOCK_KEY, "1", nx=True, ex=_APPLY_LOCK_TTL))
+        holding = bool(client.set(_APPLY_LOCK_KEY, token, nx=True, ex=_APPLY_LOCK_TTL))
         if not holding:
             raise Conflict("A configuration apply is already in progress.")
     except Conflict:
@@ -47,7 +56,7 @@ def _apply_lock():
     finally:
         if holding and client is not None:
             try:
-                client.delete(_APPLY_LOCK_KEY)
+                client.eval(_RELEASE_IF_OWNER_SCRIPT, 1, _APPLY_LOCK_KEY, token)
             except Exception:
                 pass
 
@@ -109,20 +118,23 @@ class ConfigApplyView(APIView):
             cfgfiles = admin_view._build_cfgfiles()
             try:
                 changed = admin_view.apply_changes(cfgfiles)
+                reloaded = False
+                if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
+                    with AsteriskManagementInterface() as ami:
+                        if mode == "soft":
+                            ami.soft_reload()
+                        else:
+                            ami.restart()
+                    reloaded = True
             except Exception as e:
+                # Covers both a failed apply_changes() and a failed AMI
+                # reload — configs may already be written to disk in the
+                # latter case, but the caller must still see a failure, not
+                # a silently-swallowed one.
                 return Response(
                     {"detail": f"An error occurred: {e}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-
-            reloaded = False
-            if settings.DEVMODE != settings.DEVMODE_WITHOUT_ASTERISK:
-                with AsteriskManagementInterface() as ami:
-                    if mode == "soft":
-                        ami.soft_reload()
-                    else:
-                        ami.restart()
-                reloaded = True
 
         return Response(
             {
