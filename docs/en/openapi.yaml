@@ -2668,6 +2668,9 @@ components:
       description: |-
         A SIP trunk/uplink. Saving here only updates the database — changes
         reach Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
       properties:
         id:
           type: integer
@@ -2795,6 +2798,9 @@ components:
         `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
         they are written to disk under the Asterisk certificate directory only
         when "Apply Changes" runs, and only for `protocol="tls"`.
+
+        `priv_key_file` is `null` in the list response — see it via GET on the
+        detail route, or in the create/update response.
       properties:
         id:
           type: integer
@@ -2875,6 +2881,9 @@ components:
       description: |-
         A SIP extension. Saving here only updates the database — changes reach
         Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
       properties:
         id:
           type: integer
@@ -3173,6 +3182,9 @@ components:
       description: |-
         A SIP trunk/uplink. Saving here only updates the database — changes
         reach Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
       properties:
         id:
           type: integer
@@ -3314,6 +3326,9 @@ components:
         `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
         they are written to disk under the Asterisk certificate directory only
         when "Apply Changes" runs, and only for `protocol="tls"`.
+
+        `priv_key_file` is `null` in the list response — see it via GET on the
+        detail route, or in the create/update response.
       properties:
         id:
           type: integer
@@ -3403,6 +3418,9 @@ components:
       description: |-
         A SIP extension. Saving here only updates the database — changes reach
         Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
       properties:
         id:
           type: integer

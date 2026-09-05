@@ -459,6 +459,33 @@ class SIPUserApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 1)
 
+    def test_secret_and_md5_cred_hidden_in_list(self):
+        create = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(transport=self.wss_transport.id, extension="903"),
+            format="json",
+        )
+        self.assertIsNotNone(create.data["secret"])
+        self.assertIsNotNone(create.data["md5_cred"])
+
+        response = self.client.get("/api/v1/sip-users/?username=apiuser900")
+        self.assertEqual(response.status_code, 200)
+        row = response.data["results"][0]
+        self.assertIsNone(row["secret"])
+        self.assertIsNone(row["md5_cred"])
+
+    def test_secret_and_md5_cred_visible_on_retrieve(self):
+        create = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(transport=self.wss_transport.id, extension="904"),
+            format="json",
+        )
+        pk = create.data["id"]
+        response = self.client.get(f"/api/v1/sip-users/{pk}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["secret"], "s3cret123")
+        self.assertIsNotNone(response.data["md5_cred"])
+
     def test_patch_200(self):
         create = self.client.post(
             "/api/v1/sip-users/", self._payload(), format="json"
@@ -718,6 +745,28 @@ class SIPTransportApiTests(APITestCase):
         self.assertIn("BEGIN CERTIFICATE", create.data["cert_file"])
         self.assertTrue(create.data["has_tls_material"])
 
+    def test_priv_key_file_hidden_in_list(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(protocol="tls", priv_key_file="-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n"),
+            format="json",
+        )
+        self.assertIn("BEGIN PRIVATE KEY", create.data["priv_key_file"])
+
+        response = self.client.get("/api/v1/sip-transports/?name=api-transport-udp")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["results"][0]["priv_key_file"])
+
+    def test_priv_key_file_visible_on_retrieve(self):
+        create = self.client.post(
+            "/api/v1/sip-transports/",
+            self._payload(protocol="tls", priv_key_file="-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n"),
+            format="json",
+        )
+        pk = create.data["id"]
+        response = self.client.get(f"/api/v1/sip-transports/{pk}/")
+        self.assertIn("BEGIN PRIVATE KEY", response.data["priv_key_file"])
+
     def test_patch_200(self):
         create = self.client.post(
             "/api/v1/sip-transports/", self._payload(), format="json"
@@ -886,6 +935,28 @@ class SIPPeerApiTests(APITestCase):
         )
         peer = SIPPeer.objects.get(pk=create.data["id"])
         self.assertEqual(create.data["md5_cred"], peer.md5_cred)
+
+    def test_secret_and_md5_cred_hidden_in_list(self):
+        create = self.client.post(
+            "/api/v1/sip-peers/", self._payload(auth_type="md5"), format="json"
+        )
+        self.assertIsNotNone(create.data["secret"])
+        self.assertIsNotNone(create.data["md5_cred"])
+
+        response = self.client.get("/api/v1/sip-peers/?name=apipeer900")
+        self.assertEqual(response.status_code, 200)
+        row = response.data["results"][0]
+        self.assertIsNone(row["secret"])
+        self.assertIsNone(row["md5_cred"])
+
+    def test_secret_and_md5_cred_visible_on_retrieve(self):
+        create = self.client.post(
+            "/api/v1/sip-peers/", self._payload(auth_type="md5"), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.get(f"/api/v1/sip-peers/{pk}/")
+        self.assertEqual(response.data["secret"], "s3cret123")
+        self.assertIsNotNone(response.data["md5_cred"])
 
     def test_auth_realm_from_registration_uri(self):
         create = self.client.post(

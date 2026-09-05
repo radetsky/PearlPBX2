@@ -301,7 +301,7 @@ staff або superuser**; дійсний токен звичайного кор�
       "id": 12,
       "name": "John Doe",
       "username": "101",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "nat": false,
@@ -316,7 +316,7 @@ staff або superuser**; дійсний токен звичайного кор�
       "pjsip_endpoint": "PJSIP/101",
       "is_webrtc": false,
       "realm": "udp-101",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
       "modified_at": "2026-09-01T10:00:00Z",
@@ -330,9 +330,14 @@ staff або superuser**; дійсний токен звичайного кор�
 `username`/`transport`/`secret`. WebRTC (`wss`) endpoint-и завжди
 автентифікуються як MD5 у згенерованій конфігурації незалежно від
 `auth_type`, тож WebRTC-клієнту слід використовувати `md5_cred`/`realm`,
-а не відкритий `secret`. Обидва поля — `null` для користувача без
+а не відкритий `secret`. `md5_cred` — також `null` для користувача без
 `transport`. `is_webrtc` дорівнює `true`, коли протокол транспорту
 користувача — `wss`.
+
+**`secret` і `md5_cred` у цій GET-відповіді завжди `null`** — облікові дані
+не включаються в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-users/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`).
 
 ### POST `/api/v1/sip-users/`
 
@@ -422,7 +427,7 @@ WebRTC-користувача. Видалення транспорту, на я�
       "verify_server": false,
       "allow_reload": true,
       "cert_file": "",
-      "priv_key_file": "",
+      "priv_key_file": null,
       "ca_list_file": "",
       "has_tls_material": false,
       "sip_users_count": 3,
@@ -435,6 +440,12 @@ WebRTC-користувача. Видалення транспорту, на я�
   ]
 }
 ```
+
+**`priv_key_file` у цій GET-відповіді завжди `null`** — приватний ключ не
+включається в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-transports/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`). `cert_file`/`ca_list_file` — публічний сертифікатний
+матеріал, він не приховується.
 
 `sip_users_count`/`sip_peers_count` — це кількість рядків `SIPUser`/`SIPPeer`
 на цьому транспорті (ті самі рядки, що блокують `DELETE`). `has_tls_material`
@@ -514,7 +525,7 @@ superuser**; цей ресурс надає доступ до облікових
       "username": "trunkuser",
       "contact_user": "",
       "auth_type": "userpass",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "routing_table": 1,
@@ -529,7 +540,7 @@ superuser**; цей ресурс надає доступ до облікових
       "custom_aor_settings": "",
       "custom_identify_settings": "",
       "auth_realm": "reg.provider.com",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "trunk_groups": ["main-trunks"],
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
@@ -547,6 +558,11 @@ superuser**; цей ресурс надає доступ до облікових
 не вказано. `trunk_groups` містить назви `TrunkGroup`, до яких належить цей
 пір; видалення піра, що належить хоча б до однієї групи, буде відхилено
 (див. вище).
+
+**`secret` і `md5_cred` у цій GET-відповіді завжди `null`** — облікові дані
+не включаються в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-peers/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`).
 
 ### POST `/api/v1/sip-peers/`
 

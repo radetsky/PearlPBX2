@@ -35,6 +35,27 @@ def _reject_line_breaks(value):
     return value
 
 
+class HideSensitiveInListMixin:
+    """Null out `sensitive_fields` in the `list` action's response only.
+
+    A GET on the detail route, or the object returned by POST/PATCH, still
+    includes the real value — this only keeps credentials out of a bulk,
+    paginated dump. Requires the view to set `self.action` (true for any
+    GenericViewSet/ModelViewSet), passed through via serializer context.
+    """
+
+    sensitive_fields: list[str] = []
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        view = self.context.get("view")
+        if getattr(view, "action", None) == "list":
+            for field in self.sensitive_fields:
+                if field in ret:
+                    ret[field] = None
+        return ret
+
+
 class CustomListNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomListNames
@@ -88,10 +109,15 @@ class ContactSerializer(serializers.ModelSerializer):
         }
 
 
-class SIPUserSerializer(serializers.ModelSerializer):
+class SIPUserSerializer(HideSensitiveInListMixin, serializers.ModelSerializer):
     """A SIP extension. Saving here only updates the database — changes reach
     Asterisk after a superuser runs "Apply Changes" in the admin.
+
+    `secret`/`md5_cred` are `null` in the list response — see them via GET
+    on the detail route, or in the create/update response.
     """
+
+    sensitive_fields = ["secret", "md5_cred"]
 
     name = serializers.CharField(max_length=64, validators=[min3len])
     username = serializers.CharField(
@@ -176,14 +202,19 @@ class SIPUserSerializer(serializers.ModelSerializer):
         return self._if_transport(obj, lambda o: o.md5_cred)
 
 
-class SIPTransportSerializer(serializers.ModelSerializer):
+class SIPTransportSerializer(HideSensitiveInListMixin, serializers.ModelSerializer):
     """A PJSIP transport. Saving here only updates the database — changes reach
     Asterisk after a superuser runs "Apply Changes" in the admin.
 
     `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
     they are written to disk under the Asterisk certificate directory only
     when "Apply Changes" runs, and only for `protocol="tls"`.
+
+    `priv_key_file` is `null` in the list response — see it via GET on the
+    detail route, or in the create/update response.
     """
+
+    sensitive_fields = ["priv_key_file"]
 
     local_nets = serializers.CharField(
         max_length=256,
@@ -254,10 +285,15 @@ class SIPTransportSerializer(serializers.ModelSerializer):
         )
 
 
-class SIPPeerSerializer(serializers.ModelSerializer):
+class SIPPeerSerializer(HideSensitiveInListMixin, serializers.ModelSerializer):
     """A SIP trunk/uplink. Saving here only updates the database — changes
     reach Asterisk after a superuser runs "Apply Changes" in the admin.
+
+    `secret`/`md5_cred` are `null` in the list response — see them via GET
+    on the detail route, or in the create/update response.
     """
+
+    sensitive_fields = ["secret", "md5_cred"]
 
     name = serializers.CharField(
         max_length=32,

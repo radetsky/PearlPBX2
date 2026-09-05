@@ -302,7 +302,7 @@ Devuelve usuarios SIP paginados. Admite:
       "id": 12,
       "name": "John Doe",
       "username": "101",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "nat": false,
@@ -317,7 +317,7 @@ Devuelve usuarios SIP paginados. Admite:
       "pjsip_endpoint": "PJSIP/101",
       "is_webrtc": false,
       "realm": "udp-101",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
       "modified_at": "2026-09-01T10:00:00Z",
@@ -331,8 +331,14 @@ Devuelve usuarios SIP paginados. Admite:
 `username`/`transport`/`secret`. Los endpoints WebRTC (`wss`) siempre se
 autentican como MD5 en la configuración generada, sin importar `auth_type`,
 por lo que un cliente WebRTC debería usar `md5_cred`/`realm` en lugar del
-`secret` en texto plano. Ambos son `null` para un usuario sin `transport`.
-`is_webrtc` es `true` cuando el protocolo del transporte del usuario es `wss`.
+`secret` en texto plano. `md5_cred` también es `null` para un usuario sin
+`transport`. `is_webrtc` es `true` cuando el protocolo del transporte del
+usuario es `wss`.
+
+**`secret` y `md5_cred` siempre son `null` en esta respuesta de lista** — las
+credenciales no se incluyen en un volcado paginado masivo. Obtén el valor
+real con `GET /api/v1/sip-users/<id>/` (o desde el objeto que devuelven
+`POST`/`PATCH`).
 
 ### POST `/api/v1/sip-users/`
 
@@ -423,7 +429,7 @@ Devuelve transportes paginados. Admite:
       "verify_server": false,
       "allow_reload": true,
       "cert_file": "",
-      "priv_key_file": "",
+      "priv_key_file": null,
       "ca_list_file": "",
       "has_tls_material": false,
       "sip_users_count": 3,
@@ -436,6 +442,12 @@ Devuelve transportes paginados. Admite:
   ]
 }
 ```
+
+**`priv_key_file` siempre es `null` en esta respuesta de lista** — la clave
+privada no se incluye en un volcado paginado masivo. Obtén el valor real con
+`GET /api/v1/sip-transports/<id>/` (o desde el objeto que devuelven
+`POST`/`PATCH`). `cert_file`/`ca_list_file` son material de certificado
+público y no se ocultan.
 
 `sip_users_count`/`sip_peers_count` son el número de filas `SIPUser`/`SIPPeer`
 que actualmente usan este transporte — las mismas filas que bloquean un
@@ -516,7 +528,7 @@ Devuelve peers paginados. Admite:
       "username": "trunkuser",
       "contact_user": "",
       "auth_type": "userpass",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "routing_table": 1,
@@ -531,7 +543,7 @@ Devuelve peers paginados. Admite:
       "custom_aor_settings": "",
       "custom_identify_settings": "",
       "auth_realm": "reg.provider.com",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "trunk_groups": ["main-trunks"],
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
@@ -549,6 +561,11 @@ la credencial RFC 2617 HA1 derivada de `username`/`auth_realm`/`secret` —
 se ha definido. `trunk_groups` lista los nombres de cualquier `TrunkGroup` al
 que pertenezca este peer; eliminar un peer que pertenece a al menos un grupo
 se rechaza (ver arriba).
+
+**`secret` y `md5_cred` siempre son `null` en esta respuesta de lista** — las
+credenciales no se incluyen en un volcado paginado masivo. Obtén el valor
+real con `GET /api/v1/sip-peers/<id>/` (o desde el objeto que devuelven
+`POST`/`PATCH`).
 
 ### POST `/api/v1/sip-peers/`
 

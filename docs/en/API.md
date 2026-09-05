@@ -301,7 +301,7 @@ Returns paginated SIP users. Supports:
       "id": 12,
       "name": "John Doe",
       "username": "101",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "nat": false,
@@ -316,7 +316,7 @@ Returns paginated SIP users. Supports:
       "pjsip_endpoint": "PJSIP/101",
       "is_webrtc": false,
       "realm": "udp-101",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
       "modified_at": "2026-09-01T10:00:00Z",
@@ -330,8 +330,13 @@ Returns paginated SIP users. Supports:
 `username`/`transport`/`secret`. WebRTC (`wss`) endpoints are always
 authenticated as MD5 in the generated config regardless of `auth_type`, so a
 WebRTC client should use `md5_cred`/`realm` rather than the plaintext
-`secret`. Both are `null` for a user with no `transport` set. `is_webrtc` is
-`true` when the user's transport protocol is `wss`.
+`secret`. `md5_cred` is also `null` for a user with no `transport` set.
+`is_webrtc` is `true` when the user's transport protocol is `wss`.
+
+**`secret` and `md5_cred` are always `null` in this list response** —
+credentials aren't included in a paginated bulk dump. Fetch
+`GET /api/v1/sip-users/<id>/` (or use the object returned by `POST`/`PATCH`)
+to read the real value.
 
 ### POST `/api/v1/sip-users/`
 
@@ -421,7 +426,7 @@ Returns paginated transports. Supports:
       "verify_server": false,
       "allow_reload": true,
       "cert_file": "",
-      "priv_key_file": "",
+      "priv_key_file": null,
       "ca_list_file": "",
       "has_tls_material": false,
       "sip_users_count": 3,
@@ -434,6 +439,12 @@ Returns paginated transports. Supports:
   ]
 }
 ```
+
+**`priv_key_file` is always `null` in this list response** — the private key
+isn't included in a paginated bulk dump. Fetch
+`GET /api/v1/sip-transports/<id>/` (or use the object returned by
+`POST`/`PATCH`) to read the real value. `cert_file`/`ca_list_file` are public
+certificate material and are not hidden.
 
 `sip_users_count`/`sip_peers_count` are read-only counts of the `SIPUser`/
 `SIPPeer` rows currently on this transport — the same rows that block a
@@ -513,7 +524,7 @@ Returns paginated peers. Supports:
       "username": "trunkuser",
       "contact_user": "",
       "auth_type": "userpass",
-      "secret": "s3cret123",
+      "secret": null,
       "transport": 1,
       "transport_name": "transport-udp",
       "routing_table": 1,
@@ -528,7 +539,7 @@ Returns paginated peers. Supports:
       "custom_aor_settings": "",
       "custom_identify_settings": "",
       "auth_realm": "reg.provider.com",
-      "md5_cred": "a1b2c3...",
+      "md5_cred": null,
       "trunk_groups": ["main-trunks"],
       "created_at": "2026-09-01T10:00:00Z",
       "created_by": 1,
@@ -545,6 +556,11 @@ the RFC 2617 HA1 credential derived from `username`/`auth_realm`/`secret` —
 `auth_realm` is the host part of `registration_uri`, or `"asterisk"` if none
 is set. `trunk_groups` lists the names of any `TrunkGroup` this peer belongs
 to; deleting a peer in at least one group is refused (see above).
+
+**`secret` and `md5_cred` are always `null` in this list response** —
+credentials aren't included in a paginated bulk dump. Fetch
+`GET /api/v1/sip-peers/<id>/` (or use the object returned by `POST`/`PATCH`)
+to read the real value.
 
 ### POST `/api/v1/sip-peers/`
 
