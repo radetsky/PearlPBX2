@@ -8,10 +8,11 @@ from django.utils.translation import gettext_lazy as _
 from apps.provision.models import PhoneDevice
 from apps.provision.forms import PhoneDeviceForm
 from apps.provision.provisioning_manager import PhoneProvisioningManager
+from core.mixins.audit_admin import AuditAdminMixin
 
 
 @admin.register(PhoneDevice)
-class PhoneDeviceAdmin(admin.ModelAdmin):
+class PhoneDeviceAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = PhoneDeviceForm
     list_display = [
         "mac_address",
@@ -23,20 +24,13 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
 
     list_filter = ["telephone_type", "sip_server"]
     search_fields = ["mac_address", "sip_user__username", "sip_user__name"]
-    readonly_fields = ["created_at", "modified_at", "created_by", "modified_by"]
 
     fieldsets = (
         (
             _("Device Information"),
             {"fields": ("telephone_type", "mac_address", "sip_user", "sip_server")},
         ),
-        (
-            _("Audit Information"),
-            {
-                "fields": ("created_at", "created_by", "modified_at", "modified_by"),
-                "classes": ("collapse",),
-            },
-        ),
+        AuditAdminMixin.audit_fieldset,
     )
 
     @admin.display(description=_("SIP User"), ordering="sip_user__username")
@@ -121,9 +115,3 @@ class PhoneDeviceAdmin(admin.ModelAdmin):
                 _("Failed to generate configurations: %(errors)s")
                 % {"errors": "; ".join(failed_messages)},
             )
-
-    def save_model(self, request, obj, form, change):
-        if not change:  # Creating new object
-            obj.created_by = request.user
-        obj.modified_by = request.user
-        super().save_model(request, obj, form, change)

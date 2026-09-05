@@ -22,6 +22,47 @@ def validate_penalty_value(value):
         )
 
 
+def validate_alphanumeric(value):
+    if value == "":
+        return True
+
+    try:
+        value.encode("ascii")
+
+    except UnicodeEncodeError:
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters and digits."),
+            params={"value": value},
+        )
+
+    if not value.isalnum():
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters and digits."),
+            params={"value": value},
+        )
+
+
+def validate_sip_username(value):
+    if value == "":
+        return True
+    if not re.match(r'^[A-Za-z0-9._\-]+$', value):
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters, digits, hyphens, dots or underscores."),
+            params={"value": value},
+        )
+
+
+def min3len(value):
+    if value == "":
+        return True
+
+    if len(value) < 3:
+        raise ValidationError(
+            _("This value: %(value)s must be longer than 2 characters."),
+            params={"value": value},
+        )
+
+
 def validate_bind_ip(value):
     items = value.split(":")
     logger.info(value)

@@ -3,10 +3,16 @@ import random
 from django.conf import settings
 
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from drf_spectacular.utils import extend_schema_field
 
 from apps.api.models import CustomListNames, CustomListEntries
-from core.models import Blacklist, Whitelist, Contact
-from core.validators import validate_asterisk_interface
+from core.models import Blacklist, Whitelist, Contact, SIPUser
+from core.validators import (
+    validate_asterisk_interface,
+    validate_alphanumeric,
+    min3len,
+)
 
 
 class CustomListNameSerializer(serializers.ModelSerializer):
@@ -60,6 +66,89 @@ class ContactSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "callerid": {"validators": []},
         }
+
+
+class SIPUserSerializer(serializers.ModelSerializer):
+    """A SIP extension. Saving here only updates the database — changes reach
+    Asterisk after a superuser runs "Apply Changes" in the admin.
+    """
+
+    name = serializers.CharField(max_length=64, validators=[min3len])
+    username = serializers.CharField(
+        max_length=32,
+        validators=[
+            validate_alphanumeric,
+            min3len,
+            UniqueValidator(queryset=SIPUser.objects.all()),
+        ],
+    )
+    extension = serializers.CharField(
+        max_length=32,
+        validators=[
+            validate_alphanumeric,
+            UniqueValidator(queryset=SIPUser.objects.all()),
+        ],
+    )
+    transport_name = serializers.CharField(source="transport.name", read_only=True)
+    routing_table_name = serializers.CharField(source="routing_table.name", read_only=True)
+    pjsip_endpoint = serializers.CharField(source="standard_pjsip_user", read_only=True)
+    is_webrtc = serializers.SerializerMethodField()
+    realm = serializers.SerializerMethodField()
+    md5_cred = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SIPUser
+        fields = [
+            "id",
+            "name",
+            "username",
+            "secret",
+            "transport",
+            "transport_name",
+            "nat",
+            "extension",
+            "routing_table",
+            "routing_table_name",
+            "auth_type",
+            "custom_extension",
+            "custom_settings",
+            "custom_auth_settings",
+            "custom_aor_settings",
+            "pjsip_endpoint",
+            "is_webrtc",
+            "realm",
+            "md5_cred",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Both FKs are nullable in the DB (legacy rows) but a null value
+            # here silently drops the user from generated pjsip.conf — see
+            # core.conf.get_users_excluded_from_pjsip() — so the API requires
+            # them, matching SIPUserForm.
+            "transport": {"required": True, "allow_null": False},
+            "routing_table": {"required": True, "allow_null": False},
+        }
+
+    @staticmethod
+    def _if_transport(obj, value_fn):
+        """obj.realm/obj.md5_cred raise if obj.transport is None (core.models.SIPUser)."""
+        return value_fn(obj) if obj.transport else None
+
+    @extend_schema_field(serializers.BooleanField(allow_null=True))
+    def get_is_webrtc(self, obj):
+        return self._if_transport(obj, lambda o: o.transport.protocol == "wss")
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_realm(self, obj):
+        return self._if_transport(obj, lambda o: o.realm)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_md5_cred(self, obj):
+        return self._if_transport(obj, lambda o: o.md5_cred)
 
 
 class _CallOriginationFieldsSerializer(serializers.Serializer):

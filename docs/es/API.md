@@ -19,6 +19,11 @@ O a través del admin de Django / shell (`rest_framework.authtoken.models.Token`
 
 No hay restricción por sesión ni por IP. La protección CSRF no se aplica (solo autenticación por token).
 
+**Excepción:** todos los métodos de `/api/v1/sip-users/`, incluido `GET`,
+requieren una cuenta de staff o superusuario — ver [SIP Users](#sip-users)
+más abajo. El token válido de un usuario normal recibe `403 Forbidden` en
+ese recurso.
+
 ## Formato de respuesta común
 
 **Éxito**: objeto o array JSON con los campos del recurso. Los endpoints GET de listas devuelven respuestas paginadas:
@@ -256,6 +261,114 @@ Eliminar una entrada concreta de una lista. Devuelve `204 No Content`.
 
 ---
 
+## SIP Users
+
+Gestiona las extensiones (cuentas) SIP. A diferencia del resto de esta API,
+**todos los métodos de este recurso — incluido `GET` — requieren una cuenta
+de staff o superusuario**; un token válido de un usuario normal recibe
+`403 Forbidden`. Este recurso expone credenciales de marcado saliente, por lo
+que un token autenticado normal no es suficiente.
+
+Guardar aquí solo actualiza la base de datos. Los cambios llegan a Asterisk
+después de que un superusuario ejecute "Apply Changes" en el admin — ver la
+[guía del administrador](admin-guide.md). Un usuario guardado sin `transport`
+o sin `routing_table` se omitiría silenciosamente al generar la
+configuración, por eso ambos campos son obligatorios aquí.
+
+Eliminar un usuario SIP elimina en cascada cualquier `PhoneDevice`
+aprovisionado para él.
+
+### GET `/api/v1/sip-users/`
+
+Devuelve usuarios SIP paginados. Admite:
+- `?username=<exacto>` — filtrar por username exacto
+- `?extension=<exacto>` — filtrar por extension exacta
+- `?search=<texto>` — coincidencia sin distinción de mayúsculas sobre `name`, `username`, `extension`
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 12,
+      "name": "John Doe",
+      "username": "101",
+      "secret": "s3cret123",
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "nat": false,
+      "extension": "101",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "auth_type": "userpass",
+      "custom_extension": "",
+      "custom_settings": "",
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "pjsip_endpoint": "PJSIP/101",
+      "is_webrtc": false,
+      "realm": "udp-101",
+      "md5_cred": "a1b2c3...",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`realm` y `md5_cred` son la credencial RFC 2617 HA1 derivada de
+`username`/`transport`/`secret`. Los endpoints WebRTC (`wss`) siempre se
+autentican como MD5 en la configuración generada, sin importar `auth_type`,
+por lo que un cliente WebRTC debería usar `md5_cred`/`realm` en lugar del
+`secret` en texto plano. Ambos son `null` para un usuario sin `transport`.
+`is_webrtc` es `true` cuando el protocolo del transporte del usuario es `wss`.
+
+### POST `/api/v1/sip-users/`
+
+Crear un usuario SIP.
+
+**Cuerpo de la solicitud:**
+```json
+{
+  "name": "John Doe",
+  "username": "101",
+  "secret": "s3cret123",
+  "extension": "101",
+  "transport": 1,
+  "routing_table": 1,
+  "auth_type": "userpass"
+}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `name` | sí | mínimo 3 caracteres |
+| `username` | sí | 3+ caracteres, solo letras/dígitos, único |
+| `secret` | sí | contraseña SIP en texto plano |
+| `transport` | sí | ID de un `SIPTransport` existente |
+| `routing_table` | sí | ID de un `RoutingTable` existente |
+| `extension` | sí | solo letras/dígitos, único |
+| `nat` | no | por defecto `false` |
+| `auth_type` | no | `userpass` (por defecto) o `md5` |
+| `custom_extension`, `custom_settings`, `custom_auth_settings`, `custom_aor_settings` | no | fragmentos crudos de `pjsip.conf`/dialplan, escritos tal cual |
+
+**Respuesta:** `HTTP 201` con el objeto de usuario creado, o `400` si
+`username`/`extension` ya está en uso o falla la validación.
+
+### PATCH `/api/v1/sip-users/<id>/`
+
+Actualización parcial de un usuario SIP. Mismas reglas de campos que `POST`.
+
+### DELETE `/api/v1/sip-users/<id>/`
+
+Eliminar un usuario SIP. Devuelve `204 No Content`. Elimina en cascada
+cualquier `PhoneDevice` aprovisionado.
+
+---
+
 ## Iniciar una llamada (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -433,7 +546,8 @@ grabación, igual que en el resto de esta API.
 
 ## Limitaciones conocidas
 
-- No hay filtrado ni búsqueda en los endpoints GET.
+- No hay filtrado ni búsqueda en los endpoints GET, excepto en
+  `/api/v1/sip-users/` (`?username=`, `?extension=`, `?search=`).
 
 ---
 

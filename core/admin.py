@@ -45,17 +45,41 @@ from .forms import (
     QueueAdminForm,
     DEFAULT_QUEUE_MEMBER_PENALTY,
 )
+from core.mixins.audit_admin import AuditAdminMixin
 
 # TODO: Use some template, edit and use UIKIT accordion to make admin forms better readable
 # Right here we just can hide fieldsets
 # [ custom_extension, custom_settings, custom_auth_settings,custom_aor_settings ]
 
 
-class SIPUserAdmin(admin.ModelAdmin):
+class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = SIPUserForm
     list_display = ("name", "username", "extension")
     ordering = ["name", "username", "extension"]
     search_fields = ["name", "username", "extension"]
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "username",
+                    "secret",
+                    "transport",
+                    "nat",
+                    "extension",
+                    "routing_table",
+                    "auth_type",
+                    "custom_extension",
+                    "custom_settings",
+                    "custom_auth_settings",
+                    "custom_aor_settings",
+                )
+            },
+        ),
+        AuditAdminMixin.audit_fieldset,
+    )
 
 
 class SIPPeerAdmin(admin.ModelAdmin):

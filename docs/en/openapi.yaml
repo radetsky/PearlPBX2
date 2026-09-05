@@ -794,6 +794,218 @@ paths:
           description: Authentication credentials were not provided.
         '404':
           description: No recording exists for this uniqueid.
+  /api/v1/sip-users/:
+    get:
+      operationId: sip_users_list
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPUserList'
+          description: ''
+    post:
+      operationId: sip_users_create
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-users/{id}/:
+    get:
+      operationId: sip_users_retrieve
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+    put:
+      operationId: sip_users_update
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_users_partial_update
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_users_destroy
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/whitelist/:
     get:
       operationId: whitelist_list
@@ -994,6 +1206,14 @@ paths:
           description: No response body
 components:
   schemas:
+    AuthTypeEnum:
+      enum:
+      - userpass
+      - md5
+      type: string
+      description: |-
+        * `userpass` - Plaintext
+        * `md5` - MD5
     Blacklist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1004,32 +1224,32 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для блокування
+          title: Caller ID
+          description: Caller ID to block
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
-            = блокування для всієї системи.
+          description: Destination number where calls must be blocked. Default= for
+            whole system blocking.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина блокування ідентифікатора абонента
+          description: Reason for blocking the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису чорного списку. Якщо не
-            вказано — запис постійний.
+          description: Expiration date for the blacklist entry. If not set, the entry
+            is permanent.
       required:
       - callerid
       - id
+    BlankEnum:
+      enum:
+      - ''
     Conference:
       type: object
       description: Fields shared by every endpoint that originates one or more AMI
@@ -1075,13 +1295,12 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для розпізнавання
+          title: Caller ID
+          description: Caller ID to recognize
           maxLength: 64
         name:
           type: string
-          title: Назва
-          description: Ім'я ідентифікатора абонента
+          description: Name of the caller ID
           maxLength: 64
       required:
       - callerid
@@ -1134,6 +1353,9 @@ components:
       required:
       - id
       - name
+    NullEnum:
+      enum:
+      - null
     Originate:
       type: object
       description: Fields shared by every endpoint that originates one or more AMI
@@ -1268,6 +1490,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedSIPUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPUser'
     PaginatedWhitelistList:
       type: object
       required:
@@ -1301,29 +1546,26 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для блокування
+          title: Caller ID
+          description: Caller ID to block
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
-            = блокування для всієї системи.
+          description: Destination number where calls must be blocked. Default= for
+            whole system blocking.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина блокування ідентифікатора абонента
+          description: Reason for blocking the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису чорного списку. Якщо не
-            вказано — запис постійний.
+          description: Expiration date for the blacklist entry. If not set, the entry
+            is permanent.
     PatchedContact:
       type: object
       properties:
@@ -1333,13 +1575,12 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для розпізнавання
+          title: Caller ID
+          description: Caller ID to recognize
           maxLength: 64
         name:
           type: string
-          title: Назва
-          description: Ім'я ідентифікатора абонента
+          description: Name of the caller ID
           maxLength: 64
     PatchedCustomListName:
       type: object
@@ -1353,6 +1594,104 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedSIPUser:
+      type: object
+      description: |-
+        A SIP extension. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        username:
+          type: string
+          maxLength: 32
+        secret:
+          type: string
+          title: Password
+          description: Password for the connection
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        extension:
+          type: string
+          maxLength: 32
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        custom_extension:
+          type: string
+          nullable: true
+          title: Extension Settings
+          description: Custom user extension section for incoming calls
+        custom_settings:
+          type: string
+          nullable: true
+          title: Settings
+          description: Custom user settings
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom user [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom user [aor] section
+        pjsip_endpoint:
+          type: string
+          readOnly: true
+        is_webrtc:
+          type: boolean
+          nullable: true
+          readOnly: true
+        realm:
+          type: string
+          nullable: true
+          readOnly: true
+        md5_cred:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedWhitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1363,29 +1702,26 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для дозволу
+          title: Caller ID
+          description: Caller ID to allow
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
-            = дозвіл для всієї системи.
+          description: Destination number where calls must be allowed. Default= for
+            whole system allowing.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина дозволу ідентифікатора абонента
+          description: Reason for allowing the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
-            — запис постійний.
+          description: Expiration date for the whitelist entry. If not set, the entry
+            is permanent.
     QueueMemberList:
       type: object
       description: Response shape of GET /api/v1/queues/members/.
@@ -1454,6 +1790,122 @@ components:
       - queue
       - state_interface
       - status
+    SIPUser:
+      type: object
+      description: |-
+        A SIP extension. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        username:
+          type: string
+          maxLength: 32
+        secret:
+          type: string
+          title: Password
+          description: Password for the connection
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        extension:
+          type: string
+          maxLength: 32
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        custom_extension:
+          type: string
+          nullable: true
+          title: Extension Settings
+          description: Custom user extension section for incoming calls
+        custom_settings:
+          type: string
+          nullable: true
+          title: Settings
+          description: Custom user settings
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom user [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom user [aor] section
+        pjsip_endpoint:
+          type: string
+          readOnly: true
+        is_webrtc:
+          type: boolean
+          nullable: true
+          readOnly: true
+        realm:
+          type: string
+          nullable: true
+          readOnly: true
+        md5_cred:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - extension
+      - id
+      - is_webrtc
+      - md5_cred
+      - modified_at
+      - modified_by
+      - name
+      - pjsip_endpoint
+      - realm
+      - routing_table
+      - routing_table_name
+      - secret
+      - transport
+      - transport_name
+      - username
     Whitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1464,29 +1916,26 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для дозволу
+          title: Caller ID
+          description: Caller ID to allow
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
-            = дозвіл для всієї системи.
+          description: Destination number where calls must be allowed. Default= for
+            whole system allowing.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина дозволу ідентифікатора абонента
+          description: Reason for allowing the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
-            — запис постійний.
+          description: Expiration date for the whitelist entry. If not set, the entry
+            is permanent.
       required:
       - callerid
       - id

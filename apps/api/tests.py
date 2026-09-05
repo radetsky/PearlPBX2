@@ -10,8 +10,19 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 from unittest.mock import patch, MagicMock
 
+from django.conf import settings as django_settings
+
 from apps.api.models import CustomListNames, CustomListEntries
-from core.models import Blacklist, Whitelist, Contact, MonitorFilenames
+from core.models import (
+    Blacklist,
+    Whitelist,
+    Contact,
+    MonitorFilenames,
+    SIPUser,
+    SIPTransport,
+    RoutingTable,
+)
+from apps.provision.models import PhoneDevice
 
 
 class BaseAPITestCase(APITestCase):
@@ -287,6 +298,256 @@ class CustomListTests(BaseAPITestCase):
             f"/api/v1/lists/{other.id}/entries/{entry.id}/"
         )
         self.assertEqual(response.status_code, 404)
+
+
+class SIPUserApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="sipuser_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="sipuser_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+        self.transport = SIPTransport.objects.create(
+            name="test-api-transport",
+            protocol="udp",
+            bind="0.0.0.0:5061",
+            description="Test transport",
+        )
+        self.wss_transport = SIPTransport.objects.create(
+            name="test-api-wss-transport",
+            protocol="wss",
+            bind="0.0.0.0:8089",
+            description="Test WSS transport",
+        )
+        self.routing_table = RoutingTable.objects.get(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        )
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "Test User",
+            "username": "apiuser900",
+            "secret": "s3cret123",
+            "extension": "900",
+            "transport": self.transport.id,
+            "routing_table": self.routing_table.id,
+            "auth_type": "userpass",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        # core.migrations.0016_first_users seeds ppbxuser201..210, so the
+        # table is never truly empty — filter to a username that can't exist.
+        response = self.client.get("/api/v1/sip-users/?username=does-not-exist")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/sip-users/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/sip-users/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["username"], "apiuser900")
+        self.assertEqual(response.data["secret"], "s3cret123")
+
+    def test_created_row_lands_in_generated_pjsip_conf(self):
+        from core.conf import make_pjsip_conf_users
+
+        self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        result = make_pjsip_conf_users()
+        self.assertIn("[apiuser900](user-template)", result)
+
+    def test_create_without_transport_400(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(transport=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("transport", response.data)
+
+    def test_create_without_routing_table_400(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(routing_table=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("routing_table", response.data)
+
+    def test_create_short_username_400(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(username="ab"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("username", response.data)
+
+    def test_create_non_alnum_username_400(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(username="bad.user"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("username", response.data)
+
+    def test_create_non_alnum_extension_400(self):
+        response = self.client.post(
+            "/api/v1/sip-users/", self._payload(extension="9-00"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("extension", response.data)
+
+    def test_duplicate_username_400(self):
+        self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(extension="901"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("username", response.data)
+
+    def test_duplicate_extension_400(self):
+        self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(username="apiuser901"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("extension", response.data)
+
+    def test_list_filter_by_username(self):
+        SIPUser.objects.create(
+            name="Other",
+            username="other900",
+            extension="800",
+            secret="x",
+            transport=self.transport,
+            routing_table=self.routing_table,
+        )
+        self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        response = self.client.get("/api/v1/sip-users/?username=apiuser900")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["username"], "apiuser900")
+
+    def test_search(self):
+        self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        response = self.client.get("/api/v1/sip-users/?search=Test User")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/sip-users/{pk}/", {"name": "Updated Name"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["name"], "Updated Name")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/sip-users/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(SIPUser.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/sip-users/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_cascades_phone_device(self):
+        create = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        device = PhoneDevice.objects.create(
+            mac_address="00:11:22:33:44:55",
+            sip_user_id=pk,
+            sip_server="pbx.example.com",
+        )
+        self.client.delete(f"/api/v1/sip-users/{pk}/")
+        self.assertFalse(PhoneDevice.objects.filter(pk=device.pk).exists())
+
+    def test_md5_cred_matches_model(self):
+        create = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(transport=self.wss_transport.id, extension="901"),
+            format="json",
+        )
+        user = SIPUser.objects.get(pk=create.data["id"])
+        self.assertEqual(create.data["md5_cred"], user.md5_cred)
+
+    def test_realm_for_wss_transport(self):
+        create = self.client.post(
+            "/api/v1/sip-users/",
+            self._payload(transport=self.wss_transport.id, extension="901"),
+            format="json",
+        )
+        self.assertEqual(create.data["realm"], "wss-apiuser900")
+        self.assertTrue(create.data["is_webrtc"])
+
+    def test_realm_null_when_transport_missing(self):
+        SIPUser.objects.create(
+            name="No Transport",
+            username="notransport900",
+            extension="902",
+            secret="x",
+            transport=None,
+            routing_table=self.routing_table,
+        )
+        response = self.client.get("/api/v1/sip-users/?username=notransport900")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["results"][0]["realm"])
+        self.assertIsNone(response.data["results"][0]["md5_cred"])
+        self.assertIsNone(response.data["results"][0]["is_webrtc"])
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        user = SIPUser.objects.get(pk=create.data["id"])
+        self.assertEqual(user.created_by, self.staff_user)
+
+    def test_audit_modified_by_not_overwritten_created_by_on_patch(self):
+        create = self.client.post(
+            "/api/v1/sip-users/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+
+        other_staff = get_user_model().objects.create_user(
+            username="sipuser_staff2", password="x", is_staff=True
+        )
+        other_token = Token.objects.create(user=other_staff)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {other_token.key}")
+        self.client.patch(f"/api/v1/sip-users/{pk}/", {"name": "Renamed"}, format="json")
+
+        user = SIPUser.objects.get(pk=pk)
+        self.assertEqual(user.created_by, self.staff_user)
+        self.assertEqual(user.modified_by, other_staff)
 
 
 class OriginateApiTests(APITestCase):

@@ -19,6 +19,10 @@ python manage.py drf_create_token <username>
 
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
+**Виняток:** кожен метод на `/api/v1/sip-users/`, включно з `GET`, вимагає
+обліковий запис staff або superuser — див. [SIP Users](#sip-users) нижче.
+Дійсний токен звичайного користувача отримає `403 Forbidden` на цьому ресурсі.
+
 ## Загальний формат відповіді
 
 **Успіх**: JSON-об'єкт або масив із полями ресурсу. GET-ендпоінти списків повертають пагіновані відповіді:
@@ -256,6 +260,114 @@ POST використовує upsert-логіку за ключем `callerid`.
 
 ---
 
+## SIP Users
+
+Керує SIP-обліковими записами (extensions). На відміну від решти цього API,
+**кожен метод цього ресурсу — включно з `GET` — вимагає обліковий запис
+staff або superuser**; дійсний токен звичайного користувача отримає
+`403 Forbidden`. Цей ресурс надає доступ до облікових даних для дзвінків,
+тож звичайного автентифікованого токена недостатньо.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі — див.
+[посібник адміністратора](admin-guide.md). Користувач, збережений без
+`transport` або без `routing_table`, буде мовчки пропущений при генерації
+конфігурації, тому обидва поля тут обов'язкові.
+
+Видалення SIP-користувача каскадно видаляє будь-який пов'язаний `PhoneDevice`.
+
+### GET `/api/v1/sip-users/`
+
+Повертає SIP-користувачів зі пагінацією. Підтримує:
+- `?username=<точне значення>` — фільтр за точним username
+- `?extension=<точне значення>` — фільтр за точним extension
+- `?search=<текст>` — пошук без урахування регістру за `name`, `username`, `extension`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 12,
+      "name": "John Doe",
+      "username": "101",
+      "secret": "s3cret123",
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "nat": false,
+      "extension": "101",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "auth_type": "userpass",
+      "custom_extension": "",
+      "custom_settings": "",
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "pjsip_endpoint": "PJSIP/101",
+      "is_webrtc": false,
+      "realm": "udp-101",
+      "md5_cred": "a1b2c3...",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`realm` та `md5_cred` — це облікові дані RFC 2617 HA1, обчислені з
+`username`/`transport`/`secret`. WebRTC (`wss`) endpoint-и завжди
+автентифікуються як MD5 у згенерованій конфігурації незалежно від
+`auth_type`, тож WebRTC-клієнту слід використовувати `md5_cred`/`realm`,
+а не відкритий `secret`. Обидва поля — `null` для користувача без
+`transport`. `is_webrtc` дорівнює `true`, коли протокол транспорту
+користувача — `wss`.
+
+### POST `/api/v1/sip-users/`
+
+Створити SIP-користувача.
+
+**Тіло запиту:**
+```json
+{
+  "name": "John Doe",
+  "username": "101",
+  "secret": "s3cret123",
+  "extension": "101",
+  "transport": 1,
+  "routing_table": 1,
+  "auth_type": "userpass"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | мінімум 3 символи |
+| `username` | так | 3+ символи, лише літери/цифри, унікальний |
+| `secret` | так | пароль SIP у відкритому вигляді |
+| `transport` | так | ID існуючого `SIPTransport` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+| `extension` | так | лише літери/цифри, унікальний |
+| `nat` | ні | за замовчуванням `false` |
+| `auth_type` | ні | `userpass` (за замовчуванням) або `md5` |
+| `custom_extension`, `custom_settings`, `custom_auth_settings`, `custom_aor_settings` | ні | сирі фрагменти `pjsip.conf`/dialplan, записуються дослівно |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом користувача, або `400`, якщо
+`username`/`extension` вже зайняті чи не пройшли валідацію.
+
+### PATCH `/api/v1/sip-users/<id>/`
+
+Часткове оновлення SIP-користувача. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-users/<id>/`
+
+Видалити SIP-користувача. Повертає `204 No Content`. Каскадно видаляє будь-який
+пов'язаний `PhoneDevice`.
+
+---
+
 ## Ініціювання дзвінка (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -433,7 +545,8 @@ curl -H "Authorization: Token <ваш-токен>" \
 
 ## Відомі обмеження
 
-- Немає фільтрації чи пошуку на GET-ендпоінтах.
+- Немає фільтрації чи пошуку на GET-ендпоінтах, окрім `/api/v1/sip-users/`
+  (`?username=`, `?extension=`, `?search=`).
 
 ---
 

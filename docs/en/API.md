@@ -19,6 +19,10 @@ Or via Django admin / shell (`rest_framework.authtoken.models.Token`).
 
 There is no session-based or IP-based restriction. CSRF protection is not enforced (token auth only).
 
+**Exception:** every method on `/api/v1/sip-users/`, including `GET`, requires
+a staff or superuser account — see [SIP Users](#sip-users) below. A regular
+user's valid token receives `403 Forbidden` on that resource.
+
 ## Common Response Format
 
 **Success**: JSON object or array with resource fields. GET list endpoints return paginated responses:
@@ -256,6 +260,113 @@ Delete a specific entry from a list. Returns `204 No Content`.
 
 ---
 
+## SIP Users
+
+Manages SIP extensions (accounts). Unlike the rest of this API, **every method
+on this resource — including `GET` — requires a staff or superuser account**;
+a valid token belonging to a regular user receives `403 Forbidden`. This
+resource exposes dial-out credentials, so a plain authenticated token is not
+enough.
+
+Saving here only updates the database. Changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin — see the
+[admin guide](admin-guide.md). A user saved with no `transport` or no
+`routing_table` would silently be skipped when the configuration is
+generated, which is why both fields are required here.
+
+Deleting a SIP user cascades to any `PhoneDevice` provisioned for it.
+
+### GET `/api/v1/sip-users/`
+
+Returns paginated SIP users. Supports:
+- `?username=<exact>` — filter by exact username
+- `?extension=<exact>` — filter by exact extension
+- `?search=<text>` — case-insensitive match against `name`, `username`, `extension`
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 12,
+      "name": "John Doe",
+      "username": "101",
+      "secret": "s3cret123",
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "nat": false,
+      "extension": "101",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "auth_type": "userpass",
+      "custom_extension": "",
+      "custom_settings": "",
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "pjsip_endpoint": "PJSIP/101",
+      "is_webrtc": false,
+      "realm": "udp-101",
+      "md5_cred": "a1b2c3...",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`realm` and `md5_cred` are the RFC 2617 HA1 credential derived from
+`username`/`transport`/`secret`. WebRTC (`wss`) endpoints are always
+authenticated as MD5 in the generated config regardless of `auth_type`, so a
+WebRTC client should use `md5_cred`/`realm` rather than the plaintext
+`secret`. Both are `null` for a user with no `transport` set. `is_webrtc` is
+`true` when the user's transport protocol is `wss`.
+
+### POST `/api/v1/sip-users/`
+
+Create a SIP user.
+
+**Request body:**
+```json
+{
+  "name": "John Doe",
+  "username": "101",
+  "secret": "s3cret123",
+  "extension": "101",
+  "transport": 1,
+  "routing_table": 1,
+  "auth_type": "userpass"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | at least 3 characters |
+| `username` | yes | 3+ characters, letters/digits only, unique |
+| `secret` | yes | plaintext SIP password |
+| `transport` | yes | ID of an existing `SIPTransport` |
+| `routing_table` | yes | ID of an existing `RoutingTable` |
+| `extension` | yes | letters/digits only, unique |
+| `nat` | no | default `false` |
+| `auth_type` | no | `userpass` (default) or `md5` |
+| `custom_extension`, `custom_settings`, `custom_auth_settings`, `custom_aor_settings` | no | raw `pjsip.conf`/dialplan snippets, written verbatim |
+
+**Response:** `HTTP 201` with the created user object, or `400` if `username`/`extension`
+is already taken or fails validation.
+
+### PATCH `/api/v1/sip-users/<id>/`
+
+Partially update a SIP user. Same field rules as `POST`.
+
+### DELETE `/api/v1/sip-users/<id>/`
+
+Delete a SIP user. Returns `204 No Content`. Cascades to any provisioned
+`PhoneDevice`.
+
+---
+
 ## Originate a call
 
 **`POST /api/v1/calls/originate/`**
@@ -433,7 +544,8 @@ same as the rest of this API.
 
 ## Known Limitations
 
-- No filtering or search on GET endpoints.
+- No filtering or search on GET endpoints, except `/api/v1/sip-users/`
+  (`?username=`, `?extension=`, `?search=`).
 
 ---
 

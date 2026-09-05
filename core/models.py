@@ -317,7 +317,7 @@ class RoutingTable(models.Model):
         return default_routing_table
 
 
-class SIPUser(models.Model):
+class SIPUser(AuditFields):
     AUTHTYPE_CHOICES = [
         ("userpass", _("Plaintext")),
         ("md5", _("MD5")),
@@ -446,7 +446,7 @@ class SIPUser(models.Model):
     def __str__(self):
         return f"{self.username} ({self.name})"
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("02. SIP Users")
 
 
