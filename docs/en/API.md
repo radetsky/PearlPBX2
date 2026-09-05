@@ -19,11 +19,18 @@ Or via Django admin / shell (`rest_framework.authtoken.models.Token`).
 
 There is no session-based or IP-based restriction. CSRF protection is not enforced (token auth only).
 
-**Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`
-and `/api/v1/sip-peers/`, including `GET`, requires a staff or superuser
-account — see [SIP Users](#sip-users), [SIP Transports](#sip-transports) and
-[SIP Peers](#sip-peers) below. A regular user's valid token receives
+**Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/` and `/api/v1/trunk-groups/`,
+including `GET`, requires a staff or superuser account — see
+[SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) and
+[Trunk Groups](#trunk-groups) below. A regular user's valid token receives
 `403 Forbidden` on those resources.
+
+**Superuser only:** `/api/v1/config/preview/` and `/api/v1/config/apply/`
+require a **superuser** account — a staff-only token is not enough, since
+`apply` can restart Asterisk and drop every active call. See
+[Config (Apply Changes)](#config-apply-changes).
 
 ## Common Response Format
 
@@ -588,6 +595,192 @@ Delete a peer. Returns `204 No Content`, or `409 Conflict` naming the
 
 ---
 
+## Routing Tables
+
+Manages routing tables. Every method — including `GET` — requires a staff or
+superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+dialplan context name (`core.conf.make_routing_tables()`), so it must not
+collide with a `DialplanContext` name — a collision returns `400`, not the
+`500` a direct model save would raise.
+
+### GET `/api/v1/routing-tables/`
+
+Returns paginated routing tables. Supports `?name=<exact>` and
+`?search=<text>` (matches `name`).
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "PEARLPBX",
+      "routing_records_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+`routing_records_count` is the number of `RoutingRecord` rows pointing at
+this table.
+
+### POST `/api/v1/routing-tables/`
+
+**Request body:** `{"name": "Sales"}`
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | letters/digits/underscores/hyphens, unique, must not already exist as a `DialplanContext` name |
+
+**Response:** `HTTP 201`, or `400` if `name` is taken or collides with a
+`DialplanContext`.
+
+### PATCH `/api/v1/routing-tables/<id>/`
+
+Same field rules as `POST`.
+
+### DELETE `/api/v1/routing-tables/<id>/`
+
+Returns `204 No Content`, or `409 Conflict` if the table is still referenced
+by a `SIPUser`, `SIPPeer`, `RoutingRecord`, a callback service, or a
+`Webhook`'s routing-table filter.
+
+---
+
+## Trunk Groups
+
+Manages trunk groups (failover sets of SIP peers). Every method — including
+`GET` — requires a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `name` is looked up by the
+FastAGI `dial-trunk-group` handler via a literal
+`AGI(agi://.../dial-trunk-group,<name>,...)` call embedded in dialplan text —
+**renaming or deleting a group still referenced that way is rejected**
+(`400`/`409`) instead of silently breaking call routing. This is a
+best-effort text scan: it cannot see a name reached only through an Asterisk
+variable (e.g. `${GROUPNAME}`).
+
+### GET `/api/v1/trunk-groups/`
+
+Returns paginated trunk groups. Supports `?name=<exact>` and
+`?search=<text>`.
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "main-trunks",
+      "sip_peers": [5, 6],
+      "sip_peer_names": ["provider-a", "provider-b"],
+      "sip_peers_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/trunk-groups/`
+
+**Request body:**
+```json
+{"name": "main-trunks", "sip_peers": [5, 6]}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | unique |
+| `sip_peers` | no | list of `SIPPeer` IDs; unlike `SIPPeer.trunk_groups` (read-only), this is the writable side of the relationship |
+
+**Response:** `HTTP 201`, or `400` if `name` is taken.
+
+### PATCH `/api/v1/trunk-groups/<id>/`
+
+Same field rules as `POST`. Renaming while dialplan still references the
+current name returns `400` naming the referencing extension(s)/macro(s).
+
+### DELETE `/api/v1/trunk-groups/<id>/`
+
+Returns `204 No Content`, or `409 Conflict` naming the referencing
+extension(s)/macro(s) if dialplan still calls this group by name.
+
+---
+
+## Config (Apply Changes)
+
+Wraps the admin's "Apply Changes" page. **Both endpoints require a
+superuser account — a staff-only token is not enough**, since `apply` can
+restart Asterisk and drop every active call.
+
+### GET `/api/v1/config/preview/`
+
+Dry-run: returns the same generated file contents as the admin's preview
+page. No filesystem writes, no Asterisk reload.
+
+**Response:**
+```json
+{
+  "files": {
+    "pjsip.conf": "...",
+    "extensions.ael": "...",
+    "queues.conf": "...",
+    "queuerules.conf": "...",
+    "manager.conf": "...",
+    "musiconhold.conf": "...",
+    "confbridge.conf": "..."
+  },
+  "skipped_sip_users": ["userA"]
+}
+```
+
+### POST `/api/v1/config/apply/`
+
+Writes the generated configs (versioned, with a backup tarball under
+`ASTERISK_BACKUP_DIR` beforehand) and reloads Asterisk.
+
+**Request body:** `{"mode": "soft"}` or `{"mode": "hard"}`
+
+| Field | Required | Notes |
+|---|---|---|
+| `mode` | **yes** | `soft` — per-module/AEL reload, keeps active calls; `hard` — `core restart now`, drops every active call |
+
+Unlike the admin form (where anything other than the literal string `"soft"`
+silently means a hard restart), `mode` is a required, validated choice —
+missing or invalid returns `400`.
+
+**Response:**
+```json
+{
+  "mode": "soft",
+  "changed_files": ["pjsip.conf", "queues.conf"],
+  "reloaded": true,
+  "skipped_sip_users": []
+}
+```
+`changed_files` lists only the files whose content actually changed (got a
+new version) on this apply. `reloaded` is `false` when
+`DEVMODE=without_asterisk_on_localhost` — files are still written, but no
+AMI call is made (matching the admin's dev-mode behavior).
+
+**`409 Conflict`** if another apply is already in progress (a short-lived
+Redis lock); if Redis itself is unreachable, the apply proceeds without the
+lock rather than becoming unavailable.
+
+---
+
 ## Originate a call
 
 **`POST /api/v1/calls/originate/`**
@@ -767,8 +960,12 @@ same as the rest of this API.
 
 - No filtering or search on GET endpoints, except `/api/v1/sip-users/`
   (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
-  (`?name=`, `?protocol=`, `?search=`) and `/api/v1/sip-peers/`
-  (`?name=`, `?routing_table=`, `?search=`).
+  (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
+  (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
+  (`?name=`, `?search=`) and `/api/v1/trunk-groups/` (`?name=`, `?search=`).
+- The trunk-group rename/delete guard is a best-effort text scan of dialplan
+  bodies for a literal `dial-trunk-group,<name>,` call — it cannot see a
+  group name reached only through an Asterisk variable.
 
 ---
 

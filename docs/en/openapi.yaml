@@ -265,6 +265,54 @@ paths:
           description: AMI error or Asterisk unreachable.
         '503':
           description: Asterisk is disabled in this DEVMODE.
+  /api/v1/config/apply/:
+    post:
+      operationId: config_apply_create
+      description: |-
+        Write configs (with backup) and reload Asterisk. Superuser only.
+
+        mode=soft -> module/AEL reload (keeps active calls).
+        mode=hard -> 'core restart now' (drops every active call).
+      summary: Apply generated configs and reload Asterisk
+      tags:
+      - config
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Configs applied.
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Another apply is already in progress.
+        '500':
+          description: Applying the configuration failed.
+  /api/v1/config/preview/:
+    get:
+      operationId: config_preview_retrieve
+      description: |-
+        GET-only dry-run: same content as the admin's GET preview, no
+        filesystem writes, no AMI. Superuser only.
+      summary: Preview generated Asterisk config files (dry-run)
+      tags:
+      - config
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Generated config file contents.
   /api/v1/contacts/:
     get:
       operationId: contacts_list
@@ -794,6 +842,221 @@ paths:
           description: Authentication credentials were not provided.
         '404':
           description: No recording exists for this uniqueid.
+  /api/v1/routing-tables/:
+    get:
+      operationId: routing_tables_list
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRoutingTableList'
+          description: ''
+    post:
+      operationId: routing_tables_create
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/routing-tables/{id}/:
+    get:
+      operationId: routing_tables_retrieve
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+    put:
+      operationId: routing_tables_update
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: routing_tables_partial_update
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: routing_tables_destroy
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Routing table deleted.
+        '409':
+          description: Routing table is still used by a SIP user, peer, routing record,
+            callback service or webhook.
   /api/v1/sip-peers/:
     get:
       operationId: sip_peers_list
@@ -1432,6 +1695,216 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/trunk-groups/:
+    get:
+      operationId: trunk_groups_list
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrunkGroupList'
+          description: ''
+    post:
+      operationId: trunk_groups_create
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/trunk-groups/{id}/:
+    get:
+      operationId: trunk_groups_retrieve
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+    put:
+      operationId: trunk_groups_update
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a group still referenced
+            by dialplan.
+    patch:
+      operationId: trunk_groups_partial_update
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a group still referenced
+            by dialplan.
+    delete:
+      operationId: trunk_groups_destroy
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Trunk group deleted.
+        '409':
+          description: Trunk group is still referenced by dialplan.
   /api/v1/whitelist/:
     get:
       operationId: whitelist_list
@@ -1632,6 +2105,22 @@ paths:
           description: No response body
 components:
   schemas:
+    ApplyChanges:
+      type: object
+      description: |-
+        Required, no implicit default — unlike the admin form, where anything
+        other than the literal string "soft" silently means a hard restart.
+      properties:
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          description: |-
+            'soft': module/AEL reload, keeps active calls. 'hard': 'core restart now', drops every active call.
+
+            * `soft` - soft
+            * `hard` - hard
+      required:
+      - mode
     AuthTypeEnum:
       enum:
       - userpass
@@ -1797,6 +2286,14 @@ components:
         * `sslv2` - SSLv2
         * `sslv3` - SSLv3
         * `sslv23` - SSLv2.3
+    ModeEnum:
+      enum:
+      - soft
+      - hard
+      type: string
+      description: |-
+        * `soft` - soft
+        * `hard` - hard
     NullEnum:
       enum:
       - null
@@ -1934,6 +2431,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedRoutingTableList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutingTable'
     PaginatedSIPPeerList:
       type: object
       required:
@@ -2003,6 +2523,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SIPUser'
+    PaginatedTrunkGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrunkGroup'
     PaginatedWhitelistList:
       type: object
       required:
@@ -2084,6 +2627,42 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedRoutingTable:
+      type: object
+      description: |-
+        A routing table. Its name is both a PJSIP `context=` value and an AEL
+        dialplan context name (core.conf.make_routing_tables()), so it shares a
+        naming namespace with DialplanContext.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing table name
+          description: Unique name for the routing table and dialplan context, use
+            latin symbols, digits and underscores
+          maxLength: 80
+        routing_records_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedSIPPeer:
       type: object
       description: |-
@@ -2389,6 +2968,52 @@ components:
           type: integer
           readOnly: true
           nullable: true
+    PatchedTrunkGroup:
+      type: object
+      description: |-
+        A trunk group (failover set of SIPPeers). `name` is looked up by
+        services/fastagi/fastagi.py via raw SQL from a literal
+        `dial-trunk-group,<name>,` AGI call embedded in dialplan text, so renaming
+        or deleting a group still referenced there is rejected.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Trunk Group Name
+          description: Name of the trunk group
+          maxLength: 64
+        sip_peers:
+          type: array
+          items:
+            type: integer
+        sip_peer_names:
+          type: array
+          items:
+            type: string
+            title: Channel name
+            description: Name of the channel
+          readOnly: true
+        sip_peers_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedWhitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -2499,6 +3124,50 @@ components:
       - queue
       - state_interface
       - status
+    RoutingTable:
+      type: object
+      description: |-
+        A routing table. Its name is both a PJSIP `context=` value and an AEL
+        dialplan context name (core.conf.make_routing_tables()), so it shares a
+        naming namespace with DialplanContext.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing table name
+          description: Unique name for the routing table and dialplan context, use
+            latin symbols, digits and underscores
+          maxLength: 80
+        routing_records_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - routing_records_count
     SIPPeer:
       type: object
       description: |-
@@ -2845,6 +3514,61 @@ components:
       - transport
       - transport_name
       - username
+    TrunkGroup:
+      type: object
+      description: |-
+        A trunk group (failover set of SIPPeers). `name` is looked up by
+        services/fastagi/fastagi.py via raw SQL from a literal
+        `dial-trunk-group,<name>,` AGI call embedded in dialplan text, so renaming
+        or deleting a group still referenced there is rejected.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Trunk Group Name
+          description: Name of the trunk group
+          maxLength: 64
+        sip_peers:
+          type: array
+          items:
+            type: integer
+        sip_peer_names:
+          type: array
+          items:
+            type: string
+            title: Channel name
+            description: Name of the channel
+          readOnly: true
+        sip_peers_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - sip_peer_names
+      - sip_peers_count
     Whitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).

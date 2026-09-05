@@ -20,10 +20,17 @@ O a través del admin de Django / shell (`rest_framework.authtoken.models.Token`
 No hay restricción por sesión ni por IP. La protección CSRF no se aplica (solo autenticación por token).
 
 **Excepción:** todos los métodos de `/api/v1/sip-users/`,
-`/api/v1/sip-transports/` y `/api/v1/sip-peers/`, incluido `GET`, requieren
-una cuenta de staff o superusuario — ver [SIP Users](#sip-users),
-[SIP Transports](#sip-transports) y [SIP Peers](#sip-peers) más abajo. El
-token válido de un usuario normal recibe `403 Forbidden` en esos recursos.
+`/api/v1/sip-transports/`, `/api/v1/sip-peers/`, `/api/v1/routing-tables/` y
+`/api/v1/trunk-groups/`, incluido `GET`, requieren una cuenta de staff o
+superusuario — ver [SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) y
+[Trunk Groups](#trunk-groups) más abajo. El token válido de un usuario normal
+recibe `403 Forbidden` en esos recursos.
+
+**Solo superusuario:** `/api/v1/config/preview/` y `/api/v1/config/apply/`
+requieren una cuenta de **superusuario** — un token de solo staff no es
+suficiente, ya que `apply` puede reiniciar Asterisk y cortar todas las
+llamadas activas. Ver [Config (Apply Changes)](#config-apply-changes).
 
 ## Formato de respuesta común
 
@@ -592,6 +599,196 @@ Eliminar un peer. Devuelve `204 No Content`, o `409 Conflict` con los
 
 ---
 
+## Routing Tables
+
+Gestiona las tablas de enrutamiento. Todos los métodos — incluido `GET` —
+requieren una cuenta de staff o superusuario.
+
+Guardar aquí solo actualiza la base de datos; los cambios llegan a Asterisk
+después de que un superusuario ejecute "Apply Changes" en el admin. `name`
+es a la vez el nombre de un contexto AEL (`core.conf.make_routing_tables()`),
+así que no puede coincidir con un nombre de `DialplanContext` — una
+colisión devuelve `400`, no el `500` que un guardado directo del modelo
+lanzaría.
+
+### GET `/api/v1/routing-tables/`
+
+Devuelve tablas de enrutamiento paginadas. Admite `?name=<exacto>` y
+`?search=<texto>` (sobre `name`).
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "PEARLPBX",
+      "routing_records_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+`routing_records_count` es el número de filas `RoutingRecord` que apuntan a
+esta tabla.
+
+### POST `/api/v1/routing-tables/`
+
+**Cuerpo de la solicitud:** `{"name": "Sales"}`
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `name` | sí | letras/dígitos/guiones bajos/guiones, único, no debe existir ya como nombre de `DialplanContext` |
+
+**Respuesta:** `HTTP 201`, o `400` si `name` ya está en uso o colisiona con
+un `DialplanContext`.
+
+### PATCH `/api/v1/routing-tables/<id>/`
+
+Mismas reglas de campos que `POST`.
+
+### DELETE `/api/v1/routing-tables/<id>/`
+
+Devuelve `204 No Content`, o `409 Conflict` si la tabla todavía está
+referenciada por un `SIPUser`, `SIPPeer`, `RoutingRecord`, un servicio de
+callback, o el filtro de tabla de enrutamiento de un `Webhook`.
+
+---
+
+## Trunk Groups
+
+Gestiona los grupos de troncales (conjuntos de failover de SIP peers). Todos
+los métodos — incluido `GET` — requieren una cuenta de staff o superusuario.
+
+Guardar aquí solo actualiza la base de datos; los cambios llegan a Asterisk
+después de que un superusuario ejecute "Apply Changes" en el admin. `name`
+es buscado por el manejador FastAGI `dial-trunk-group` mediante una llamada
+literal `AGI(agi://.../dial-trunk-group,<name>,...)` incrustada en el texto
+del dialplan — **renombrar o eliminar un grupo todavía referenciado así se
+rechaza** (`400`/`409`) en lugar de romper silenciosamente el enrutamiento
+de llamadas. Es un escaneo de texto best-effort: no puede ver un nombre
+alcanzado solo a través de una variable de Asterisk (p. ej. `${GROUPNAME}`).
+
+### GET `/api/v1/trunk-groups/`
+
+Devuelve grupos de troncales paginados. Admite `?name=<exacto>` y
+`?search=<texto>`.
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "main-trunks",
+      "sip_peers": [5, 6],
+      "sip_peer_names": ["provider-a", "provider-b"],
+      "sip_peers_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/trunk-groups/`
+
+**Cuerpo de la solicitud:**
+```json
+{"name": "main-trunks", "sip_peers": [5, 6]}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `name` | sí | único |
+| `sip_peers` | no | lista de IDs de `SIPPeer`; a diferencia de `SIPPeer.trunk_groups` (solo lectura), este es el lado escribible de la relación |
+
+**Respuesta:** `HTTP 201`, o `400` si `name` ya está en uso.
+
+### PATCH `/api/v1/trunk-groups/<id>/`
+
+Mismas reglas de campos que `POST`. Renombrar mientras el dialplan todavía
+referencia el nombre actual devuelve `400` nombrando la(s)
+extensión(es)/macro(s) que lo referencian.
+
+### DELETE `/api/v1/trunk-groups/<id>/`
+
+Devuelve `204 No Content`, o `409 Conflict` nombrando la(s)
+extensión(es)/macro(s) si el dialplan todavía llama a este grupo por nombre.
+
+---
+
+## Config (Apply Changes)
+
+Envuelve la página "Apply Changes" del admin. **Ambos endpoints requieren
+una cuenta de superusuario — un token de solo staff no es suficiente**, ya
+que `apply` puede reiniciar Asterisk y cortar todas las llamadas activas.
+
+### GET `/api/v1/config/preview/`
+
+Dry-run: devuelve el mismo contenido de archivos generado que la página de
+vista previa del admin. Sin escritura en disco, sin recarga de Asterisk.
+
+**Respuesta:**
+```json
+{
+  "files": {
+    "pjsip.conf": "...",
+    "extensions.ael": "...",
+    "queues.conf": "...",
+    "queuerules.conf": "...",
+    "manager.conf": "...",
+    "musiconhold.conf": "...",
+    "confbridge.conf": "..."
+  },
+  "skipped_sip_users": ["userA"]
+}
+```
+
+### POST `/api/v1/config/apply/`
+
+Escribe las configuraciones generadas (versionadas, con un tarball de
+respaldo bajo `ASTERISK_BACKUP_DIR` de antemano) y recarga Asterisk.
+
+**Cuerpo de la solicitud:** `{"mode": "soft"}` o `{"mode": "hard"}`
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `mode` | **sí** | `soft` — recarga de módulos/AEL, mantiene las llamadas activas; `hard` — `core restart now`, corta todas las llamadas activas |
+
+A diferencia del formulario del admin (donde cualquier valor que no sea la
+cadena literal `"soft"` significa silenciosamente un reinicio duro), `mode`
+es un campo de elección obligatorio y validado — si falta o es inválido
+devuelve `400`.
+
+**Respuesta:**
+```json
+{
+  "mode": "soft",
+  "changed_files": ["pjsip.conf", "queues.conf"],
+  "reloaded": true,
+  "skipped_sip_users": []
+}
+```
+`changed_files` lista solo los archivos cuyo contenido realmente cambió
+(obtuvo una nueva versión) en este apply. `reloaded` es `false` cuando
+`DEVMODE=without_asterisk_on_localhost` — los archivos se escriben igual,
+pero no se hace ninguna llamada AMI (igual que el comportamiento de dev del
+admin).
+
+**`409 Conflict`** si ya hay otro apply en curso (un bloqueo Redis de corta
+duración); si el propio Redis no está disponible, el apply continúa sin el
+bloqueo en lugar de quedar inutilizable.
+
+---
+
 ## Iniciar una llamada (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -771,8 +968,14 @@ grabación, igual que en el resto de esta API.
 
 - No hay filtrado ni búsqueda en los endpoints GET, excepto en
   `/api/v1/sip-users/` (`?username=`, `?extension=`, `?search=`),
-  `/api/v1/sip-transports/` (`?name=`, `?protocol=`, `?search=`) y
-  `/api/v1/sip-peers/` (`?name=`, `?routing_table=`, `?search=`).
+  `/api/v1/sip-transports/` (`?name=`, `?protocol=`, `?search=`),
+  `/api/v1/sip-peers/` (`?name=`, `?routing_table=`, `?search=`),
+  `/api/v1/routing-tables/` (`?name=`, `?search=`) y `/api/v1/trunk-groups/`
+  (`?name=`, `?search=`).
+- La protección de renombrado/eliminación de grupos de troncales es un
+  escaneo de texto best-effort de los cuerpos del dialplan buscando una
+  llamada literal `dial-trunk-group,<name>,` — no puede ver un nombre de
+  grupo alcanzado solo a través de una variable de Asterisk.
 
 ---
 

@@ -23,6 +23,8 @@ from core.models import (
     SIPPeer,
     TrunkGroup,
     RoutingTable,
+    DialplanContext,
+    DialplanExtension,
 )
 from apps.provision.models import PhoneDevice
 
@@ -494,6 +496,23 @@ class SIPUserApiTests(APITestCase):
         self.client.delete(f"/api/v1/sip-users/{pk}/")
         self.assertFalse(PhoneDevice.objects.filter(pk=device.pk).exists())
 
+    def test_delete_removes_queue_members(self):
+        from core.models import MusicOnHold, Queue, QueueAnnouncements, QueueMember
+
+        create = self.client.post("/api/v1/sip-users/", self._payload(), format="json")
+        pk = create.data["id"]
+        moh = MusicOnHold.objects.create(name="test-sipuser-del-moh")
+        ann = QueueAnnouncements.objects.create(name="test-sipuser-del-ann")
+        queue = Queue.objects.create(
+            name="TestSipUserDelQueue", music_class=moh, queue_announcement=ann
+        )
+        member = QueueMember.objects.create(queue=queue, interface="PJSIP/apiuser900")
+        self.client.delete(f"/api/v1/sip-users/{pk}/")
+        self.assertFalse(QueueMember.objects.filter(pk=member.pk).exists())
+        queue.delete()
+        ann.delete()
+        moh.delete()
+
     def test_md5_cred_matches_model(self):
         create = self.client.post(
             "/api/v1/sip-users/",
@@ -920,6 +939,411 @@ class SIPPeerApiTests(APITestCase):
         create = self.client.post("/api/v1/sip-peers/", self._payload(), format="json")
         peer = SIPPeer.objects.get(pk=create.data["id"])
         self.assertEqual(peer.created_by, self.staff_user)
+
+
+class RoutingTableApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="rt_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="rt_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def _payload(self, **overrides):
+        payload = {"name": "api-routing-table"}
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/routing-tables/?name=does-not-exist")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/routing-tables/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/routing-tables/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "api-routing-table")
+        self.assertEqual(response.data["routing_records_count"], 0)
+
+    def test_create_name_colliding_with_dialplan_context_400(self):
+        ctx = DialplanContext.objects.create(name="api-rt-collision")
+        response = self.client.post(
+            "/api/v1/routing-tables/",
+            self._payload(name="api-rt-collision"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+        ctx.delete()
+
+    def test_duplicate_name_400(self):
+        self.client.post("/api/v1/routing-tables/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/routing-tables/{pk}/", {"name": "api-routing-table-renamed"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["name"], "api-routing-table-renamed")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/routing-tables/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(RoutingTable.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/routing-tables/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_in_use_returns_409(self):
+        create = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        transport = SIPTransport.objects.create(
+            name="test-rt-api-transport", protocol="udp", bind="0.0.0.0:5071"
+        )
+        SIPUser.objects.create(
+            name="RT Blocker",
+            username="rtblocker900",
+            extension="900",
+            secret="x",
+            transport=transport,
+            routing_table_id=pk,
+        )
+        response = self.client.delete(f"/api/v1/routing-tables/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(RoutingTable.objects.filter(pk=pk).exists())
+
+    def test_delete_referenced_by_webhook_returns_409(self):
+        from apps.webhooks.models import Webhook
+
+        create = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        webhook = Webhook.objects.create(name="test-rt-webhook", url="https://example.com/hook")
+        webhook.routing_tables.add(pk)
+
+        response = self.client.delete(f"/api/v1/routing-tables/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(RoutingTable.objects.filter(pk=pk).exists())
+        webhook.delete()
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/routing-tables/", self._payload(), format="json"
+        )
+        rt = RoutingTable.objects.get(pk=create.data["id"])
+        self.assertEqual(rt.created_by, self.staff_user)
+
+
+class TrunkGroupApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="tg_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="tg_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+        self.context = DialplanContext.objects.create(name="test-tg-api-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+
+    def _payload(self, **overrides):
+        payload = {"name": "api-trunk-group"}
+        payload.update(overrides)
+        return payload
+
+    def _make_referencing_extension(self, group_name):
+        return DialplanExtension.objects.create(
+            context=self.context,
+            ext="100",
+            dialplan=f"AGI(agi://127.0.0.1:4573/dial-trunk-group,{group_name},${{EXTEN}});",
+        )
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/trunk-groups/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/trunk-groups/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/trunk-groups/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "api-trunk-group")
+        self.assertEqual(response.data["sip_peers_count"], 0)
+
+    def test_sip_peers_writable_via_api(self):
+        transport = SIPTransport.objects.create(
+            name="test-tg-api-transport", protocol="udp", bind="0.0.0.0:5072"
+        )
+        peer = SIPPeer.objects.create(name="test-tg-api-peer", transport=transport)
+        response = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(sip_peers=[peer.pk]), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["sip_peers"], [peer.pk])
+        self.assertEqual(response.data["sip_peer_names"], ["test-tg-api-peer"])
+        self.assertEqual(response.data["sip_peers_count"], 1)
+        peer.delete()
+        transport.delete()
+
+    def test_duplicate_name_400(self):
+        self.client.post("/api/v1/trunk-groups/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/trunk-groups/{pk}/", {"name": "api-trunk-group-renamed"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["name"], "api-trunk-group-renamed")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/trunk-groups/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(TrunkGroup.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/trunk-groups/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_rename_blocked_while_dialplan_references_old_name(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(name="test-tg-api-old"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test-tg-api-old")
+        response = self.client.patch(
+            f"/api/v1/trunk-groups/{pk}/", {"name": "test-tg-api-new"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_rename_allowed_after_dialplan_updated(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(name="test-tg-api-old2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test-tg-api-old2")
+        ext.delete()
+        response = self.client.patch(
+            f"/api/v1/trunk-groups/{pk}/", {"name": "test-tg-api-new2"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_delete_blocked_while_dialplan_references_returns_409(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(name="test-tg-api-del"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test-tg-api-del")
+        response = self.client.delete(f"/api/v1/trunk-groups/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(TrunkGroup.objects.filter(pk=pk).exists())
+
+    def test_delete_allowed_after_dialplan_updated(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(name="test-tg-api-del2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test-tg-api-del2")
+        ext.delete()
+        response = self.client.delete(f"/api/v1/trunk-groups/{pk}/")
+        self.assertEqual(response.status_code, 204)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/trunk-groups/", self._payload(), format="json"
+        )
+        group = TrunkGroup.objects.get(pk=create.data["id"])
+        self.assertEqual(group.created_by, self.staff_user)
+
+
+class ApplyChangesApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username="apply_super", password="x", email="super@example.com"
+        )
+        self.superuser_token = Token.objects.create(user=self.superuser)
+        self.staff_user = User.objects.create_user(
+            username="apply_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="apply_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.superuser_token.key}")
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_preview_forbidden_for_staff(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+        response = self.client.get("/api/v1/config/preview/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_preview_forbidden_for_plain_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/config/preview/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_preview_no_token_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/config/preview/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_preview_returns_generated_files(self):
+        response = self.client.get("/api/v1/config/preview/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pjsip.conf", response.data["files"])
+        self.assertIn("; ==== Transports section ====", response.data["files"]["pjsip.conf"])
+        self.assertIn("skipped_sip_users", response.data)
+
+    def test_apply_forbidden_for_staff(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+        response = self.client.post("/api/v1/config/apply/", {"mode": "soft"}, format="json")
+        self.assertEqual(response.status_code, 403)
+
+    def test_apply_missing_mode_400(self):
+        response = self.client.post("/api/v1/config/apply/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_apply_invalid_mode_400(self):
+        response = self.client.post(
+            "/api/v1/config/apply/", {"mode": "medium"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.api.views.config.redis.Redis")
+    @override_settings(DEVMODE="without_asterisk_on_localhost")
+    def test_apply_devmode_without_asterisk_skips_ami(self, mock_redis_cls):
+        mock_redis_cls.from_url.return_value.set.return_value = True
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "soft"}, format="json"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["reloaded"])
+
+    @patch("apps.api.views.config.AsteriskManagementInterface")
+    @patch("apps.api.views.config.redis.Redis")
+    @override_settings(DEVMODE="Development")
+    def test_apply_soft_calls_soft_reload(self, mock_redis_cls, mock_ami_cls):
+        mock_redis_cls.from_url.return_value.set.return_value = True
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "soft"}, format="json"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["reloaded"])
+        mock_ami.soft_reload.assert_called_once()
+        mock_ami.restart.assert_not_called()
+
+    @patch("apps.api.views.config.AsteriskManagementInterface")
+    @patch("apps.api.views.config.redis.Redis")
+    @override_settings(DEVMODE="Development")
+    def test_apply_hard_calls_restart(self, mock_redis_cls, mock_ami_cls):
+        mock_redis_cls.from_url.return_value.set.return_value = True
+        mock_ami = mock_ami_cls.return_value.__enter__.return_value
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "hard"}, format="json"
+            )
+        self.assertEqual(response.status_code, 200)
+        mock_ami.restart.assert_called_once()
+        mock_ami.soft_reload.assert_not_called()
+
+    @patch("apps.api.views.config.redis.Redis")
+    def test_apply_returns_409_when_lock_held(self, mock_redis_cls):
+        mock_redis_cls.from_url.return_value.set.return_value = False
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir, DEVMODE="without_asterisk_on_localhost"):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "soft"}, format="json"
+            )
+        self.assertEqual(response.status_code, 409)
+
+    @patch("apps.api.views.config.redis.Redis", side_effect=Exception("redis down"))
+    def test_apply_proceeds_when_redis_unavailable(self, mock_redis_cls):
+        with self.settings(ASTERISK_ROOT_DIR=self.tmpdir, DEVMODE="without_asterisk_on_localhost"):
+            response = self.client.post(
+                "/api/v1/config/apply/", {"mode": "soft"}, format="json"
+            )
+        self.assertEqual(response.status_code, 200)
 
 
 class OriginateApiTests(APITestCase):

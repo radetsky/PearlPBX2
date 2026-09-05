@@ -547,6 +547,7 @@ Cada registro define a qué contexto se enruta una llamada según el prefijo del
 2. Selecciona usuarios SIP de la lista `Add SIP Users`.
 3. Al guardar, se crea un registro `QueueMember` con interfaz `PJSIP/{username}` para cada usuario seleccionado.
 4. Los miembros de cola ya existentes no se modifican.
+5. Eliminar un usuario SIP también elimina automáticamente su(s) registro(s) `QueueMember`, así una extensión eliminada nunca queda como miembro fantasma en una cola. Ejecuta `python manage.py cleanup_orphan_queue_members` para eliminar filas huérfanas que hayan quedado antes de que existiera esta limpieza automática.
 
 **Añadir individualmente:**
 

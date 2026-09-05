@@ -19,11 +19,18 @@ python manage.py drf_create_token <username>
 
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
-**Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/` та
-`/api/v1/sip-peers/`, включно з `GET`, вимагає обліковий запис staff або
-superuser — див. [SIP Users](#sip-users), [SIP Transports](#sip-transports)
-та [SIP Peers](#sip-peers) нижче. Дійсний токен звичайного користувача отримає
-`403 Forbidden` на цих ресурсах.
+**Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/` та `/api/v1/trunk-groups/`,
+включно з `GET`, вимагає обліковий запис staff або superuser — див.
+[SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) та
+[Trunk Groups](#trunk-groups) нижче. Дійсний токен звичайного користувача
+отримає `403 Forbidden` на цих ресурсах.
+
+**Лише superuser:** `/api/v1/config/preview/` та `/api/v1/config/apply/`
+вимагають саме **superuser** — токена staff недостатньо, оскільки `apply`
+може перезапустити Asterisk і скинути всі активні дзвінки. Див.
+[Config (Apply Changes)](#config-apply-changes).
 
 ## Загальний формат відповіді
 
@@ -590,6 +597,192 @@ superuser**; цей ресурс надає доступ до облікових
 
 ---
 
+## Routing Tables
+
+Керує таблицями маршрутизації. Кожен метод — включно з `GET` — вимагає
+обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` водночас
+є назвою AEL dialplan-контексту (`core.conf.make_routing_tables()`), тому не
+може збігатися з назвою `DialplanContext` — колізія повертає `400`, а не
+`500`, як при прямому збереженні моделі.
+
+### GET `/api/v1/routing-tables/`
+
+Повертає таблиці маршрутизації зі пагінацією. Підтримує `?name=<точне значення>`
+та `?search=<текст>` (за `name`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "PEARLPBX",
+      "routing_records_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+`routing_records_count` — кількість рядків `RoutingRecord`, що вказують на
+цю таблицю.
+
+### POST `/api/v1/routing-tables/`
+
+**Тіло запиту:** `{"name": "Sales"}`
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | літери/цифри/підкреслення/дефіси, унікальне, не повинне вже існувати як назва `DialplanContext` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте чи колізує з
+`DialplanContext`.
+
+### PATCH `/api/v1/routing-tables/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/routing-tables/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict`, якщо таблиця досі
+використовується `SIPUser`, `SIPPeer`, `RoutingRecord`, callback-сервісом
+або фільтром routing table у `Webhook`.
+
+---
+
+## Trunk Groups
+
+Керує групами транків (набори SIP-пірів для failover). Кожен метод —
+включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` шукається
+FastAGI-обробником `dial-trunk-group` через літеральний виклик
+`AGI(agi://.../dial-trunk-group,<name>,...)`, вбудований у текст dialplan —
+**перейменування або видалення групи, на яку досі є таке посилання,
+відхиляється** (`400`/`409`) замість мовчазного зламання маршрутизації
+дзвінків. Це — пошук тексту best-effort: він не бачить назву, до якої
+звертаються лише через змінну Asterisk (напр. `${GROUPNAME}`).
+
+### GET `/api/v1/trunk-groups/`
+
+Повертає групи транків зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>`.
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "main-trunks",
+      "sip_peers": [5, 6],
+      "sip_peer_names": ["provider-a", "provider-b"],
+      "sip_peers_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/trunk-groups/`
+
+**Тіло запиту:**
+```json
+{"name": "main-trunks", "sip_peers": [5, 6]}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне |
+| `sip_peers` | ні | список ID `SIPPeer`; на відміну від `SIPPeer.trunk_groups` (лише читання), це записувана сторона зв'язку |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте.
+
+### PATCH `/api/v1/trunk-groups/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки dialplan досі
+посилається на поточну назву, повертає `400` з переліком розширень/макросів.
+
+### DELETE `/api/v1/trunk-groups/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+розширень/макросів, якщо dialplan досі викликає цю групу за назвою.
+
+---
+
+## Config (Apply Changes)
+
+Обгортка над адмінською сторінкою "Apply Changes". **Обидва endpoint-и
+вимагають обліковий запис superuser — токена staff недостатньо**, оскільки
+`apply` може перезапустити Asterisk і скинути всі активні дзвінки.
+
+### GET `/api/v1/config/preview/`
+
+Dry-run: повертає той самий згенерований вміст файлів, що й прев'ю в
+адмінці. Без запису на диск, без reload Asterisk.
+
+**Відповідь:**
+```json
+{
+  "files": {
+    "pjsip.conf": "...",
+    "extensions.ael": "...",
+    "queues.conf": "...",
+    "queuerules.conf": "...",
+    "manager.conf": "...",
+    "musiconhold.conf": "...",
+    "confbridge.conf": "..."
+  },
+  "skipped_sip_users": ["userA"]
+}
+```
+
+### POST `/api/v1/config/apply/`
+
+Записує згенеровані конфіги (з версіонуванням і попереднім бекапом-tar.gz у
+`ASTERISK_BACKUP_DIR`) і перезавантажує Asterisk.
+
+**Тіло запиту:** `{"mode": "soft"}` або `{"mode": "hard"}`
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `mode` | **так** | `soft` — reload модулів/AEL, зберігає активні дзвінки; `hard` — `core restart now`, скидає всі активні дзвінки |
+
+На відміну від адмінської форми (де будь-що, крім літерального рядка
+`"soft"`, мовчки означає hard-рестарт), `mode` — обов'язкове, валідоване
+поле вибору; відсутнє чи невалідне значення повертає `400`.
+
+**Відповідь:**
+```json
+{
+  "mode": "soft",
+  "changed_files": ["pjsip.conf", "queues.conf"],
+  "reloaded": true,
+  "skipped_sip_users": []
+}
+```
+`changed_files` містить лише файли, вміст яких справді змінився (отримав
+нову версію) при цьому apply. `reloaded` дорівнює `false`, коли
+`DEVMODE=without_asterisk_on_localhost` — файли все одно пишуться, але AMI
+не викликається (як і в адмінці).
+
+**`409 Conflict`**, якщо інший apply вже виконується (короткочасний
+Redis-лок); якщо сам Redis недоступний, apply виконується без локу замість
+того, щоб стати недоступним.
+
+---
+
 ## Ініціювання дзвінка (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -769,8 +962,13 @@ curl -H "Authorization: Token <ваш-токен>" \
 
 - Немає фільтрації чи пошуку на GET-ендпоінтах, окрім `/api/v1/sip-users/`
   (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
-  (`?name=`, `?protocol=`, `?search=`) та `/api/v1/sip-peers/`
-  (`?name=`, `?routing_table=`, `?search=`).
+  (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
+  (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
+  (`?name=`, `?search=`) та `/api/v1/trunk-groups/` (`?name=`, `?search=`).
+- Захист перейменування/видалення групи транків — це пошук тексту
+  best-effort по dialplan-тілах на предмет літерального виклику
+  `dial-trunk-group,<name>,`; він не бачить назву групи, до якої звертаються
+  лише через змінну Asterisk.
 
 ---
 

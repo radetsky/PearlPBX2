@@ -20,6 +20,7 @@ from core.models import (
     PenaltyChange,
     MusicOnHold,
     MusicOnHoldPlaylistEntry,
+    TrunkGroup,
 )
 from core.validators import validate_dialplan_field
 from core.conf import (
@@ -1625,3 +1626,221 @@ class TestNormalizePhone(TestCase):
 
     def test_no_digits(self):
         self.assertEqual(self._n("---"), "---")
+
+
+class TestSIPUserQueueMemberCleanup(TestCase):
+    def setUp(self):
+        self.transport = SIPTransport.objects.create(
+            name="test-qmcleanup-transport", protocol="udp", bind="0.0.0.0:5070"
+        )
+        self.routing_table = RoutingTable.objects.get(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        )
+        self.moh = MusicOnHold.objects.create(name="test-qmcleanup-moh")
+        self.ann = QueueAnnouncements.objects.create(name="test-qmcleanup-ann")
+        self.queue = Queue.objects.create(
+            name="TestQMCleanupQueue", music_class=self.moh, queue_announcement=self.ann
+        )
+
+    def tearDown(self):
+        QueueMember.objects.filter(queue=self.queue).delete()
+        self.queue.delete()
+        self.ann.delete()
+        self.moh.delete()
+        SIPUser.objects.filter(transport=self.transport).delete()
+        self.transport.delete()
+
+    def test_delete_removes_queue_member(self):
+        user = SIPUser.objects.create(
+            name="QM Cleanup",
+            username="qmcleanup900",
+            extension="900",
+            secret="x",
+            transport=self.transport,
+            routing_table=self.routing_table,
+        )
+        QueueMember.objects.create(
+            queue=self.queue, interface=user.standard_pjsip_user, member_name=user.name
+        )
+        user.delete()
+        self.assertFalse(
+            QueueMember.objects.filter(interface="PJSIP/qmcleanup900").exists()
+        )
+
+    def test_delete_does_not_touch_member_matching_a_sippeer_name(self):
+        # Edge case: a SIPPeer sharing the deleted SIPUser's username collapses
+        # to the same PJSIP endpoint — the cleanup must not remove that member.
+        peer = SIPPeer.objects.create(name="qmcleanup901", transport=self.transport)
+        user = SIPUser.objects.create(
+            name="QM Cleanup 2",
+            username="qmcleanup901",
+            extension="901",
+            secret="x",
+            transport=self.transport,
+            routing_table=self.routing_table,
+        )
+        QueueMember.objects.create(
+            queue=self.queue, interface="PJSIP/qmcleanup901", member_name="peer member"
+        )
+        user.delete()
+        self.assertTrue(
+            QueueMember.objects.filter(interface="PJSIP/qmcleanup901").exists()
+        )
+        peer.delete()
+
+    def test_delete_leaves_unrelated_members_alone(self):
+        user = SIPUser.objects.create(
+            name="QM Cleanup 3",
+            username="qmcleanup902",
+            extension="902",
+            secret="x",
+            transport=self.transport,
+            routing_table=self.routing_table,
+        )
+        other = QueueMember.objects.create(
+            queue=self.queue, interface="PJSIP/unrelated900", member_name="Unrelated"
+        )
+        user.delete()
+        self.assertTrue(QueueMember.objects.filter(pk=other.pk).exists())
+
+
+class TestCleanupOrphanQueueMembersCommand(TestCase):
+    def setUp(self):
+        self.moh = MusicOnHold.objects.create(name="test-cleanup-cmd-moh")
+        self.ann = QueueAnnouncements.objects.create(name="test-cleanup-cmd-ann")
+        self.queue = Queue.objects.create(
+            name="TestCleanupCmdQueue", music_class=self.moh, queue_announcement=self.ann
+        )
+
+    def tearDown(self):
+        QueueMember.objects.filter(queue=self.queue).delete()
+        self.queue.delete()
+        self.ann.delete()
+        self.moh.delete()
+
+    def test_dry_run_does_not_delete(self):
+        from django.core.management import call_command
+
+        orphan = QueueMember.objects.create(
+            queue=self.queue, interface="PJSIP/no-such-user", member_name="Ghost"
+        )
+        call_command("cleanup_orphan_queue_members", "--dry-run")
+        self.assertTrue(QueueMember.objects.filter(pk=orphan.pk).exists())
+
+    def test_removes_orphaned_member(self):
+        from django.core.management import call_command
+
+        orphan = QueueMember.objects.create(
+            queue=self.queue, interface="PJSIP/no-such-user", member_name="Ghost"
+        )
+        call_command("cleanup_orphan_queue_members")
+        self.assertFalse(QueueMember.objects.filter(pk=orphan.pk).exists())
+
+    def test_does_not_remove_member_matching_sippeer(self):
+        from django.core.management import call_command
+
+        peer = SIPPeer.objects.create(name="test-cleanup-cmd-peer")
+        member = QueueMember.objects.create(
+            queue=self.queue, interface="PJSIP/test-cleanup-cmd-peer", member_name="Peer"
+        )
+        call_command("cleanup_orphan_queue_members")
+        self.assertTrue(QueueMember.objects.filter(pk=member.pk).exists())
+        peer.delete()
+
+
+class TestTrunkGroupDialplanGuard(TestCase):
+    def setUp(self):
+        self.context = DialplanContext.objects.create(name="test-tg-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+        DialplanMacro.objects.filter(name="test_tg_macro").delete()
+        TrunkGroup.objects.filter(name__startswith="test-tg-").delete()
+
+    def _make_referencing_extension(self, group_name):
+        return DialplanExtension.objects.create(
+            context=self.context,
+            ext="100",
+            dialplan=f"AGI(agi://127.0.0.1:4573/dial-trunk-group,{group_name},${{EXTEN}});",
+        )
+
+    def test_find_dialplan_references_matches_extension(self):
+        self._make_referencing_extension("test-tg-referenced")
+        refs = TrunkGroup.find_dialplan_references("test-tg-referenced")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_matches_macro(self):
+        DialplanMacro.objects.create(
+            name="test_tg_macro",
+            macro="AGI(agi://127.0.0.1:4573/dial-trunk-group,test-tg-macro-ref,${EXTEN});",
+        )
+        refs = TrunkGroup.find_dialplan_references("test-tg-macro-ref")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_no_false_positive_on_substring(self):
+        # "test-tg-ref" is a substring of "test-tg-referenced" but not the
+        # literal argument to dial-trunk-group — must not match.
+        self._make_referencing_extension("test-tg-referenced")
+        refs = TrunkGroup.find_dialplan_references("test-tg-ref")
+        self.assertEqual(refs, [])
+
+    def test_rename_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test-tg-old-name")
+        group = TrunkGroup.objects.create(name="test-tg-old-name")
+        group.name = "test-tg-new-name"
+        with self.assertRaises(ValidationError):
+            group.full_clean()
+
+    def test_rename_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test-tg-old-name2")
+        group = TrunkGroup.objects.create(name="test-tg-old-name2")
+        ext.delete()
+        group.name = "test-tg-new-name2"
+        group.full_clean()  # must not raise
+        group.save()
+        self.assertEqual(TrunkGroup.objects.get(pk=group.pk).name, "test-tg-new-name2")
+
+    def test_delete_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test-tg-delete-me")
+        group = TrunkGroup.objects.create(name="test-tg-delete-me")
+        with self.assertRaises(ValidationError):
+            group.delete()
+        self.assertTrue(TrunkGroup.objects.filter(pk=group.pk).exists())
+
+    def test_delete_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test-tg-delete-ok")
+        group = TrunkGroup.objects.create(name="test-tg-delete-ok")
+        ext.delete()
+        group.delete()  # must not raise
+        self.assertFalse(TrunkGroup.objects.filter(pk=group.pk).exists())
+
+    def test_admin_hides_delete_button_while_referenced(self):
+        from core.admin import TrunkGroupAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test-tg-admin-guard")
+        group = TrunkGroup.objects.create(name="test-tg-admin-guard")
+        admin_instance = TrunkGroupAdmin(TrunkGroup, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=group))
+
+    def test_admin_bulk_delete_skips_referenced_groups(self):
+        from unittest.mock import MagicMock
+
+        from core.admin import TrunkGroupAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test-tg-bulk-blocked")
+        blocked = TrunkGroup.objects.create(name="test-tg-bulk-blocked")
+        allowed = TrunkGroup.objects.create(name="test-tg-bulk-allowed")
+
+        admin_instance = TrunkGroupAdmin(TrunkGroup, AdminSite())
+        queryset = TrunkGroup.objects.filter(pk__in=[blocked.pk, allowed.pk])
+        admin_instance.delete_queryset(MagicMock(), queryset)
+
+        self.assertTrue(TrunkGroup.objects.filter(pk=blocked.pk).exists())
+        self.assertFalse(TrunkGroup.objects.filter(pk=allowed.pk).exists())

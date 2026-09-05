@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 
@@ -30,4 +31,11 @@ def api_exception_handler(exc, context):
             {"detail": "Resource already exists or violates a uniqueness constraint."},
             status=status.HTTP_409_CONFLICT,
         )
+    if isinstance(exc, DjangoValidationError):
+        # Safety net for model-level validation that raises Django's
+        # ValidationError from clean()/save()/delete() instead of DRF's —
+        # e.g. RoutingTable.save() / TrunkGroup.clean()/delete() — so a gap
+        # in a serializer's own pre-check surfaces as 400, not 500.
+        detail = exc.message_dict if hasattr(exc, "message_dict") else {"detail": list(exc.messages)}
+        return Response(detail, status=status.HTTP_400_BAD_REQUEST)
     return None

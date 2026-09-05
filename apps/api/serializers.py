@@ -9,7 +9,17 @@ from rest_framework.validators import UniqueValidator
 from drf_spectacular.utils import extend_schema_field
 
 from apps.api.models import CustomListNames, CustomListEntries
-from core.models import Blacklist, Whitelist, Contact, SIPUser, SIPTransport, SIPPeer
+from core.models import (
+    Blacklist,
+    Whitelist,
+    Contact,
+    SIPUser,
+    SIPTransport,
+    SIPPeer,
+    RoutingTable,
+    TrunkGroup,
+    DialplanContext,
+)
 from core.validators import (
     validate_asterisk_interface,
     validate_alphanumeric,
@@ -343,6 +353,90 @@ class SIPPeerSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class RoutingTableSerializer(serializers.ModelSerializer):
+    """A routing table. Its name is both a PJSIP `context=` value and an AEL
+    dialplan context name (core.conf.make_routing_tables()), so it shares a
+    naming namespace with DialplanContext.
+    """
+
+    # RoutingTable.save() raises a plain django.core.exceptions.ValidationError
+    # for this same collision (defense in depth for non-API callers) — that
+    # class isn't handled by DRF, so without this check it would surface as a
+    # 500 instead of a 400. See also the generic ValidationError->400 branch
+    # in apps.api.exceptions.api_exception_handler.
+    routing_records_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = RoutingTable
+        fields = [
+            "id",
+            "name",
+            "routing_records_count",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+
+    def validate_name(self, value):
+        if DialplanContext.objects.filter(name=value).exists():
+            raise serializers.ValidationError(
+                f'Context name "{value}" already exists in DialplanContext.'
+            )
+        return value
+
+
+class TrunkGroupSerializer(serializers.ModelSerializer):
+    """A trunk group (failover set of SIPPeers). `name` is looked up by
+    services/fastagi/fastagi.py via raw SQL from a literal
+    `dial-trunk-group,<name>,` AGI call embedded in dialplan text, so renaming
+    or deleting a group still referenced there is rejected.
+    """
+
+    sip_peers = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=SIPPeer.objects.all(), required=False
+    )
+    sip_peer_names = serializers.SlugRelatedField(
+        source="sip_peers", many=True, read_only=True, slug_field="name"
+    )
+    sip_peers_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrunkGroup
+        fields = [
+            "id",
+            "name",
+            "sip_peers",
+            "sip_peer_names",
+            "sip_peers_count",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+
+    def validate_name(self, value):
+        if self.instance and self.instance.name != value:
+            refs = TrunkGroup.find_dialplan_references(self.instance.name)
+            if refs:
+                raise serializers.ValidationError(
+                    f"Cannot rename: still referenced by dialplan: {', '.join(refs)}."
+                )
+        return value
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_sip_peers_count(self, obj):
+        # The queryset annotation isn't present on the instance returned by
+        # create() (a brand-new object, unlike SIPTransport/SIPPeer, can
+        # already have members — they're set in the same request) — fall
+        # back to a direct count so a just-created group reports correctly.
+        if hasattr(obj, "sip_peers_count"):
+            return obj.sip_peers_count
+        return obj.sip_peers.count()
+
+
 class _CallOriginationFieldsSerializer(serializers.Serializer):
     """Fields shared by every endpoint that originates one or more AMI calls."""
 
@@ -453,6 +547,20 @@ class ConferenceSerializer(_CallOriginationFieldsSerializer):
             kwargs_list.append(kwargs)
 
         return room, kwargs_list
+
+
+class ApplyChangesSerializer(serializers.Serializer):
+    """Required, no implicit default — unlike the admin form, where anything
+    other than the literal string "soft" silently means a hard restart.
+    """
+
+    mode = serializers.ChoiceField(
+        choices=["soft", "hard"],
+        help_text=(
+            "'soft': module/AEL reload, keeps active calls. "
+            "'hard': 'core restart now', drops every active call."
+        ),
+    )
 
 
 class QueueMemberPauseSerializer(serializers.Serializer):

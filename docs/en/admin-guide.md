@@ -547,6 +547,7 @@ Each record defines which context a call is routed to based on the number prefix
 2. Select SIP users from the `Add SIP Users` list.
 3. On save, a `QueueMember` record with interface `PJSIP/{username}` is created for each selected user.
 4. Existing queue members are left unchanged.
+5. Deleting a SIP user automatically removes its `QueueMember` record(s) too, so a deleted extension never lingers in a queue as a dead member. Run `python manage.py cleanup_orphan_queue_members` to remove any orphaned rows left over from before this cleanup existed.
 
 **Adding individually:**
 

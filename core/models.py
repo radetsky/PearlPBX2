@@ -4,6 +4,7 @@
 from django.db.models import Q, F
 from django.db import models
 import os
+import re
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
@@ -266,7 +267,7 @@ class DialplanContext(models.Model):
         return default_context
 
 
-class RoutingTable(models.Model):
+class RoutingTable(AuditFields):
     name = models.CharField(
         max_length=80,
         unique=True,
@@ -277,7 +278,7 @@ class RoutingTable(models.Model):
         validators=[validate_asterisk_context],
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("15. Routing Tables")
 
     def __str__(self):
@@ -1556,7 +1557,7 @@ class CallQueueGlobalSettings(models.Model):
         verbose_name_plural = _("12. Queue Global Settings")
 
 
-class TrunkGroup(models.Model):
+class TrunkGroup(AuditFields):
     name = models.CharField(
         max_length=64,
         unique=True,
@@ -1571,11 +1572,57 @@ class TrunkGroup(models.Model):
         verbose_name=_("SIP Peers"),
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("14. Trunk Groups")
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            old_name = (
+                TrunkGroup.objects.filter(pk=self.pk).values_list("name", flat=True).first()
+            )
+            if old_name and old_name != self.name:
+                refs = self.find_dialplan_references(old_name)
+                if refs:
+                    raise ValidationError(
+                        {
+                            "name": _(
+                                'Cannot rename: still referenced by dialplan: %(refs)s'
+                            )
+                            % {"refs": ", ".join(refs)}
+                        }
+                    )
+
+    def delete(self, *args, **kwargs):
+        refs = self.find_dialplan_references(self.name)
+        if refs:
+            raise ValidationError(
+                _('Cannot delete: still referenced by dialplan: %(refs)s')
+                % {"refs": ", ".join(refs)}
+            )
+        super().delete(*args, **kwargs)
+
+    @staticmethod
+    def find_dialplan_references(name):
+        """Best-effort text search for a `dial-trunk-group,<name>,` AGI call
+        (services/fastagi/fastagi.py resolves the group by this literal name
+        via raw SQL) in AEL extension/macro bodies.
+
+        Cannot see a name reached only through an Asterisk variable (e.g.
+        `${GROUPNAME}`) — that is a known limitation of a static text scan.
+        """
+        pattern = re.compile(r"dial-trunk-group\s*,\s*" + re.escape(name) + r"\s*,")
+        refs = []
+        for ext in DialplanExtension.objects.filter(dialplan__icontains=name):
+            if pattern.search(ext.dialplan):
+                refs.append(f"extension #{ext.pk} ({ext.ext})")
+        for macro in DialplanMacro.objects.filter(macro__icontains=name):
+            if pattern.search(macro.macro):
+                refs.append(f'macro "{macro.name}"')
+        return refs
 
 
 class RoutingRecord(models.Model):
