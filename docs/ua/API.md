@@ -20,12 +20,12 @@ python manage.py drf_create_token <username>
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
 **Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
-`/api/v1/sip-peers/`, `/api/v1/routing-tables/` та `/api/v1/trunk-groups/`,
-включно з `GET`, вимагає обліковий запис staff або superuser — див.
-[SIP Users](#sip-users), [SIP Transports](#sip-transports),
-[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) та
-[Trunk Groups](#trunk-groups) нижче. Дійсний токен звичайного користувача
-отримає `403 Forbidden` на цих ресурсах.
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`
+та `/api/v1/trunk-groups/`, включно з `GET`, вимагає обліковий запис staff
+або superuser — див. [SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
+[Routing Records](#routing-records) та [Trunk Groups](#trunk-groups) нижче.
+Дійсний токен звичайного користувача отримає `403 Forbidden` на цих ресурсах.
 
 **Лише superuser:** `/api/v1/config/preview/` та `/api/v1/config/apply/`
 вимагають саме **superuser** — токена staff недостатньо, оскільки `apply`
@@ -672,6 +672,79 @@ superuser**; цей ресурс надає доступ до облікових
 
 ---
 
+## Routing Records
+
+Керує правилами маршрутизації за префіксом усередині `RoutingTable`. Кожен
+метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі.
+`core.conf.make_routing_tables()` генерує по одному рядку `goto` для кожного
+запису всередині dialplan-контексту його таблиці, відсортовані за
+специфічністю Asterisk-патерну. `context` і `routing_table` обов'язкові,
+хоча в БД вони nullable — запис без `context` буквально згенерує
+`goto None,${EXTEN},1;`, а запис без `routing_table` взагалі не з'явиться в
+жодному блоці таблиці.
+
+### GET `/api/v1/routing-records/`
+
+Повертає записи маршрутизації зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?prefix=<точне значення>` — фільтр за точним префіксом
+- `?routing_table=<id>` — фільтр за таблицею маршрутизації
+- `?context=<id>` — фільтр за dialplan-контекстом
+- `?search=<текст>` — пошук без урахування регістру за `name`, `prefix`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Kyiv landline",
+      "prefix": "044",
+      "context": 1,
+      "context_name": "internal",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/routing-records/`
+
+**Тіло запиту:**
+```json
+{"name": "Kyiv landline", "prefix": "044", "context": 1, "routing_table": 1}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | довільний текст |
+| `prefix` | так | Asterisk dialplan-патерн (напр. `044`, `_0XX`, `_1XX.`) |
+| `context` | так | ID існуючого `DialplanContext` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `prefix` не пройшов валідацію
+патерну чи не вказано обов'язкове поле.
+
+### PATCH `/api/v1/routing-records/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/routing-records/<id>/`
+
+Видалити запис маршрутизації. Повертає `204 No Content` — на `RoutingRecord`
+ніщо не посилається, тож видалення ніколи не блокується.
+
+---
+
 ## Trunk Groups
 
 Керує групами транків (набори SIP-пірів для failover). Кожен метод —
@@ -980,7 +1053,9 @@ curl -H "Authorization: Token <ваш-токен>" \
   (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
-  (`?name=`, `?search=`) та `/api/v1/trunk-groups/` (`?name=`, `?search=`).
+  (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
+  `?routing_table=`, `?context=`, `?search=`) та `/api/v1/trunk-groups/`
+  (`?name=`, `?search=`).
 - Захист перейменування/видалення групи транків — це пошук тексту
   best-effort по dialplan-тілах на предмет літерального виклику
   `dial-trunk-group,<name>,`; він не бачить назву групи, до якої звертаються

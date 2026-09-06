@@ -23,6 +23,7 @@ from core.models import (
     SIPPeer,
     TrunkGroup,
     RoutingTable,
+    RoutingRecord,
     DialplanContext,
     DialplanExtension,
 )
@@ -1142,6 +1143,141 @@ class RoutingTableApiTests(APITestCase):
         )
         rt = RoutingTable.objects.get(pk=create.data["id"])
         self.assertEqual(rt.created_by, self.staff_user)
+
+
+class RoutingRecordApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="rr_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="rr_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+        self.context = DialplanContext.objects.create(name="test-rr-context")
+        self.routing_table = RoutingTable.objects.create(name="test-rr-table")
+
+    def tearDown(self):
+        RoutingRecord.objects.filter(routing_table=self.routing_table).delete()
+        self.routing_table.delete()
+        self.context.delete()
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "Kyiv landline",
+            "prefix": "044",
+            "context": self.context.id,
+            "routing_table": self.routing_table.id,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/routing-records/?name=does-not-exist")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/routing-records/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/routing-records/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/routing-records/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/routing-records/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["prefix"], "044")
+        self.assertEqual(response.data["context_name"], "test-rr-context")
+        self.assertEqual(response.data["routing_table_name"], "test-rr-table")
+
+    def test_created_row_lands_in_generated_routing_tables(self):
+        from core.conf import make_routing_tables
+
+        self.client.post("/api/v1/routing-records/", self._payload(), format="json")
+        result = make_routing_tables()
+        self.assertIn("context test-rr-table {", result)
+        self.assertIn("044 => { goto test-rr-context,${EXTEN},1; }", result)
+
+    def test_create_without_context_400(self):
+        response = self.client.post(
+            "/api/v1/routing-records/", self._payload(context=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("context", response.data)
+
+    def test_create_without_routing_table_400(self):
+        response = self.client.post(
+            "/api/v1/routing-records/", self._payload(routing_table=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("routing_table", response.data)
+
+    def test_create_invalid_prefix_400(self):
+        response = self.client.post(
+            "/api/v1/routing-records/", self._payload(prefix="not-a-pattern"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("prefix", response.data)
+
+    def test_list_filter_by_routing_table(self):
+        self.client.post("/api/v1/routing-records/", self._payload(), format="json")
+        response = self.client.get(
+            f"/api/v1/routing-records/?routing_table={self.routing_table.id}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+
+    def test_search(self):
+        self.client.post("/api/v1/routing-records/", self._payload(), format="json")
+        response = self.client.get("/api/v1/routing-records/?search=Kyiv")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/routing-records/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/routing-records/{pk}/", {"prefix": "050"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["prefix"], "050")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/routing-records/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/routing-records/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(RoutingRecord.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/routing-records/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/routing-records/", self._payload(), format="json"
+        )
+        record = RoutingRecord.objects.get(pk=create.data["id"])
+        self.assertEqual(record.created_by, self.staff_user)
 
 
 class TrunkGroupApiTests(APITestCase):

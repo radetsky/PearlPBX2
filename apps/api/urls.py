@@ -15,6 +15,7 @@ from apps.api.views import (
     sip_transports,
     sip_peers,
     routing_tables,
+    routing_records,
     trunk_groups,
     config,
 )
@@ -28,6 +29,7 @@ router.register("sip-users", sip_users.SIPUserViewSet, basename="sip-users")
 router.register("sip-transports", sip_transports.SIPTransportViewSet, basename="sip-transports")
 router.register("sip-peers", sip_peers.SIPPeerViewSet, basename="sip-peers")
 router.register("routing-tables", routing_tables.RoutingTableViewSet, basename="routing-tables")
+router.register("routing-records", routing_records.RoutingRecordViewSet, basename="routing-records")
 router.register("trunk-groups", trunk_groups.TrunkGroupViewSet, basename="trunk-groups")
 
 urlpatterns = [

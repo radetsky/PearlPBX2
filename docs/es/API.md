@@ -20,10 +20,11 @@ O a través del admin de Django / shell (`rest_framework.authtoken.models.Token`
 No hay restricción por sesión ni por IP. La protección CSRF no se aplica (solo autenticación por token).
 
 **Excepción:** todos los métodos de `/api/v1/sip-users/`,
-`/api/v1/sip-transports/`, `/api/v1/sip-peers/`, `/api/v1/routing-tables/` y
-`/api/v1/trunk-groups/`, incluido `GET`, requieren una cuenta de staff o
-superusuario — ver [SIP Users](#sip-users), [SIP Transports](#sip-transports),
-[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) y
+`/api/v1/sip-transports/`, `/api/v1/sip-peers/`, `/api/v1/routing-tables/`,
+`/api/v1/routing-records/` y `/api/v1/trunk-groups/`, incluido `GET`,
+requieren una cuenta de staff o superusuario — ver [SIP Users](#sip-users),
+[SIP Transports](#sip-transports), [SIP Peers](#sip-peers),
+[Routing Tables](#routing-tables), [Routing Records](#routing-records) y
 [Trunk Groups](#trunk-groups) más abajo. El token válido de un usuario normal
 recibe `403 Forbidden` en esos recursos.
 
@@ -676,6 +677,80 @@ callback, o el filtro de tabla de enrutamiento de un `Webhook`.
 
 ---
 
+## Routing Records
+
+Gestiona las reglas de enrutamiento basadas en prefijo dentro de una
+`RoutingTable`. Todos los métodos — incluido `GET` — requieren una cuenta de
+staff o superusuario.
+
+Guardar aquí solo actualiza la base de datos; los cambios llegan a Asterisk
+después de que un superusuario ejecute "Apply Changes" en el admin.
+`core.conf.make_routing_tables()` genera una línea `goto` por cada registro
+dentro del contexto de dialplan de su tabla, ordenadas por especificidad del
+patrón de Asterisk. `context` y `routing_table` son obligatorios aunque sean
+nulos en la base de datos — un registro sin `context` generaría literalmente
+`goto None,${EXTEN},1;`, y un registro sin `routing_table` nunca aparece en
+el bloque de ninguna tabla.
+
+### GET `/api/v1/routing-records/`
+
+Devuelve registros de enrutamiento paginados. Admite:
+- `?name=<exacto>` — filtrar por nombre exacto
+- `?prefix=<exacto>` — filtrar por prefijo exacto
+- `?routing_table=<id>` — filtrar por tabla de enrutamiento
+- `?context=<id>` — filtrar por contexto de dialplan
+- `?search=<texto>` — coincidencia sin distinción de mayúsculas sobre `name`, `prefix`
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Kyiv landline",
+      "prefix": "044",
+      "context": 1,
+      "context_name": "internal",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/routing-records/`
+
+**Cuerpo de la solicitud:**
+```json
+{"name": "Kyiv landline", "prefix": "044", "context": 1, "routing_table": 1}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `name` | sí | texto libre |
+| `prefix` | sí | patrón de dialplan de Asterisk (p. ej. `044`, `_0XX`, `_1XX.`) |
+| `context` | sí | ID de un `DialplanContext` existente |
+| `routing_table` | sí | ID de una `RoutingTable` existente |
+
+**Respuesta:** `HTTP 201`, o `400` si `prefix` falla la validación de patrón
+o falta un campo obligatorio.
+
+### PATCH `/api/v1/routing-records/<id>/`
+
+Mismas reglas de campos que `POST`.
+
+### DELETE `/api/v1/routing-records/<id>/`
+
+Eliminar un registro de enrutamiento. Devuelve `204 No Content` — nada
+referencia a un `RoutingRecord`, así que la eliminación nunca se bloquea.
+
+---
+
 ## Trunk Groups
 
 Gestiona los grupos de troncales (conjuntos de failover de SIP peers). Todos
@@ -987,8 +1062,9 @@ grabación, igual que en el resto de esta API.
   `/api/v1/sip-users/` (`?username=`, `?extension=`, `?search=`),
   `/api/v1/sip-transports/` (`?name=`, `?protocol=`, `?search=`),
   `/api/v1/sip-peers/` (`?name=`, `?routing_table=`, `?search=`),
-  `/api/v1/routing-tables/` (`?name=`, `?search=`) y `/api/v1/trunk-groups/`
-  (`?name=`, `?search=`).
+  `/api/v1/routing-tables/` (`?name=`, `?search=`),
+  `/api/v1/routing-records/` (`?name=`, `?prefix=`, `?routing_table=`,
+  `?context=`, `?search=`) y `/api/v1/trunk-groups/` (`?name=`, `?search=`).
 - La protección de renombrado/eliminación de grupos de troncales es un
   escaneo de texto best-effort de los cuerpos del dialplan buscando una
   llamada literal `dial-trunk-group,<name>,` — no puede ver un nombre de

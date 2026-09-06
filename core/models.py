@@ -1645,7 +1645,7 @@ class TrunkGroup(AuditFields):
         return refs
 
 
-class RoutingRecord(models.Model):
+class RoutingRecord(AuditFields):
     name = models.CharField(
         max_length=64,
         unique=False,
@@ -1702,7 +1702,7 @@ class RoutingRecord(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("16. Routing Records")
 
 

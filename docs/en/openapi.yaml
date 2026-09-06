@@ -842,6 +842,224 @@ paths:
           description: Authentication credentials were not provided.
         '404':
           description: No recording exists for this uniqueid.
+  /api/v1/routing-records/:
+    get:
+      operationId: routing_records_list
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRoutingRecordList'
+          description: ''
+    post:
+      operationId: routing_records_create
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/routing-records/{id}/:
+    get:
+      operationId: routing_records_retrieve
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+    put:
+      operationId: routing_records_update
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: routing_records_partial_update
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: routing_records_destroy
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/routing-tables/:
     get:
       operationId: routing_tables_list
@@ -2431,6 +2649,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedRoutingRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutingRecord'
     PaginatedRoutingTableList:
       type: object
       required:
@@ -2627,6 +2868,55 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedRoutingRecord:
+      type: object
+      description: |-
+        A prefix-based routing rule within a `RoutingTable`
+        (core.conf.make_routing_tables() emits one `goto` per record, sorted by
+        Asterisk pattern specificity).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing Record Name
+          description: Name of the routing record
+          maxLength: 64
+        prefix:
+          type: string
+          title: Routing Record Prefix
+          description: Prefix of the routing record
+          maxLength: 64
+        context:
+          type: integer
+          title: Routing Record Context
+          description: Context for the routing record
+        context_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+          description: Routing table for the routing record
+        routing_table_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedRoutingTable:
       type: object
       description: |-
@@ -3133,6 +3423,67 @@ components:
       - queue
       - state_interface
       - status
+    RoutingRecord:
+      type: object
+      description: |-
+        A prefix-based routing rule within a `RoutingTable`
+        (core.conf.make_routing_tables() emits one `goto` per record, sorted by
+        Asterisk pattern specificity).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing Record Name
+          description: Name of the routing record
+          maxLength: 64
+        prefix:
+          type: string
+          title: Routing Record Prefix
+          description: Prefix of the routing record
+          maxLength: 64
+        context:
+          type: integer
+          title: Routing Record Context
+          description: Context for the routing record
+        context_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+          description: Routing table for the routing record
+        routing_table_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - context
+      - context_name
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - prefix
+      - routing_table
+      - routing_table_name
     RoutingTable:
       type: object
       description: |-

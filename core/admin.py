@@ -219,8 +219,11 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
     inlines = [MusicOnHoldPlaylistEntryInlineAdmin]
 
 
-class RoutingRecordAdmin(admin.ModelAdmin):
-    fields = ["prefix", "name", "context", "routing_table"]
+class RoutingRecordAdmin(AuditAdminMixin, admin.ModelAdmin):
+    fieldsets = (
+        (None, {"fields": ["prefix", "name", "context", "routing_table"]}),
+        AuditAdminMixin.audit_fieldset,
+    )
     list_display = ("prefix", "name", "context", "routing_table")
     list_filter = [
         "routing_table",

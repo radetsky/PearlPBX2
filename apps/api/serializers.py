@@ -17,6 +17,7 @@ from core.models import (
     SIPTransport,
     SIPPeer,
     RoutingTable,
+    RoutingRecord,
     TrunkGroup,
     DialplanContext,
 )
@@ -421,6 +422,42 @@ class RoutingTableSerializer(serializers.ModelSerializer):
                 f'Context name "{value}" already exists in DialplanContext.'
             )
         return value
+
+
+class RoutingRecordSerializer(serializers.ModelSerializer):
+    """A prefix-based routing rule within a `RoutingTable`
+    (core.conf.make_routing_tables() emits one `goto` per record, sorted by
+    Asterisk pattern specificity).
+    """
+
+    context_name = serializers.CharField(source="context.name", read_only=True)
+    routing_table_name = serializers.CharField(source="routing_table.name", read_only=True)
+
+    class Meta:
+        model = RoutingRecord
+        fields = [
+            "id",
+            "name",
+            "prefix",
+            "context",
+            "context_name",
+            "routing_table",
+            "routing_table_name",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Both FKs are nullable in the DB but a null value here breaks the
+            # generated dialplan — core.conf.make_routing_tables() interpolates
+            # `context` verbatim into `goto {context},${EXTEN},1;` with no null
+            # guard (a null context literally emits "goto None,..."), and a
+            # record with no routing_table never appears in any table's block.
+            "context": {"required": True, "allow_null": False},
+            "routing_table": {"required": True, "allow_null": False},
+        }
 
 
 class TrunkGroupSerializer(serializers.ModelSerializer):

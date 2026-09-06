@@ -20,12 +20,12 @@ Or via Django admin / shell (`rest_framework.authtoken.models.Token`).
 There is no session-based or IP-based restriction. CSRF protection is not enforced (token auth only).
 
 **Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
-`/api/v1/sip-peers/`, `/api/v1/routing-tables/` and `/api/v1/trunk-groups/`,
-including `GET`, requires a staff or superuser account — see
-[SIP Users](#sip-users), [SIP Transports](#sip-transports),
-[SIP Peers](#sip-peers), [Routing Tables](#routing-tables) and
-[Trunk Groups](#trunk-groups) below. A regular user's valid token receives
-`403 Forbidden` on those resources.
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`
+and `/api/v1/trunk-groups/`, including `GET`, requires a staff or superuser
+account — see [SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
+[Routing Records](#routing-records) and [Trunk Groups](#trunk-groups) below.
+A regular user's valid token receives `403 Forbidden` on those resources.
 
 **Superuser only:** `/api/v1/config/preview/` and `/api/v1/config/apply/`
 require a **superuser** account — a staff-only token is not enough, since
@@ -670,6 +670,78 @@ by a `SIPUser`, `SIPPeer`, `RoutingRecord`, a callback service, or a
 
 ---
 
+## Routing Records
+
+Manages prefix-based routing rules within a `RoutingTable`. Every method —
+including `GET` — requires a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin.
+`core.conf.make_routing_tables()` emits one `goto` line per record inside its
+table's dialplan context, sorted by Asterisk pattern specificity. `context`
+and `routing_table` are required even though nullable in the DB — a record
+with no `context` would literally emit `goto None,${EXTEN},1;`, and a record
+with no `routing_table` never appears in any table's generated block.
+
+### GET `/api/v1/routing-records/`
+
+Returns paginated routing records. Supports:
+- `?name=<exact>` — filter by exact name
+- `?prefix=<exact>` — filter by exact prefix
+- `?routing_table=<id>` — filter by routing table
+- `?context=<id>` — filter by dialplan context
+- `?search=<text>` — case-insensitive match against `name`, `prefix`
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Kyiv landline",
+      "prefix": "044",
+      "context": 1,
+      "context_name": "internal",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/routing-records/`
+
+**Request body:**
+```json
+{"name": "Kyiv landline", "prefix": "044", "context": 1, "routing_table": 1}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | free text |
+| `prefix` | yes | Asterisk dialplan pattern (e.g. `044`, `_0XX`, `_1XX.`) |
+| `context` | yes | ID of an existing `DialplanContext` |
+| `routing_table` | yes | ID of an existing `RoutingTable` |
+
+**Response:** `HTTP 201`, or `400` if `prefix` fails pattern validation or a
+required field is missing.
+
+### PATCH `/api/v1/routing-records/<id>/`
+
+Same field rules as `POST`.
+
+### DELETE `/api/v1/routing-records/<id>/`
+
+Delete a routing record. Returns `204 No Content` — nothing references a
+`RoutingRecord`, so deletion is never blocked.
+
+---
+
 ## Trunk Groups
 
 Manages trunk groups (failover sets of SIP peers). Every method — including
@@ -978,7 +1050,9 @@ same as the rest of this API.
   (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
-  (`?name=`, `?search=`) and `/api/v1/trunk-groups/` (`?name=`, `?search=`).
+  (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
+  `?routing_table=`, `?context=`, `?search=`) and `/api/v1/trunk-groups/`
+  (`?name=`, `?search=`).
 - The trunk-group rename/delete guard is a best-effort text scan of dialplan
   bodies for a literal `dial-trunk-group,<name>,` call — it cannot see a
   group name reached only through an Asterisk variable.
