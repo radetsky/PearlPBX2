@@ -1012,7 +1012,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
         verbose_name_plural = _("07. Music on hold playlist entries")
 
 
-class Queue(models.Model):
+class Queue(AuditFields):
     STRATEGY_CHOICES = [
         ("ringall", _("Ring All")),
         ("leastrecent", _("Least Recent")),
@@ -1220,7 +1220,7 @@ the queue and sent to that extension."""),
         help_text=_("Escalation rule from queuerules.conf"),
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "queues"
         verbose_name_plural = _("09. Queues")
 
@@ -1233,8 +1233,61 @@ the queue and sent to that extension."""),
     def __timeoutrestart__(self):
         return "yes" if self.timeoutrestart else "no"
 
+    def clean(self):
+        super().clean()
+        if self.pk:
+            old_name = (
+                Queue.objects.filter(pk=self.pk).values_list("name", flat=True).first()
+            )
+            if old_name and old_name != self.name:
+                refs = self.find_dialplan_references(old_name)
+                if refs:
+                    raise ValidationError(
+                        {
+                            "name": _(
+                                'Cannot rename: still referenced by dialplan: %(refs)s'
+                            )
+                            % {"refs": ", ".join(refs)}
+                        }
+                    )
 
-class QueueMember(models.Model):
+    def delete(self, *args, **kwargs):
+        refs = self.find_dialplan_references(self.name)
+        if refs:
+            raise ValidationError(
+                _('Cannot delete: still referenced by dialplan: %(refs)s')
+                % {"refs": ", ".join(refs)}
+            )
+        super().delete(*args, **kwargs)
+
+    @staticmethod
+    def find_dialplan_references(name):
+        """Best-effort text search for a `Queue(<name>,...)` AEL app-call in
+        dialplan extension/macro bodies.
+
+        Cannot see a name reached only through an Asterisk variable (e.g.
+        `Queue(${QUEUENAME},...)`) — a known limitation of a static text scan.
+
+        Unlike TrunkGroup.find_dialplan_references(), this match is
+        case-insensitive: Asterisk's app_queue looks up the queue name with
+        strcasecmp(), so `Queue(sales,...)` really does reach a queue named
+        "Sales" — matching case-sensitively here would silently let a rename
+        or delete break a still-working dialplan call.
+        """
+        pattern = re.compile(
+            r"Queue\s*\(\s*" + re.escape(name) + r"\s*[,)]", re.IGNORECASE
+        )
+        refs = []
+        for ext in DialplanExtension.objects.filter(dialplan__icontains=name):
+            if pattern.search(ext.dialplan):
+                refs.append(f"extension #{ext.pk} ({ext.ext})")
+        for macro in DialplanMacro.objects.filter(macro__icontains=name):
+            if pattern.search(macro.macro):
+                refs.append(f'macro "{macro.name}"')
+        return refs
+
+
+class QueueMember(AuditFields):
     queue = models.ForeignKey(
         Queue, on_delete=models.CASCADE, related_name="members", verbose_name=_("Queue")
     )
@@ -1249,7 +1302,7 @@ class QueueMember(models.Model):
     ringinuse = models.BooleanField(default=False, verbose_name=_("Ring In Use"))
     wrapuptime = models.PositiveIntegerField(default=0, verbose_name=_("Wrap-Up Time"))
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "queue_members"
         verbose_name_plural = _("10. Queue Members")
 

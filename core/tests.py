@@ -1849,6 +1849,119 @@ class TestTrunkGroupDialplanGuard(TestCase):
         self.assertTrue(admin_instance.has_delete_permission(request, obj=allowed))
 
 
+class TestQueueDialplanGuard(TestCase):
+    def setUp(self):
+        self.context = DialplanContext.objects.create(name="test-q-context")
+        self.moh = MusicOnHold.objects.create(name="test-q-guard-moh")
+        self.ann = QueueAnnouncements.objects.create(name="test-q-guard-ann")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+        DialplanMacro.objects.filter(name="test_q_macro").delete()
+        Queue.objects.filter(name__startswith="test-q-").delete()
+        self.ann.delete()
+        self.moh.delete()
+
+    def _make_queue(self, name):
+        return Queue.objects.create(
+            name=name, music_class=self.moh, queue_announcement=self.ann
+        )
+
+    def _make_referencing_extension(self, queue_name):
+        return DialplanExtension.objects.create(
+            context=self.context,
+            ext="200",
+            dialplan=f"Answer();\nQueue({queue_name},tT,,,300);\nHangup();",
+        )
+
+    def test_find_dialplan_references_matches_extension(self):
+        self._make_referencing_extension("test-q-referenced")
+        refs = Queue.find_dialplan_references("test-q-referenced")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_matches_macro(self):
+        DialplanMacro.objects.create(
+            name="test_q_macro",
+            macro="Answer();\nQueue(test-q-macro-ref,tT,,,300);\nHangup();",
+        )
+        refs = Queue.find_dialplan_references("test-q-macro-ref")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_no_false_positive_on_substring(self):
+        # "test-q-ref" is a substring of "test-q-referenced" but not the
+        # literal argument to Queue(...) — must not match.
+        self._make_referencing_extension("test-q-referenced")
+        refs = Queue.find_dialplan_references("test-q-ref")
+        self.assertEqual(refs, [])
+
+    def test_find_dialplan_references_is_case_insensitive(self):
+        # Unlike TrunkGroup, app_queue looks up the queue name with
+        # strcasecmp() — a differently-cased literal really does reach it.
+        self._make_referencing_extension("sales")
+        refs = Queue.find_dialplan_references("Sales")
+        self.assertEqual(len(refs), 1)
+
+    def test_rename_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test-q-old-name")
+        queue = self._make_queue("test-q-old-name")
+        queue.name = "test-q-new-name"
+        with self.assertRaises(ValidationError):
+            queue.full_clean()
+
+    def test_rename_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test-q-old-name2")
+        queue = self._make_queue("test-q-old-name2")
+        ext.delete()
+        queue.name = "test-q-new-name2"
+        queue.full_clean()  # must not raise
+        queue.save()
+        self.assertEqual(Queue.objects.get(pk=queue.pk).name, "test-q-new-name2")
+
+    def test_delete_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test-q-delete-me")
+        queue = self._make_queue("test-q-delete-me")
+        with self.assertRaises(ValidationError):
+            queue.delete()
+        self.assertTrue(Queue.objects.filter(pk=queue.pk).exists())
+
+    def test_delete_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test-q-delete-ok")
+        queue = self._make_queue("test-q-delete-ok")
+        ext.delete()
+        queue.delete()  # must not raise
+        self.assertFalse(Queue.objects.filter(pk=queue.pk).exists())
+
+    def test_admin_hides_delete_button_while_referenced(self):
+        from core.admin import QueueAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test-q-admin-guard")
+        queue = self._make_queue("test-q-admin-guard")
+        admin_instance = QueueAdmin(Queue, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=queue))
+
+    def test_admin_has_delete_permission_checked_per_object_for_bulk_delete(self):
+        from unittest.mock import MagicMock
+
+        from core.admin import QueueAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test-q-bulk-blocked")
+        blocked = self._make_queue("test-q-bulk-blocked")
+        allowed = self._make_queue("test-q-bulk-allowed")
+
+        request = MagicMock()
+        request.user.has_perm.return_value = True
+        admin_instance = QueueAdmin(Queue, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(request, obj=blocked))
+        self.assertTrue(admin_instance.has_delete_permission(request, obj=allowed))
+
+
 class TestRoutingTableWebhookDeleteGuard(TestCase):
     def tearDown(self):
         from apps.webhooks.models import Webhook

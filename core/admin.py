@@ -46,6 +46,7 @@ from .forms import (
     DEFAULT_QUEUE_MEMBER_PENALTY,
 )
 from core.mixins.audit_admin import AuditAdminMixin
+from core.mixins.dialplan_guard_admin import DialplanGuardedDeleteAdminMixin
 
 # TODO: Use some template, edit and use UIKIT accordion to make admin forms better readable
 # Right here we just can hide fieldsets
@@ -332,10 +333,27 @@ class SoundFileAdmin(admin.ModelAdmin):
     search_fields = ("language", "name")
 
 
-class QueueMemberAdmin(admin.ModelAdmin):
+class QueueMemberAdmin(AuditAdminMixin, admin.ModelAdmin):
     list_display = ("member_name", "interface", "state_interface", "queue", "penalty")
     search_fields = ("member_name", "interface", "state_interface", "queue__name")
     ordering = ("member_name", "queue__name", "penalty")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "queue",
+                    "interface",
+                    "member_name",
+                    "state_interface",
+                    "penalty",
+                    "ringinuse",
+                    "wrapuptime",
+                )
+            },
+        ),
+        AuditAdminMixin.audit_fieldset,
+    )
 
 
 class QueueMemberInlineAdmin(admin.TabularInline):
@@ -351,12 +369,12 @@ class QueueMemberInlineAdmin(admin.TabularInline):
     ordering = ("member_name",)
 
 
-class QueueAdmin(admin.ModelAdmin):
+class QueueAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     form = QueueAdminForm
     list_display = ["name", "defaultrule", "strategy"]
     search_fields = ["name"]
     ordering = ["name"]
-    readonly_fields = ["rule_link"]
+    readonly_fields = AuditAdminMixin.readonly_fields + ["rule_link"]
     inlines = [QueueMemberInlineAdmin]
     fieldsets = [
         (None, {"fields": ["name", "strategy", "music_class"]}),
@@ -438,6 +456,7 @@ class QueueAdmin(admin.ModelAdmin):
                 "classes": ["collapse"],
             },
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
 
     def save_related(self, request, form, formsets, change):
@@ -491,7 +510,7 @@ admin.site.register(Queue, QueueAdmin)
 admin.site.register(QueueMember, QueueMemberAdmin)
 
 
-class TrunkGroupAdmin(AuditAdminMixin, admin.ModelAdmin):
+class TrunkGroupAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     list_display = ["name", "peer_count"]
     search_fields = ["name"]
     ordering = ["name"]
@@ -504,18 +523,6 @@ class TrunkGroupAdmin(AuditAdminMixin, admin.ModelAdmin):
     @admin.display(description="SIP Peers")
     def peer_count(self, obj):
         return obj.sip_peers.count()
-
-    def has_delete_permission(self, request, obj=None):
-        # obj.delete() itself already raises ValidationError when dialplan
-        # still references this group's name — hide the button instead of
-        # letting the confirm page 500 after the click. Django's own bulk
-        # "Delete selected" action calls has_delete_permission(request, obj)
-        # for every selected object too (via get_deleted_objects()) and
-        # refuses the whole batch if any one fails, so no separate
-        # delete_queryset() override is needed here.
-        if obj is not None and obj.find_dialplan_references(obj.name):
-            return False
-        return super().has_delete_permission(request, obj)
 
 
 admin.site.register(QueueAnnouncements)

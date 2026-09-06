@@ -758,6 +758,643 @@ paths:
       responses:
         '204':
           description: Entry deleted
+  /api/v1/phone-devices/:
+    get:
+      operationId: phone_devices_list
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPhoneDeviceList'
+          description: ''
+    post:
+      operationId: phone_devices_create
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/phone-devices/{id}/:
+    get:
+      operationId: phone_devices_retrieve
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+    put:
+      operationId: phone_devices_update
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: phone_devices_partial_update
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: phone_devices_destroy
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/phone-devices/{id}/provision/:
+    post:
+      operationId: phone_devices_provision_create
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      summary: Generate this device's TFTP config file
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Config file generated.
+        '400':
+          description: Provisioning failed (see 'error').
+  /api/v1/queue-members/:
+    get:
+      operationId: queue_members_list
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQueueMemberList'
+          description: ''
+    post:
+      operationId: queue_members_create
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/queue-members/{id}/:
+    get:
+      operationId: queue_members_retrieve
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+    put:
+      operationId: queue_members_update
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: queue_members_partial_update
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: queue_members_destroy
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/queues/:
+    get:
+      operationId: queues_list
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQueueList'
+          description: ''
+    post:
+      operationId: queues_create
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Queue'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/queues/{id}/:
+    get:
+      operationId: queues_retrieve
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+    put:
+      operationId: queues_update
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Queue'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a queue still referenced
+            by dialplan.
+    patch:
+      operationId: queues_partial_update
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a queue still referenced
+            by dialplan.
+    delete:
+      operationId: queues_destroy
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Queue deleted.
+        '409':
+          description: Queue is still referenced by dialplan.
   /api/v1/queues/members/:
     get:
       operationId: queues_members_retrieve
@@ -2323,6 +2960,46 @@ paths:
           description: No response body
 components:
   schemas:
+    AnnounceHoldtimeEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - once
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `once` - Once
+    AnnouncePositionEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - more
+      - limit
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `more` - More
+        * `limit` - Limit
+    AnnounceRoundSecondsEnum:
+      enum:
+      - 0
+      - 5
+      - 10
+      - 15
+      - 20
+      - 25
+      - 30
+      type: integer
+      description: |-
+        * `0` - 0
+        * `5` - 5
+        * `10` - 10
+        * `15` - 15
+        * `20` - 20
+        * `25` - 25
+        * `30` - 30
     ApplyChanges:
       type: object
       description: |-
@@ -2347,6 +3024,16 @@ components:
       description: |-
         * `userpass` - Plaintext
         * `md5` - MD5
+    AutopauseEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - all
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `all` - All
     Blacklist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -2512,6 +3199,16 @@ components:
       description: |-
         * `soft` - soft
         * `hard` - hard
+    MonitorFormatEnum:
+      enum:
+      - wav
+      - gsm
+      - wav49
+      type: string
+      description: |-
+        * `wav` - WAV
+        * `gsm` - GSM
+        * `wav49` - WAV49
     NullEnum:
       enum:
       - null
@@ -2649,6 +3346,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedPhoneDeviceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneDevice'
+    PaginatedQueueList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Queue'
+    PaginatedQueueMemberList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueMember'
     PaginatedRoutingRecordList:
       type: object
       required:
@@ -2868,6 +3634,330 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedPhoneDevice:
+      type: object
+      description: |-
+        A provisioned phone (or softphone/WebRTC client). Saving here only
+        updates the database — a config file is written to the TFTP directory
+        only via the `provision` action, or the admin's "Apply configurations"
+        action.
+
+        `sip_user` is optional: a device with none assigned is a normal,
+        not-yet-configured state (see PhoneDeviceAdmin's "No SIP User" status).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        telephone_type:
+          allOf:
+          - $ref: '#/components/schemas/TelephoneTypeEnum'
+          description: |-
+            Type of telephone device
+
+            * `spa502g` - Cisco SPA502G
+            * `spa504g` - Cisco SPA504G
+            * `gxp1200` - Grandstream GXP1200
+            * `softphone` - Softphone
+            * `webrtc` - WebRTC
+            * `other` - Other
+        mac_address:
+          type: string
+          maxLength: 17
+        sip_user:
+          type: integer
+          nullable: true
+          description: SIP user associated with this device
+        sip_user_username:
+          type: string
+          nullable: true
+          readOnly: true
+        sip_server:
+          type: string
+          description: SIP server address
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedQueue:
+      type: object
+      description: |-
+        A call queue (app_queue). `name` is looked up by Asterisk's app_queue
+        from a literal `Queue(<name>,...)` AEL app-call embedded in dialplan
+        text, so renaming or deleting a queue still referenced there is
+        rejected (see Queue.find_dialplan_references()).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Queue Name
+          maxLength: 64
+        music_class:
+          type: integer
+          title: Music on hold
+        music_class_name:
+          type: string
+          readOnly: true
+        announce:
+          type: string
+          nullable: true
+          title: Announcement to the member
+          description: |-
+            An announcement may be specified which is played for the member as
+            soon as they answer a call, typically to indicate to them which queue
+            this call should be answered as, so that agents or members who are
+            listening to more than one queue can differentiated how they should
+            engage the customer
+          maxLength: 64
+        queue_announce:
+          type: string
+          nullable: true
+          title: Queue announcement to the caller
+          description: |-
+            An announcement may be specified which is played to the caller just
+            before they are bridged with an agent.
+          maxLength: 64
+        strategy:
+          $ref: '#/components/schemas/StrategyEnum'
+        service_level:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        context:
+          type: string
+          nullable: true
+          description: |-
+            If a 'context' is specified, and a caller enters an extension that
+            matches an extension within that context, they will be taken out of
+            the queue and sent to that extension.
+          maxLength: 64
+        maxlen:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Maximum Queue Length
+        timeout:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        retry:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        timeoutpriority:
+          allOf:
+          - $ref: '#/components/schemas/TimeoutpriorityEnum'
+          title: Timeout Priority
+        weight:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Queue Weight
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        autofill:
+          type: boolean
+        autopause:
+          $ref: '#/components/schemas/AutopauseEnum'
+        autopausedelay:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Autopause Delay
+        reportholdtime:
+          type: boolean
+          title: Report Hold Time
+        setinterfacevar:
+          type: boolean
+          title: Set Interface Variable
+        setqueueentryvar:
+          type: boolean
+          title: Set Queue Entry Variable
+        setqueuevar:
+          type: boolean
+          title: Set Queue Variable
+        announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        min_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Minimum Announce Frequency
+        periodic_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        random_periodic_announce:
+          type: boolean
+        relative_periodic_announce:
+          type: boolean
+        announce_holdtime:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceHoldtimeEnum'
+          title: Announce Hold Time
+          description: |-
+            Should we include estimated hold time in position announcements?
+
+            * `yes` - Yes
+            * `no` - No
+            * `once` - Once
+        announce_position:
+          $ref: '#/components/schemas/AnnouncePositionEnum'
+        announce_to_first_user:
+          type: boolean
+        announce_position_limit:
+          type: integer
+          maximum: 100
+          minimum: 0
+        announce_round_seconds:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceRoundSecondsEnum'
+          minimum: 0
+          maximum: 2147483647
+        announce_position_only_up:
+          type: boolean
+          description: Only announce the caller's position if it has improved since
+            the last announcement.
+        queue_announcement:
+          type: integer
+        queue_announcement_name:
+          type: string
+          readOnly: true
+        periodic_announce:
+          type: string
+          nullable: true
+          description: 'The list of files to announce separated by comma. Example:
+            your-call-is-important-to-us, please-wait'
+          maxLength: 255
+        monitor_format:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MonitorFormatEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        joinempty:
+          type: string
+          title: Join Empty
+          description: What to do when a caller joins a queue with no members in it?
+          maxLength: 100
+        leavewhenempty:
+          type: string
+          title: Leave When Empty
+          description: When to leave empty queue?
+          maxLength: 100
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        timeoutrestart:
+          type: boolean
+          title: Timeout Restart
+        defaultrule:
+          type: integer
+          nullable: true
+          title: Default Rule
+          description: Escalation rule from queuerules.conf
+        defaultrule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        members_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedQueueMember:
+      type: object
+      description: |-
+        A static queue member (core.conf._make_single_queue_config() emits one
+        `member =>` line per row). Distinct from GET /api/v1/queues/members/ and
+        POST /api/v1/queues/members/pause/, which read/write Asterisk's live AMI
+        state instead of this DB configuration.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        queue:
+          type: integer
+        queue_name:
+          type: string
+          readOnly: true
+        interface:
+          type: string
+          description: Queue member interface, e.g. 'PJSIP/101'.
+          maxLength: 64
+        penalty:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        member_name:
+          type: string
+          default: ''
+          maxLength: 64
+        state_interface:
+          type: string
+          nullable: true
+          maxLength: 64
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedRoutingRecord:
       type: object
       description: |-
@@ -3343,6 +4433,71 @@ components:
           nullable: true
           description: Expiration date for the whitelist entry. If not set, the entry
             is permanent.
+    PhoneDevice:
+      type: object
+      description: |-
+        A provisioned phone (or softphone/WebRTC client). Saving here only
+        updates the database — a config file is written to the TFTP directory
+        only via the `provision` action, or the admin's "Apply configurations"
+        action.
+
+        `sip_user` is optional: a device with none assigned is a normal,
+        not-yet-configured state (see PhoneDeviceAdmin's "No SIP User" status).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        telephone_type:
+          allOf:
+          - $ref: '#/components/schemas/TelephoneTypeEnum'
+          description: |-
+            Type of telephone device
+
+            * `spa502g` - Cisco SPA502G
+            * `spa504g` - Cisco SPA504G
+            * `gxp1200` - Grandstream GXP1200
+            * `softphone` - Softphone
+            * `webrtc` - WebRTC
+            * `other` - Other
+        mac_address:
+          type: string
+          maxLength: 17
+        sip_user:
+          type: integer
+          nullable: true
+          description: SIP user associated with this device
+        sip_user_username:
+          type: string
+          nullable: true
+          readOnly: true
+        sip_server:
+          type: string
+          description: SIP server address
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - mac_address
+      - modified_at
+      - modified_by
+      - sip_user_username
     ProtocolEnum:
       enum:
       - udp
@@ -3355,6 +4510,296 @@ components:
         * `tcp` - TCP
         * `tls` - TLS
         * `wss` - WSS
+    Queue:
+      type: object
+      description: |-
+        A call queue (app_queue). `name` is looked up by Asterisk's app_queue
+        from a literal `Queue(<name>,...)` AEL app-call embedded in dialplan
+        text, so renaming or deleting a queue still referenced there is
+        rejected (see Queue.find_dialplan_references()).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Queue Name
+          maxLength: 64
+        music_class:
+          type: integer
+          title: Music on hold
+        music_class_name:
+          type: string
+          readOnly: true
+        announce:
+          type: string
+          nullable: true
+          title: Announcement to the member
+          description: |-
+            An announcement may be specified which is played for the member as
+            soon as they answer a call, typically to indicate to them which queue
+            this call should be answered as, so that agents or members who are
+            listening to more than one queue can differentiated how they should
+            engage the customer
+          maxLength: 64
+        queue_announce:
+          type: string
+          nullable: true
+          title: Queue announcement to the caller
+          description: |-
+            An announcement may be specified which is played to the caller just
+            before they are bridged with an agent.
+          maxLength: 64
+        strategy:
+          $ref: '#/components/schemas/StrategyEnum'
+        service_level:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        context:
+          type: string
+          nullable: true
+          description: |-
+            If a 'context' is specified, and a caller enters an extension that
+            matches an extension within that context, they will be taken out of
+            the queue and sent to that extension.
+          maxLength: 64
+        maxlen:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Maximum Queue Length
+        timeout:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        retry:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        timeoutpriority:
+          allOf:
+          - $ref: '#/components/schemas/TimeoutpriorityEnum'
+          title: Timeout Priority
+        weight:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Queue Weight
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        autofill:
+          type: boolean
+        autopause:
+          $ref: '#/components/schemas/AutopauseEnum'
+        autopausedelay:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Autopause Delay
+        reportholdtime:
+          type: boolean
+          title: Report Hold Time
+        setinterfacevar:
+          type: boolean
+          title: Set Interface Variable
+        setqueueentryvar:
+          type: boolean
+          title: Set Queue Entry Variable
+        setqueuevar:
+          type: boolean
+          title: Set Queue Variable
+        announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        min_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Minimum Announce Frequency
+        periodic_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        random_periodic_announce:
+          type: boolean
+        relative_periodic_announce:
+          type: boolean
+        announce_holdtime:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceHoldtimeEnum'
+          title: Announce Hold Time
+          description: |-
+            Should we include estimated hold time in position announcements?
+
+            * `yes` - Yes
+            * `no` - No
+            * `once` - Once
+        announce_position:
+          $ref: '#/components/schemas/AnnouncePositionEnum'
+        announce_to_first_user:
+          type: boolean
+        announce_position_limit:
+          type: integer
+          maximum: 100
+          minimum: 0
+        announce_round_seconds:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceRoundSecondsEnum'
+          minimum: 0
+          maximum: 2147483647
+        announce_position_only_up:
+          type: boolean
+          description: Only announce the caller's position if it has improved since
+            the last announcement.
+        queue_announcement:
+          type: integer
+        queue_announcement_name:
+          type: string
+          readOnly: true
+        periodic_announce:
+          type: string
+          nullable: true
+          description: 'The list of files to announce separated by comma. Example:
+            your-call-is-important-to-us, please-wait'
+          maxLength: 255
+        monitor_format:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MonitorFormatEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        joinempty:
+          type: string
+          title: Join Empty
+          description: What to do when a caller joins a queue with no members in it?
+          maxLength: 100
+        leavewhenempty:
+          type: string
+          title: Leave When Empty
+          description: When to leave empty queue?
+          maxLength: 100
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        timeoutrestart:
+          type: boolean
+          title: Timeout Restart
+        defaultrule:
+          type: integer
+          nullable: true
+          title: Default Rule
+          description: Escalation rule from queuerules.conf
+        defaultrule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        members_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - defaultrule_name
+      - id
+      - members_count
+      - modified_at
+      - modified_by
+      - music_class
+      - music_class_name
+      - name
+      - queue_announcement
+      - queue_announcement_name
+      - strategy
+    QueueMember:
+      type: object
+      description: |-
+        A static queue member (core.conf._make_single_queue_config() emits one
+        `member =>` line per row). Distinct from GET /api/v1/queues/members/ and
+        POST /api/v1/queues/members/pause/, which read/write Asterisk's live AMI
+        state instead of this DB configuration.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        queue:
+          type: integer
+        queue_name:
+          type: string
+          readOnly: true
+        interface:
+          type: string
+          description: Queue member interface, e.g. 'PJSIP/101'.
+          maxLength: 64
+        penalty:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        member_name:
+          type: string
+          default: ''
+          maxLength: 64
+        state_interface:
+          type: string
+          nullable: true
+          maxLength: 64
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - interface
+      - modified_at
+      - modified_by
+      - queue
+      - queue_name
     QueueMemberList:
       type: object
       description: Response shape of GET /api/v1/queues/members/.
@@ -3883,6 +5328,50 @@ components:
       - transport
       - transport_name
       - username
+    StrategyEnum:
+      enum:
+      - ringall
+      - leastrecent
+      - fewestcalls
+      - random
+      - rrmemory
+      - rrordered
+      - linear
+      - wrandom
+      type: string
+      description: |-
+        * `ringall` - Ring All
+        * `leastrecent` - Least Recent
+        * `fewestcalls` - Fewest Calls
+        * `random` - Random
+        * `rrmemory` - Round Robin Memory
+        * `rrordered` - Round Robin Ordered
+        * `linear` - Linear as configured
+        * `wrandom` - Weighted Random
+    TelephoneTypeEnum:
+      enum:
+      - spa502g
+      - spa504g
+      - gxp1200
+      - softphone
+      - webrtc
+      - other
+      type: string
+      description: |-
+        * `spa502g` - Cisco SPA502G
+        * `spa504g` - Cisco SPA504G
+        * `gxp1200` - Grandstream GXP1200
+        * `softphone` - Softphone
+        * `webrtc` - WebRTC
+        * `other` - Other
+    TimeoutpriorityEnum:
+      enum:
+      - app
+      - conf
+      type: string
+      description: |-
+        * `app` - Application
+        * `conf` - Configuration
     TrunkGroup:
       type: object
       description: |-

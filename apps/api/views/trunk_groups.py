@@ -1,14 +1,12 @@
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Value
 from django.db.models.functions import Coalesce
 
 from rest_framework import viewsets
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
 
-from apps.api.exceptions import Conflict
 from apps.api.permissions import IsStaff
 from apps.api.serializers import TrunkGroupSerializer
-from apps.api.views.lists import AuditMixin, FilteredQuerySetMixin
+from apps.api.views.lists import AuditMixin, DialplanGuardedDestroyMixin, FilteredQuerySetMixin
 from core.models import TrunkGroup
 
 
@@ -46,7 +44,9 @@ from core.models import TrunkGroup
         }
     ),
 )
-class TrunkGroupViewSet(FilteredQuerySetMixin, AuditMixin, viewsets.ModelViewSet):
+class TrunkGroupViewSet(
+    FilteredQuerySetMixin, AuditMixin, DialplanGuardedDestroyMixin, viewsets.ModelViewSet
+):
     """Trunk groups (failover sets of SIPPeers).
 
     Every method requires a staff or superuser account.
@@ -67,13 +67,3 @@ class TrunkGroupViewSet(FilteredQuerySetMixin, AuditMixin, viewsets.ModelViewSet
     permission_classes = [IsStaff]
     filter_fields = ["name"]
     search_fields = ["name"]
-
-    def perform_destroy(self, instance):
-        # TrunkGroup.delete() itself already runs this same scan (so
-        # admin/shell deletes are covered too) — catch its ValidationError
-        # here instead of re-checking first, to scan once and to report 409
-        # instead of the generic 400 apps.api.exceptions falls back to.
-        try:
-            super().perform_destroy(instance)
-        except DjangoValidationError as e:
-            raise Conflict("; ".join(e.messages))

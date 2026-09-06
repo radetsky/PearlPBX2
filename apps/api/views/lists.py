@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
+from apps.api.exceptions import Conflict
 from apps.api.models import CustomListNames, CustomListEntries
 from apps.api.serializers import (
     CustomListNameSerializer,
@@ -15,6 +17,22 @@ from apps.api.serializers import (
     ContactSerializer,
 )
 from core.models import Blacklist, Whitelist, Contact
+
+
+class DialplanGuardedDestroyMixin:
+    """perform_destroy() for a model whose delete() raises Django's
+    ValidationError when it's still referenced by dialplan text (TrunkGroup,
+    Queue) — the model's own delete() already runs that scan (so admin/shell
+    deletes are covered too), so this catches its ValidationError instead of
+    re-checking first, to scan once and to report 409 instead of the generic
+    400 apps.api.exceptions falls back to.
+    """
+
+    def perform_destroy(self, instance):
+        try:
+            super().perform_destroy(instance)
+        except DjangoValidationError as e:
+            raise Conflict("; ".join(e.messages))
 
 
 class AuditMixin:

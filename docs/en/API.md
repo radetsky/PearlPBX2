@@ -20,12 +20,16 @@ Or via Django admin / shell (`rest_framework.authtoken.models.Token`).
 There is no session-based or IP-based restriction. CSRF protection is not enforced (token auth only).
 
 **Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
-`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`
-and `/api/v1/trunk-groups/`, including `GET`, requires a staff or superuser
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`,
+`/api/v1/trunk-groups/`, `/api/v1/phone-devices/`, `/api/v1/queues/` and
+`/api/v1/queue-members/`, including `GET`, requires a staff or superuser
 account — see [SIP Users](#sip-users), [SIP Transports](#sip-transports),
 [SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
-[Routing Records](#routing-records) and [Trunk Groups](#trunk-groups) below.
-A regular user's valid token receives `403 Forbidden` on those resources.
+[Routing Records](#routing-records), [Trunk Groups](#trunk-groups),
+[Phone Devices](#phone-devices), [Queues](#queues) and
+[Queue Members (Static Configuration)](#queue-members-static-configuration)
+below. A regular user's valid token receives `403 Forbidden` on those
+resources.
 
 **Superuser only:** `/api/v1/config/preview/` and `/api/v1/config/apply/`
 require a **superuser** account — a staff-only token is not enough, since
@@ -807,6 +811,87 @@ extension(s)/macro(s) if dialplan still calls this group by name.
 
 ---
 
+## Phone Devices
+
+Manages provisioned phone devices (physical handsets, softphones, WebRTC
+clients). Every method — including `GET` — requires a staff or superuser
+account.
+
+Saving here only updates the database. A device's TFTP config file is only
+(re)written by the `provision` action below, or by the admin's "Apply
+configurations" action — neither runs implicitly on save.
+
+### GET `/api/v1/phone-devices/`
+
+Returns paginated phone devices. Supports:
+- `?mac_address=<exact>` — filter by exact MAC address
+- `?sip_user=<id>` — filter by assigned SIP user
+- `?telephone_type=<type>` — filter by device type (`spa502g`, `spa504g`, `gxp1200`, `softphone`, `webrtc`, `other`)
+- `?search=<text>` — case-insensitive match against MAC address, SIP username, SIP name
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "telephone_type": "softphone",
+      "mac_address": "00:1A:2B:3C:4D:5E",
+      "sip_user": 3,
+      "sip_user_username": "101",
+      "sip_server": "pbx.example.com",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/phone-devices/`
+
+**Request body:**
+```json
+{"telephone_type": "softphone", "mac_address": "00:1a:2b:3c:4d:5e", "sip_user": 3, "sip_server": "pbx.example.com"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `telephone_type` | no | default `"other"` |
+| `mac_address` | yes | unique; normalized to `XX:XX:XX:XX:XX:XX` (accepts separators, mixed case) |
+| `sip_user` | no | ID of an existing `SIPUser`; a device with none assigned is a normal, not-yet-configured state |
+| `sip_server` | no | default `""` — an empty value falls back to the global provisioning address at generation time |
+
+**Response:** `HTTP 201`, or `400` if `mac_address` is invalid or already in use.
+
+### PATCH `/api/v1/phone-devices/<id>/`
+
+Same field rules as `POST`.
+
+### DELETE `/api/v1/phone-devices/<id>/`
+
+Delete a phone device. Returns `204 No Content` — nothing references a
+`PhoneDevice`, so deletion is never blocked. Deleting the assigned `SIPUser`
+instead cascades and deletes this device too (see [SIP Users](#sip-users)).
+
+### POST `/api/v1/phone-devices/<id>/provision/`
+
+Generate this device's TFTP config file — the same action as the admin's
+"Apply configurations" button, for a single device, over the API. Only
+`spa502g`, `spa504g` and `gxp1200` are supported; `softphone`/`webrtc`/`other`
+devices have no config file to generate.
+
+**Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `200` | `{"success": true, "device_mac": "...", "filename": "...", "filepath": "...", "size": 512}` |
+| `400` | `{"success": false, "device_mac": "...", "error": "..."}` — e.g. no SIP user assigned, or an unsupported `telephone_type` |
+
+---
+
 ## Config (Apply Changes)
 
 Wraps the admin's "Apply Changes" page. **Both endpoints require a
@@ -933,12 +1018,168 @@ curl -k -X 'POST' \
 
 ---
 
-## Queue Members
+## Queues
+
+Manages a call queue's static configuration (`app_queue`). Every method —
+including `GET` — requires a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `name` is looked up by
+Asterisk's `app_queue` from a literal `Queue(<name>,...)` AEL app-call
+embedded in dialplan text — **renaming or deleting a queue still referenced
+that way is rejected** (`400`/`409`) instead of silently breaking call
+routing. Unlike the [Trunk Groups](#trunk-groups) guard, this match is
+case-insensitive, since `app_queue` looks up queue names with `strcasecmp()`.
+This is a best-effort text scan: it cannot see a name reached only through an
+Asterisk variable (e.g. `${QUEUENAME}`).
+
+Distinct from [Queue Members (Live AMI State)](#queue-members-live-ami-state)
+below: this resource is about what gets written into `queues.conf`, not
+runtime pause/status.
+
+### GET `/api/v1/queues/`
+
+Returns paginated queues. Supports `?name=<exact>`, `?strategy=<exact>` and
+`?search=<text>`.
+
+**Response (abbreviated — see POST below for the full field list):**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Sales",
+      "music_class": 1,
+      "music_class_name": "default",
+      "strategy": "ringall",
+      "queue_announcement": 1,
+      "queue_announcement_name": "default",
+      "defaultrule": null,
+      "defaultrule_name": null,
+      "members_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queues/`
+
+**Request body (minimal):**
+```json
+{"name": "Sales", "music_class": 1, "queue_announcement": 1, "strategy": "ringall"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | unique |
+| `music_class` | yes | ID of an existing `MusicOnHold` class |
+| `queue_announcement` | yes | ID of an existing `QueueAnnouncements` row |
+| `strategy` | yes | one of `ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `rrordered`, `linear`, `wrandom` — required even though nullable in the DB, since the generated config has no null guard for it |
+| `defaultrule` | no | ID of an existing `QueueRule` |
+| `context`, `timeout`, `retry`, `maxlen`, `weight`, `wrapuptime`, `autofill`, `autopause`, `autopausedelay`, `announce`, `queue_announce`, `service_level`, `joinempty`, `leavewhenempty`, `ringinuse`, `timeoutrestart`, `monitor_format`, `periodic_announce`, and the `announce_*`/`*_announce_frequency` fields | no | see the admin's Queue form for the full set; all map 1:1 onto `app_queue` options |
+
+**Response:** `HTTP 201`, or `400` if `name` is taken, `strategy` is missing, or a queue with the same (old) name is still referenced by dialplan.
+
+### PATCH `/api/v1/queues/<id>/`
+
+Same field rules as `POST`. Renaming while dialplan still references the
+current name returns `400` naming the referencing extension(s)/macro(s).
+
+### DELETE `/api/v1/queues/<id>/`
+
+Returns `204 No Content`, or `409 Conflict` naming the referencing
+extension(s)/macro(s) if dialplan still calls this queue by name.
+
+---
+
+## Queue Members (Static Configuration)
+
+Manages a queue's static member list (`core.conf` emits one `member => ...`
+line per row into `queues.conf`). Every method — including `GET` — requires
+a staff or superuser account, since this writes DB configuration rather than
+reading live runtime state (contrast with the AMI-backed endpoints below,
+which only require authentication).
+
+Distinct from [Queue Members (Live AMI State)](#queue-members-live-ami-state)
+below: `GET /api/v1/queue-members/?queue=<id>` answers "who is statically
+configured in this queue" from the database; `GET /api/v1/queues/members/?queue=<name>`
+(below) answers "who is currently paused/ringing/on a call" from Asterisk's
+live AMI state. Both endpoints stay — they answer different questions.
+
+### GET `/api/v1/queue-members/`
+
+Returns paginated queue members. Supports:
+- `?queue=<id>` — filter by queue
+- `?interface=<exact>` — filter by exact interface
+- `?search=<text>` — case-insensitive match against member name, interface, state interface, queue name
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "queue": 1,
+      "queue_name": "Sales",
+      "interface": "PJSIP/101",
+      "penalty": 0,
+      "member_name": "101",
+      "state_interface": "PJSIP/101",
+      "ringinuse": false,
+      "wrapuptime": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queue-members/`
+
+**Request body:**
+```json
+{"queue": 1, "interface": "PJSIP/101"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `queue` | yes | ID of an existing `Queue` |
+| `interface` | yes | e.g. `"PJSIP/101"`; letters, digits and `_.-/@` only |
+| `penalty` | no | default `0` |
+| `member_name` | no | default `""` — a null value would otherwise render as the literal word `None` in `queues.conf` |
+| `state_interface`, `ringinuse`, `wrapuptime` | no | see the admin's inline form |
+
+A given `(queue, interface)` pair must be unique.
+
+**Response:** `HTTP 201`, or `400` if `interface` is invalid, required fields are missing, or the `(queue, interface)` pair already exists.
+
+### PATCH `/api/v1/queue-members/<id>/`
+
+Same field rules as `POST`.
+
+### DELETE `/api/v1/queue-members/<id>/`
+
+Delete a queue member. Returns `204 No Content` — nothing references a
+`QueueMember`, so deletion is never blocked.
+
+---
+
+## Queue Members (Live AMI State)
 
 Pause/unpause a queue member and read live queue member status via Asterisk AMI.
 There is no persistent "queue member" resource here — these endpoints talk to
 Asterisk directly, so they reflect (and change) live runtime state, not the
-`QueueMember` records managed in Django admin.
+`QueueMember` records managed in
+[Queue Members (Static Configuration)](#queue-members-static-configuration)
+above.
 
 ### POST `/api/v1/queues/members/pause/`
 
@@ -1051,11 +1292,17 @@ same as the rest of this API.
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
   (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
-  `?routing_table=`, `?context=`, `?search=`) and `/api/v1/trunk-groups/`
-  (`?name=`, `?search=`).
+  `?routing_table=`, `?context=`, `?search=`), `/api/v1/trunk-groups/`
+  (`?name=`, `?search=`), `/api/v1/phone-devices/` (`?mac_address=`,
+  `?sip_user=`, `?telephone_type=`, `?search=`), `/api/v1/queues/`
+  (`?name=`, `?strategy=`, `?search=`) and `/api/v1/queue-members/`
+  (`?queue=`, `?interface=`, `?search=`).
 - The trunk-group rename/delete guard is a best-effort text scan of dialplan
   bodies for a literal `dial-trunk-group,<name>,` call — it cannot see a
-  group name reached only through an Asterisk variable.
+  group name reached only through an Asterisk variable. The queue rename/
+  delete guard is the same kind of scan for a literal `Queue(<name>,...)`
+  call, but case-insensitive (unlike the trunk-group one) since `app_queue`
+  looks up queue names with `strcasecmp()`.
 
 ---
 

@@ -93,6 +93,19 @@ def validate_asterisk_context(value):
         raise ValidationError("Context name is too long (max 80 characters).")
 
 
+def validate_mac_address(value):
+    """Normalize a MAC address (strip separators/case) into XX:XX:XX:XX:XX:XX,
+    validating the result. Raises ValidationError on anything else."""
+    normalized = re.sub(r"[\s-]", "", value).upper()
+    if ":" not in normalized and len(normalized) == 12:
+        normalized = ":".join(normalized[i : i + 2] for i in range(0, 12, 2))
+    if not re.fullmatch(r"([0-9A-F]{2}:){5}[0-9A-F]{2}", normalized):
+        raise ValidationError(
+            "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX (e.g., 00:1A:2B:3C:4D:5E)"
+        )
+    return normalized
+
+
 def validate_asterisk_interface(value):
     """Validator for an AMI queue member Interface (e.g. 'PJSIP/101')."""
     if not re.fullmatch(r"[a-zA-Z0-9_.\-/@]+", value):

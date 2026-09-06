@@ -5,10 +5,11 @@ import re
 from django.conf import settings
 
 from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
+from rest_framework.validators import UniqueValidator, UniqueTogetherValidator
 from drf_spectacular.utils import extend_schema_field
 
 from apps.api.models import CustomListNames, CustomListEntries
+from apps.provision.models import PhoneDevice
 from core.models import (
     Blacklist,
     Whitelist,
@@ -20,11 +21,14 @@ from core.models import (
     RoutingRecord,
     TrunkGroup,
     DialplanContext,
+    Queue,
+    QueueMember,
 )
 from core.validators import (
     validate_asterisk_interface,
     validate_alphanumeric,
     validate_sip_username,
+    validate_mac_address,
     min3len,
 )
 
@@ -517,6 +521,204 @@ class TrunkGroupSerializer(serializers.ModelSerializer):
         if hasattr(obj, "sip_peers_count"):
             return obj.sip_peers_count
         return obj.sip_peers.count()
+
+
+class PhoneDeviceSerializer(serializers.ModelSerializer):
+    """A provisioned phone (or softphone/WebRTC client). Saving here only
+    updates the database — a config file is written to the TFTP directory
+    only via the `provision` action, or the admin's "Apply configurations"
+    action.
+
+    `sip_user` is optional: a device with none assigned is a normal,
+    not-yet-configured state (see PhoneDeviceAdmin's "No SIP User" status).
+    """
+
+    mac_address = serializers.CharField(max_length=17)
+    sip_user_username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PhoneDevice
+        fields = [
+            "id",
+            "telephone_type",
+            "mac_address",
+            "sip_user",
+            "sip_user_username",
+            "sip_server",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            "sip_server": {"required": False, "allow_blank": True},
+        }
+
+    def validate_mac_address(self, value):
+        # A field-level `validators=[...]` entry can only reject a value, not
+        # transform it — normalization has to happen here instead, before the
+        # uniqueness check below (a bare UniqueValidator would otherwise check
+        # the pre-normalization string, letting a differently-formatted
+        # duplicate through to hit the DB's unique constraint as a 409 instead
+        # of this 400).
+        normalized = validate_mac_address(value)
+        qs = PhoneDevice.objects.filter(mac_address=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "A phone device with this MAC address already exists."
+            )
+        return normalized
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_sip_user_username(self, obj):
+        return obj.sip_user.username if obj.sip_user else None
+
+
+class QueueSerializer(serializers.ModelSerializer):
+    """A call queue (app_queue). `name` is looked up by Asterisk's app_queue
+    from a literal `Queue(<name>,...)` AEL app-call embedded in dialplan
+    text, so renaming or deleting a queue still referenced there is
+    rejected (see Queue.find_dialplan_references()).
+
+    Saving here only updates the database; changes reach Asterisk after a
+    superuser runs "Apply Changes" in the admin.
+    """
+
+    music_class_name = serializers.CharField(source="music_class.name", read_only=True)
+    queue_announcement_name = serializers.CharField(
+        source="queue_announcement.name", read_only=True
+    )
+    defaultrule_name = serializers.SerializerMethodField()
+    # default=0 covers create(): the freshly saved instance isn't re-fetched
+    # through the view's annotated queryset, so the annotation is absent —
+    # correctly so, since nothing can reference a queue that was just created.
+    members_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = Queue
+        fields = [
+            "id",
+            "name",
+            "music_class",
+            "music_class_name",
+            "announce",
+            "queue_announce",
+            "strategy",
+            "service_level",
+            "context",
+            "maxlen",
+            "timeout",
+            "retry",
+            "timeoutpriority",
+            "weight",
+            "wrapuptime",
+            "autofill",
+            "autopause",
+            "autopausedelay",
+            "reportholdtime",
+            "setinterfacevar",
+            "setqueueentryvar",
+            "setqueuevar",
+            "announce_frequency",
+            "min_announce_frequency",
+            "periodic_announce_frequency",
+            "random_periodic_announce",
+            "relative_periodic_announce",
+            "announce_holdtime",
+            "announce_position",
+            "announce_to_first_user",
+            "announce_position_limit",
+            "announce_round_seconds",
+            "announce_position_only_up",
+            "queue_announcement",
+            "queue_announcement_name",
+            "periodic_announce",
+            "monitor_format",
+            "joinempty",
+            "leavewhenempty",
+            "ringinuse",
+            "timeoutrestart",
+            "defaultrule",
+            "defaultrule_name",
+            "members_count",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Nullable/blank in the DB, but core.conf._make_single_queue_config()
+            # interpolates it verbatim with no null guard: f"strategy={queue.strategy}"
+            # — an empty value would literally emit "strategy=None" into queues.conf.
+            "strategy": {"required": True, "allow_null": False, "allow_blank": False},
+        }
+
+    def validate_name(self, value):
+        if self.instance and self.instance.name != value:
+            refs = Queue.find_dialplan_references(self.instance.name)
+            if refs:
+                raise serializers.ValidationError(
+                    f"Cannot rename: still referenced by dialplan: {', '.join(refs)}."
+                )
+        return value
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_defaultrule_name(self, obj):
+        return obj.defaultrule.name if obj.defaultrule else None
+
+
+class QueueMemberSerializer(serializers.ModelSerializer):
+    """A static queue member (core.conf._make_single_queue_config() emits one
+    `member =>` line per row). Distinct from GET /api/v1/queues/members/ and
+    POST /api/v1/queues/members/pause/, which read/write Asterisk's live AMI
+    state instead of this DB configuration.
+    """
+
+    interface = serializers.CharField(
+        max_length=64,
+        validators=[validate_asterisk_interface],
+        help_text="Queue member interface, e.g. 'PJSIP/101'.",
+    )
+    queue_name = serializers.CharField(source="queue.name", read_only=True)
+
+    class Meta:
+        model = QueueMember
+        fields = [
+            "id",
+            "queue",
+            "queue_name",
+            "interface",
+            "penalty",
+            "member_name",
+            "state_interface",
+            "ringinuse",
+            "wrapuptime",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Nullable in the DB, but the generated "member => ..." line has
+            # no null guard for this field — a null would render as the
+            # literal word "None" rather than an empty column.
+            "member_name": {
+                "required": False,
+                "allow_blank": True,
+                "allow_null": False,
+                "default": "",
+            },
+        }
+        validators = [
+            UniqueTogetherValidator(
+                queryset=QueueMember.objects.all(), fields=["queue", "interface"]
+            )
+        ]
 
 
 class _CallOriginationFieldsSerializer(serializers.Serializer):

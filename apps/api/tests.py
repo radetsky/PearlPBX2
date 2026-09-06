@@ -26,6 +26,10 @@ from core.models import (
     RoutingRecord,
     DialplanContext,
     DialplanExtension,
+    Queue,
+    QueueMember,
+    MusicOnHold,
+    QueueAnnouncements,
 )
 from apps.provision.models import PhoneDevice
 
@@ -1435,6 +1439,467 @@ class TrunkGroupApiTests(APITestCase):
         )
         group = TrunkGroup.objects.get(pk=create.data["id"])
         self.assertEqual(group.created_by, self.staff_user)
+
+
+class PhoneDeviceApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="pd_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="pd_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def _payload(self, **overrides):
+        payload = {
+            "telephone_type": "softphone",
+            "mac_address": "00:11:22:33:44:55",
+            "sip_server": "pbx.example.com",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/phone-devices/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/phone-devices/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/phone-devices/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["mac_address"], "00:11:22:33:44:55")
+        self.assertIsNone(response.data["sip_user_username"])
+
+    def test_create_without_sip_user_201(self):
+        response = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.data["sip_user"])
+
+    def test_mac_address_normalized(self):
+        response = self.client.post(
+            "/api/v1/phone-devices/",
+            self._payload(mac_address="aa-bb-cc-dd-ee-ff"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["mac_address"], "AA:BB:CC:DD:EE:FF")
+
+    def test_duplicate_mac_address_400(self):
+        self.client.post("/api/v1/phone-devices/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("mac_address", response.data)
+
+    def test_invalid_mac_address_400(self):
+        response = self.client.post(
+            "/api/v1/phone-devices/",
+            self._payload(mac_address="not-a-mac"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("mac_address", response.data)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/phone-devices/{pk}/", {"sip_server": "new.example.com"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["sip_server"], "new.example.com")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/phone-devices/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(PhoneDevice.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/phone-devices/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    @patch("apps.api.views.phone_devices.PhoneProvisioningManager")
+    def test_provision_action_success(self, mock_manager_cls):
+        mock_manager_cls.return_value.provision_device.return_value = {
+            "success": True,
+            "device_mac": "00:11:22:33:44:55",
+            "filename": "cfg001122334455",
+            "filepath": "/tftp/cfg001122334455",
+            "size": 42,
+        }
+        create = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.post(f"/api/v1/phone-devices/{pk}/provision/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["success"])
+
+    @patch("apps.api.views.phone_devices.PhoneProvisioningManager")
+    def test_provision_action_failure_returns_400(self, mock_manager_cls):
+        mock_manager_cls.return_value.provision_device.return_value = {
+            "success": False,
+            "device_mac": "00:11:22:33:44:55",
+            "error": "Device has no SIP user assigned",
+        }
+        create = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.post(f"/api/v1/phone-devices/{pk}/provision/")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.data)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/phone-devices/", self._payload(), format="json"
+        )
+        device = PhoneDevice.objects.get(pk=create.data["id"])
+        self.assertEqual(device.created_by, self.staff_user)
+
+
+class QueueApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="q_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="q_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+        self.moh = MusicOnHold.objects.create(name="test-queue-api-moh")
+        self.ann = QueueAnnouncements.objects.create(name="test-queue-api-ann")
+        self.context = DialplanContext.objects.create(name="test-queue-api-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+        Queue.objects.all().delete()
+        self.ann.delete()
+        self.moh.delete()
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "api-queue",
+            "music_class": self.moh.id,
+            "queue_announcement": self.ann.id,
+            "strategy": "ringall",
+        }
+        payload.update(overrides)
+        return payload
+
+    def _make_referencing_extension(self, queue_name):
+        return DialplanExtension.objects.create(
+            context=self.context,
+            ext="200",
+            dialplan=f"Answer();\nQueue({queue_name},tT,,,300);\nHangup();",
+        )
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/queues/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/queues/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/queues/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "api-queue")
+        self.assertEqual(response.data["music_class_name"], "test-queue-api-moh")
+        self.assertEqual(response.data["queue_announcement_name"], "test-queue-api-ann")
+        self.assertEqual(response.data["members_count"], 0)
+
+    def test_create_without_strategy_400(self):
+        response = self.client.post(
+            "/api/v1/queues/", self._payload(strategy=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("strategy", response.data)
+
+    def test_duplicate_name_400(self):
+        self.client.post("/api/v1/queues/", self._payload(), format="json")
+        response = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_created_row_lands_in_generated_queues_conf(self):
+        from core.conf import make_queues_conf
+
+        self.client.post("/api/v1/queues/", self._payload(), format="json")
+        result = make_queues_conf()
+        self.assertIn("[api-queue]", result)
+        self.assertIn("strategy=ringall", result)
+
+    def test_patch_200(self):
+        create = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/queues/{pk}/", {"strategy": "leastrecent"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["strategy"], "leastrecent")
+
+    def test_delete_204(self):
+        create = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/queues/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Queue.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/queues/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_rename_blocked_while_dialplan_references_old_name(self):
+        create = self.client.post(
+            "/api/v1/queues/", self._payload(name="test-q-api-old"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test-q-api-old")
+        response = self.client.patch(
+            f"/api/v1/queues/{pk}/", {"name": "test-q-api-new"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_rename_allowed_after_dialplan_updated(self):
+        create = self.client.post(
+            "/api/v1/queues/", self._payload(name="test-q-api-old2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test-q-api-old2")
+        ext.delete()
+        response = self.client.patch(
+            f"/api/v1/queues/{pk}/", {"name": "test-q-api-new2"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_rename_blocked_for_differently_cased_dialplan_reference(self):
+        create = self.client.post(
+            "/api/v1/queues/", self._payload(name="Sales"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("sales")
+        response = self.client.patch(
+            f"/api/v1/queues/{pk}/", {"name": "SalesRenamed"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_delete_blocked_while_dialplan_references_returns_409(self):
+        create = self.client.post(
+            "/api/v1/queues/", self._payload(name="test-q-api-del"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test-q-api-del")
+        response = self.client.delete(f"/api/v1/queues/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Queue.objects.filter(pk=pk).exists())
+
+    def test_delete_allowed_after_dialplan_updated(self):
+        create = self.client.post(
+            "/api/v1/queues/", self._payload(name="test-q-api-del2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test-q-api-del2")
+        ext.delete()
+        response = self.client.delete(f"/api/v1/queues/{pk}/")
+        self.assertEqual(response.status_code, 204)
+
+    def test_members_count_annotation(self):
+        create = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        pk = create.data["id"]
+        QueueMember.objects.create(queue_id=pk, interface="PJSIP/test-q-member")
+        response = self.client.get(f"/api/v1/queues/{pk}/")
+        self.assertEqual(response.data["members_count"], 1)
+
+    def test_audit_created_by(self):
+        create = self.client.post("/api/v1/queues/", self._payload(), format="json")
+        queue = Queue.objects.get(pk=create.data["id"])
+        self.assertEqual(queue.created_by, self.staff_user)
+
+
+class QueueMemberApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="qm_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="qm_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+        self.moh = MusicOnHold.objects.create(name="test-qm-api-moh")
+        self.ann = QueueAnnouncements.objects.create(name="test-qm-api-ann")
+        self.queue = Queue.objects.create(
+            name="test-qm-api-queue",
+            music_class=self.moh,
+            queue_announcement=self.ann,
+            strategy="ringall",
+        )
+
+    def tearDown(self):
+        QueueMember.objects.filter(queue=self.queue).delete()
+        self.queue.delete()
+        self.ann.delete()
+        self.moh.delete()
+
+    def _payload(self, **overrides):
+        payload = {"queue": self.queue.id, "interface": "PJSIP/testqm900"}
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        response = self.client.get("/api/v1/queue-members/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/queue-members/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/queue-members/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["interface"], "PJSIP/testqm900")
+        self.assertEqual(response.data["queue_name"], "test-qm-api-queue")
+
+    def test_create_without_queue_400(self):
+        response = self.client.post(
+            "/api/v1/queue-members/", self._payload(queue=None), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("queue", response.data)
+
+    def test_create_without_interface_400(self):
+        response = self.client.post(
+            "/api/v1/queue-members/", self._payload(interface=""), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("interface", response.data)
+
+    def test_duplicate_queue_interface_400(self):
+        self.client.post("/api/v1/queue-members/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_interface_400(self):
+        response = self.client.post(
+            "/api/v1/queue-members/",
+            self._payload(interface="PJSIP/bad,name"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("interface", response.data)
+
+    def test_created_row_lands_in_generated_queues_conf(self):
+        from core.conf import make_queues_conf
+
+        self.client.post("/api/v1/queue-members/", self._payload(), format="json")
+        result = make_queues_conf()
+        self.assertIn("member => PJSIP/testqm900,0,,,no,0", result)
+
+    def test_omitted_member_name_stored_as_blank(self):
+        create = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        member = QueueMember.objects.get(pk=create.data["id"])
+        self.assertEqual(member.member_name, "")
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/queue-members/{pk}/", {"penalty": 5}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["penalty"], 5)
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/queue-members/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(QueueMember.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/queue-members/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/queue-members/", self._payload(), format="json"
+        )
+        member = QueueMember.objects.get(pk=create.data["id"])
+        self.assertEqual(member.created_by, self.staff_user)
 
 
 class ApplyChangesApiTests(APITestCase):

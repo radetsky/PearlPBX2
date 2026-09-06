@@ -20,12 +20,16 @@ python manage.py drf_create_token <username>
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
 **Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
-`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`
-та `/api/v1/trunk-groups/`, включно з `GET`, вимагає обліковий запис staff
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`,
+`/api/v1/trunk-groups/`, `/api/v1/phone-devices/`, `/api/v1/queues/` та
+`/api/v1/queue-members/`, включно з `GET`, вимагає обліковий запис staff
 або superuser — див. [SIP Users](#sip-users), [SIP Transports](#sip-transports),
 [SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
-[Routing Records](#routing-records) та [Trunk Groups](#trunk-groups) нижче.
-Дійсний токен звичайного користувача отримає `403 Forbidden` на цих ресурсах.
+[Routing Records](#routing-records), [Trunk Groups](#trunk-groups),
+[Phone Devices](#phone-devices), [Queues](#queues) та
+[Queue Members (статична конфігурація)](#queue-members-статична-конфігурація)
+нижче. Дійсний токен звичайного користувача отримає `403 Forbidden` на цих
+ресурсах.
 
 **Лише superuser:** `/api/v1/config/preview/` та `/api/v1/config/apply/`
 вимагають саме **superuser** — токена staff недостатньо, оскільки `apply`
@@ -810,6 +814,86 @@ FastAGI-обробником `dial-trunk-group` через літеральни�
 
 ---
 
+## Phone Devices
+
+Керує пристроями телефонів (фізичні апарати, софтфони, WebRTC-клієнти).
+Кожен метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Файл конфігурації для TFTP пристрою
+(пере)генерується лише дією `provision` нижче, або дією адмін-панелі "Apply
+configurations" — жодна з них не запускається неявно при збереженні.
+
+### GET `/api/v1/phone-devices/`
+
+Повертає пристрої зі пагінацією. Підтримує:
+- `?mac_address=<точне значення>` — фільтр за точною MAC-адресою
+- `?sip_user=<id>` — фільтр за призначеним SIP-користувачем
+- `?telephone_type=<тип>` — фільтр за типом пристрою (`spa502g`, `spa504g`, `gxp1200`, `softphone`, `webrtc`, `other`)
+- `?search=<текст>` — регістронезалежний пошук за MAC-адресою, SIP-логіном, іменем SIP-користувача
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "telephone_type": "softphone",
+      "mac_address": "00:1A:2B:3C:4D:5E",
+      "sip_user": 3,
+      "sip_user_username": "101",
+      "sip_server": "pbx.example.com",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/phone-devices/`
+
+**Тіло запиту:**
+```json
+{"telephone_type": "softphone", "mac_address": "00:1a:2b:3c:4d:5e", "sip_user": 3, "sip_server": "pbx.example.com"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `telephone_type` | ні | за замовчуванням `"other"` |
+| `mac_address` | так | унікальна; нормалізується до `XX:XX:XX:XX:XX:XX` (приймає різні роздільники, будь-який регістр) |
+| `sip_user` | ні | ID наявного `SIPUser`; пристрій без призначеного користувача — це нормальний, ще не налаштований стан |
+| `sip_server` | ні | за замовчуванням `""` — порожнє значення при генерації підставляє глобальну адресу провіжнингу |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `mac_address` некоректна або вже використовується.
+
+### PATCH `/api/v1/phone-devices/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/phone-devices/<id>/`
+
+Видаляє пристрій. Повертає `204 No Content` — на `PhoneDevice` ніщо не
+посилається, тож видалення ніколи не блокується. Видалення призначеного
+`SIPUser` натомість каскадно видаляє й цей пристрій (див. [SIP Users](#sip-users)).
+
+### POST `/api/v1/phone-devices/<id>/provision/`
+
+Згенерувати файл конфігурації для TFTP цього пристрою — та сама дія, що й
+кнопка "Apply configurations" в адмінці, лише для одного пристрою й через
+API. Підтримуються лише `spa502g`, `spa504g` і `gxp1200`; для
+`softphone`/`webrtc`/`other` файл конфігурації генерувати нічого.
+
+**Відповіді:**
+
+| Статус | Значення |
+|--------|---------|
+| `200` | `{"success": true, "device_mac": "...", "filename": "...", "filepath": "...", "size": 512}` |
+| `400` | `{"success": false, "device_mac": "...", "error": "..."}` — напр. не призначено SIP-користувача, або непідтримуваний `telephone_type` |
+
+---
+
 ## Config (Apply Changes)
 
 Обгортка над адмінською сторінкою "Apply Changes". **Обидва endpoint-и
@@ -936,12 +1020,169 @@ curl -k -X 'POST' \
 
 ---
 
-## Queue Members (члени черги)
+## Queues
+
+Керує статичною конфігурацією черги дзвінків (`app_queue`). Кожен метод —
+включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних; зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` шукається
+`app_queue` Asterisk через літеральний AEL-виклик `Queue(<name>,...)`,
+вбудований у текст dialplan — **перейменування або видалення черги, на яку
+досі є таке посилання, відхиляється** (`400`/`409`) замість мовчазного
+зламання маршрутизації дзвінків. На відміну від захисту [Trunk
+Groups](#trunk-groups), цей пошук регістронезалежний, оскільки `app_queue`
+шукає назви черг через `strcasecmp()`. Це — пошук тексту best-effort: він не
+бачить назву, до якої звертаються лише через змінну Asterisk (напр.
+`${QUEUENAME}`).
+
+Відрізняється від [Queue Members (жива AMI-стан)](#queue-members-жива-ami-стан)
+нижче: цей ресурс — про те, що потрапляє в `queues.conf`, а не про
+runtime-паузу/статус.
+
+### GET `/api/v1/queues/`
+
+Повертає черги зі пагінацією. Підтримує `?name=<точне значення>`,
+`?strategy=<точне значення>` та `?search=<текст>`.
+
+**Відповідь (скорочено — повний перелік полів див. у POST нижче):**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Sales",
+      "music_class": 1,
+      "music_class_name": "default",
+      "strategy": "ringall",
+      "queue_announcement": 1,
+      "queue_announcement_name": "default",
+      "defaultrule": null,
+      "defaultrule_name": null,
+      "members_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queues/`
+
+**Тіло запиту (мінімальне):**
+```json
+{"name": "Sales", "music_class": 1, "queue_announcement": 1, "strategy": "ringall"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне |
+| `music_class` | так | ID наявного класу `MusicOnHold` |
+| `queue_announcement` | так | ID наявного рядка `QueueAnnouncements` |
+| `strategy` | так | одне з `ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `rrordered`, `linear`, `wrandom` — обов'язкове, хоч і nullable в БД, бо згенерована конфігурація не має захисту від null для цього поля |
+| `defaultrule` | ні | ID наявного `QueueRule` |
+| `context`, `timeout`, `retry`, `maxlen`, `weight`, `wrapuptime`, `autofill`, `autopause`, `autopausedelay`, `announce`, `queue_announce`, `service_level`, `joinempty`, `leavewhenempty`, `ringinuse`, `timeoutrestart`, `monitor_format`, `periodic_announce`, та поля `announce_*`/`*_announce_frequency` | ні | повний перелік див. у формі Queue в адмінці; усі відповідають 1:1 опціям `app_queue` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте, `strategy` не вказано, або черга з такою (старою) назвою досі має посилання з dialplan.
+
+### PATCH `/api/v1/queues/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки dialplan досі
+посилається на поточну назву, повертає `400` з переліком розширень/макросів.
+
+### DELETE `/api/v1/queues/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+розширень/макросів, якщо dialplan досі викликає цю чергу за назвою.
+
+---
+
+## Queue Members (статична конфігурація)
+
+Керує статичним переліком членів черги (`core.conf` генерує по одному рядку
+`member => ...` на рядок у `queues.conf`). Кожен метод — включно з `GET` —
+вимагає обліковий запис staff або superuser, оскільки це запис
+БД-конфігурації, а не читання живого runtime-стану (на відміну від
+AMI-ендпоінтів нижче, яким достатньо лише автентифікації).
+
+Відрізняється від [Queue Members (жива AMI-стан)](#queue-members-жива-ami-стан)
+нижче: `GET /api/v1/queue-members/?queue=<id>` відповідає на питання «хто
+статично налаштований у цій черзі» з бази даних; `GET
+/api/v1/queues/members/?queue=<name>` (нижче) відповідає на питання «хто
+зараз на паузі/дзвонить/на розмові» з живого AMI-стану Asterisk. Обидва
+ендпоінти лишаються — вони відповідають на різні питання.
+
+### GET `/api/v1/queue-members/`
+
+Повертає членів черги зі пагінацією. Підтримує:
+- `?queue=<id>` — фільтр за чергою
+- `?interface=<точне значення>` — фільтр за точним інтерфейсом
+- `?search=<текст>` — регістронезалежний пошук за іменем члена, інтерфейсом, state interface, назвою черги
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "queue": 1,
+      "queue_name": "Sales",
+      "interface": "PJSIP/101",
+      "penalty": 0,
+      "member_name": "101",
+      "state_interface": "PJSIP/101",
+      "ringinuse": false,
+      "wrapuptime": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queue-members/`
+
+**Тіло запиту:**
+```json
+{"queue": 1, "interface": "PJSIP/101"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `queue` | так | ID наявної `Queue` |
+| `interface` | так | напр. `"PJSIP/101"`; лише літери, цифри та `_.-/@` |
+| `penalty` | ні | за замовчуванням `0` |
+| `member_name` | ні | за замовчуванням `""` — значення null інакше рендериться в `queues.conf` як буквальне слово `None` |
+| `state_interface`, `ringinuse`, `wrapuptime` | ні | див. inline-форму в адмінці |
+
+Пара `(queue, interface)` має бути унікальною.
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `interface` некоректний, не вказано обов'язкові поля, або пара `(queue, interface)` вже існує.
+
+### PATCH `/api/v1/queue-members/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/queue-members/<id>/`
+
+Видаляє члена черги. Повертає `204 No Content` — на `QueueMember` ніщо не
+посилається, тож видалення ніколи не блокується.
+
+---
+
+## Queue Members (жива AMI-стан)
 
 Постановка на паузу/зняття з паузи члена черги та читання живого статусу члена черги через Asterisk AMI.
 Тут немає постійного ресурсу «член черги» — ці ендпоінти звертаються напряму до
 Asterisk, тож вони відображають (і змінюють) живий runtime-стан, а не
-записи `QueueMember`, якими керують у Django admin.
+записи `QueueMember`, якими керують через [Queue Members (статична
+конфігурація)](#queue-members-статична-конфігурація) вище.
 
 ### POST `/api/v1/queues/members/pause/`
 
@@ -1054,12 +1295,18 @@ curl -H "Authorization: Token <ваш-токен>" \
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
   (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
-  `?routing_table=`, `?context=`, `?search=`) та `/api/v1/trunk-groups/`
-  (`?name=`, `?search=`).
+  `?routing_table=`, `?context=`, `?search=`), `/api/v1/trunk-groups/`
+  (`?name=`, `?search=`), `/api/v1/phone-devices/` (`?mac_address=`,
+  `?sip_user=`, `?telephone_type=`, `?search=`), `/api/v1/queues/`
+  (`?name=`, `?strategy=`, `?search=`) та `/api/v1/queue-members/`
+  (`?queue=`, `?interface=`, `?search=`).
 - Захист перейменування/видалення групи транків — це пошук тексту
   best-effort по dialplan-тілах на предмет літерального виклику
   `dial-trunk-group,<name>,`; він не бачить назву групи, до якої звертаються
-  лише через змінну Asterisk.
+  лише через змінну Asterisk. Захист черги — той самий тип пошуку для
+  літерального виклику `Queue(<name>,...)`, але регістронезалежний (на
+  відміну від захисту групи транків), оскільки `app_queue` шукає назви
+  черг через `strcasecmp()`.
 
 ---
 

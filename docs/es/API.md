@@ -21,12 +21,16 @@ No hay restricción por sesión ni por IP. La protección CSRF no se aplica (sol
 
 **Excepción:** todos los métodos de `/api/v1/sip-users/`,
 `/api/v1/sip-transports/`, `/api/v1/sip-peers/`, `/api/v1/routing-tables/`,
-`/api/v1/routing-records/` y `/api/v1/trunk-groups/`, incluido `GET`,
-requieren una cuenta de staff o superusuario — ver [SIP Users](#sip-users),
-[SIP Transports](#sip-transports), [SIP Peers](#sip-peers),
-[Routing Tables](#routing-tables), [Routing Records](#routing-records) y
-[Trunk Groups](#trunk-groups) más abajo. El token válido de un usuario normal
-recibe `403 Forbidden` en esos recursos.
+`/api/v1/routing-records/`, `/api/v1/trunk-groups/`,
+`/api/v1/phone-devices/`, `/api/v1/queues/` y `/api/v1/queue-members/`,
+incluido `GET`, requieren una cuenta de staff o superusuario — ver
+[SIP Users](#sip-users), [SIP Transports](#sip-transports),
+[SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
+[Routing Records](#routing-records), [Trunk Groups](#trunk-groups),
+[Phone Devices](#phone-devices), [Queues](#queues) y
+[Queue Members (configuración estática)](#queue-members-configuración-estática)
+más abajo. El token válido de un usuario normal recibe `403 Forbidden` en
+esos recursos.
 
 **Solo superusuario:** `/api/v1/config/preview/` y `/api/v1/config/apply/`
 requieren una cuenta de **superusuario** — un token de solo staff no es
@@ -817,6 +821,90 @@ extensión(es)/macro(s) si el dialplan todavía llama a este grupo por nombre.
 
 ---
 
+## Phone Devices
+
+Gestiona los dispositivos telefónicos aprovisionados (teléfonos físicos,
+softphones, clientes WebRTC). Todos los métodos — incluido `GET` — requieren
+una cuenta de staff o superusuario.
+
+Guardar aquí solo actualiza la base de datos. El archivo de configuración
+TFTP de un dispositivo solo se (re)escribe mediante la acción `provision`
+descrita abajo, o mediante la acción "Apply configurations" del admin —
+ninguna de las dos se ejecuta implícitamente al guardar.
+
+### GET `/api/v1/phone-devices/`
+
+Devuelve dispositivos paginados. Admite:
+- `?mac_address=<exacto>` — filtrar por dirección MAC exacta
+- `?sip_user=<id>` — filtrar por usuario SIP asignado
+- `?telephone_type=<tipo>` — filtrar por tipo de dispositivo (`spa502g`, `spa504g`, `gxp1200`, `softphone`, `webrtc`, `other`)
+- `?search=<texto>` — coincidencia sin distinción de mayúsculas contra la MAC, el usuario SIP y el nombre SIP
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "telephone_type": "softphone",
+      "mac_address": "00:1A:2B:3C:4D:5E",
+      "sip_user": 3,
+      "sip_user_username": "101",
+      "sip_server": "pbx.example.com",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/phone-devices/`
+
+**Cuerpo de la solicitud:**
+```json
+{"telephone_type": "softphone", "mac_address": "00:1a:2b:3c:4d:5e", "sip_user": 3, "sip_server": "pbx.example.com"}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `telephone_type` | no | por defecto `"other"` |
+| `mac_address` | sí | única; normalizada a `XX:XX:XX:XX:XX:XX` (acepta separadores, mayúsculas/minúsculas mixtas) |
+| `sip_user` | no | ID de un `SIPUser` existente; un dispositivo sin usuario asignado es un estado normal, aún sin configurar |
+| `sip_server` | no | por defecto `""` — un valor vacío recurre a la dirección global de aprovisionamiento al generar |
+
+**Respuesta:** `HTTP 201`, o `400` si `mac_address` es inválida o ya está en uso.
+
+### PATCH `/api/v1/phone-devices/<id>/`
+
+Mismas reglas de campos que `POST`.
+
+### DELETE `/api/v1/phone-devices/<id>/`
+
+Elimina un dispositivo. Devuelve `204 No Content` — nada referencia a un
+`PhoneDevice`, así que la eliminación nunca se bloquea. Eliminar el
+`SIPUser` asignado en cambio elimina en cascada también este dispositivo
+(ver [SIP Users](#sip-users)).
+
+### POST `/api/v1/phone-devices/<id>/provision/`
+
+Genera el archivo de configuración TFTP de este dispositivo — la misma
+acción que el botón "Apply configurations" del admin, para un solo
+dispositivo, vía la API. Solo se admiten `spa502g`, `spa504g` y `gxp1200`;
+los dispositivos `softphone`/`webrtc`/`other` no tienen archivo de
+configuración que generar.
+
+**Respuestas:**
+
+| Estado | Significado |
+|--------|---------|
+| `200` | `{"success": true, "device_mac": "...", "filename": "...", "filepath": "...", "size": 512}` |
+| `400` | `{"success": false, "device_mac": "...", "error": "..."}` — p. ej. sin usuario SIP asignado, o `telephone_type` no admitido |
+
+---
+
 ## Config (Apply Changes)
 
 Envuelve la página "Apply Changes" del admin. **Ambos endpoints requieren
@@ -945,12 +1033,173 @@ curl -k -X 'POST' \
 
 ---
 
-## Queue Members (miembros de cola)
+## Queues
+
+Gestiona la configuración estática de una cola de llamadas (`app_queue`).
+Todos los métodos — incluido `GET` — requieren una cuenta de staff o
+superusuario.
+
+Guardar aquí solo actualiza la base de datos; los cambios llegan a Asterisk
+después de que un superusuario ejecute "Apply Changes" en el admin. `name`
+es buscado por `app_queue` de Asterisk mediante una llamada AEL literal
+`Queue(<name>,...)` incrustada en el texto del dialplan — **renombrar o
+eliminar una cola todavía referenciada así se rechaza** (`400`/`409`) en
+lugar de romper silenciosamente el enrutamiento de llamadas. A diferencia de
+la protección de [Trunk Groups](#trunk-groups), esta coincidencia no
+distingue mayúsculas/minúsculas, ya que `app_queue` busca los nombres de
+cola con `strcasecmp()`. Es un escaneo de texto best-effort: no puede ver un
+nombre alcanzado solo a través de una variable de Asterisk (p. ej.
+`${QUEUENAME}`).
+
+Distinto de [Queue Members (estado AMI en vivo)](#queue-members-estado-ami-en-vivo)
+más abajo: este recurso trata sobre lo que se escribe en `queues.conf`, no
+sobre el estado de pausa/estado en tiempo de ejecución.
+
+### GET `/api/v1/queues/`
+
+Devuelve colas paginadas. Admite `?name=<exacto>`, `?strategy=<exacto>` y
+`?search=<texto>`.
+
+**Respuesta (abreviada — ver POST abajo para la lista completa de campos):**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Sales",
+      "music_class": 1,
+      "music_class_name": "default",
+      "strategy": "ringall",
+      "queue_announcement": 1,
+      "queue_announcement_name": "default",
+      "defaultrule": null,
+      "defaultrule_name": null,
+      "members_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queues/`
+
+**Cuerpo de la solicitud (mínimo):**
+```json
+{"name": "Sales", "music_class": 1, "queue_announcement": 1, "strategy": "ringall"}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `name` | sí | único |
+| `music_class` | sí | ID de una clase `MusicOnHold` existente |
+| `queue_announcement` | sí | ID de un registro `QueueAnnouncements` existente |
+| `strategy` | sí | uno de `ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `rrordered`, `linear`, `wrandom` — obligatorio aunque sea nullable en la BD, ya que la configuración generada no tiene protección contra null para este campo |
+| `defaultrule` | no | ID de un `QueueRule` existente |
+| `context`, `timeout`, `retry`, `maxlen`, `weight`, `wrapuptime`, `autofill`, `autopause`, `autopausedelay`, `announce`, `queue_announce`, `service_level`, `joinempty`, `leavewhenempty`, `ringinuse`, `timeoutrestart`, `monitor_format`, `periodic_announce`, y los campos `announce_*`/`*_announce_frequency` | no | ver el formulario Queue del admin para el conjunto completo; todos mapean 1:1 con las opciones de `app_queue` |
+
+**Respuesta:** `HTTP 201`, o `400` si `name` ya está en uso, falta `strategy`, o una cola con el mismo nombre (anterior) todavía es referenciada por el dialplan.
+
+### PATCH `/api/v1/queues/<id>/`
+
+Mismas reglas de campos que `POST`. Renombrar mientras el dialplan todavía
+referencia el nombre actual devuelve `400` nombrando la(s)
+extensión(es)/macro(s) que lo referencian.
+
+### DELETE `/api/v1/queues/<id>/`
+
+Devuelve `204 No Content`, o `409 Conflict` nombrando la(s)
+extensión(es)/macro(s) si el dialplan todavía llama a esta cola por nombre.
+
+---
+
+## Queue Members (configuración estática)
+
+Gestiona la lista estática de miembros de una cola (`core.conf` genera una
+línea `member => ...` por fila en `queues.conf`). Todos los métodos —
+incluido `GET` — requieren una cuenta de staff o superusuario, ya que esto
+escribe configuración en la BD en lugar de leer el estado de ejecución en
+vivo (a diferencia de los endpoints AMI de abajo, que solo requieren
+autenticación).
+
+Distinto de [Queue Members (estado AMI en vivo)](#queue-members-estado-ami-en-vivo)
+más abajo: `GET /api/v1/queue-members/?queue=<id>` responde "quién está
+configurado estáticamente en esta cola" desde la base de datos; `GET
+/api/v1/queues/members/?queue=<name>` (abajo) responde "quién está
+actualmente en pausa/sonando/en llamada" desde el estado AMI en vivo de
+Asterisk. Ambos endpoints permanecen — responden preguntas diferentes.
+
+### GET `/api/v1/queue-members/`
+
+Devuelve miembros de cola paginados. Admite:
+- `?queue=<id>` — filtrar por cola
+- `?interface=<exacto>` — filtrar por interfaz exacta
+- `?search=<texto>` — coincidencia sin distinción de mayúsculas contra el nombre del miembro, la interfaz, la state interface y el nombre de la cola
+
+**Respuesta:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "queue": 1,
+      "queue_name": "Sales",
+      "interface": "PJSIP/101",
+      "penalty": 0,
+      "member_name": "101",
+      "state_interface": "PJSIP/101",
+      "ringinuse": false,
+      "wrapuptime": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queue-members/`
+
+**Cuerpo de la solicitud:**
+```json
+{"queue": 1, "interface": "PJSIP/101"}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `queue` | sí | ID de una `Queue` existente |
+| `interface` | sí | p. ej. `"PJSIP/101"`; solo letras, dígitos y `_.-/@` |
+| `penalty` | no | por defecto `0` |
+| `member_name` | no | por defecto `""` — un valor null se renderizaría en `queues.conf` como la palabra literal `None` |
+| `state_interface`, `ringinuse`, `wrapuptime` | no | ver el formulario inline del admin |
+
+Un par `(queue, interface)` dado debe ser único.
+
+**Respuesta:** `HTTP 201`, o `400` si `interface` es inválida, faltan campos obligatorios, o el par `(queue, interface)` ya existe.
+
+### PATCH `/api/v1/queue-members/<id>/`
+
+Mismas reglas de campos que `POST`.
+
+### DELETE `/api/v1/queue-members/<id>/`
+
+Elimina un miembro de cola. Devuelve `204 No Content` — nada referencia a un
+`QueueMember`, así que la eliminación nunca se bloquea.
+
+---
+
+## Queue Members (estado AMI en vivo)
 
 Pausar/reanudar un miembro de cola y leer el estado en vivo de los miembros de cola a través de Asterisk AMI.
 No existe aquí un recurso persistente "miembro de cola" — estos endpoints hablan
 directamente con Asterisk, por lo que reflejan (y modifican) el estado de ejecución en vivo, no los
-registros `QueueMember` gestionados en el admin de Django.
+registros `QueueMember` gestionados en [Queue Members (configuración
+estática)](#queue-members-configuración-estática) arriba.
 
 ### POST `/api/v1/queues/members/pause/`
 
@@ -1064,11 +1313,19 @@ grabación, igual que en el resto de esta API.
   `/api/v1/sip-peers/` (`?name=`, `?routing_table=`, `?search=`),
   `/api/v1/routing-tables/` (`?name=`, `?search=`),
   `/api/v1/routing-records/` (`?name=`, `?prefix=`, `?routing_table=`,
-  `?context=`, `?search=`) y `/api/v1/trunk-groups/` (`?name=`, `?search=`).
+  `?context=`, `?search=`), `/api/v1/trunk-groups/` (`?name=`, `?search=`),
+  `/api/v1/phone-devices/` (`?mac_address=`, `?sip_user=`,
+  `?telephone_type=`, `?search=`), `/api/v1/queues/` (`?name=`,
+  `?strategy=`, `?search=`) y `/api/v1/queue-members/` (`?queue=`,
+  `?interface=`, `?search=`).
 - La protección de renombrado/eliminación de grupos de troncales es un
   escaneo de texto best-effort de los cuerpos del dialplan buscando una
   llamada literal `dial-trunk-group,<name>,` — no puede ver un nombre de
-  grupo alcanzado solo a través de una variable de Asterisk.
+  grupo alcanzado solo a través de una variable de Asterisk. La protección
+  de colas es el mismo tipo de escaneo para una llamada literal
+  `Queue(<name>,...)`, pero sin distinción de mayúsculas/minúsculas (a
+  diferencia de la de grupos de troncales), ya que `app_queue` busca los
+  nombres de cola con `strcasecmp()`.
 
 ---
 
