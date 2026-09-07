@@ -18,6 +18,7 @@ from apps.api.views import (
     routing_records,
     trunk_groups,
     phone_devices,
+    dialplan,
     config,
 )
 
@@ -31,6 +32,13 @@ router.register("sip-transports", sip_transports.SIPTransportViewSet, basename="
 router.register("sip-peers", sip_peers.SIPPeerViewSet, basename="sip-peers")
 router.register("routing-tables", routing_tables.RoutingTableViewSet, basename="routing-tables")
 router.register("routing-records", routing_records.RoutingRecordViewSet, basename="routing-records")
+router.register(
+    "dialplan-contexts", dialplan.DialplanContextViewSet, basename="dialplan-contexts"
+)
+router.register(
+    "dialplan-extensions", dialplan.DialplanExtensionViewSet, basename="dialplan-extensions"
+)
+router.register("dialplan-macros", dialplan.DialplanMacroViewSet, basename="dialplan-macros")
 router.register("trunk-groups", trunk_groups.TrunkGroupViewSet, basename="trunk-groups")
 router.register("phone-devices", phone_devices.PhoneDeviceViewSet, basename="phone-devices")
 router.register("queues", queues.QueueViewSet, basename="queues")

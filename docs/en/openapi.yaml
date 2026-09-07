@@ -511,6 +511,652 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/dialplan-contexts/:
+    get:
+      operationId: dialplan_contexts_list
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanContextList'
+          description: ''
+    post:
+      operationId: dialplan_contexts_create
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-contexts/{id}/:
+    get:
+      operationId: dialplan_contexts_retrieve
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+    put:
+      operationId: dialplan_contexts_update
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body, name collides with a RoutingTable, or
+            renaming the auto-generated context.
+    patch:
+      operationId: dialplan_contexts_partial_update
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body, name collides with a RoutingTable, or
+            renaming the auto-generated context.
+    delete:
+      operationId: dialplan_contexts_destroy
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Context deleted.
+        '409':
+          description: Context is still referenced by a DialplanExtension or RoutingRecord
+            (PROTECT), used by a webhook's context filter, or is the auto-generated
+            context.
+  /api/v1/dialplan-extensions/:
+    get:
+      operationId: dialplan_extensions_list
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanExtensionList'
+          description: ''
+    post:
+      operationId: dialplan_extensions_create
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-extensions/{id}/:
+    get:
+      operationId: dialplan_extensions_retrieve
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+    put:
+      operationId: dialplan_extensions_update
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: dialplan_extensions_partial_update
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: dialplan_extensions_destroy
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dialplan-macros/:
+    get:
+      operationId: dialplan_macros_list
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanMacroList'
+          description: ''
+    post:
+      operationId: dialplan_macros_create
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-macros/{id}/:
+    get:
+      operationId: dialplan_macros_retrieve
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+    put:
+      operationId: dialplan_macros_update
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a macro still referenced
+            by dialplan.
+    patch:
+      operationId: dialplan_macros_partial_update
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a macro still referenced
+            by dialplan.
+    delete:
+      operationId: dialplan_macros_destroy
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Macro deleted.
+        '409':
+          description: Macro is still referenced by dialplan.
   /api/v1/lists/:
     get:
       operationId: lists_list
@@ -3173,6 +3819,158 @@ components:
       required:
       - id
       - name
+    DialplanContext:
+      type: object
+      description: |-
+        A dialplan context (core.conf.make_dialplan_contexts()). `name`
+        shares a naming namespace with RoutingTable — the two must not collide.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Context name
+          description: Unique name for the context or routing tables, use latin symbols,
+            digits and underscores
+          maxLength: 80
+        description:
+          type: string
+          title: Context description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        extensions_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - extensions_count
+      - id
+      - modified_at
+      - modified_by
+      - name
+    DialplanExtension:
+      type: object
+      description: |-
+        A dialplan extension inside a DialplanContext
+        (core.conf.make_dialplan_contexts()). `dialplan` is checked against
+        Asterisk AEL syntax and the current set of DialplanMacro names by
+        core.validators.validate_dialplan_field — create a macro before an
+        extension that calls it.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        context:
+          type: integer
+        context_name:
+          type: string
+          readOnly: true
+        ext:
+          type: string
+          title: Extension
+          description: Asterisk extension
+          maxLength: 64
+        dialplan:
+          type: string
+          title: Extension scenario
+          description: Use Asterisk AEL syntax to define the dialplan.
+        description:
+          type: string
+          title: Extension description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - context
+      - context_name
+      - created_at
+      - created_by
+      - dialplan
+      - id
+      - modified_at
+      - modified_by
+    DialplanMacro:
+      type: object
+      description: |-
+        A dialplan macro (core.conf.make_dialplan_macros()), called from
+        extension bodies as `&name();`. `name` is looked up as literal AEL macro
+        call text — renaming or deleting a macro still called that way is
+        rejected (400/409) instead of silently breaking the generated dialplan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Macro name
+          description: Use latin symbols, digits and undercore
+          maxLength: 32
+        description:
+          type: string
+          title: Macro description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        macro:
+          type: string
+          title: Macro scenario
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - macro
+      - modified_at
+      - modified_by
+      - name
     MethodEnum:
       enum:
       - default
@@ -3346,6 +4144,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedDialplanContextList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanContext'
+    PaginatedDialplanExtensionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanExtension'
+    PaginatedDialplanMacroList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanMacro'
     PaginatedPhoneDeviceList:
       type: object
       required:
@@ -3634,6 +4501,133 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedDialplanContext:
+      type: object
+      description: |-
+        A dialplan context (core.conf.make_dialplan_contexts()). `name`
+        shares a naming namespace with RoutingTable — the two must not collide.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Context name
+          description: Unique name for the context or routing tables, use latin symbols,
+            digits and underscores
+          maxLength: 80
+        description:
+          type: string
+          title: Context description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        extensions_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedDialplanExtension:
+      type: object
+      description: |-
+        A dialplan extension inside a DialplanContext
+        (core.conf.make_dialplan_contexts()). `dialplan` is checked against
+        Asterisk AEL syntax and the current set of DialplanMacro names by
+        core.validators.validate_dialplan_field — create a macro before an
+        extension that calls it.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        context:
+          type: integer
+        context_name:
+          type: string
+          readOnly: true
+        ext:
+          type: string
+          title: Extension
+          description: Asterisk extension
+          maxLength: 64
+        dialplan:
+          type: string
+          title: Extension scenario
+          description: Use Asterisk AEL syntax to define the dialplan.
+        description:
+          type: string
+          title: Extension description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedDialplanMacro:
+      type: object
+      description: |-
+        A dialplan macro (core.conf.make_dialplan_macros()), called from
+        extension bodies as `&name();`. `name` is looked up as literal AEL macro
+        call text — renaming or deleting a macro still called that way is
+        rejected (400/409) instead of silently breaking the generated dialplan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Macro name
+          description: Use latin symbols, digits and undercore
+          maxLength: 32
+        description:
+          type: string
+          title: Macro description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        macro:
+          type: string
+          title: Macro scenario
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedPhoneDevice:
       type: object
       description: |-

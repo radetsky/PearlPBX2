@@ -2010,3 +2010,219 @@ class TestRoutingTableWebhookDeleteGuard(TestCase):
 
         admin_instance = RoutingTableAdmin(RoutingTable, AdminSite())
         self.assertFalse(admin_instance.has_delete_permission(None, obj=rt))
+
+
+class TestDialplanMacroGuard(TestCase):
+    def setUp(self):
+        self.context = DialplanContext.objects.create(name="test-dm-guard-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+        DialplanMacro.objects.filter(name__startswith="test_dm_guard_").delete()
+        setting, _ = Settings.objects.get_or_create(pk=1)
+        if setting.local_users_dial_template and "test_dm_guard_" in (
+            setting.local_users_dial_template
+        ):
+            setting.local_users_dial_template = ""
+            setting.save()
+
+    def _make_referencing_extension(self, macro_name, ext="200"):
+        return DialplanExtension.objects.create(
+            context=self.context, ext=ext, dialplan=f"&{macro_name}();"
+        )
+
+    def test_find_dialplan_references_matches_extension(self):
+        self._make_referencing_extension("test_dm_guard_referenced")
+        refs = DialplanMacro.find_dialplan_references("test_dm_guard_referenced")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_matches_macro(self):
+        DialplanMacro.objects.create(
+            name="test_dm_guard_caller",
+            macro="&test_dm_guard_callee();",
+        )
+        refs = DialplanMacro.find_dialplan_references("test_dm_guard_callee")
+        self.assertEqual(len(refs), 1)
+
+    def test_find_dialplan_references_matches_settings_dial_template(self):
+        setting, _ = Settings.objects.get_or_create(pk=1)
+        setting.local_users_dial_template = "&test_dm_guard_settings();"
+        setting.save()
+        refs = DialplanMacro.find_dialplan_references("test_dm_guard_settings")
+        self.assertIn("Settings.local_users_dial_template", refs)
+
+    def test_find_dialplan_references_is_case_sensitive(self):
+        # AEL resolves macro calls by exact name, unlike Queue's
+        # strcasecmp() lookup — a differently-cased literal must NOT match.
+        self._make_referencing_extension("test_dm_guard_sales")
+        refs = DialplanMacro.find_dialplan_references("Test_Dm_Guard_Sales")
+        self.assertEqual(refs, [])
+
+    def test_rename_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test_dm_guard_old_name")
+        macro = DialplanMacro.objects.create(
+            name="test_dm_guard_old_name", macro="NoOp(hi);"
+        )
+        macro.name = "test_dm_guard_new_name"
+        with self.assertRaises(ValidationError):
+            macro.full_clean()
+
+    def test_rename_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test_dm_guard_old_name2")
+        macro = DialplanMacro.objects.create(
+            name="test_dm_guard_old_name2", macro="NoOp(hi);"
+        )
+        ext.delete()
+        macro.name = "test_dm_guard_new_name2"
+        macro.full_clean()  # must not raise
+        macro.save()
+        self.assertEqual(
+            DialplanMacro.objects.get(pk=macro.pk).name, "test_dm_guard_new_name2"
+        )
+
+    def test_delete_blocked_while_referenced(self):
+        from django.core.exceptions import ValidationError
+
+        self._make_referencing_extension("test_dm_guard_delete_me")
+        macro = DialplanMacro.objects.create(
+            name="test_dm_guard_delete_me", macro="NoOp(hi);"
+        )
+        with self.assertRaises(ValidationError):
+            macro.delete()
+        self.assertTrue(DialplanMacro.objects.filter(pk=macro.pk).exists())
+
+    def test_delete_allowed_once_reference_removed(self):
+        ext = self._make_referencing_extension("test_dm_guard_delete_ok")
+        macro = DialplanMacro.objects.create(
+            name="test_dm_guard_delete_ok", macro="NoOp(hi);"
+        )
+        ext.delete()
+        macro.delete()  # must not raise
+        self.assertFalse(DialplanMacro.objects.filter(pk=macro.pk).exists())
+
+    def test_admin_hides_delete_button_while_referenced(self):
+        from core.admin import DialplanMacroAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test_dm_guard_admin")
+        macro = DialplanMacro.objects.create(
+            name="test_dm_guard_admin", macro="NoOp(hi);"
+        )
+        admin_instance = DialplanMacroAdmin(DialplanMacro, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=macro))
+
+    def test_admin_has_delete_permission_checked_per_object_for_bulk_delete(self):
+        from unittest.mock import MagicMock
+
+        from core.admin import DialplanMacroAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        self._make_referencing_extension("test_dm_guard_bulk_blocked")
+        blocked = DialplanMacro.objects.create(
+            name="test_dm_guard_bulk_blocked", macro="NoOp(hi);"
+        )
+        allowed = DialplanMacro.objects.create(
+            name="test_dm_guard_bulk_allowed", macro="NoOp(hi);"
+        )
+
+        request = MagicMock()
+        request.user.has_perm.return_value = True
+        admin_instance = DialplanMacroAdmin(DialplanMacro, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(request, obj=blocked))
+        self.assertTrue(admin_instance.has_delete_permission(request, obj=allowed))
+
+
+class TestDialplanContextGuard(TestCase):
+    def tearDown(self):
+        from apps.webhooks.models import Webhook
+
+        Webhook.objects.filter(name__startswith="test-dc-guard-").delete()
+        DialplanExtension.objects.filter(
+            context__name__startswith="test-dc-guard-"
+        ).delete()
+        DialplanContext.objects.filter(name__startswith="test-dc-guard-").delete()
+
+    def test_extension_in_reserved_context_blocked_at_model_level(self):
+        from django.core.exceptions import ValidationError
+
+        ctx, _ = DialplanContext.objects.get_or_create(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )
+        ext = DialplanExtension(context=ctx, ext="100", dialplan="Hangup();")
+        with self.assertRaises(ValidationError):
+            ext.full_clean()
+
+    def test_rename_reserved_context_blocked(self):
+        from django.core.exceptions import ValidationError
+
+        ctx, _ = DialplanContext.objects.get_or_create(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )
+        ctx.name = "renamed"
+        with self.assertRaises(ValidationError):
+            ctx.full_clean()
+
+    def test_delete_reserved_context_blocked(self):
+        from django.core.exceptions import ValidationError
+
+        ctx, _ = DialplanContext.objects.get_or_create(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )
+        with self.assertRaises(ValidationError):
+            ctx.delete()
+        self.assertTrue(DialplanContext.objects.filter(pk=ctx.pk).exists())
+
+    def test_delete_blocked_while_used_by_webhook(self):
+        from django.core.exceptions import ValidationError
+
+        from apps.webhooks.models import Webhook
+
+        ctx = DialplanContext.objects.create(name="test-dc-guard-1")
+        webhook = Webhook.objects.create(
+            name="test-dc-guard-webhook", url="https://example.com/hook"
+        )
+        webhook.contexts.add(ctx)
+
+        with self.assertRaises(ValidationError):
+            ctx.delete()
+        self.assertTrue(DialplanContext.objects.filter(pk=ctx.pk).exists())
+
+    def test_delete_allowed_once_webhook_detached(self):
+        from apps.webhooks.models import Webhook
+
+        ctx = DialplanContext.objects.create(name="test-dc-guard-2")
+        webhook = Webhook.objects.create(
+            name="test-dc-guard-webhook2", url="https://example.com/hook"
+        )
+        webhook.contexts.add(ctx)
+        webhook.contexts.remove(ctx)
+
+        ctx.delete()  # must not raise
+        self.assertFalse(DialplanContext.objects.filter(pk=ctx.pk).exists())
+
+    def test_admin_hides_delete_button_for_reserved_context(self):
+        from core.admin import DialplanContextAdmin
+        from django.contrib.admin.sites import AdminSite
+
+        ctx, _ = DialplanContext.objects.get_or_create(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )
+        admin_instance = DialplanContextAdmin(DialplanContext, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=ctx))
+
+    def test_admin_hides_delete_button_while_used_by_webhook(self):
+        from core.admin import DialplanContextAdmin
+        from django.contrib.admin.sites import AdminSite
+        from apps.webhooks.models import Webhook
+
+        ctx = DialplanContext.objects.create(name="test-dc-guard-3")
+        webhook = Webhook.objects.create(
+            name="test-dc-guard-webhook3", url="https://example.com/hook"
+        )
+        webhook.contexts.add(ctx)
+
+        admin_instance = DialplanContextAdmin(DialplanContext, AdminSite())
+        self.assertFalse(admin_instance.has_delete_permission(None, obj=ctx))

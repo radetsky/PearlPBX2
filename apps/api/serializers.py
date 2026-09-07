@@ -21,6 +21,8 @@ from core.models import (
     RoutingRecord,
     TrunkGroup,
     DialplanContext,
+    DialplanExtension,
+    DialplanMacro,
     Queue,
     QueueMember,
 )
@@ -462,6 +464,136 @@ class RoutingRecordSerializer(serializers.ModelSerializer):
             "context": {"required": True, "allow_null": False},
             "routing_table": {"required": True, "allow_null": False},
         }
+
+
+class DialplanContextSerializer(serializers.ModelSerializer):
+    """A dialplan context (core.conf.make_dialplan_contexts()). `name`
+    shares a naming namespace with RoutingTable — the two must not collide.
+    """
+
+    extensions_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = DialplanContext
+        fields = [
+            "id",
+            "name",
+            "description",
+            "extensions_count",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+
+    def validate_name(self, value):
+        if RoutingTable.objects.filter(name=value).exists():
+            raise serializers.ValidationError(
+                f'Context name "{value}" already exists in RoutingTable.'
+            )
+        if (
+            self.instance
+            and self.instance.name in DialplanContext.RESERVED_NAMES
+            and self.instance.name != value
+        ):
+            raise serializers.ValidationError(
+                f'Cannot rename the auto-generated "{self.instance.name}" context.'
+            )
+        return value
+
+    def validate_description(self, value):
+        return _reject_line_breaks(value)
+
+
+class DialplanExtensionSerializer(serializers.ModelSerializer):
+    """A dialplan extension inside a DialplanContext
+    (core.conf.make_dialplan_contexts()). `dialplan` is checked against
+    Asterisk AEL syntax and the current set of DialplanMacro names by
+    core.validators.validate_dialplan_field — create a macro before an
+    extension that calls it.
+    """
+
+    context_name = serializers.CharField(source="context.name", read_only=True)
+
+    class Meta:
+        model = DialplanExtension
+        fields = [
+            "id",
+            "context",
+            "context_name",
+            "ext",
+            "dialplan",
+            "description",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+        extra_kwargs = {
+            # Nullable in the DB, but core.conf.make_dialplan_contexts() only
+            # emits extensions grouped under a context — one with no context
+            # never reaches extensions.ael.
+            "context": {"required": True, "allow_null": False},
+        }
+        # `context` is null=True at the model level, so DRF's automatic
+        # UniqueConstraint("context", "ext") handling would otherwise inject
+        # default=None for it (to make unique-together validation work with
+        # a missing field), which conflicts with the required=True above.
+        # Declaring the validator explicitly opts out of that auto-injection
+        # — same escape hatch QueueMemberSerializer uses for (queue, interface).
+        validators = [
+            UniqueTogetherValidator(
+                queryset=DialplanExtension.objects.all(), fields=["context", "ext"]
+            )
+        ]
+
+    def validate_context(self, value):
+        if value.name in DialplanContext.RESERVED_NAMES:
+            raise serializers.ValidationError(
+                "This context is generated live from SIP users "
+                "(core.conf.make_local_users_context()); extensions stored "
+                "here are never emitted into extensions.ael."
+            )
+        return value
+
+    def validate_description(self, value):
+        return _reject_line_breaks(value)
+
+
+class DialplanMacroSerializer(serializers.ModelSerializer):
+    """A dialplan macro (core.conf.make_dialplan_macros()), called from
+    extension bodies as `&name();`. `name` is looked up as literal AEL macro
+    call text — renaming or deleting a macro still called that way is
+    rejected (400/409) instead of silently breaking the generated dialplan.
+    """
+
+    class Meta:
+        model = DialplanMacro
+        fields = [
+            "id",
+            "name",
+            "description",
+            "macro",
+            "created_at",
+            "created_by",
+            "modified_at",
+            "modified_by",
+        ]
+        read_only_fields = ["id", "created_at", "created_by", "modified_at", "modified_by"]
+
+    def validate_name(self, value):
+        if self.instance and self.instance.name != value:
+            refs = DialplanMacro.find_dialplan_references(self.instance.name)
+            if refs:
+                raise serializers.ValidationError(
+                    f"Cannot rename: still referenced by dialplan: {', '.join(refs)}."
+                )
+        return value
+
+    def validate_description(self, value):
+        return _reject_line_breaks(value)
 
 
 class TrunkGroupSerializer(serializers.ModelSerializer):

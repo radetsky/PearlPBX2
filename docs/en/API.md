@@ -21,11 +21,15 @@ There is no session-based or IP-based restriction. CSRF protection is not enforc
 
 **Exception:** every method on `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
 `/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`,
-`/api/v1/trunk-groups/`, `/api/v1/phone-devices/`, `/api/v1/queues/` and
-`/api/v1/queue-members/`, including `GET`, requires a staff or superuser
-account — see [SIP Users](#sip-users), [SIP Transports](#sip-transports),
-[SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
-[Routing Records](#routing-records), [Trunk Groups](#trunk-groups),
+`/api/v1/dialplan-contexts/`, `/api/v1/dialplan-extensions/`,
+`/api/v1/dialplan-macros/`, `/api/v1/trunk-groups/`, `/api/v1/phone-devices/`,
+`/api/v1/queues/` and `/api/v1/queue-members/`, including `GET`, requires a
+staff or superuser account — see [SIP Users](#sip-users),
+[SIP Transports](#sip-transports), [SIP Peers](#sip-peers),
+[Routing Tables](#routing-tables), [Routing Records](#routing-records),
+[Dialplan Contexts](#dialplan-contexts),
+[Dialplan Extensions](#dialplan-extensions),
+[Dialplan Macros](#dialplan-macros), [Trunk Groups](#trunk-groups),
 [Phone Devices](#phone-devices), [Queues](#queues) and
 [Queue Members (Static Configuration)](#queue-members-static-configuration)
 below. A regular user's valid token receives `403 Forbidden` on those
@@ -746,6 +750,218 @@ Delete a routing record. Returns `204 No Content` — nothing references a
 
 ---
 
+## Dialplan Contexts
+
+Manages dialplan contexts (`core.conf.make_dialplan_contexts()`). Every
+method — including `GET` — requires a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `name` shares a naming
+namespace with `RoutingTable` — the two must not collide.
+
+The auto-generated `"PEARLPBX-Users"` context is rendered live from
+`SIPUser` data by `core.conf.make_local_users_context()` and cannot be
+renamed or deleted through this endpoint — see
+[Dialplan Extensions](#dialplan-extensions) for why extensions cannot be
+created inside it either.
+
+### GET `/api/v1/dialplan-contexts/`
+
+Returns paginated contexts. Supports `?name=<exact>` and
+`?search=<text>` (matches `name`, `description`).
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "internal",
+      "description": "Internal extensions",
+      "extensions_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-contexts/`
+
+**Request body:**
+```json
+{"name": "internal", "description": "Internal extensions"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | unique; must not collide with a `RoutingTable` name |
+| `description` | no | free text, no line breaks |
+
+**Response:** `HTTP 201`, or `400` if `name` is taken or collides with a
+`RoutingTable`.
+
+### PATCH `/api/v1/dialplan-contexts/<id>/`
+
+Same field rules as `POST`. Renaming the auto-generated `"PEARLPBX-Users"`
+context returns `400`.
+
+### DELETE `/api/v1/dialplan-contexts/<id>/`
+
+Returns `204 No Content`, or `409 Conflict` if the context is the
+auto-generated `"PEARLPBX-Users"` context, is still used by a webhook's
+context filter, or is still referenced by a `DialplanExtension` or
+`RoutingRecord`.
+
+---
+
+## Dialplan Extensions
+
+Manages dialplan extensions within a context
+(`core.conf.make_dialplan_contexts()`). Every method — including `GET` —
+requires a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `dialplan` must use valid
+Asterisk AEL syntax and reference only macros that already exist —
+`core.validators.validate_dialplan_field` resolves the allowed macro set
+from the database at request time, so **create a macro before an extension
+that calls it** with `&name();` (see
+[Dialplan Macros](#dialplan-macros)). Extensions cannot be created inside
+the auto-generated `"PEARLPBX-Users"` context — it is rendered live from
+`SIPUser` data, so anything stored there would never reach
+`extensions.ael`.
+
+### GET `/api/v1/dialplan-extensions/`
+
+Returns paginated extensions. Supports:
+- `?context=<id>` — filter by dialplan context
+- `?ext=<exact>` — filter by exact extension pattern
+- `?search=<text>` — case-insensitive match against `ext`, `description`,
+  `dialplan`, `context__name`
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "context": 1,
+      "context_name": "internal",
+      "ext": "_1XX",
+      "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();",
+      "description": "Internal 1xx range",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-extensions/`
+
+**Request body:**
+```json
+{"context": 1, "ext": "_1XX", "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `context` | yes | ID of an existing `DialplanContext`; must not be the auto-generated `"PEARLPBX-Users"` context |
+| `ext` | yes | Asterisk extension pattern (e.g. `100`, `_1XX`, `_X.`) |
+| `dialplan` | yes | Asterisk AEL syntax; macro calls (`&name();`) must reference an existing `DialplanMacro` |
+| `description` | no | free text, no line breaks |
+
+**Response:** `HTTP 201`, or `400` if `dialplan` fails AEL syntax
+validation, references an unknown macro, `ext` fails pattern validation,
+`context` is the reserved context, or `(context, ext)` is already taken.
+
+### PATCH `/api/v1/dialplan-extensions/<id>/`
+
+Same field rules as `POST`.
+
+### DELETE `/api/v1/dialplan-extensions/<id>/`
+
+Delete an extension. Returns `204 No Content` — nothing references a
+`DialplanExtension`, so deletion is never blocked.
+
+---
+
+## Dialplan Macros
+
+Manages dialplan macros (`core.conf.make_dialplan_macros()`), called from
+extension bodies as `&name();`. Every method — including `GET` — requires
+a staff or superuser account.
+
+Saving here only updates the database; changes reach Asterisk after a
+superuser runs "Apply Changes" in the admin. `name` is looked up as literal
+AEL macro-call text in `DialplanExtension.dialplan` bodies, other macros,
+and `Settings.local_users_dial_template` — **renaming or deleting a macro
+still called that way is rejected** (`400`/`409`) instead of silently
+breaking the generated dialplan. This is a best-effort text scan (matched
+case-sensitively, unlike the [Queues](#queues) name guard): it cannot see a
+name reached only through an Asterisk variable, and it cannot see the
+Python-level `DEFAULT_LOCAL_USERS_DIAL_TEMPLATE` fallback used when no
+`Settings` row exists or its field is blank.
+
+### GET `/api/v1/dialplan-macros/`
+
+Returns paginated macros. Supports `?name=<exact>` and `?search=<text>`
+(matches `name`, `description`, `macro`).
+
+**Response:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "stdexten",
+      "description": "Standard extension",
+      "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-macros/`
+
+**Request body:**
+```json
+{"name": "stdexten", "description": "Standard extension", "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | unique; letters, digits and underscores only, must not start with a digit |
+| `description` | no | free text, no line breaks |
+| `macro` | yes | Asterisk AEL syntax (not validated against `AsteriskDialplanValidator`) |
+
+**Response:** `HTTP 201`, or `400` if `name` is taken or has an invalid
+format.
+
+### PATCH `/api/v1/dialplan-macros/<id>/`
+
+Same field rules as `POST`. Renaming while still referenced returns `400`
+naming the referencing extension(s)/macro(s)/`Settings` field.
+
+### DELETE `/api/v1/dialplan-macros/<id>/`
+
+Returns `204 No Content`, or `409 Conflict` naming the referencing
+extension(s)/macro(s)/`Settings` field if the macro is still called.
+
+---
+
 ## Trunk Groups
 
 Manages trunk groups (failover sets of SIP peers). Every method — including
@@ -1292,17 +1508,29 @@ same as the rest of this API.
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
   (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
-  `?routing_table=`, `?context=`, `?search=`), `/api/v1/trunk-groups/`
-  (`?name=`, `?search=`), `/api/v1/phone-devices/` (`?mac_address=`,
-  `?sip_user=`, `?telephone_type=`, `?search=`), `/api/v1/queues/`
-  (`?name=`, `?strategy=`, `?search=`) and `/api/v1/queue-members/`
-  (`?queue=`, `?interface=`, `?search=`).
+  `?routing_table=`, `?context=`, `?search=`), `/api/v1/dialplan-contexts/`
+  (`?name=`, `?search=`), `/api/v1/dialplan-extensions/` (`?context=`,
+  `?ext=`, `?search=`), `/api/v1/dialplan-macros/` (`?name=`, `?search=`),
+  `/api/v1/trunk-groups/` (`?name=`, `?search=`), `/api/v1/phone-devices/`
+  (`?mac_address=`, `?sip_user=`, `?telephone_type=`, `?search=`),
+  `/api/v1/queues/` (`?name=`, `?strategy=`, `?search=`) and
+  `/api/v1/queue-members/` (`?queue=`, `?interface=`, `?search=`).
 - The trunk-group rename/delete guard is a best-effort text scan of dialplan
   bodies for a literal `dial-trunk-group,<name>,` call — it cannot see a
   group name reached only through an Asterisk variable. The queue rename/
   delete guard is the same kind of scan for a literal `Queue(<name>,...)`
   call, but case-insensitive (unlike the trunk-group one) since `app_queue`
-  looks up queue names with `strcasecmp()`.
+  looks up queue names with `strcasecmp()`. The dialplan-macro rename/delete
+  guard is the same kind of scan for a literal `&<name>();` call,
+  case-sensitive (AEL resolves macro calls by exact name); it additionally
+  scans `Settings.local_users_dial_template`, but cannot see the Python-level
+  `DEFAULT_LOCAL_USERS_DIAL_TEMPLATE` fallback used when no `Settings` row
+  exists or its field is blank.
+- The auto-generated `"PEARLPBX-Users"` dialplan context cannot be renamed
+  or deleted, and no `DialplanExtension` can be created inside it — it is
+  rendered live from `SIPUser` data by
+  `core.conf.make_local_users_context()`, so anything stored in the
+  database row would never reach `extensions.ael`.
 
 ---
 

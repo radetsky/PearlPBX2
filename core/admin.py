@@ -164,28 +164,48 @@ class DialplanExtensionInlineAdmin(admin.TabularInline):
     ordering = ["ext"]
 
 
-class DialplanContextAdmin(admin.ModelAdmin):
+class DialplanContextAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = DialplanContextAdminForm
-    fields = ["name", "description"]
     list_display = ("name", "description")
     ordering = ["name", "description"]
     search_fields = ["name", "description"]
     inlines = [DialplanExtensionInlineAdmin]
+    fieldsets = [
+        (None, {"fields": ["name", "description"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
+
+    def has_delete_permission(self, request, obj=None):
+        # obj.delete() itself already raises ValidationError for the
+        # reserved PEARLPBX-Users context and when a webhook still uses this
+        # context's filter — hide the button instead of letting the confirm
+        # page 500 after the click.
+        if obj is not None and (
+            obj.name in obj.RESERVED_NAMES or obj.webhooks.exists()
+        ):
+            return False
+        return super().has_delete_permission(request, obj)
 
 
-class DialplanExtensionAdmin(admin.ModelAdmin):
+class DialplanExtensionAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = DialplanExtensionForm
-    fields = ["context", "ext", "dialplan", "description"]
     list_display = ("context_name", "ext", "description")
     ordering = ["context", "ext"]
     search_fields = ["ext", "dialplan", "description"]
+    fieldsets = [
+        (None, {"fields": ["context", "ext", "dialplan", "description"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
 
 
-class DialplanMacroAdmin(admin.ModelAdmin):
-    fields = ["name", "description", "macro"]
+class DialplanMacroAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     list_display = ("name", "description")
     ordering = ["name", "description"]
     search_fields = ["name", "description", "macro"]
+    fieldsets = [
+        (None, {"fields": ["name", "description", "macro"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
 
 
 class DialplanGlobalVariableAdmin(admin.ModelAdmin):

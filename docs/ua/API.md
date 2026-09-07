@@ -21,11 +21,15 @@ python manage.py drf_create_token <username>
 
 **Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
 `/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`,
-`/api/v1/trunk-groups/`, `/api/v1/phone-devices/`, `/api/v1/queues/` та
-`/api/v1/queue-members/`, включно з `GET`, вимагає обліковий запис staff
-або superuser — див. [SIP Users](#sip-users), [SIP Transports](#sip-transports),
-[SIP Peers](#sip-peers), [Routing Tables](#routing-tables),
-[Routing Records](#routing-records), [Trunk Groups](#trunk-groups),
+`/api/v1/dialplan-contexts/`, `/api/v1/dialplan-extensions/`,
+`/api/v1/dialplan-macros/`, `/api/v1/trunk-groups/`, `/api/v1/phone-devices/`,
+`/api/v1/queues/` та `/api/v1/queue-members/`, включно з `GET`, вимагає
+обліковий запис staff або superuser — див. [SIP Users](#sip-users),
+[SIP Transports](#sip-transports), [SIP Peers](#sip-peers),
+[Routing Tables](#routing-tables), [Routing Records](#routing-records),
+[Dialplan Contexts](#dialplan-contexts),
+[Dialplan Extensions](#dialplan-extensions),
+[Dialplan Macros](#dialplan-macros), [Trunk Groups](#trunk-groups),
 [Phone Devices](#phone-devices), [Queues](#queues) та
 [Queue Members (статична конфігурація)](#queue-members-статична-конфігурація)
 нижче. Дійсний токен звичайного користувача отримає `403 Forbidden` на цих
@@ -749,6 +753,222 @@ superuser**; цей ресурс надає доступ до облікових
 
 ---
 
+## Dialplan Contexts
+
+Керує dialplan-контекстами (`core.conf.make_dialplan_contexts()`). Кожен
+метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` ділить
+простір імен з `RoutingTable` — вони не повинні збігатися.
+
+Автоматично згенерований контекст `"PEARLPBX-Users"` рендериться наживо з
+даних `SIPUser` через `core.conf.make_local_users_context()` — його не
+можна перейменувати чи видалити через цей ендпоінт. Причину, чому в ньому
+не можна створювати extension'и, дивіться в
+[Dialplan Extensions](#dialplan-extensions).
+
+### GET `/api/v1/dialplan-contexts/`
+
+Повертає контексти зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>` (пошук за `name`, `description`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "internal",
+      "description": "Internal extensions",
+      "extensions_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-contexts/`
+
+**Тіло запиту:**
+```json
+{"name": "internal", "description": "Internal extensions"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне; не повинно збігатися з іменем `RoutingTable` |
+| `description` | ні | довільний текст, без переносів рядків |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` вже зайнято чи збігається
+з `RoutingTable`.
+
+### PATCH `/api/v1/dialplan-contexts/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування автоматично
+згенерованого контексту `"PEARLPBX-Users"` повертає `400`.
+
+### DELETE `/api/v1/dialplan-contexts/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict`, якщо контекст —
+автоматично згенерований `"PEARLPBX-Users"`, ще використовується фільтром
+контекстів вебхука, або на нього досі посилається `DialplanExtension` чи
+`RoutingRecord`.
+
+---
+
+## Dialplan Extensions
+
+Керує dialplan-extension'ами всередині контексту
+(`core.conf.make_dialplan_contexts()`). Кожен метод — включно з `GET` —
+вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `dialplan`
+повинен використовувати коректний синтаксис Asterisk AEL і посилатись лише
+на вже наявні макроси — `core.validators.validate_dialplan_field` резолвить
+дозволений набір макросів з бази даних у момент запиту, тож **спочатку
+створіть макрос, а тоді extension**, який викликає його через `&name();`
+(див. [Dialplan Macros](#dialplan-macros)). Extension'и не можна створювати
+всередині автоматично згенерованого контексту `"PEARLPBX-Users"` — він
+рендериться наживо з даних `SIPUser`, тож усе, що зберігається там у БД,
+ніколи не потрапить в `extensions.ael`.
+
+### GET `/api/v1/dialplan-extensions/`
+
+Повертає extension'и зі пагінацією. Підтримує:
+- `?context=<id>` — фільтр за dialplan-контекстом
+- `?ext=<точне значення>` — фільтр за точним патерном extension'а
+- `?search=<текст>` — пошук без урахування регістру за `ext`, `description`,
+  `dialplan`, `context__name`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "context": 1,
+      "context_name": "internal",
+      "ext": "_1XX",
+      "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();",
+      "description": "Internal 1xx range",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-extensions/`
+
+**Тіло запиту:**
+```json
+{"context": 1, "ext": "_1XX", "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `context` | так | ID існуючого `DialplanContext`; не може бути автоматично згенерованим контекстом `"PEARLPBX-Users"` |
+| `ext` | так | Asterisk-патерн extension'а (напр. `100`, `_1XX`, `_X.`) |
+| `dialplan` | так | синтаксис Asterisk AEL; виклики макросів (`&name();`) повинні посилатись на наявний `DialplanMacro` |
+| `description` | ні | довільний текст, без переносів рядків |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `dialplan` не пройшов валідацію
+AEL-синтаксису, посилається на невідомий макрос, `ext` не пройшов валідацію
+патерну, `context` — заборонений контекст, або пара `(context, ext)` вже
+зайнята.
+
+### PATCH `/api/v1/dialplan-extensions/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/dialplan-extensions/<id>/`
+
+Видалити extension. Повертає `204 No Content` — на `DialplanExtension`
+ніщо не посилається, тож видалення ніколи не блокується.
+
+---
+
+## Dialplan Macros
+
+Керує dialplan-макросами (`core.conf.make_dialplan_macros()`), які
+викликаються з тіла extension'ів як `&name();`. Кожен метод — включно з
+`GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name`
+шукається як буквальний текст виклику AEL-макроса в тілах
+`DialplanExtension.dialplan`, інших макросах та
+`Settings.local_users_dial_template` — **перейменування чи видалення
+макроса, поки на нього досі посилаються, відхиляється** (`400`/`409`)
+замість тихого псування згенерованого dialplan. Це евристичний текстовий
+пошук (з урахуванням регістру, на відміну від захисту імен у
+[Queues](#queues)): він не бачить ім'я, до якого звертаються лише через
+змінну Asterisk, і не бачить Python-фолбек
+`DEFAULT_LOCAL_USERS_DIAL_TEMPLATE`, який використовується, коли немає
+рядка `Settings` або його поле порожнє.
+
+### GET `/api/v1/dialplan-macros/`
+
+Повертає макроси зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>` (пошук за `name`, `description`, `macro`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "stdexten",
+      "description": "Standard extension",
+      "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-macros/`
+
+**Тіло запиту:**
+```json
+{"name": "stdexten", "description": "Standard extension", "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне; лише латинські літери, цифри та підкреслення, не може починатись з цифри |
+| `description` | ні | довільний текст, без переносів рядків |
+| `macro` | так | синтаксис Asterisk AEL (не перевіряється `AsteriskDialplanValidator`) |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` вже зайнято чи має
+некоректний формат.
+
+### PATCH `/api/v1/dialplan-macros/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки на макрос ще
+посилаються, повертає `400` з переліком extension'ів/макросів/поля
+`Settings`, що на нього посилаються.
+
+### DELETE `/api/v1/dialplan-macros/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+extension'ів/макросів/поля `Settings`, якщо на макрос ще посилаються.
+
+---
+
 ## Trunk Groups
 
 Керує групами транків (набори SIP-пірів для failover). Кожен метод —
@@ -1295,18 +1515,30 @@ curl -H "Authorization: Token <ваш-токен>" \
   (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
   (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
   (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
-  `?routing_table=`, `?context=`, `?search=`), `/api/v1/trunk-groups/`
-  (`?name=`, `?search=`), `/api/v1/phone-devices/` (`?mac_address=`,
-  `?sip_user=`, `?telephone_type=`, `?search=`), `/api/v1/queues/`
-  (`?name=`, `?strategy=`, `?search=`) та `/api/v1/queue-members/`
-  (`?queue=`, `?interface=`, `?search=`).
+  `?routing_table=`, `?context=`, `?search=`), `/api/v1/dialplan-contexts/`
+  (`?name=`, `?search=`), `/api/v1/dialplan-extensions/` (`?context=`,
+  `?ext=`, `?search=`), `/api/v1/dialplan-macros/` (`?name=`, `?search=`),
+  `/api/v1/trunk-groups/` (`?name=`, `?search=`), `/api/v1/phone-devices/`
+  (`?mac_address=`, `?sip_user=`, `?telephone_type=`, `?search=`),
+  `/api/v1/queues/` (`?name=`, `?strategy=`, `?search=`) та
+  `/api/v1/queue-members/` (`?queue=`, `?interface=`, `?search=`).
 - Захист перейменування/видалення групи транків — це пошук тексту
   best-effort по dialplan-тілах на предмет літерального виклику
   `dial-trunk-group,<name>,`; він не бачить назву групи, до якої звертаються
   лише через змінну Asterisk. Захист черги — той самий тип пошуку для
   літерального виклику `Queue(<name>,...)`, але регістронезалежний (на
   відміну від захисту групи транків), оскільки `app_queue` шукає назви
-  черг через `strcasecmp()`.
+  черг через `strcasecmp()`. Захист dialplan-макроса — той самий тип пошуку
+  для літерального виклику `&<name>();`, з урахуванням регістру (AEL
+  резолвить виклики макросів за точним іменем); додатково скановано
+  `Settings.local_users_dial_template`, але не видно Python-фолбек
+  `DEFAULT_LOCAL_USERS_DIAL_TEMPLATE`, який використовується, коли немає
+  рядка `Settings` або його поле порожнє.
+- Автоматично згенерований dialplan-контекст `"PEARLPBX-Users"` не можна
+  перейменувати чи видалити, і в ньому не можна створити жоден
+  `DialplanExtension` — він рендериться наживо з даних `SIPUser` через
+  `core.conf.make_local_users_context()`, тож усе, що зберігається в рядку
+  БД, ніколи не потрапить в `extensions.ael`.
 
 ---
 

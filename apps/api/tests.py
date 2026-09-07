@@ -26,10 +26,12 @@ from core.models import (
     RoutingRecord,
     DialplanContext,
     DialplanExtension,
+    DialplanMacro,
     Queue,
     QueueMember,
     MusicOnHold,
     QueueAnnouncements,
+    Settings,
 )
 from apps.provision.models import PhoneDevice
 
@@ -1900,6 +1902,474 @@ class QueueMemberApiTests(APITestCase):
         )
         member = QueueMember.objects.get(pk=create.data["id"])
         self.assertEqual(member.created_by, self.staff_user)
+
+
+class DialplanContextApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="dc_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="dc_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def _payload(self, **overrides):
+        payload = {"name": "test-dc-api-context", "description": "API test context"}
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        # Data migrations seed a handful of DialplanContext rows (conference,
+        # echo service, first-users context, ...), so the table is never
+        # truly empty — filter on a name that can't collide instead.
+        response = self.client.get(
+            "/api/v1/dialplan-contexts/?name=test-dc-api-nonexistent"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/dialplan-contexts/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/dialplan-contexts/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "test-dc-api-context")
+        self.assertEqual(response.data["extensions_count"], 0)
+
+    def test_name_colliding_with_routing_table_400(self):
+        table = RoutingTable.objects.create(name="test-dc-api-rt")
+        response = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(name="test-dc-api-rt"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+        table.delete()
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/dialplan-contexts/{pk}/", {"description": "updated"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["description"], "updated")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/dialplan-contexts/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(DialplanContext.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/dialplan-contexts/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_rename_reserved_context_400(self):
+        ctx = DialplanContext.objects.get_or_create(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )[0]
+        response = self.client.patch(
+            f"/api/v1/dialplan-contexts/{ctx.pk}/", {"name": "renamed"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_delete_reserved_context_409(self):
+        ctx = DialplanContext.objects.get_or_create(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )[0]
+        response = self.client.delete(f"/api/v1/dialplan-contexts/{ctx.pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(DialplanContext.objects.filter(pk=ctx.pk).exists())
+
+    def test_delete_in_use_by_extension_409(self):
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        ext = DialplanExtension.objects.create(context_id=pk, ext="100", dialplan="Hangup();")
+        response = self.client.delete(f"/api/v1/dialplan-contexts/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        ext.delete()
+
+    def test_delete_used_by_webhook_409(self):
+        from apps.webhooks.models import Webhook
+
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        webhook = Webhook.objects.create(
+            name="test-dc-api-webhook", url="http://example.test/hook"
+        )
+        webhook.contexts.add(pk)
+        response = self.client.delete(f"/api/v1/dialplan-contexts/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        webhook.delete()
+
+    def test_extensions_count_annotation(self):
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        ext = DialplanExtension.objects.create(context_id=pk, ext="100", dialplan="Hangup();")
+        response = self.client.get(f"/api/v1/dialplan-contexts/{pk}/")
+        self.assertEqual(response.data["extensions_count"], 1)
+        ext.delete()
+
+    def test_created_row_lands_in_generated_ael(self):
+        from core.conf import make_dialplan_contexts
+
+        self.client.post("/api/v1/dialplan-contexts/", self._payload(), format="json")
+        result = make_dialplan_contexts()
+        self.assertIn("context test-dc-api-context {", result)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/dialplan-contexts/", self._payload(), format="json"
+        )
+        ctx = DialplanContext.objects.get(pk=create.data["id"])
+        self.assertEqual(ctx.created_by, self.staff_user)
+
+
+class DialplanExtensionApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="de_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="de_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+        self.context = DialplanContext.objects.create(name="test-de-api-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+
+    def _payload(self, **overrides):
+        payload = {
+            "context": self.context.pk,
+            "ext": "100",
+            "dialplan": "Hangup();",
+            "description": "API test extension",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_empty(self):
+        # Data migrations seed extensions in other contexts, so filter by
+        # this test's own freshly-created (and so far empty) context.
+        response = self.client.get(
+            f"/api/v1/dialplan-extensions/?context={self.context.pk}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/dialplan-extensions/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/dialplan-extensions/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["ext"], "100")
+        self.assertEqual(response.data["context_name"], "test-de-api-context")
+
+    def test_create_in_pearlpbx_users_context_400(self):
+        reserved = DialplanContext.objects.get_or_create(
+            name=django_settings.PEARLPBX_DEFAULT_ROUTING_RECORD
+        )[0]
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/",
+            self._payload(context=reserved.pk),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("context", response.data)
+        # No cleanup: reserved.delete() would itself hit the reserved-name
+        # guard, and TestCase rolls back the transaction after each test.
+
+    def test_invalid_dialplan_syntax_400(self):
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/",
+            self._payload(dialplan="NotARealApp(1);"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("dialplan", response.data)
+
+    def test_unknown_macro_call_400(self):
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/",
+            self._payload(dialplan="&nosuchmacro();"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("dialplan", response.data)
+
+    def test_invalid_ext_pattern_400(self):
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(ext="abc"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("ext", response.data)
+
+    def test_duplicate_context_ext_400(self):
+        self.client.post("/api/v1/dialplan-extensions/", self._payload(), format="json")
+        response = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/dialplan-extensions/{pk}/", {"ext": "101"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["ext"], "101")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/dialplan-extensions/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(DialplanExtension.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/dialplan-extensions/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_created_row_lands_in_generated_ael(self):
+        from core.conf import make_dialplan_contexts
+
+        self.client.post("/api/v1/dialplan-extensions/", self._payload(), format="json")
+        result = make_dialplan_contexts()
+        self.assertIn("100 => {", result)
+        self.assertIn("Hangup();", result)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/dialplan-extensions/", self._payload(), format="json"
+        )
+        ext = DialplanExtension.objects.get(pk=create.data["id"])
+        self.assertEqual(ext.created_by, self.staff_user)
+
+
+class DialplanMacroApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="dm_staff", password="x", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff_user)
+        self.plain_user = User.objects.create_user(username="dm_plain", password="x")
+        self.plain_token = Token.objects.create(user=self.plain_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+        self.context = DialplanContext.objects.create(name="test-dm-api-context")
+
+    def tearDown(self):
+        DialplanExtension.objects.filter(context=self.context).delete()
+        self.context.delete()
+
+    def _payload(self, **overrides):
+        payload = {
+            "name": "test_dm_api_macro",
+            "description": "API test macro",
+            "macro": "NoOp(hi);",
+        }
+        payload.update(overrides)
+        return payload
+
+    def _make_referencing_extension(self, macro_name, ext="100"):
+        return DialplanExtension.objects.create(
+            context=self.context, ext=ext, dialplan=f"&{macro_name}();"
+        )
+
+    def test_get_empty(self):
+        # A data migration seeds the callerid_normalization macro, so the
+        # table is never truly empty — filter on a name that can't collide.
+        response = self.client.get("/api/v1/dialplan-macros/?name=test_dm_api_nonexistent")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_non_staff_forbidden_on_get(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.get("/api/v1/dialplan-macros/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_forbidden_on_post(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.plain_token.key}")
+        response = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_token_returns_401(self):
+        self.client.credentials()
+        response = self.client.get("/api/v1/dialplan-macros/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_201(self):
+        response = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "test_dm_api_macro")
+
+    def test_invalid_macro_name_400(self):
+        response = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="bad-name"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_patch_200(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.patch(
+            f"/api/v1/dialplan-macros/{pk}/", {"description": "updated"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["description"], "updated")
+
+    def test_delete_204(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(), format="json"
+        )
+        pk = create.data["id"]
+        response = self.client.delete(f"/api/v1/dialplan-macros/{pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(DialplanMacro.objects.filter(pk=pk).exists())
+
+    def test_delete_not_found_404(self):
+        response = self.client.delete("/api/v1/dialplan-macros/999999/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_rename_blocked_while_extension_calls_it(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="test_dm_api_old"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test_dm_api_old")
+        response = self.client.patch(
+            f"/api/v1/dialplan-macros/{pk}/", {"name": "test_dm_api_new"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_rename_allowed_after_extension_updated(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="test_dm_api_old2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test_dm_api_old2")
+        ext.delete()
+        response = self.client.patch(
+            f"/api/v1/dialplan-macros/{pk}/", {"name": "test_dm_api_new2"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_delete_blocked_returns_409(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="test_dm_api_del"), format="json"
+        )
+        pk = create.data["id"]
+        self._make_referencing_extension("test_dm_api_del")
+        response = self.client.delete(f"/api/v1/dialplan-macros/{pk}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(DialplanMacro.objects.filter(pk=pk).exists())
+
+    def test_delete_allowed_after_extension_updated(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="test_dm_api_del2"), format="json"
+        )
+        pk = create.data["id"]
+        ext = self._make_referencing_extension("test_dm_api_del2")
+        ext.delete()
+        response = self.client.delete(f"/api/v1/dialplan-macros/{pk}/")
+        self.assertEqual(response.status_code, 204)
+
+    def test_delete_blocked_by_settings_dial_template_409(self):
+        # Settings is a singleton (save() forces pk=1) seeded by a data
+        # migration, so update the existing row rather than creating one.
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(name="test_dm_api_settings"), format="json"
+        )
+        pk = create.data["id"]
+        setting, _ = Settings.objects.get_or_create(pk=1)
+        original_template = setting.local_users_dial_template
+        setting.local_users_dial_template = "&test_dm_api_settings();"
+        setting.save()
+        try:
+            response = self.client.delete(f"/api/v1/dialplan-macros/{pk}/")
+            self.assertEqual(response.status_code, 409)
+        finally:
+            setting.local_users_dial_template = original_template
+            setting.save()
+
+    def test_created_row_lands_in_generated_ael(self):
+        from core.conf import make_dialplan_macros
+
+        self.client.post("/api/v1/dialplan-macros/", self._payload(), format="json")
+        result = make_dialplan_macros()
+        self.assertIn("macro test_dm_api_macro() {", result)
+        self.assertIn("NoOp(hi);", result)
+
+    def test_audit_created_by(self):
+        create = self.client.post(
+            "/api/v1/dialplan-macros/", self._payload(), format="json"
+        )
+        macro = DialplanMacro.objects.get(pk=create.data["id"])
+        self.assertEqual(macro.created_by, self.staff_user)
 
 
 class ApplyChangesApiTests(APITestCase):
