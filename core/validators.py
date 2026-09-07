@@ -409,6 +409,11 @@ class AsteriskDialplanValidator(BaseValidator):
     BLOCK_KEYWORDS = {"if", "else", "while", "for", "switch"}
     CONDITION_OPERATORS = {"==", "!=", ">", "<", ">=", "<=", "&&", "||", "!"}
 
+    # Characters the AEL lexer accepts in an unquoted goto target component.
+    # A leading "+" (e.g. an E.164 number) is NOT in this set and is a real
+    # Asterisk AEL syntax error even though it is valid in extensions.conf.
+    GOTO_WORD_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+
     def __init__(self, limit_value=None, allowed_macros: Optional[Set[str]] = None):
         """
         Initialize validator
@@ -792,6 +797,7 @@ class AsteriskDialplanValidator(BaseValidator):
 
         if step_content.startswith("goto "):
             # goto context,extension,priority or goto extension,priority or goto priority
+            self.validate_goto_target(step_content[len("goto ") :].strip())
             return
 
         # Check format application(parameters)
@@ -817,6 +823,38 @@ class AsteriskDialplanValidator(BaseValidator):
             if step_content not in self.ASTERISK_APPLICATIONS:
                 raise ValidationError(
                     f"Unknown Asterisk application or incorrect format: '{step_content}'"
+                )
+
+    def validate_goto_target(self, target: str):
+        """Validates a goto target: priority, extension,priority or context,extension,priority"""
+        if not target:
+            raise ValidationError("goto requires a target")
+
+        parts = self.parse_parameters(target)
+        if not parts or len(parts) > 3:
+            raise ValidationError(
+                f"Invalid goto target '{target}': expected priority, "
+                "extension,priority or context,extension,priority"
+            )
+
+        for part in parts:
+            if not part:
+                raise ValidationError(f"Invalid goto target '{target}': empty component")
+
+            # Dynamic targets built from variable/function substitution are opaque here
+            if "${" in part:
+                continue
+
+            # A quoted literal bypasses the bare AEL word-token character set
+            if part.startswith('"') and part.endswith('"') and len(part) >= 2:
+                continue
+
+            if not self.GOTO_WORD_RE.match(part):
+                raise ValidationError(
+                    f"Invalid goto target component '{part}': the AEL parser only "
+                    "accepts letters, digits, '.', '-' and '_' in an unquoted goto "
+                    "target (a leading '+', e.g. an E.164 number, causes a real "
+                    "Asterisk AEL syntax error)"
                 )
 
     def is_macro_call(self, step_content: str) -> bool:
@@ -1087,6 +1125,14 @@ class AsteriskDialplanValidator(BaseValidator):
                 raise ValidationError(
                     "Playback requires at least one parameter (filename)"
                 )
+
+        # Validation for Goto
+        elif app_name == "Goto":
+            if not params:
+                raise ValidationError(
+                    "Goto requires at least one parameter (extension or priority)"
+                )
+            self.validate_goto_target(",".join(params))
 
         # Validation for Wait
         elif app_name == "Wait":
