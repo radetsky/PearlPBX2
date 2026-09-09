@@ -24,13 +24,15 @@ fi
 
 if ! command -v docker >/dev/null 2>&1; then
     echo "Docker is required but was not found." >&2
-    echo "Install it first: https://docs.docker.com/get-docker/" >&2
+    echo "Install it with:" >&2
+    echo "  curl -fsSL https://get.docker.com | sudo sh" >&2
     exit 1
 fi
 
 if ! docker compose version >/dev/null 2>&1; then
     echo "Docker Compose (v2, 'docker compose') is required but was not found." >&2
-    echo "Install it first: https://docs.docker.com/compose/install/" >&2
+    echo "It is included with the official install: curl -fsSL https://get.docker.com | sudo sh" >&2
+    echo "See also: https://docs.docker.com/compose/install/" >&2
     exit 1
 fi
 

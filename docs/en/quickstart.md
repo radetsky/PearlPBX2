@@ -11,8 +11,8 @@ Two ways to get PearlPBX2 running, depending on what you're doing. See [README.m
   Python, PostgreSQL, Redis, and Asterisk 22 (compiled from source) — on the
   target host. Nothing to install by hand first.
 - **Option 2 (Docker Compose)**: just Docker and Docker Compose. The stack
-  (Python 3.10+/Django 5.2, PostgreSQL 14+, Redis 7+, Asterisk 22+ with
-  `res_pjsip`/`res_agi`/`cdr_pgsql`) runs entirely in containers.
+  (Python 3.10+/Django 5.2, PostgreSQL 14+, Redis 7+, Asterisk 22+) runs
+  entirely in containers.
 
 ## What you get out of the box
 
@@ -22,6 +22,7 @@ migration/deploy run, you already have:
 | Extensions | What it is |
 |---|---|
 | `201`–`210` | 10 SIP users (`ppbxuser201`…`ppbxuser210`), random passwords |
+| `211`–`220` | 10 WebRTC (wss) SIP users (`webrtcuser`…`webrtcuser10`) on `transport-wss`, random passwords |
 | `130` | Echo test |
 | `131` / `132` | Log a queue member in / out (`PauseQueueMember`) |
 | `140` | Test the IVR from an internal phone |
@@ -37,8 +38,8 @@ Plus:
   a placeholder to replace with your real provider (see
   [Replace the example trunk](#replace-the-example-trunk))
 - Two routing tables: **Incoming** (any inbound call → the IVR) and **Outgoing**
-  (all 10 users route through it: internal extensions, the `130`–`142` numbers, and
-  anything else out via `myprovider`)
+  (all 20 SIP users — `201`–`210` and the WebRTC `211`–`220` — route through it: internal
+  extensions, the `130`–`142` numbers, and anything else out via `myprovider`)
 
 This is seeded by `manage.py seed_quickstart`, which only runs once, on a fresh
 install — see [Notes / next steps](#notes--next-steps) for how that's guarded.
