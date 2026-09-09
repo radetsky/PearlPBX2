@@ -56,6 +56,35 @@ class SIPUserAdmin(admin.ModelAdmin):
     list_display = ("name", "username", "extension")
     ordering = ["name", "username", "extension"]
     search_fields = ["name", "username", "extension"]
+    readonly_fields = ("realm_display", "md5_cred_display")
+    fields = [
+        "name",
+        "username",
+        "secret",
+        "realm_display",
+        "md5_cred_display",
+        "transport",
+        "nat",
+        "extension",
+        "routing_table",
+        "auth_type",
+        "custom_extension",
+        "custom_settings",
+        "custom_auth_settings",
+        "custom_aor_settings",
+    ]
+
+    def realm_display(self, obj):
+        return obj.realm if obj and obj.pk else "—"
+
+    realm_display.short_description = _("Realm")
+
+    def md5_cred_display(self, obj):
+        if not obj or not obj.pk:
+            return "—"
+        return obj.md5_cred
+
+    md5_cred_display.short_description = _("MD5 credential (HA1, recalculated on every save)")
 
 
 class SIPPeerAdmin(admin.ModelAdmin):
