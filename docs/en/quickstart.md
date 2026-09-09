@@ -43,6 +43,21 @@ Plus:
 This is seeded by `manage.py seed_quickstart`, which only runs once, on a fresh
 install — see [Notes / next steps](#notes--next-steps) for how that's guarded.
 
+## Fastest start
+
+One command, no manual steps — picks up where Option 1 / Option 2 below leave off, and prints a
+generated admin login/password at the end.
+
+```bash
+# Production install (Debian/Ubuntu) — clones to /opt/PearlPBX2
+curl -fsSL https://pearlpbx2.com/quickstart-install.sh | sudo bash
+
+# Docker playground (any OS with Docker) — clones to ./PearlPBX2
+curl -fsSL https://pearlpbx2.com/quickstart-docker.sh | bash
+```
+
+Read on for what each option actually does, or to run the steps by hand.
+
 ## Option 1: Ansible (production install)
 
 Requires a Debian or Ubuntu host (the playbook uses `apt` and systemd directly — no other distros are supported).
@@ -79,7 +94,7 @@ cp env.sample .env
 #   ASTERISK_MANAGER_SECRET: openssl rand -base64 48
 
 docker compose up -d
-docker compose exec django python manage.py createsuperuser
+docker compose exec pearlpbx2 python manage.py createsuperuser
 ```
 
 Open `http://localhost:8000/admin/`, log in, and go straight to
@@ -87,10 +102,10 @@ Open `http://localhost:8000/admin/`, log in, and go straight to
 database, it just needs to be pushed out to Asterisk once.
 
 Notes:
-- `django` runs migrations and the quick-start seed automatically on every start (`docker-entrypoint.sh`) — no manual `migrate` step needed. The seed only acts once; subsequent restarts are a no-op.
+- `pearlpbx2` runs migrations and the quick-start seed automatically on every start (`docker-entrypoint.sh`) — no manual `migrate` step needed. The seed only acts once; subsequent restarts are a no-op.
 - `asterisk-init` seeds a minimal AMI-enabled `manager.conf` before Asterisk's first boot, so `fastagi`/`dashboard-listener` come up connected immediately; "Apply Changes" later overwrites it with the real generated config using the same credentials.
 - The callback daemon is opt-in (it originates real outbound calls): `docker compose --profile callback up -d callback-service`.
-- A `docker-compose.override.yml` is picked up automatically and gives the `django` container source hot-reload for local development; run `docker compose -f docker-compose.yml up -d` to skip it.
+- A `docker-compose.override.yml` is picked up automatically and gives the `pearlpbx2` container source hot-reload for local development; run `docker compose -f docker-compose.yml up -d` to skip it.
 
 ## Get your SIP credentials
 

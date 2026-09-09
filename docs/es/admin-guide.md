@@ -151,7 +151,7 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 
 ### Instrucciones detalladas
 
-- Despliegue con Docker: `docker-compose.yml` (django, asterisk, postgres, redis, fastagi, dashboard-listener, callback)
+- Despliegue con Docker: `docker-compose.yml` (pearlpbx2, asterisk, postgres, redis, fastagi, dashboard-listener, callback)
 - Despliegue con Ansible (recomendado para producción bare-metal): `ansible/install.yml` (9 roles: system, postgres, redis, asterisk, pearlpbx2, services, nginx, tftp, firewall)
 
 ### Modos de funcionamiento (DEVMODE)

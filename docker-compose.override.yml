@@ -11,7 +11,7 @@
 # break that integration — not worth it just to get hot reload. Hot reload
 # here comes from the source bind mount + uvicorn --reload instead.
 services:
-  django:
+  pearlpbx2:
     volumes:
       - .:/app
     command:

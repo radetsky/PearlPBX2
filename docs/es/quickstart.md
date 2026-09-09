@@ -43,6 +43,21 @@ Además:
 Todo esto lo siembra `manage.py seed_quickstart`, que solo se ejecuta una vez, en una
 instalación nueva — ver [Notas / próximos pasos](#notas--próximos-pasos) para saber cómo se garantiza esto.
 
+## Inicio más rápido
+
+Un solo comando, sin pasos manuales — hace lo mismo que la Opción 1 / Opción 2 más abajo, y al
+final imprime un usuario/contraseña de administrador generados.
+
+```bash
+# Instalación de producción (Debian/Ubuntu) — clona en /opt/PearlPBX2
+curl -fsSL https://pearlpbx2.com/quickstart-install.sh | sudo bash
+
+# Entorno de pruebas con Docker (cualquier SO con Docker) — clona en ./PearlPBX2
+curl -fsSL https://pearlpbx2.com/quickstart-docker.sh | bash
+```
+
+Sigue leyendo para ver qué hace cada opción, o para ejecutar los pasos manualmente.
+
 ## Opción 1: Ansible (instalación de producción)
 
 Requiere un host Debian o Ubuntu (el playbook usa `apt` y systemd directamente — no se admiten otras distribuciones).
@@ -79,7 +94,7 @@ cp env.sample .env
 #   ASTERISK_MANAGER_SECRET: openssl rand -base64 48
 
 docker compose up -d
-docker compose exec django python manage.py createsuperuser
+docker compose exec pearlpbx2 python manage.py createsuperuser
 ```
 
 Abre `http://localhost:8000/admin/`, inicia sesión y ve directamente a
@@ -87,10 +102,10 @@ Abre `http://localhost:8000/admin/`, inicia sesión y ve directamente a
 base de datos, solo falta enviarlos a Asterisk una vez.
 
 Notas:
-- `django` ejecuta las migraciones y la siembra de quick-start automáticamente en cada arranque (`docker-entrypoint.sh`) — no hace falta un `migrate` manual. La siembra solo actúa una vez; los reinicios posteriores no hacen nada.
+- `pearlpbx2` ejecuta las migraciones y la siembra de quick-start automáticamente en cada arranque (`docker-entrypoint.sh`) — no hace falta un `migrate` manual. La siembra solo actúa una vez; los reinicios posteriores no hacen nada.
 - `asterisk-init` siembra un `manager.conf` mínimo con AMI habilitado antes del primer arranque de Asterisk, para que `fastagi`/`dashboard-listener` se conecten de inmediato; "Apply Changes" lo sobrescribe después con la configuración real generada, usando las mismas credenciales.
 - El demonio de callback es opcional (origina llamadas salientes reales): `docker compose --profile callback up -d callback-service`.
-- Un `docker-compose.override.yml` se detecta automáticamente y le da al contenedor `django` recarga en caliente del código fuente para desarrollo local; ejecuta `docker compose -f docker-compose.yml up -d` para omitirlo.
+- Un `docker-compose.override.yml` se detecta automáticamente y le da al contenedor `pearlpbx2` recarga en caliente del código fuente para desarrollo local; ejecuta `docker compose -f docker-compose.yml up -d` para omitirlo.
 
 ## Obtén tus credenciales SIP
 
