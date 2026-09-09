@@ -123,6 +123,48 @@ las credenciales anteriores:
 - **Transport**: UDP, puerto `5060`
 - **Username / Password**: `ppbxuser201` / la contraseña del admin (e igual para 202)
 
+## Conecta un usuario WebRTC
+
+La siembra también creó 10 usuarios SIP WebRTC (wss), `webrtcuser`…`webrtcuser10`
+(extensiones `211`–`220`), en el transporte `transport-wss`. Sus contraseñas
+están en el mismo lugar que las de 201–210: **SIP Users** en el admin.
+
+Los usuarios WebRTC se autentican con **MD5 digest** (`auth_type=md5`), no con
+una contraseña en texto plano — la mayoría de las pilas SIP para WebRTC
+(SIP.js, JsSIP) calculan el digest `HA1` a partir de username/realm/secret y
+nunca envían el secreto por la red. La siembra ya lo configura así; solo pasa
+el mismo secret como contraseña en tu cliente WebRTC.
+
+**Docker Compose**: el contenedor `asterisk` publica el puerto `8088`
+directamente en el host, así que un cliente en el navegador se conecta
+directo, sin cifrar:
+
+```
+ws://<host-docker>:8088/asterisk/ws
+```
+
+(`prefix=asterisk` viene del `http.conf` que siembra
+`docker/asterisk-bootstrap.sh` en el primer arranque.) No hace falta ningún
+proxy — el sandbox de Docker no está pensado para tráfico de producción, así
+que `ws` simple es suficiente.
+
+**Ansible (bare-metal)**: el servidor HTTP/WebSocket de Asterisk solo escucha
+en `127.0.0.1:8088` (`contrib/configs/http.conf`), y el puerto `8088` nunca se
+abre en el firewall — todo el tráfico externo, incluida la señalización
+WebRTC, pasa por nginx en el `443`. El rol `nginx` hace proxy de
+`location /asterisk/` hacia `http://127.0.0.1:8088/asterisk/`, así que un
+cliente en el navegador usa el mismo host y puerto que el admin, sobre TLS:
+
+```
+wss://<tu-host>/asterisk/ws
+```
+
+`sudo ./install.sh` configura esto en un host nuevo automáticamente — no hay
+que hacer nada a mano. En un sistema instalado antes de que existiera este
+proxy, `sudo ./update.sh` no lo añadirá (no toca nginx ni `http.conf`) —
+vuelve a ejecutar `sudo ./install.sh` para aplicar la nueva config de nginx, y
+cambia `bindaddr` a mano en `/etc/asterisk/http.conf` a `127.0.0.1`.
+
 ## Apply Changes
 
 Nada de lo anterior llega a Asterisk hasta que lo apliques. En la interfaz de admin, ve a

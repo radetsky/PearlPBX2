@@ -123,6 +123,46 @@ the credentials above:
 - **Transport**: UDP, port `5060`
 - **Username / Password**: `ppbxuser201` / the password from the admin (and likewise for 202)
 
+## Connect a WebRTC user
+
+The seed also created 10 WebRTC (wss) SIP users, `webrtcuser`…`webrtcuser10`
+(extensions `211`–`220`), on the `transport-wss` transport. Their passwords are
+in the same place as 201–210's — **SIP Users** in the admin.
+
+WebRTC users authenticate with **MD5 digest** (`auth_type=md5`), not a
+plaintext password — most WebRTC SIP stacks (SIP.js, JsSIP) compute the
+digest `HA1` from username/realm/secret themselves and never send the secret
+over the wire. The seed already sets this; just pass the same secret as the
+password in your WebRTC client.
+
+**Docker Compose**: the `asterisk` container publishes port `8088` straight to
+the host, so a browser client connects directly, unencrypted:
+
+```
+ws://<docker-host>:8088/asterisk/ws
+```
+
+(`prefix=asterisk` comes from the `http.conf` that `docker/asterisk-bootstrap.sh`
+seeds on first boot.) No proxy needed — the Docker sandbox isn't meant for
+production traffic, so plain `ws` is fine.
+
+**Ansible (bare-metal)**: Asterisk's HTTP/WebSocket server only listens on
+`127.0.0.1:8088` (`contrib/configs/http.conf`) and port `8088` is never opened
+in the firewall — all external traffic, WebRTC signaling included, goes through
+nginx on `443`. The `nginx` role proxies `location /asterisk/` to
+`http://127.0.0.1:8088/asterisk/`, so a browser client uses the same host and
+port as the admin UI, over TLS:
+
+```
+wss://<your-host>/asterisk/ws
+```
+
+`sudo ./install.sh` sets this up on a fresh host — nothing to configure by
+hand. On a system installed before this proxy existed, `sudo ./update.sh`
+won't add it (it doesn't touch nginx or `http.conf`); re-run `sudo ./install.sh`
+to pick up the new nginx config, and edit `bindaddr` in `/etc/asterisk/http.conf`
+to `127.0.0.1` by hand.
+
 ## Apply Changes
 
 Nothing above reaches Asterisk until you push it. In the admin UI go to
