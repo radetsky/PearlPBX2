@@ -1,5 +1,39 @@
-.PHONY: test test-coverage test-quick test-app test-build test-down api-docs \
-	integration-build integration-test integration-down
+.PHONY: help test test-coverage test-quick test-app test-build test-down api-docs \
+	integration-build integration-test integration-down \
+	docker-up docker-dev docker-stop docker-clean
+
+.DEFAULT_GOAL := help
+
+help:
+	@echo "PearlPBX2 — available targets:"
+	@echo ""
+	@echo "  docker-up      Start the full stack in the background, production-like (no dev override)"
+	@echo "  docker-dev     Start the full stack in the foreground with hot reload (dev override)"
+	@echo "  docker-stop    Stop running containers (keeps volumes/data)"
+	@echo "  docker-clean   Stop and remove containers, volumes, local images, and network"
+	@echo ""
+	@echo "  test           Run the test suite (mocked Asterisk)"
+	@echo "  test-coverage  Run tests with coverage report"
+	@echo "  test-quick     Run tests, stop on first failure, skip coverage"
+	@echo "  test-app       Run tests for one app: make test-app APP=core"
+	@echo "  test-down      Tear down the test stack"
+	@echo ""
+	@echo "  integration-test  Run integration tests against a real Asterisk container"
+	@echo "  integration-down  Tear down the integration stack"
+	@echo ""
+	@echo "  api-docs       Generate OpenAPI schema and HTML API reference"
+
+docker-up:
+	docker compose -f docker-compose.yml up -d
+
+docker-dev:
+	docker compose up
+
+docker-stop:
+	docker compose stop
+
+docker-clean:
+	docker compose --profile callback down -v --rmi local
 
 # Generate the API reference for third-party developers:
 #   docs/en/openapi.yaml  — machine-readable OpenAPI 3.0 schema (Postman/Insomnia, SDK codegen)

@@ -20,24 +20,8 @@
     ssh_port: "{{ sshd_port_result.stdout | trim if sshd_port_result.stdout | trim else '22' }}"
 
 - name: Show detected SSH port before applying firewall
-  # A separate task (rather than folding this into the pause prompt below)
-  # so the full message is guaranteed to print before the terminal blocks
-  # waiting for input — a multi-line pause prompt can otherwise appear only
-  # after Enter is pressed, leaving the operator staring at a bare ":".
   debug:
-    msg: |
-
-      ============================================================
-       FIREWALL: SSH port detected as {{ ssh_port }}
-       This port will be opened in nftables rules.
-
-       If this is WRONG — press Ctrl+C now, then fix the SSH port
-       and re-run the installer.
-      ============================================================
-
-- name: Confirm SSH port before applying firewall
-  pause:
-    prompt: "Press Enter to continue"
+    msg: "FIREWALL: SSH port detected as {{ ssh_port }} — this port will be opened in nftables rules."
 
 - name: Deploy nftables ruleset
   template:
