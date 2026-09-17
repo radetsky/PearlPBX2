@@ -58,7 +58,7 @@ class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
     list_display = ("name", "username", "extension")
     ordering = ["name", "username", "extension"]
     search_fields = ["name", "username", "extension"]
-    readonly_fields = ("realm_display", "md5_cred_display")
+    readonly_fields = ["realm_display", "md5_cred_display"]
 
     def realm_display(self, obj):
         return obj.realm if obj and obj.pk else "—"
@@ -409,7 +409,7 @@ class QueueAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAd
     list_display = ["name", "defaultrule", "strategy"]
     search_fields = ["name"]
     ordering = ["name"]
-    readonly_fields = AuditAdminMixin.readonly_fields + ["rule_link"]
+    readonly_fields = ["rule_link"]
     inlines = [QueueMemberInlineAdmin]
     fieldsets = [
         (None, {"fields": ["name", "strategy", "music_class"]}),

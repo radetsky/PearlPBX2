@@ -5,10 +5,13 @@ class AuditAdminMixin:
     """ModelAdmin mixin for models extending core.models.AuditFields.
 
     Stamps created_by/modified_by from the requesting user and exposes the
-    four audit fields as a read-only, collapsed fieldset.
+    four audit fields as a read-only, collapsed fieldset. Subclasses declare
+    only their own extra readonly fields (if any) in `readonly_fields` — the
+    audit fields are unioned in by get_readonly_fields() regardless, so a
+    subclass assigning its own `readonly_fields` can't accidentally drop them.
     """
 
-    readonly_fields = ["created_at", "modified_at", "created_by", "modified_by"]
+    audit_readonly_fields = ["created_at", "modified_at", "created_by", "modified_by"]
 
     audit_fieldset = (
         _("Audit Information"),
@@ -17,6 +20,9 @@ class AuditAdminMixin:
             "classes": ("collapse",),
         },
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        return list(super().get_readonly_fields(request, obj)) + list(self.audit_readonly_fields)
 
     def save_model(self, request, obj, form, change):
         if not change:  # Creating new object
