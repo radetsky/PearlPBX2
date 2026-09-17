@@ -1036,6 +1036,46 @@ python manage.py collectstatic
 systemctl restart PearlPBX2
 ```
 
+### Actualización de Asterisk
+
+`update.sh` actualiza únicamente el código de PearlPBX2; nunca toca Asterisk. Para actualizar el
+binario compilado de Asterisk (por ejemplo, 22.7.0 → 22.11.0) en un host gestionado por Ansible, usa
+`update-asterisk.sh`:
+
+```bash
+sudo ./update-asterisk.sh --version 22.11.0
+```
+
+Esto:
+
+1. Respalda `/etc/asterisk`, los binarios/módulos/cabeceras (`/usr/sbin/asterisk*`,
+   `/usr/lib/asterisk`, `/usr/include/asterisk`) y `/var/lib/asterisk` (sonidos personalizados,
+   `agi-bin`, MOH) en un directorio con marca de tiempo bajo `/var/backups/asterisk-upgrade/`.
+2. Descarga y compila la nueva versión **mientras el Asterisk actual sigue atendiendo llamadas** — un
+   fallo de compilación aborta aquí, dejando producción intacta.
+3. Detiene Asterisk de forma controlada (`core stop gracefully`, esperando hasta 15 minutos por
+   defecto a que terminen las llamadas activas; `--no-wait` pasa directamente a una parada forzada,
+   `--timeout SEC` cambia el tiempo de espera).
+4. Ejecuta únicamente `make install` — nunca `make samples`/`basic-pbx`/`config` — por lo que
+   `/etc/asterisk`, `/var/log/asterisk`, `/var/spool/asterisk` (grabaciones) y los archivos de sonido
+   no se modifican.
+5. Reinicia Asterisk y los servicios con conexión AMI (`pearlpbx2-dashboard`, `pearlpbx2-callback`,
+   `pearlpbx2-fastagi`), y luego verifica que `asterisk -rx "core show version"` reporte la versión
+   objetivo.
+
+Si la versión ya está actualizada, no hace nada salvo que se indique `--force`. `-l`/`--list` muestra
+el historial de actualizaciones. Para deshacer la última actualización:
+
+```bash
+sudo ./update-asterisk.sh --rollback
+```
+
+Esto restaura los binarios/módulos anteriores desde el respaldo y reinicia Asterisk. `/etc/asterisk` y
+`/var/lib/asterisk` se dejan como están salvo que se pase `--restore-configs` / `--restore-sounds` —
+las configuraciones se generan desde la base de datos, así que una restauración ciega podría descartar
+cambios del administrador hechos después de la actualización. `--rollback -n STEPS` retrocede más de
+una actualización.
+
 ### Registro (logging)
 
 El sistema registra eventos a través del mecanismo estándar de logging de Django:

@@ -1,0 +1,27 @@
+---
+# Restores one optional archive from an asterisk-upgrade backup, if the
+# caller opted in and the archive actually exists (older backups taken with
+# asterisk_upgrade_backup_var_lib: false won't have var-lib-asterisk.tar.gz).
+# Caller loops over items shaped {flag, archive, dest, label} and sets
+# restore_item to each one before including this file. Assumes
+# asterisk_rollback.backup_dir is already set (ansible/rollback-asterisk.yml).
+
+- name: "Check whether a backup archive exists: {{ restore_item.archive }}"
+  stat:
+    path: "{{ asterisk_rollback.backup_dir }}/{{ restore_item.archive }}"
+  register: asterisk_restore_archive_stat
+  when: restore_item.flag
+
+- name: "Restore {{ restore_item.label }} from backup"
+  unarchive:
+    src: "{{ asterisk_rollback.backup_dir }}/{{ restore_item.archive }}"
+    dest: "{{ restore_item.dest }}"
+    remote_src: yes
+  when: restore_item.flag and asterisk_restore_archive_stat.stat.exists
+
+- name: "Warn if restoring {{ restore_item.label }} was requested but no backup exists"
+  debug:
+    msg: >-
+      WARNING: no {{ restore_item.archive }} found in {{ asterisk_rollback.backup_dir }};
+      {{ restore_item.label }} was left untouched.
+  when: restore_item.flag and not asterisk_restore_archive_stat.stat.exists

@@ -1036,6 +1036,41 @@ python manage.py collectstatic
 systemctl restart PearlPBX2
 ```
 
+### Upgrading Asterisk
+
+`update.sh` upgrades PearlPBX2's own code; it never touches Asterisk itself. To upgrade the compiled
+Asterisk binary (e.g. 22.7.0 → 22.11.0) on an Ansible-managed host, use `update-asterisk.sh`:
+
+```bash
+sudo ./update-asterisk.sh --version 22.11.0
+```
+
+This:
+
+1. Backs up `/etc/asterisk`, the binaries/modules/headers (`/usr/sbin/asterisk*`, `/usr/lib/asterisk`,
+   `/usr/include/asterisk`), and `/var/lib/asterisk` (custom sounds, `agi-bin`, MOH) to a timestamped
+   directory under `/var/backups/asterisk-upgrade/`.
+2. Downloads and compiles the new version **while the current Asterisk keeps serving calls** — a
+   failed build aborts here with production untouched.
+3. Gracefully stops Asterisk (`core stop gracefully`, waiting up to 15 minutes by default for active
+   calls to end; `--no-wait` skips straight to a hard stop, `--timeout SEC` changes the wait).
+4. Runs `make install` only — never `make samples`/`basic-pbx`/`config` — so `/etc/asterisk`,
+   `/var/log/asterisk`, `/var/spool/asterisk` (recordings), and sound files are never touched.
+5. Restarts Asterisk and the AMI-connected services (`pearlpbx2-dashboard`, `pearlpbx2-callback`,
+   `pearlpbx2-fastagi`), then verifies `asterisk -rx "core show version"` reports the target version.
+
+If the version is already current, it's a no-op unless `--force` is given. `-l`/`--list` shows the
+upgrade history. To undo the most recent upgrade:
+
+```bash
+sudo ./update-asterisk.sh --rollback
+```
+
+This restores the previous binaries/modules from the backup and restarts Asterisk. `/etc/asterisk` and
+`/var/lib/asterisk` are left as they are unless you pass `--restore-configs` / `--restore-sounds` —
+configs are generated from the database, so a blind restore could discard admin changes made after the
+upgrade. `--rollback -n STEPS` rolls back further than one upgrade.
+
 ### Logging
 
 The system logs events through Django's standard logging mechanism:

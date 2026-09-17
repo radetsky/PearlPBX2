@@ -1,0 +1,18 @@
+---
+# Shared by the asterisk role's install path and the asterisk_update role —
+# "make install" runs as root and recreates these paths root-owned, so
+# ownership must be reapplied after every install, not just the first one.
+
+- name: Set ownership and permissions on Asterisk dirs
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ pearlpbx2_user }}"
+    group: "{{ pearlpbx2_group }}"
+    mode: "{{ item.mode }}"
+    recurse: yes
+  loop:
+    - { path: /var/lib/asterisk,   mode: "0750" }
+    - { path: /var/log/asterisk,   mode: "0750" }
+    - { path: /var/spool/asterisk, mode: "0750" }
+    - { path: /usr/lib/asterisk,   mode: "0750" }
+    - { path: /etc/asterisk,       mode: "0750" }

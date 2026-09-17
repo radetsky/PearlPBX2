@@ -1036,6 +1036,44 @@ python manage.py collectstatic
 systemctl restart PearlPBX2
 ```
 
+### Оновлення Asterisk
+
+`update.sh` оновлює лише код самого PearlPBX2 — Asterisk він не чіпає. Щоб оновити скомпільований
+бінарник Asterisk (наприклад, 22.7.0 → 22.11.0) на хості, керованому Ansible, використовуйте
+`update-asterisk.sh`:
+
+```bash
+sudo ./update-asterisk.sh --version 22.11.0
+```
+
+Це:
+
+1. Бекапить `/etc/asterisk`, бінарники/модулі/заголовки (`/usr/sbin/asterisk*`, `/usr/lib/asterisk`,
+   `/usr/include/asterisk`) і `/var/lib/asterisk` (кастомні звуки, `agi-bin`, MOH) у каталог із
+   таймстемпом під `/var/backups/asterisk-upgrade/`.
+2. Завантажує й компілює нову версію, **поки поточний Asterisk продовжує обслуговувати дзвінки** —
+   невдала збірка перериває процес тут, продакшн залишається недоторканим.
+3. Виконує graceful-зупинку Asterisk (`core stop gracefully`, типово чекає до 15 хвилин завершення
+   активних дзвінків; `--no-wait` одразу переходить до жорсткої зупинки, `--timeout SEC` змінює
+   тривалість очікування).
+4. Виконує лише `make install` — ніколи `make samples`/`basic-pbx`/`config` — тож `/etc/asterisk`,
+   `/var/log/asterisk`, `/var/spool/asterisk` (записи розмов) і звукові файли не змінюються.
+5. Перезапускає Asterisk і сервіси, що тримають AMI-з'єднання (`pearlpbx2-dashboard`,
+   `pearlpbx2-callback`, `pearlpbx2-fastagi`), а потім перевіряє, що `asterisk -rx "core show version"`
+   показує цільову версію.
+
+Якщо версія вже актуальна, команда нічого не робить, якщо не задано `--force`. `-l`/`--list` показує
+історію оновлень. Щоб відкотити останнє оновлення:
+
+```bash
+sudo ./update-asterisk.sh --rollback
+```
+
+Це відновлює попередні бінарники/модулі з бекапу і перезапускає Asterisk. `/etc/asterisk` і
+`/var/lib/asterisk` залишаються без змін, якщо не передано `--restore-configs` / `--restore-sounds` —
+конфіги генеруються з бази даних, тож сліпе відновлення могло би відкинути зміни адміністратора,
+зроблені після оновлення. `--rollback -n STEPS` відкочує більш ніж на одне оновлення назад.
+
 ### Логування
 
 Система логує події через стандартний механізм Django logging:

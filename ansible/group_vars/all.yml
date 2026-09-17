@@ -6,6 +6,45 @@ pearlpbx2_group: asterisk
 
 asterisk_version: "22.11.0"
 asterisk_src_dir: /usr/src
+asterisk_download_url: "https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-{{ asterisk_version }}.tar.gz"
+asterisk_configure_flags:
+  - --prefix=/
+  - --with-crypto
+  - --with-postgres
+  - --with-spandsp
+  - --with-jansson-bundled
+  - --with-opus
+asterisk_menuselect_enable:
+  - codec_opus
+
+# --- asterisk_update role (update-asterisk.sh / rollback-asterisk.sh) ---
+
+# Where pre-upgrade backups (config/binaries/var-lib archives + the upgrade
+# ledger) are kept. One subdirectory per upgrade, named <timestamp>-<from_version>.
+asterisk_upgrade_backup_dir: /var/backups/asterisk-upgrade
+
+# How many past upgrades' backups to keep on disk. Each one holds a full
+# copy of /usr/lib/asterisk plus (optionally) /var/lib/asterisk, so this
+# is capped low by default rather than mirroring deploy_history_retention.
+asterisk_upgrade_backup_retention: 3
+
+# Also back up /var/lib/asterisk (custom sounds, agi-bin, moh) before an
+# upgrade. Off switches to a config+binaries-only backup for hosts where
+# this directory is very large.
+asterisk_upgrade_backup_var_lib: true
+
+# Re-run the upgrade even if `asterisk -V` already reports asterisk_version.
+asterisk_force_upgrade: false
+
+# Delete every file under /usr/lib/asterisk/modules before "make install"
+# during an upgrade, so a module removed in the new release can't linger
+# and be autoloaded by the new binary. The pre-upgrade backup is the
+# escape hatch if this turns out to be wrong for a given release.
+asterisk_upgrade_purge_modules: true
+
+# Seconds to wait for "core stop gracefully" to drain active calls before
+# falling back to a hard stop. update-asterisk.sh --no-wait sets this to 0.
+asterisk_graceful_stop_timeout: 900
 
 db_name: pearlpbx2
 db_user: pearlpbx2

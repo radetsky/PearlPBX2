@@ -1,0 +1,6 @@
+---
+- name: Upgrade Asterisk to a new version
+  hosts: localhost
+  become: true
+  roles:
+    - asterisk_update

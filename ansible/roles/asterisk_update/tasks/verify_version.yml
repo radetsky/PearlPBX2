@@ -1,0 +1,27 @@
+---
+# Shared by the upgrade path (tasks/main.yml) and the rollback path
+# (ansible/rollback-asterisk.yml) — both need to wait for Asterisk to come
+# back up and confirm it's running the version they expect. Caller sets
+# asterisk_verify_expected_version (and optionally asterisk_verify_extra_hint,
+# appended to the failure message) before including this file.
+
+- name: Wait for the Asterisk control socket to come up
+  wait_for:
+    path: /var/run/asterisk/asterisk.ctl
+    timeout: 60
+
+- name: Verify the running Asterisk reports the expected version
+  command: asterisk -rx "core show version"
+  register: asterisk_verify_version_output
+  changed_when: false
+  until: asterisk_verify_expected_version in asterisk_verify_version_output.stdout
+  retries: 5
+  delay: 3
+
+- name: Fail if the running Asterisk is not on the expected version
+  fail:
+    msg: >-
+      Asterisk restarted but reports "{{ asterisk_verify_version_output.stdout }}",
+      not the expected {{ asterisk_verify_expected_version }}.
+      {{ asterisk_verify_extra_hint | default('') }}
+  when: asterisk_verify_expected_version not in asterisk_verify_version_output.stdout

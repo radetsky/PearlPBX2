@@ -1,0 +1,95 @@
+---
+- name: Roll Asterisk back to a previous version
+  hosts: localhost
+  become: true
+
+  vars:
+    repo_dir: "{{ playbook_dir }}/.."
+    # Number of upgrades to roll back, e.g. -e steps=2. Overridden by
+    # update-asterisk.sh --rollback -n/--steps; defaults to one step back.
+    steps: 1
+    # Restoring /etc/asterisk or /var/lib/asterisk from the backup is opt-in:
+    # configs are generated from the database, so a blind restore would
+    # discard any admin changes made after the upgrade being rolled back.
+    restore_configs: false
+    restore_sounds: false
+
+  tasks:
+    - name: Resolve rollback target from the asterisk-upgrade ledger
+      command: >
+        python3 {{ repo_dir }}/bin/pearlpbx2_resolve_asterisk_rollback.py
+        {{ asterisk_upgrade_backup_dir }}/state.json --steps {{ steps }}
+      register: asterisk_rollback_resolved
+      changed_when: false
+
+    - name: Parse resolved rollback target
+      set_fact:
+        asterisk_rollback: "{{ asterisk_rollback_resolved.stdout | from_json }}"
+
+    - name: Report rollback target
+      debug:
+        msg: >-
+          Rolling Asterisk back from {{ asterisk_rollback.current_version }} to
+          {{ asterisk_rollback.target_version }}, restoring
+          {{ asterisk_rollback.backup_dir }} (upgraded at {{ asterisk_rollback.upgraded_at }})
+
+    - name: Gracefully stop Asterisk before restoring the previous version
+      include_role:
+        name: asterisk_update
+        tasks_from: stop_gracefully.yml
+
+    - name: Remove current Asterisk modules before restoring the backup
+      file:
+        path: /usr/lib/asterisk/modules
+        state: absent
+
+    - name: Restore Asterisk binaries, modules and headers from backup
+      unarchive:
+        src: "{{ asterisk_rollback.backup_dir }}/binaries.tar.gz"
+        dest: /
+        remote_src: yes
+
+    - name: Restore optional archives from backup
+      include_role:
+        name: asterisk_update
+        tasks_from: restore_optional_archive.yml
+      loop:
+        - { flag: "{{ restore_configs }}", archive: etc-asterisk.tar.gz, dest: /etc, label: /etc/asterisk }
+        - { flag: "{{ restore_sounds }}", archive: var-lib-asterisk.tar.gz, dest: /var/lib, label: /var/lib/asterisk }
+      loop_control:
+        loop_var: restore_item
+
+    - name: Reapply ownership and permissions on Asterisk dirs
+      include_role:
+        name: asterisk
+        tasks_from: permissions.yml
+
+    - name: Start Asterisk
+      systemd:
+        name: asterisk
+        state: started
+        daemon_reload: yes
+
+    - name: Verify the rollback and wait for Asterisk to come back up
+      include_role:
+        name: asterisk_update
+        tasks_from: verify_version.yml
+      vars:
+        asterisk_verify_expected_version: "{{ asterisk_rollback.target_version }}"
+
+    - name: Restart the AMI-connected services
+      include_role:
+        name: asterisk_update
+        tasks_from: restart_ami_services.yml
+
+    - name: Record ledger after rollback
+      copy:
+        content: "{{ {'history': asterisk_rollback.remaining_history} | to_nice_json }}"
+        dest: "{{ asterisk_upgrade_backup_dir }}/state.json"
+        owner: root
+        group: root
+        mode: '0640'
+
+    - name: Report rollback completion
+      debug:
+        msg: "Asterisk rolled back to {{ asterisk_rollback.target_version }}."

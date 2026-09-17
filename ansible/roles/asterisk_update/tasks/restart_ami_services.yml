@@ -1,0 +1,14 @@
+---
+# Shared by the upgrade path (tasks/main.yml) and the rollback path
+# (ansible/rollback-asterisk.yml) — both need these to reconnect to
+# Asterisk with a fresh AMI session after it restarts.
+
+- name: Restart services that hold an AMI connection
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - pearlpbx2-dashboard
+    - pearlpbx2-callback
+    - pearlpbx2-fastagi
+  ignore_errors: yes   # not every host runs all three services

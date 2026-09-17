@@ -1,0 +1,217 @@
+---
+# Upgrades a live, already-installed Asterisk to asterisk_version. Ordered
+# so that everything which can fail (build, disk space) happens while the
+# old Asterisk is still up and serving calls; only the graceful-stop step
+# onward touches the running instance, and that step is reached only after
+# a full backup exists.
+
+- name: Determine currently installed Asterisk version
+  command: asterisk -V
+  register: asterisk_version_raw
+  changed_when: false
+  failed_when: false
+
+- name: Abort if Asterisk is not installed
+  fail:
+    msg: >-
+      Asterisk does not appear to be installed (no /usr/sbin/asterisk, or
+      "asterisk -V" failed). Run install.sh for a first-time install instead
+      of update-asterisk.sh.
+  when: asterisk_version_raw.rc != 0
+
+- name: Parse current Asterisk version
+  set_fact:
+    asterisk_current_version: "{{ asterisk_version_raw.stdout | regex_replace('^Asterisk ', '') | trim }}"
+
+- name: Report current and target version
+  debug:
+    msg: "Current Asterisk version: {{ asterisk_current_version }}; target: {{ asterisk_version }}"
+
+- name: Skip upgrade — already on the target version
+  when:
+    - asterisk_current_version == asterisk_version
+    - not asterisk_force_upgrade
+  block:
+    - name: Report that the upgrade is being skipped
+      debug:
+        msg: >-
+          Asterisk is already on {{ asterisk_version }} — nothing to do.
+          Pass --force to rebuild and reinstall it anyway.
+
+    - meta: end_play
+
+- name: Check free space in the build directory
+  command: df -Pk {{ asterisk_src_dir }}
+  register: asterisk_build_df
+  changed_when: false
+
+- name: Abort if not enough free space to build Asterisk
+  vars:
+    asterisk_build_free_kb: "{{ asterisk_build_df.stdout_lines[1].split()[3] | int }}"
+    asterisk_build_min_free_kb: 2097152   # ~2 GB — rough headroom for a full compile
+  fail:
+    msg: >-
+      Only {{ (asterisk_build_free_kb | int / 1024) | round(1) }} MB free in
+      {{ asterisk_src_dir }}; a full Asterisk build needs roughly 2 GB.
+  when: asterisk_build_free_kb | int < asterisk_build_min_free_kb
+
+- name: Determine directories to back up before the upgrade
+  set_fact:
+    asterisk_upgrade_backup_sources: >-
+      {{ ['/etc/asterisk', '/usr/lib/asterisk', '/usr/include/asterisk'] +
+         (['/var/lib/asterisk'] if asterisk_upgrade_backup_var_lib else []) }}
+
+- name: Measure size of directories to back up
+  command: du -sk {{ asterisk_upgrade_backup_sources | join(' ') }}
+  register: asterisk_backup_du
+  changed_when: false
+  failed_when: false   # a missing optional path shouldn't abort the measurement
+
+- name: Check free space in the backup directory
+  command: df -Pk {{ asterisk_upgrade_backup_dir }}
+  register: asterisk_backup_df
+  changed_when: false
+
+- name: Abort if not enough free space for the pre-upgrade backup
+  vars:
+    asterisk_backup_required_kb: >-
+      {{ asterisk_backup_du.stdout_lines | map('regex_replace', '\s.*$', '') | map('int') | sum }}
+    asterisk_backup_free_kb: "{{ asterisk_backup_df.stdout_lines[1].split()[3] | int }}"
+  fail:
+    msg: >-
+      Backing up {{ asterisk_upgrade_backup_sources | join(', ') }} needs about
+      {{ (asterisk_backup_required_kb | int / 1024) | round(1) }} MB uncompressed;
+      only {{ (asterisk_backup_free_kb | int / 1024) | round(1) }} MB free in
+      {{ asterisk_upgrade_backup_dir }}.
+  when: asterisk_backup_required_kb | int > asterisk_backup_free_kb | int
+
+- name: Record active channel count before upgrading
+  command: asterisk -rx "core show channels count"
+  register: asterisk_channels_before
+  changed_when: false
+
+- name: Report active channel count before upgrading
+  debug:
+    msg: "{{ asterisk_channels_before.stdout_lines }}"
+
+- name: Build the target Asterisk version
+  # Asterisk keeps serving calls throughout this step. Any compile failure
+  # aborts the play here, with production completely untouched.
+  include_role:
+    name: asterisk
+    tasks_from: build.yml
+
+- name: Set this upgrade's timestamp and backup directory
+  set_fact:
+    asterisk_upgrade_timestamp: "{{ ansible_date_time.iso8601 }}"
+    asterisk_upgrade_dir: "{{ asterisk_upgrade_backup_dir }}/{{ ansible_date_time.iso8601_basic_short }}-{{ asterisk_current_version }}"
+
+- name: Create this upgrade's backup directory
+  file:
+    path: "{{ asterisk_upgrade_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Back up configs, binaries and (optionally) var-lib before upgrading
+  include_tasks: backup.yml
+
+- name: Read existing asterisk-upgrade ledger, if any
+  slurp:
+    src: "{{ asterisk_upgrade_backup_dir }}/state.json"
+  register: asterisk_upgrade_prior_state_raw
+  failed_when: false
+
+- name: Parse prior asterisk-upgrade history
+  set_fact:
+    asterisk_upgrade_history: >-
+      {{
+        ((asterisk_upgrade_prior_state_raw.content | b64decode | from_json).history)
+        if (asterisk_upgrade_prior_state_raw.content is defined)
+        else []
+      }}
+
+- name: Append and trim asterisk-upgrade ledger
+  set_fact:
+    asterisk_upgrade_new_history: >-
+      {{
+        (asterisk_upgrade_history + [{
+          'timestamp': asterisk_upgrade_timestamp,
+          'from_version': asterisk_current_version,
+          'to_version': asterisk_version,
+          'backup_dir': asterisk_upgrade_dir
+        }])[-(asterisk_upgrade_backup_retention | int):]
+      }}
+
+- name: Prune backup directories dropped by retention
+  file:
+    path: "{{ item.backup_dir }}"
+    state: absent
+  loop: "{{ asterisk_upgrade_history | difference(asterisk_upgrade_new_history) }}"
+
+- name: Record asterisk-upgrade ledger
+  copy:
+    content: "{{ {'history': asterisk_upgrade_new_history} | to_nice_json }}"
+    dest: "{{ asterisk_upgrade_backup_dir }}/state.json"
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Gracefully stop Asterisk before installing the new version
+  include_tasks: stop_gracefully.yml
+
+- name: Remove existing Asterisk modules before installing the new version
+  # Every .so under here comes from "make install" — removing them first
+  # keeps a module dropped by the new release from lingering and being
+  # autoloaded by the new binary. The backup just taken is the escape hatch.
+  file:
+    path: /usr/lib/asterisk/modules
+    state: absent
+  when: asterisk_upgrade_purge_modules
+
+- name: Install the new Asterisk version
+  # Deliberately just "make install" — never "make samples"/"basic-pbx"/
+  # "config", which would touch /etc/asterisk.
+  command: make install
+  args:
+    chdir: "{{ asterisk_build_dir }}"
+
+- name: Reapply ownership and permissions on Asterisk dirs
+  include_role:
+    name: asterisk
+    tasks_from: permissions.yml
+
+- name: Start Asterisk
+  systemd:
+    name: asterisk
+    state: started
+    daemon_reload: yes
+
+- name: Verify the upgrade and wait for Asterisk to come back up
+  include_tasks: verify_version.yml
+  vars:
+    asterisk_verify_expected_version: "{{ asterisk_version }}"
+    asterisk_verify_extra_hint: >-
+      A backup of the previous installation is at {{ asterisk_upgrade_dir }} —
+      roll back with './update-asterisk.sh --rollback'.
+
+- name: Smoke-check channel count and PJSIP endpoints after upgrade
+  command: "asterisk -rx \"{{ item }}\""
+  loop:
+    - core show channels count
+    - pjsip show endpoints
+  register: asterisk_smoke_checks
+  changed_when: false
+  failed_when: false
+
+- name: Restart the AMI-connected services
+  include_tasks: restart_ami_services.yml
+
+- name: Report post-upgrade status
+  debug:
+    msg:
+      - "Asterisk upgraded: {{ asterisk_current_version }} -> {{ asterisk_version }}"
+      - "{{ asterisk_smoke_checks.results[0].stdout_lines }}"
+      - "{{ asterisk_smoke_checks.results[1].stdout_lines }}"
+      - "Backup: {{ asterisk_upgrade_dir }}"

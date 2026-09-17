@@ -1,0 +1,46 @@
+---
+# Archives everything the upgrade might destroy, into asterisk_upgrade_dir
+# (set by tasks/main.yml before including this file). Called only after the
+# new version has already compiled successfully — a failed build leaves
+# production untouched and never reaches here.
+
+- name: Archive /etc/asterisk
+  command: tar -czf {{ asterisk_upgrade_dir }}/etc-asterisk.tar.gz -C /etc asterisk
+  args:
+    creates: "{{ asterisk_upgrade_dir }}/etc-asterisk.tar.gz"
+
+- name: Archive Asterisk binaries, modules and headers
+  # Globbed (not a fixed file list) so it captures whatever "make install"
+  # actually put in /usr/sbin on this Asterisk version — asterisk, rasterisk,
+  # safe_asterisk, astcanary, astgenkey, astversion, etc. — without hardcoding
+  # names that vary across releases. nullglob keeps a non-matching pattern
+  # from being passed to tar literally.
+  shell: |
+    set -e
+    shopt -s nullglob
+    cd /
+    tar -czf {{ asterisk_upgrade_dir }}/binaries.tar.gz usr/sbin/ast* usr/sbin/*asterisk* usr/lib/asterisk usr/include/asterisk
+  args:
+    executable: /bin/bash
+    creates: "{{ asterisk_upgrade_dir }}/binaries.tar.gz"
+
+- name: Archive /var/lib/asterisk
+  command: tar -czf {{ asterisk_upgrade_dir }}/var-lib-asterisk.tar.gz -C /var/lib asterisk
+  args:
+    creates: "{{ asterisk_upgrade_dir }}/var-lib-asterisk.tar.gz"
+  when: asterisk_upgrade_backup_var_lib
+
+- name: Write upgrade manifest
+  copy:
+    content: "{{ asterisk_upgrade_manifest | to_nice_json }}"
+    dest: "{{ asterisk_upgrade_dir }}/manifest.json"
+    owner: root
+    group: root
+    mode: '0640'
+  vars:
+    asterisk_upgrade_manifest:
+      timestamp: "{{ asterisk_upgrade_timestamp }}"
+      from_version: "{{ asterisk_current_version }}"
+      to_version: "{{ asterisk_version }}"
+      host: "{{ ansible_hostname }}"
+      var_lib_included: "{{ asterisk_upgrade_backup_var_lib }}"

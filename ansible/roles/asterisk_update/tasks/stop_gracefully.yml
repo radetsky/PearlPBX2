@@ -1,0 +1,25 @@
+---
+# Shared by the upgrade path (tasks/main.yml) and the rollback path
+# (ansible/rollback-asterisk.yml) — both need to drain and stop Asterisk
+# the same way before replacing its binaries.
+
+- name: Request graceful stop of Asterisk
+  command: asterisk -rx "core stop gracefully"
+  changed_when: false
+  failed_when: false
+  when: asterisk_graceful_stop_timeout | int > 0
+
+- name: Wait for Asterisk to drain and stop gracefully
+  command: systemctl is-active asterisk
+  register: asterisk_active_check
+  until: asterisk_active_check.stdout != "active"
+  retries: "{{ ((asterisk_graceful_stop_timeout | int) / 5) | int }}"
+  delay: 5
+  changed_when: false
+  failed_when: false
+  when: asterisk_graceful_stop_timeout | int > 0
+
+- name: Force-stop Asterisk if the graceful drain timed out or was skipped
+  systemd:
+    name: asterisk
+    state: stopped
