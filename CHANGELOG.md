@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Quickstart extension 140 (internal IVR test) didn't reset `IVR_RETRY`** — it jumped straight into `ivr-main,s,1` without clearing the variable first, so a prior failed IVR attempt's retry count carried over into the test call, unlike the `s`/`i`/`t` entry extensions which reset it. `core/management/commands/seed_quickstart.py` now sets `IVR_RETRY=0` before the `goto`.
 - **`SIPUserAdmin` change/add page returned HTTP 500** — `readonly_fields = ("realm_display", "md5_cred_display")` overrode (instead of extending) `AuditAdminMixin`'s readonly fields, so `created_at`/`modified_at` — non-editable model fields still referenced by the mixin's audit fieldset — became "editable" as far as Django's `ModelForm` was concerned, raising `FieldError` on every `/admin/core/sipuser/<id>/change/` request. `core/mixins/audit_admin.py`'s `AuditAdminMixin` now provides a `get_readonly_fields()` override that unions the audit fields in regardless of what a subclass sets, so a subclass declaring its own `readonly_fields` (as `SIPUserAdmin`/`QueueAdmin` do) can no longer drop them by accident.
 - **WebRTC (wss) SIP users were dialed into a context that was never generated** — `__make_pjsip_conf_webrtc_user()` in `core/conf.py` emitted `context=<username>` for every WebRTC endpoint instead of the user's routing table, but nothing in `make_dialplan_contexts()`/`make_routing_tables()` ever generates a context named after a username — so an inbound call from a WebRTC user landed in a nonexistent context and went nowhere. Now uses `user.routing_table.name`, matching how regular (non-WebRTC) endpoints are generated.
 - **AEL dialplan validator didn't check `goto`/`Goto()` targets** — a bare `goto +0681231231,1;` (leading unquoted `+`) passed Django's validation but was rejected by Asterisk's AEL compiler at reload time with a syntax error. `core/validators.py` now validates both the bare-`goto` and `Goto()` call forms.
@@ -53,6 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **`Settings.allow_monitor` now defaults to `True`** (migration `0090_alter_settings_allow_monitor_default_true.py`) — global call monitoring is enabled by default on new installs instead of requiring an admin to opt in.
 - **`asterisk_version` pinned to `22.11.0`** (`ansible/group_vars/all.yml`) instead of the floating `22-current`, so a fresh install always builds a known-good version rather than whatever is newest on install day.
 - **`install.sh`'s post-install output trimmed** — the optional-integration instructions (MP3 backup sync, Slack server alerts, Slack unmatched-call notifications) and interrupted-install recovery notes moved out of the script's echoed output and into `docs/{en,es,ua}/quickstart.md`, which the script now points to instead of printing everything inline.
 
