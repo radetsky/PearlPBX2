@@ -93,8 +93,8 @@ def make_pjsip_conf_transports() -> str:
             )
 
         local_nets = ""
-        if transport.local_nets is not None:
-            nets = transport.local_nets.replace(" ", "").split(",")
+        if transport.local_nets and transport.local_nets.strip():
+            nets = [n for n in transport.local_nets.replace(" ", "").split(",") if n]
             for net in nets:
                 local_nets += "local_net = " + net + "\n"
 

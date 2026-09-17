@@ -22,6 +22,47 @@ def validate_penalty_value(value):
         )
 
 
+def validate_alphanumeric(value):
+    if value == "":
+        return True
+
+    try:
+        value.encode("ascii")
+
+    except UnicodeEncodeError:
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters and digits."),
+            params={"value": value},
+        )
+
+    if not value.isalnum():
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters and digits."),
+            params={"value": value},
+        )
+
+
+def validate_sip_username(value):
+    if value == "":
+        return True
+    if not re.match(r'^[A-Za-z0-9._\-]+$', value):
+        raise ValidationError(
+            _("This value: %(value)s must contain only English letters, digits, hyphens, dots or underscores."),
+            params={"value": value},
+        )
+
+
+def min3len(value):
+    if value == "":
+        return True
+
+    if len(value) < 3:
+        raise ValidationError(
+            _("This value: %(value)s must be longer than 2 characters."),
+            params={"value": value},
+        )
+
+
 def validate_bind_ip(value):
     items = value.split(":")
     logger.info(value)
@@ -50,6 +91,19 @@ def validate_asterisk_context(value):
         )
     if len(value) > 80:
         raise ValidationError("Context name is too long (max 80 characters).")
+
+
+def validate_mac_address(value):
+    """Normalize a MAC address (strip separators/case) into XX:XX:XX:XX:XX:XX,
+    validating the result. Raises ValidationError on anything else."""
+    normalized = re.sub(r"[\s-]", "", value).upper()
+    if ":" not in normalized and len(normalized) == 12:
+        normalized = ":".join(normalized[i : i + 2] for i in range(0, 12, 2))
+    if not re.fullmatch(r"([0-9A-F]{2}:){5}[0-9A-F]{2}", normalized):
+        raise ValidationError(
+            "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX (e.g., 00:1A:2B:3C:4D:5E)"
+        )
+    return normalized
 
 
 def validate_asterisk_interface(value):
@@ -354,6 +408,11 @@ class AsteriskDialplanValidator(BaseValidator):
     # Block keywords for AEL
     BLOCK_KEYWORDS = {"if", "else", "while", "for", "switch"}
     CONDITION_OPERATORS = {"==", "!=", ">", "<", ">=", "<=", "&&", "||", "!"}
+
+    # Characters the AEL lexer accepts in an unquoted goto target component.
+    # A leading "+" (e.g. an E.164 number) is NOT in this set and is a real
+    # Asterisk AEL syntax error even though it is valid in extensions.conf.
+    GOTO_WORD_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 
     def __init__(self, limit_value=None, allowed_macros: Optional[Set[str]] = None):
         """
@@ -738,6 +797,7 @@ class AsteriskDialplanValidator(BaseValidator):
 
         if step_content.startswith("goto "):
             # goto context,extension,priority or goto extension,priority or goto priority
+            self.validate_goto_target(step_content[len("goto ") :].strip())
             return
 
         # Check format application(parameters)
@@ -763,6 +823,38 @@ class AsteriskDialplanValidator(BaseValidator):
             if step_content not in self.ASTERISK_APPLICATIONS:
                 raise ValidationError(
                     f"Unknown Asterisk application or incorrect format: '{step_content}'"
+                )
+
+    def validate_goto_target(self, target: str):
+        """Validates a goto target: priority, extension,priority or context,extension,priority"""
+        if not target:
+            raise ValidationError("goto requires a target")
+
+        parts = self.parse_parameters(target)
+        if not parts or len(parts) > 3:
+            raise ValidationError(
+                f"Invalid goto target '{target}': expected priority, "
+                "extension,priority or context,extension,priority"
+            )
+
+        for part in parts:
+            if not part:
+                raise ValidationError(f"Invalid goto target '{target}': empty component")
+
+            # Dynamic targets built from variable/function substitution are opaque here
+            if "${" in part:
+                continue
+
+            # A quoted literal bypasses the bare AEL word-token character set
+            if part.startswith('"') and part.endswith('"') and len(part) >= 2:
+                continue
+
+            if not self.GOTO_WORD_RE.match(part):
+                raise ValidationError(
+                    f"Invalid goto target component '{part}': the AEL parser only "
+                    "accepts letters, digits, '.', '-' and '_' in an unquoted goto "
+                    "target (a leading '+', e.g. an E.164 number, causes a real "
+                    "Asterisk AEL syntax error)"
                 )
 
     def is_macro_call(self, step_content: str) -> bool:
@@ -1033,6 +1125,14 @@ class AsteriskDialplanValidator(BaseValidator):
                 raise ValidationError(
                     "Playback requires at least one parameter (filename)"
                 )
+
+        # Validation for Goto
+        elif app_name == "Goto":
+            if not params:
+                raise ValidationError(
+                    "Goto requires at least one parameter (extension or priority)"
+                )
+            self.validate_goto_target(",".join(params))
 
         # Validation for Wait
         elif app_name == "Wait":

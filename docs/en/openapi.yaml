@@ -265,6 +265,54 @@ paths:
           description: AMI error or Asterisk unreachable.
         '503':
           description: Asterisk is disabled in this DEVMODE.
+  /api/v1/config/apply/:
+    post:
+      operationId: config_apply_create
+      description: |-
+        Write configs (with backup) and reload Asterisk. Superuser only.
+
+        mode=soft -> module/AEL reload (keeps active calls).
+        mode=hard -> 'core restart now' (drops every active call).
+      summary: Apply generated configs and reload Asterisk
+      tags:
+      - config
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplyChanges'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Configs applied.
+        '400':
+          description: Invalid request body.
+        '409':
+          description: Another apply is already in progress.
+        '500':
+          description: Applying the configuration failed.
+  /api/v1/config/preview/:
+    get:
+      operationId: config_preview_retrieve
+      description: |-
+        GET-only dry-run: same content as the admin's GET preview, no
+        filesystem writes, no AMI. Superuser only.
+      summary: Preview generated Asterisk config files (dry-run)
+      tags:
+      - config
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Generated config file contents.
   /api/v1/contacts/:
     get:
       operationId: contacts_list
@@ -463,6 +511,652 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/dialplan-contexts/:
+    get:
+      operationId: dialplan_contexts_list
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanContextList'
+          description: ''
+    post:
+      operationId: dialplan_contexts_create
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-contexts/{id}/:
+    get:
+      operationId: dialplan_contexts_retrieve
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+    put:
+      operationId: dialplan_contexts_update
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanContext'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body, name collides with a RoutingTable, or
+            renaming the auto-generated context.
+    patch:
+      operationId: dialplan_contexts_partial_update
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanContext'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanContext'
+          description: ''
+        '400':
+          description: Invalid request body, name collides with a RoutingTable, or
+            renaming the auto-generated context.
+    delete:
+      operationId: dialplan_contexts_destroy
+      description: |-
+        Dialplan contexts (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. The auto-generated
+        "PEARLPBX-Users" context (rendered live from SIPUser data by
+        core.conf.make_local_users_context()) cannot be renamed or deleted here,
+        and extensions cannot be created inside it — see
+        DialplanExtensionViewSet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan context.
+        required: true
+      tags:
+      - dialplan-contexts
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Context deleted.
+        '409':
+          description: Context is still referenced by a DialplanExtension or RoutingRecord
+            (PROTECT), used by a webhook's context filter, or is the auto-generated
+            context.
+  /api/v1/dialplan-extensions/:
+    get:
+      operationId: dialplan_extensions_list
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanExtensionList'
+          description: ''
+    post:
+      operationId: dialplan_extensions_create
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-extensions/{id}/:
+    get:
+      operationId: dialplan_extensions_retrieve
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+    put:
+      operationId: dialplan_extensions_update
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanExtension'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: dialplan_extensions_partial_update
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanExtension'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanExtension'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: dialplan_extensions_destroy
+      description: |-
+        Dialplan extensions within a DialplanContext
+        (core.conf.make_dialplan_contexts()).
+
+        Every method requires a staff or superuser account.
+
+        `dialplan` must reference only macros that already exist —
+        core.validators.validate_dialplan_field resolves the allowed macro set
+        from the database at request time, so create a DialplanMacro before an
+        extension that calls it with `&name();`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan extension.
+        required: true
+      tags:
+      - dialplan-extensions
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dialplan-macros/:
+    get:
+      operationId: dialplan_macros_list
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDialplanMacroList'
+          description: ''
+    post:
+      operationId: dialplan_macros_create
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/dialplan-macros/{id}/:
+    get:
+      operationId: dialplan_macros_retrieve
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+    put:
+      operationId: dialplan_macros_update
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DialplanMacro'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a macro still referenced
+            by dialplan.
+    patch:
+      operationId: dialplan_macros_partial_update
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDialplanMacro'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialplanMacro'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a macro still referenced
+            by dialplan.
+    delete:
+      operationId: dialplan_macros_destroy
+      description: |-
+        Dialplan macros (core.conf.make_dialplan_macros()).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by AEL as a literal `&name();` call embedded in
+        extension bodies (and in Settings.local_users_dial_template). Renaming
+        or deleting a macro still called that way is rejected (400/409) rather
+        than silently breaking the generated dialplan.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this dialplan macro.
+        required: true
+      tags:
+      - dialplan-macros
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Macro deleted.
+        '409':
+          description: Macro is still referenced by dialplan.
   /api/v1/lists/:
     get:
       operationId: lists_list
@@ -710,6 +1404,643 @@ paths:
       responses:
         '204':
           description: Entry deleted
+  /api/v1/phone-devices/:
+    get:
+      operationId: phone_devices_list
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPhoneDeviceList'
+          description: ''
+    post:
+      operationId: phone_devices_create
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/phone-devices/{id}/:
+    get:
+      operationId: phone_devices_retrieve
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+    put:
+      operationId: phone_devices_update
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhoneDevice'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: phone_devices_partial_update
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneDevice'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDevice'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: phone_devices_destroy
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/phone-devices/{id}/provision/:
+    post:
+      operationId: phone_devices_provision_create
+      description: |-
+        A provisioned phone device. Every method requires a staff or
+        superuser account.
+
+        Saving here only updates the database. A device's TFTP config file is
+        only (re)written by the `provision` action below, or by the admin's
+        "Apply configurations" action — neither runs implicitly on save.
+      summary: Generate this device's TFTP config file
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Phone Device.
+        required: true
+      tags:
+      - phone-devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Config file generated.
+        '400':
+          description: Provisioning failed (see 'error').
+  /api/v1/queue-members/:
+    get:
+      operationId: queue_members_list
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQueueMemberList'
+          description: ''
+    post:
+      operationId: queue_members_create
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/queue-members/{id}/:
+    get:
+      operationId: queue_members_retrieve
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+    put:
+      operationId: queue_members_update
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QueueMember'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: queue_members_partial_update
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQueueMember'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMember'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: queue_members_destroy
+      description: |-
+        A queue's static member list (see the module docstring for how this
+        differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account — this writes DB
+        configuration, unlike the AMI views above which only require
+        authentication, since it changes what reaches queues.conf, not just
+        runtime pause state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this queue member.
+        required: true
+      tags:
+      - queue-members
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/queues/:
+    get:
+      operationId: queues_list
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQueueList'
+          description: ''
+    post:
+      operationId: queues_create
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Queue'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/queues/{id}/:
+    get:
+      operationId: queues_retrieve
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+    put:
+      operationId: queues_update
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Queue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Queue'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a queue still referenced
+            by dialplan.
+    patch:
+      operationId: queues_partial_update
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQueue'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a queue still referenced
+            by dialplan.
+    delete:
+      operationId: queues_destroy
+      description: |-
+        A call queue's static configuration (see the module docstring for how
+        this differs from the AMI-backed views above).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by Asterisk's app_queue from a literal
+        `Queue(<name>,...)` AEL app-call embedded in dialplan text. Renaming or
+        deleting a queue still referenced that way is rejected (400/409) rather
+        than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - queues
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Queue deleted.
+        '409':
+          description: Queue is still referenced by dialplan.
   /api/v1/queues/members/:
     get:
       operationId: queues_members_retrieve
@@ -794,6 +2125,1287 @@ paths:
           description: Authentication credentials were not provided.
         '404':
           description: No recording exists for this uniqueid.
+  /api/v1/routing-records/:
+    get:
+      operationId: routing_records_list
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRoutingRecordList'
+          description: ''
+    post:
+      operationId: routing_records_create
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/routing-records/{id}/:
+    get:
+      operationId: routing_records_retrieve
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+    put:
+      operationId: routing_records_update
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingRecord'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: routing_records_partial_update
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingRecord'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRecord'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: routing_records_destroy
+      description: |-
+        Prefix-based routing rules within a `RoutingTable`.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `context` and
+        `routing_table` are required even though nullable in the DB — a null
+        `context` would literally emit `goto None,${EXTEN},1;` into the
+        generated dialplan, and a record with no `routing_table` never appears
+        in any table's block.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing record.
+        required: true
+      tags:
+      - routing-records
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/routing-tables/:
+    get:
+      operationId: routing_tables_list
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRoutingTableList'
+          description: ''
+    post:
+      operationId: routing_tables_create
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/routing-tables/{id}/:
+    get:
+      operationId: routing_tables_retrieve
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+    put:
+      operationId: routing_tables_update
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoutingTable'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: routing_tables_partial_update
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRoutingTable'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingTable'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: routing_tables_destroy
+      description: |-
+        Routing tables.
+
+        Every method requires a staff or superuser account.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. `name` doubles as an AEL
+        dialplan context name, so it must not collide with a `DialplanContext`
+        name. Deleting a table still in use returns 409 instead of a raw 500 or
+        a webhook silently losing its routing-table filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this routing table.
+        required: true
+      tags:
+      - routing-tables
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Routing table deleted.
+        '409':
+          description: Routing table is still used by a SIP user, peer, routing record,
+            callback service or webhook.
+  /api/v1/sip-peers/:
+    get:
+      operationId: sip_peers_list
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPPeerList'
+          description: ''
+    post:
+      operationId: sip_peers_create
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-peers/{id}/:
+    get:
+      operationId: sip_peers_retrieve
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+    put:
+      operationId: sip_peers_update
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPPeer'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_peers_partial_update
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPPeer'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPPeer'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_peers_destroy
+      description: |-
+        SIP trunks/uplinks.
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret` and the derived `md5_cred`).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a peer that still
+        belongs to a `TrunkGroup` returns 409 rather than silently shrinking the
+        group.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip peer.
+        required: true
+      tags:
+      - sip-peers
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Peer deleted.
+        '409':
+          description: Peer is still a member of a trunk group.
+  /api/v1/sip-transports/:
+    get:
+      operationId: sip_transports_list
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPTransportList'
+          description: ''
+    post:
+      operationId: sip_transports_create
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-transports/{id}/:
+    get:
+      operationId: sip_transports_retrieve
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+    put:
+      operationId: sip_transports_update
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_transports_partial_update
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPTransport'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPTransport'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_transports_destroy
+      description: |-
+        PJSIP transports.
+
+        Every method requires a staff or superuser account — `cert_file` and
+        `priv_key_file` carry TLS certificate/private key material in plaintext.
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a transport still in
+        use by a `SIPUser` or `SIPPeer` returns 409 instead of failing at the
+        database level.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip transport.
+        required: true
+      tags:
+      - sip-transports
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Transport deleted.
+        '409':
+          description: Transport is still used by a SIP user or peer.
+  /api/v1/sip-users/:
+    get:
+      operationId: sip_users_list
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSIPUserList'
+          description: ''
+    post:
+      operationId: sip_users_create
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/sip-users/{id}/:
+    get:
+      operationId: sip_users_retrieve
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+    put:
+      operationId: sip_users_update
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SIPUser'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+    patch:
+      operationId: sip_users_partial_update
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSIPUser'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SIPUser'
+          description: ''
+        '400':
+          description: Invalid request body.
+    delete:
+      operationId: sip_users_destroy
+      description: |-
+        SIP extensions (accounts).
+
+        Every method requires a staff or superuser account — this resource exposes
+        dial-out credentials (plaintext `secret`, and `realm`/`md5_cred` for
+        WebRTC/MD5 authentication).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin. Deleting a SIP user cascades
+        to any `PhoneDevice` provisioned for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sip user.
+        required: true
+      tags:
+      - sip-users
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/trunk-groups/:
+    get:
+      operationId: trunk_groups_list
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrunkGroupList'
+          description: ''
+    post:
+      operationId: trunk_groups_create
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body.
+  /api/v1/trunk-groups/{id}/:
+    get:
+      operationId: trunk_groups_retrieve
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+    put:
+      operationId: trunk_groups_update
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrunkGroup'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a group still referenced
+            by dialplan.
+    patch:
+      operationId: trunk_groups_partial_update
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTrunkGroup'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrunkGroup'
+          description: ''
+        '400':
+          description: Invalid request body, or renaming a group still referenced
+            by dialplan.
+    delete:
+      operationId: trunk_groups_destroy
+      description: |-
+        Trunk groups (failover sets of SIPPeers).
+
+        Every method requires a staff or superuser account.
+
+        `name` is looked up by services/fastagi/fastagi.py via raw SQL from a
+        literal `dial-trunk-group,<name>,` AGI call embedded in dialplan text.
+        Renaming or deleting a group still referenced that way is rejected
+        (400/409) rather than silently breaking call routing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trunk group.
+        required: true
+      tags:
+      - trunk-groups
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Trunk group deleted.
+        '409':
+          description: Trunk group is still referenced by dialplan.
   /api/v1/whitelist/:
     get:
       operationId: whitelist_list
@@ -994,6 +3606,80 @@ paths:
           description: No response body
 components:
   schemas:
+    AnnounceHoldtimeEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - once
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `once` - Once
+    AnnouncePositionEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - more
+      - limit
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `more` - More
+        * `limit` - Limit
+    AnnounceRoundSecondsEnum:
+      enum:
+      - 0
+      - 5
+      - 10
+      - 15
+      - 20
+      - 25
+      - 30
+      type: integer
+      description: |-
+        * `0` - 0
+        * `5` - 5
+        * `10` - 10
+        * `15` - 15
+        * `20` - 20
+        * `25` - 25
+        * `30` - 30
+    ApplyChanges:
+      type: object
+      description: |-
+        Required, no implicit default — unlike the admin form, where anything
+        other than the literal string "soft" silently means a hard restart.
+      properties:
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          description: |-
+            'soft': module/AEL reload, keeps active calls. 'hard': 'core restart now', drops every active call.
+
+            * `soft` - soft
+            * `hard` - hard
+      required:
+      - mode
+    AuthTypeEnum:
+      enum:
+      - userpass
+      - md5
+      type: string
+      description: |-
+        * `userpass` - Plaintext
+        * `md5` - MD5
+    AutopauseEnum:
+      enum:
+      - 'yes'
+      - 'no'
+      - all
+      type: string
+      description: |-
+        * `yes` - Yes
+        * `no` - No
+        * `all` - All
     Blacklist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1004,32 +3690,32 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для блокування
+          title: Caller ID
+          description: Caller ID to block
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
-            = блокування для всієї системи.
+          description: Destination number where calls must be blocked. Default= for
+            whole system blocking.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина блокування ідентифікатора абонента
+          description: Reason for blocking the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису чорного списку. Якщо не
-            вказано — запис постійний.
+          description: Expiration date for the blacklist entry. If not set, the entry
+            is permanent.
       required:
       - callerid
       - id
+    BlankEnum:
+      enum:
+      - ''
     Conference:
       type: object
       description: Fields shared by every endpoint that originates one or more AMI
@@ -1075,13 +3761,12 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для розпізнавання
+          title: Caller ID
+          description: Caller ID to recognize
           maxLength: 64
         name:
           type: string
-          title: Назва
-          description: Ім'я ідентифікатора абонента
+          description: Name of the caller ID
           maxLength: 64
       required:
       - callerid
@@ -1134,6 +3819,197 @@ components:
       required:
       - id
       - name
+    DialplanContext:
+      type: object
+      description: |-
+        A dialplan context (core.conf.make_dialplan_contexts()). `name`
+        shares a naming namespace with RoutingTable — the two must not collide.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Context name
+          description: Unique name for the context or routing tables, use latin symbols,
+            digits and underscores
+          maxLength: 80
+        description:
+          type: string
+          title: Context description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        extensions_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - extensions_count
+      - id
+      - modified_at
+      - modified_by
+      - name
+    DialplanExtension:
+      type: object
+      description: |-
+        A dialplan extension inside a DialplanContext
+        (core.conf.make_dialplan_contexts()). `dialplan` is checked against
+        Asterisk AEL syntax and the current set of DialplanMacro names by
+        core.validators.validate_dialplan_field — create a macro before an
+        extension that calls it.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        context:
+          type: integer
+        context_name:
+          type: string
+          readOnly: true
+        ext:
+          type: string
+          title: Extension
+          description: Asterisk extension
+          maxLength: 64
+        dialplan:
+          type: string
+          title: Extension scenario
+          description: Use Asterisk AEL syntax to define the dialplan.
+        description:
+          type: string
+          title: Extension description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - context
+      - context_name
+      - created_at
+      - created_by
+      - dialplan
+      - id
+      - modified_at
+      - modified_by
+    DialplanMacro:
+      type: object
+      description: |-
+        A dialplan macro (core.conf.make_dialplan_macros()), called from
+        extension bodies as `&name();`. `name` is looked up as literal AEL macro
+        call text — renaming or deleting a macro still called that way is
+        rejected (400/409) instead of silently breaking the generated dialplan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Macro name
+          description: Use latin symbols, digits and undercore
+          maxLength: 32
+        description:
+          type: string
+          title: Macro description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        macro:
+          type: string
+          title: Macro scenario
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - macro
+      - modified_at
+      - modified_by
+      - name
+    MethodEnum:
+      enum:
+      - default
+      - tlsv1
+      - tlsv1_1
+      - tlsv1_2
+      - sslv2
+      - sslv3
+      - sslv23
+      type: string
+      description: |-
+        * `default` - The default as defined by PJSIP. This is currently TLSv1
+        * `tlsv1` - TLSv1
+        * `tlsv1_1` - TLSv1.1
+        * `tlsv1_2` - TLSv1.2
+        * `sslv2` - SSLv2
+        * `sslv3` - SSLv3
+        * `sslv23` - SSLv2.3
+    ModeEnum:
+      enum:
+      - soft
+      - hard
+      type: string
+      description: |-
+        * `soft` - soft
+        * `hard` - hard
+    MonitorFormatEnum:
+      enum:
+      - wav
+      - gsm
+      - wav49
+      type: string
+      description: |-
+        * `wav` - WAV
+        * `gsm` - GSM
+        * `wav49` - WAV49
+    NullEnum:
+      enum:
+      - null
     Originate:
       type: object
       description: Fields shared by every endpoint that originates one or more AMI
@@ -1268,6 +4144,282 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomListName'
+    PaginatedDialplanContextList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanContext'
+    PaginatedDialplanExtensionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanExtension'
+    PaginatedDialplanMacroList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DialplanMacro'
+    PaginatedPhoneDeviceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneDevice'
+    PaginatedQueueList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Queue'
+    PaginatedQueueMemberList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueMember'
+    PaginatedRoutingRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutingRecord'
+    PaginatedRoutingTableList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutingTable'
+    PaginatedSIPPeerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPPeer'
+    PaginatedSIPTransportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPTransport'
+    PaginatedSIPUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SIPUser'
+    PaginatedTrunkGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrunkGroup'
     PaginatedWhitelistList:
       type: object
       required:
@@ -1301,29 +4453,26 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для блокування
+          title: Caller ID
+          description: Caller ID to block
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні блокуватися. Порожнє
-            = блокування для всієї системи.
+          description: Destination number where calls must be blocked. Default= for
+            whole system blocking.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина блокування ідентифікатора абонента
+          description: Reason for blocking the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису чорного списку. Якщо не
-            вказано — запис постійний.
+          description: Expiration date for the blacklist entry. If not set, the entry
+            is permanent.
     PatchedContact:
       type: object
       properties:
@@ -1333,13 +4482,12 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для розпізнавання
+          title: Caller ID
+          description: Caller ID to recognize
           maxLength: 64
         name:
           type: string
-          title: Назва
-          description: Ім'я ідентифікатора абонента
+          description: Name of the caller ID
           maxLength: 64
     PatchedCustomListName:
       type: object
@@ -1353,6 +4501,902 @@ components:
           title: Custom List Name
           description: Name of the custom list
           maxLength: 64
+    PatchedDialplanContext:
+      type: object
+      description: |-
+        A dialplan context (core.conf.make_dialplan_contexts()). `name`
+        shares a naming namespace with RoutingTable — the two must not collide.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Context name
+          description: Unique name for the context or routing tables, use latin symbols,
+            digits and underscores
+          maxLength: 80
+        description:
+          type: string
+          title: Context description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        extensions_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedDialplanExtension:
+      type: object
+      description: |-
+        A dialplan extension inside a DialplanContext
+        (core.conf.make_dialplan_contexts()). `dialplan` is checked against
+        Asterisk AEL syntax and the current set of DialplanMacro names by
+        core.validators.validate_dialplan_field — create a macro before an
+        extension that calls it.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        context:
+          type: integer
+        context_name:
+          type: string
+          readOnly: true
+        ext:
+          type: string
+          title: Extension
+          description: Asterisk extension
+          maxLength: 64
+        dialplan:
+          type: string
+          title: Extension scenario
+          description: Use Asterisk AEL syntax to define the dialplan.
+        description:
+          type: string
+          title: Extension description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedDialplanMacro:
+      type: object
+      description: |-
+        A dialplan macro (core.conf.make_dialplan_macros()), called from
+        extension bodies as `&name();`. `name` is looked up as literal AEL macro
+        call text — renaming or deleting a macro still called that way is
+        rejected (400/409) instead of silently breaking the generated dialplan.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Macro name
+          description: Use latin symbols, digits and undercore
+          maxLength: 32
+        description:
+          type: string
+          title: Macro description
+          description: Use latin symbols, digits and undercore to describe
+          maxLength: 64
+        macro:
+          type: string
+          title: Macro scenario
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedPhoneDevice:
+      type: object
+      description: |-
+        A provisioned phone (or softphone/WebRTC client). Saving here only
+        updates the database — a config file is written to the TFTP directory
+        only via the `provision` action, or the admin's "Apply configurations"
+        action.
+
+        `sip_user` is optional: a device with none assigned is a normal,
+        not-yet-configured state (see PhoneDeviceAdmin's "No SIP User" status).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        telephone_type:
+          allOf:
+          - $ref: '#/components/schemas/TelephoneTypeEnum'
+          description: |-
+            Type of telephone device
+
+            * `spa502g` - Cisco SPA502G
+            * `spa504g` - Cisco SPA504G
+            * `gxp1200` - Grandstream GXP1200
+            * `softphone` - Softphone
+            * `webrtc` - WebRTC
+            * `other` - Other
+        mac_address:
+          type: string
+          maxLength: 17
+        sip_user:
+          type: integer
+          nullable: true
+          description: SIP user associated with this device
+        sip_user_username:
+          type: string
+          nullable: true
+          readOnly: true
+        sip_server:
+          type: string
+          description: SIP server address
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedQueue:
+      type: object
+      description: |-
+        A call queue (app_queue). `name` is looked up by Asterisk's app_queue
+        from a literal `Queue(<name>,...)` AEL app-call embedded in dialplan
+        text, so renaming or deleting a queue still referenced there is
+        rejected (see Queue.find_dialplan_references()).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Queue Name
+          maxLength: 64
+        music_class:
+          type: integer
+          title: Music on hold
+        music_class_name:
+          type: string
+          readOnly: true
+        announce:
+          type: string
+          nullable: true
+          title: Announcement to the member
+          description: |-
+            An announcement may be specified which is played for the member as
+            soon as they answer a call, typically to indicate to them which queue
+            this call should be answered as, so that agents or members who are
+            listening to more than one queue can differentiated how they should
+            engage the customer
+          maxLength: 64
+        queue_announce:
+          type: string
+          nullable: true
+          title: Queue announcement to the caller
+          description: |-
+            An announcement may be specified which is played to the caller just
+            before they are bridged with an agent.
+          maxLength: 64
+        strategy:
+          $ref: '#/components/schemas/StrategyEnum'
+        service_level:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        context:
+          type: string
+          nullable: true
+          description: |-
+            If a 'context' is specified, and a caller enters an extension that
+            matches an extension within that context, they will be taken out of
+            the queue and sent to that extension.
+          maxLength: 64
+        maxlen:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Maximum Queue Length
+        timeout:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        retry:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        timeoutpriority:
+          allOf:
+          - $ref: '#/components/schemas/TimeoutpriorityEnum'
+          title: Timeout Priority
+        weight:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Queue Weight
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        autofill:
+          type: boolean
+        autopause:
+          $ref: '#/components/schemas/AutopauseEnum'
+        autopausedelay:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Autopause Delay
+        reportholdtime:
+          type: boolean
+          title: Report Hold Time
+        setinterfacevar:
+          type: boolean
+          title: Set Interface Variable
+        setqueueentryvar:
+          type: boolean
+          title: Set Queue Entry Variable
+        setqueuevar:
+          type: boolean
+          title: Set Queue Variable
+        announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        min_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Minimum Announce Frequency
+        periodic_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        random_periodic_announce:
+          type: boolean
+        relative_periodic_announce:
+          type: boolean
+        announce_holdtime:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceHoldtimeEnum'
+          title: Announce Hold Time
+          description: |-
+            Should we include estimated hold time in position announcements?
+
+            * `yes` - Yes
+            * `no` - No
+            * `once` - Once
+        announce_position:
+          $ref: '#/components/schemas/AnnouncePositionEnum'
+        announce_to_first_user:
+          type: boolean
+        announce_position_limit:
+          type: integer
+          maximum: 100
+          minimum: 0
+        announce_round_seconds:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceRoundSecondsEnum'
+          minimum: 0
+          maximum: 2147483647
+        announce_position_only_up:
+          type: boolean
+          description: Only announce the caller's position if it has improved since
+            the last announcement.
+        queue_announcement:
+          type: integer
+        queue_announcement_name:
+          type: string
+          readOnly: true
+        periodic_announce:
+          type: string
+          nullable: true
+          description: 'The list of files to announce separated by comma. Example:
+            your-call-is-important-to-us, please-wait'
+          maxLength: 255
+        monitor_format:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MonitorFormatEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        joinempty:
+          type: string
+          title: Join Empty
+          description: What to do when a caller joins a queue with no members in it?
+          maxLength: 100
+        leavewhenempty:
+          type: string
+          title: Leave When Empty
+          description: When to leave empty queue?
+          maxLength: 100
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        timeoutrestart:
+          type: boolean
+          title: Timeout Restart
+        defaultrule:
+          type: integer
+          nullable: true
+          title: Default Rule
+          description: Escalation rule from queuerules.conf
+        defaultrule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        members_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedQueueMember:
+      type: object
+      description: |-
+        A static queue member (core.conf._make_single_queue_config() emits one
+        `member =>` line per row). Distinct from GET /api/v1/queues/members/ and
+        POST /api/v1/queues/members/pause/, which read/write Asterisk's live AMI
+        state instead of this DB configuration.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        queue:
+          type: integer
+        queue_name:
+          type: string
+          readOnly: true
+        interface:
+          type: string
+          description: Queue member interface, e.g. 'PJSIP/101'.
+          maxLength: 64
+        penalty:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        member_name:
+          type: string
+          default: ''
+          maxLength: 64
+        state_interface:
+          type: string
+          nullable: true
+          maxLength: 64
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedRoutingRecord:
+      type: object
+      description: |-
+        A prefix-based routing rule within a `RoutingTable`
+        (core.conf.make_routing_tables() emits one `goto` per record, sorted by
+        Asterisk pattern specificity).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing Record Name
+          description: Name of the routing record
+          maxLength: 64
+        prefix:
+          type: string
+          title: Routing Record Prefix
+          description: Prefix of the routing record
+          maxLength: 64
+        context:
+          type: integer
+          title: Routing Record Context
+          description: Context for the routing record
+        context_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+          description: Routing table for the routing record
+        routing_table_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedRoutingTable:
+      type: object
+      description: |-
+        A routing table. Its name is both a PJSIP `context=` value and an AEL
+        dialplan context name (core.conf.make_routing_tables()), so it shares a
+        naming namespace with DialplanContext.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing table name
+          description: Unique name for the routing table and dialplan context, use
+            latin symbols, digits and underscores
+          maxLength: 80
+        routing_records_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedSIPPeer:
+      type: object
+      description: |-
+        A SIP trunk/uplink. Saving here only updates the database — changes
+        reach Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 32
+        description:
+          type: string
+          description: Describe a peer
+          maxLength: 64
+        username:
+          type: string
+          nullable: true
+          description: Username for the connection used for remote side
+          maxLength: 32
+        contact_user:
+          type: string
+          nullable: true
+          description: Contact user for registration (overrides username if set, e.g.
+            the part after / in user:pass@host/contact_user)
+          maxLength: 64
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        secret:
+          type: string
+          title: Password
+          description: Clear text password for the connection used for remote side
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        registration_uri:
+          type: string
+          nullable: true
+          title: Registration URI host[:port]
+          description: Host[:port] of the registration server (e.g. reg.provider.com:5060)
+          maxLength: 256
+        contact_uri:
+          type: string
+          nullable: true
+          title: Contact URI host[:port]
+          description: Host[:port] for AOR contact (e.g. sbc.provider.com:5061)
+          maxLength: 256
+        match_hosts:
+          type: string
+          nullable: true
+          description: Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com,
+            192.0.2.1)
+          maxLength: 512
+        registration_here:
+          type: boolean
+        registration_there:
+          type: boolean
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom peer [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom peer [aor] section
+        custom_identify_settings:
+          type: string
+          nullable: true
+          title: Identify Settings
+          description: 'Custom peer [identify] section body (after endpoint=), e.g.
+            match_header=Contact: 0001'
+        auth_realm:
+          type: string
+          readOnly: true
+        md5_cred:
+          type: string
+          readOnly: true
+        trunk_groups:
+          type: array
+          items:
+            type: string
+            title: Trunk Group Name
+            description: Name of the trunk group
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedSIPTransport:
+      type: object
+      description: |-
+        A PJSIP transport. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
+        they are written to disk under the Asterisk certificate directory only
+        when "Apply Changes" runs, and only for `protocol="tls"`.
+
+        `priv_key_file` is `null` in the list response — see it via GET on the
+        detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: 'Example: transport-udp-nat'
+          maxLength: 32
+        description:
+          type: string
+          description: 'Example: UDP + NAT for remote users'
+          maxLength: 64
+        protocol:
+          $ref: '#/components/schemas/ProtocolEnum'
+        bind:
+          type: string
+          maxLength: 256
+        local_nets:
+          type: string
+          nullable: true
+          description: Comma-separated CIDR networks, e.g. '10.0.0.0/16, 192.168.0.0/24'.
+          maxLength: 256
+        external_media_address:
+          type: string
+          nullable: true
+          title: External RTP IP address
+          description: This is the external IP address to use in RTP handling
+        external_signaling_address:
+          type: string
+          nullable: true
+          title: External SIP IP address
+          description: This is much like the external_media_address setting, but for
+            SIP signaling instead of RTP media.
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        verify_server:
+          type: boolean
+          title: Verify server certificate
+          description: Require and verify the server TLS certificate (verify_server=yes)
+        allow_reload:
+          type: boolean
+          description: Allow transport to be reloaded (allow_reload=yes)
+        cert_file:
+          type: string
+        priv_key_file:
+          type: string
+        ca_list_file:
+          type: string
+        has_tls_material:
+          type: boolean
+          readOnly: true
+        sip_users_count:
+          type: integer
+          readOnly: true
+          default: 0
+        sip_peers_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedSIPUser:
+      type: object
+      description: |-
+        A SIP extension. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        username:
+          type: string
+          maxLength: 32
+        secret:
+          type: string
+          title: Password
+          description: Password for the connection
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        extension:
+          type: string
+          maxLength: 32
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        custom_extension:
+          type: string
+          nullable: true
+          title: Extension Settings
+          description: Custom user extension section for incoming calls
+        custom_settings:
+          type: string
+          nullable: true
+          title: Settings
+          description: Custom user settings
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom user [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom user [aor] section
+        pjsip_endpoint:
+          type: string
+          readOnly: true
+        is_webrtc:
+          type: boolean
+          nullable: true
+          readOnly: true
+        realm:
+          type: string
+          nullable: true
+          readOnly: true
+        md5_cred:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedTrunkGroup:
+      type: object
+      description: |-
+        A trunk group (failover set of SIPPeers). `name` is looked up by
+        services/fastagi/fastagi.py via raw SQL from a literal
+        `dial-trunk-group,<name>,` AGI call embedded in dialplan text, so renaming
+        or deleting a group still referenced there is rejected.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Trunk Group Name
+          description: Name of the trunk group
+          maxLength: 64
+        sip_peers:
+          type: array
+          items:
+            type: integer
+        sip_peer_names:
+          type: array
+          items:
+            type: string
+            title: Channel name
+            description: Name of the channel
+          readOnly: true
+        sip_peers_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
     PatchedWhitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1363,29 +5407,393 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для дозволу
+          title: Caller ID
+          description: Caller ID to allow
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
-            = дозвіл для всієї системи.
+          description: Destination number where calls must be allowed. Default= for
+            whole system allowing.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина дозволу ідентифікатора абонента
+          description: Reason for allowing the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
-            — запис постійний.
+          description: Expiration date for the whitelist entry. If not set, the entry
+            is permanent.
+    PhoneDevice:
+      type: object
+      description: |-
+        A provisioned phone (or softphone/WebRTC client). Saving here only
+        updates the database — a config file is written to the TFTP directory
+        only via the `provision` action, or the admin's "Apply configurations"
+        action.
+
+        `sip_user` is optional: a device with none assigned is a normal,
+        not-yet-configured state (see PhoneDeviceAdmin's "No SIP User" status).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        telephone_type:
+          allOf:
+          - $ref: '#/components/schemas/TelephoneTypeEnum'
+          description: |-
+            Type of telephone device
+
+            * `spa502g` - Cisco SPA502G
+            * `spa504g` - Cisco SPA504G
+            * `gxp1200` - Grandstream GXP1200
+            * `softphone` - Softphone
+            * `webrtc` - WebRTC
+            * `other` - Other
+        mac_address:
+          type: string
+          maxLength: 17
+        sip_user:
+          type: integer
+          nullable: true
+          description: SIP user associated with this device
+        sip_user_username:
+          type: string
+          nullable: true
+          readOnly: true
+        sip_server:
+          type: string
+          description: SIP server address
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - mac_address
+      - modified_at
+      - modified_by
+      - sip_user_username
+    ProtocolEnum:
+      enum:
+      - udp
+      - tcp
+      - tls
+      - wss
+      type: string
+      description: |-
+        * `udp` - UDP
+        * `tcp` - TCP
+        * `tls` - TLS
+        * `wss` - WSS
+    Queue:
+      type: object
+      description: |-
+        A call queue (app_queue). `name` is looked up by Asterisk's app_queue
+        from a literal `Queue(<name>,...)` AEL app-call embedded in dialplan
+        text, so renaming or deleting a queue still referenced there is
+        rejected (see Queue.find_dialplan_references()).
+
+        Saving here only updates the database; changes reach Asterisk after a
+        superuser runs "Apply Changes" in the admin.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Queue Name
+          maxLength: 64
+        music_class:
+          type: integer
+          title: Music on hold
+        music_class_name:
+          type: string
+          readOnly: true
+        announce:
+          type: string
+          nullable: true
+          title: Announcement to the member
+          description: |-
+            An announcement may be specified which is played for the member as
+            soon as they answer a call, typically to indicate to them which queue
+            this call should be answered as, so that agents or members who are
+            listening to more than one queue can differentiated how they should
+            engage the customer
+          maxLength: 64
+        queue_announce:
+          type: string
+          nullable: true
+          title: Queue announcement to the caller
+          description: |-
+            An announcement may be specified which is played to the caller just
+            before they are bridged with an agent.
+          maxLength: 64
+        strategy:
+          $ref: '#/components/schemas/StrategyEnum'
+        service_level:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        context:
+          type: string
+          nullable: true
+          description: |-
+            If a 'context' is specified, and a caller enters an extension that
+            matches an extension within that context, they will be taken out of
+            the queue and sent to that extension.
+          maxLength: 64
+        maxlen:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Maximum Queue Length
+        timeout:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        retry:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        timeoutpriority:
+          allOf:
+          - $ref: '#/components/schemas/TimeoutpriorityEnum'
+          title: Timeout Priority
+        weight:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Queue Weight
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        autofill:
+          type: boolean
+        autopause:
+          $ref: '#/components/schemas/AutopauseEnum'
+        autopausedelay:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Autopause Delay
+        reportholdtime:
+          type: boolean
+          title: Report Hold Time
+        setinterfacevar:
+          type: boolean
+          title: Set Interface Variable
+        setqueueentryvar:
+          type: boolean
+          title: Set Queue Entry Variable
+        setqueuevar:
+          type: boolean
+          title: Set Queue Variable
+        announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        min_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Minimum Announce Frequency
+        periodic_announce_frequency:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        random_periodic_announce:
+          type: boolean
+        relative_periodic_announce:
+          type: boolean
+        announce_holdtime:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceHoldtimeEnum'
+          title: Announce Hold Time
+          description: |-
+            Should we include estimated hold time in position announcements?
+
+            * `yes` - Yes
+            * `no` - No
+            * `once` - Once
+        announce_position:
+          $ref: '#/components/schemas/AnnouncePositionEnum'
+        announce_to_first_user:
+          type: boolean
+        announce_position_limit:
+          type: integer
+          maximum: 100
+          minimum: 0
+        announce_round_seconds:
+          allOf:
+          - $ref: '#/components/schemas/AnnounceRoundSecondsEnum'
+          minimum: 0
+          maximum: 2147483647
+        announce_position_only_up:
+          type: boolean
+          description: Only announce the caller's position if it has improved since
+            the last announcement.
+        queue_announcement:
+          type: integer
+        queue_announcement_name:
+          type: string
+          readOnly: true
+        periodic_announce:
+          type: string
+          nullable: true
+          description: 'The list of files to announce separated by comma. Example:
+            your-call-is-important-to-us, please-wait'
+          maxLength: 255
+        monitor_format:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MonitorFormatEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        joinempty:
+          type: string
+          title: Join Empty
+          description: What to do when a caller joins a queue with no members in it?
+          maxLength: 100
+        leavewhenempty:
+          type: string
+          title: Leave When Empty
+          description: When to leave empty queue?
+          maxLength: 100
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        timeoutrestart:
+          type: boolean
+          title: Timeout Restart
+        defaultrule:
+          type: integer
+          nullable: true
+          title: Default Rule
+          description: Escalation rule from queuerules.conf
+        defaultrule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        members_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - defaultrule_name
+      - id
+      - members_count
+      - modified_at
+      - modified_by
+      - music_class
+      - music_class_name
+      - name
+      - queue_announcement
+      - queue_announcement_name
+      - strategy
+    QueueMember:
+      type: object
+      description: |-
+        A static queue member (core.conf._make_single_queue_config() emits one
+        `member =>` line per row). Distinct from GET /api/v1/queues/members/ and
+        POST /api/v1/queues/members/pause/, which read/write Asterisk's live AMI
+        state instead of this DB configuration.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        queue:
+          type: integer
+        queue_name:
+          type: string
+          readOnly: true
+        interface:
+          type: string
+          description: Queue member interface, e.g. 'PJSIP/101'.
+          maxLength: 64
+        penalty:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        member_name:
+          type: string
+          default: ''
+          maxLength: 64
+        state_interface:
+          type: string
+          nullable: true
+          maxLength: 64
+        ringinuse:
+          type: boolean
+          title: Ring In Use
+        wrapuptime:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Wrap-Up Time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - interface
+      - modified_at
+      - modified_by
+      - queue
+      - queue_name
     QueueMemberList:
       type: object
       description: Response shape of GET /api/v1/queues/members/.
@@ -1454,6 +5862,565 @@ components:
       - queue
       - state_interface
       - status
+    RoutingRecord:
+      type: object
+      description: |-
+        A prefix-based routing rule within a `RoutingTable`
+        (core.conf.make_routing_tables() emits one `goto` per record, sorted by
+        Asterisk pattern specificity).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing Record Name
+          description: Name of the routing record
+          maxLength: 64
+        prefix:
+          type: string
+          title: Routing Record Prefix
+          description: Prefix of the routing record
+          maxLength: 64
+        context:
+          type: integer
+          title: Routing Record Context
+          description: Context for the routing record
+        context_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+          description: Routing table for the routing record
+        routing_table_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - context
+      - context_name
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - prefix
+      - routing_table
+      - routing_table_name
+    RoutingTable:
+      type: object
+      description: |-
+        A routing table. Its name is both a PJSIP `context=` value and an AEL
+        dialplan context name (core.conf.make_routing_tables()), so it shares a
+        naming namespace with DialplanContext.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Routing table name
+          description: Unique name for the routing table and dialplan context, use
+            latin symbols, digits and underscores
+          maxLength: 80
+        routing_records_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - routing_records_count
+    SIPPeer:
+      type: object
+      description: |-
+        A SIP trunk/uplink. Saving here only updates the database — changes
+        reach Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 32
+        description:
+          type: string
+          description: Describe a peer
+          maxLength: 64
+        username:
+          type: string
+          nullable: true
+          description: Username for the connection used for remote side
+          maxLength: 32
+        contact_user:
+          type: string
+          nullable: true
+          description: Contact user for registration (overrides username if set, e.g.
+            the part after / in user:pass@host/contact_user)
+          maxLength: 64
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        secret:
+          type: string
+          title: Password
+          description: Clear text password for the connection used for remote side
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        registration_uri:
+          type: string
+          nullable: true
+          title: Registration URI host[:port]
+          description: Host[:port] of the registration server (e.g. reg.provider.com:5060)
+          maxLength: 256
+        contact_uri:
+          type: string
+          nullable: true
+          title: Contact URI host[:port]
+          description: Host[:port] for AOR contact (e.g. sbc.provider.com:5061)
+          maxLength: 256
+        match_hosts:
+          type: string
+          nullable: true
+          description: Comma-separated list of hosts or IPs without ports (e.g. proxy1.provider.com,
+            192.0.2.1)
+          maxLength: 512
+        registration_here:
+          type: boolean
+        registration_there:
+          type: boolean
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom peer [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom peer [aor] section
+        custom_identify_settings:
+          type: string
+          nullable: true
+          title: Identify Settings
+          description: 'Custom peer [identify] section body (after endpoint=), e.g.
+            match_header=Contact: 0001'
+        auth_realm:
+          type: string
+          readOnly: true
+        md5_cred:
+          type: string
+          readOnly: true
+        trunk_groups:
+          type: array
+          items:
+            type: string
+            title: Trunk Group Name
+            description: Name of the trunk group
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - auth_realm
+      - created_at
+      - created_by
+      - id
+      - md5_cred
+      - modified_at
+      - modified_by
+      - name
+      - routing_table
+      - routing_table_name
+      - transport
+      - transport_name
+      - trunk_groups
+    SIPTransport:
+      type: object
+      description: |-
+        A PJSIP transport. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `cert_file`/`priv_key_file`/`ca_list_file` hold PEM contents, not paths —
+        they are written to disk under the Asterisk certificate directory only
+        when "Apply Changes" runs, and only for `protocol="tls"`.
+
+        `priv_key_file` is `null` in the list response — see it via GET on the
+        detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: 'Example: transport-udp-nat'
+          maxLength: 32
+        description:
+          type: string
+          description: 'Example: UDP + NAT for remote users'
+          maxLength: 64
+        protocol:
+          $ref: '#/components/schemas/ProtocolEnum'
+        bind:
+          type: string
+          maxLength: 256
+        local_nets:
+          type: string
+          nullable: true
+          description: Comma-separated CIDR networks, e.g. '10.0.0.0/16, 192.168.0.0/24'.
+          maxLength: 256
+        external_media_address:
+          type: string
+          nullable: true
+          title: External RTP IP address
+          description: This is the external IP address to use in RTP handling
+        external_signaling_address:
+          type: string
+          nullable: true
+          title: External SIP IP address
+          description: This is much like the external_media_address setting, but for
+            SIP signaling instead of RTP media.
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        verify_server:
+          type: boolean
+          title: Verify server certificate
+          description: Require and verify the server TLS certificate (verify_server=yes)
+        allow_reload:
+          type: boolean
+          description: Allow transport to be reloaded (allow_reload=yes)
+        cert_file:
+          type: string
+        priv_key_file:
+          type: string
+        ca_list_file:
+          type: string
+        has_tls_material:
+          type: boolean
+          readOnly: true
+        sip_users_count:
+          type: integer
+          readOnly: true
+          default: 0
+        sip_peers_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - has_tls_material
+      - id
+      - modified_at
+      - modified_by
+      - sip_peers_count
+      - sip_users_count
+    SIPUser:
+      type: object
+      description: |-
+        A SIP extension. Saving here only updates the database — changes reach
+        Asterisk after a superuser runs "Apply Changes" in the admin.
+
+        `secret`/`md5_cred` are `null` in the list response — see them via GET
+        on the detail route, or in the create/update response.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        username:
+          type: string
+          maxLength: 32
+        secret:
+          type: string
+          title: Password
+          description: Password for the connection
+          maxLength: 32
+        transport:
+          type: integer
+        transport_name:
+          type: string
+          readOnly: true
+        nat:
+          type: boolean
+          description: Enable NAT traversal for this peer
+        extension:
+          type: string
+          maxLength: 32
+        routing_table:
+          type: integer
+        routing_table_name:
+          type: string
+          readOnly: true
+        auth_type:
+          nullable: true
+          description: |-
+            Type of authentication
+
+            * `userpass` - Plaintext
+            * `md5` - MD5
+          oneOf:
+          - $ref: '#/components/schemas/AuthTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        custom_extension:
+          type: string
+          nullable: true
+          title: Extension Settings
+          description: Custom user extension section for incoming calls
+        custom_settings:
+          type: string
+          nullable: true
+          title: Settings
+          description: Custom user settings
+        custom_auth_settings:
+          type: string
+          nullable: true
+          title: Auth Settings
+          description: Custom user [auth] section
+        custom_aor_settings:
+          type: string
+          nullable: true
+          title: AOR Settings
+          description: Custom user [aor] section
+        pjsip_endpoint:
+          type: string
+          readOnly: true
+        is_webrtc:
+          type: boolean
+          nullable: true
+          readOnly: true
+        realm:
+          type: string
+          nullable: true
+          readOnly: true
+        md5_cred:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - extension
+      - id
+      - is_webrtc
+      - md5_cred
+      - modified_at
+      - modified_by
+      - name
+      - pjsip_endpoint
+      - realm
+      - routing_table
+      - routing_table_name
+      - secret
+      - transport
+      - transport_name
+      - username
+    StrategyEnum:
+      enum:
+      - ringall
+      - leastrecent
+      - fewestcalls
+      - random
+      - rrmemory
+      - rrordered
+      - linear
+      - wrandom
+      type: string
+      description: |-
+        * `ringall` - Ring All
+        * `leastrecent` - Least Recent
+        * `fewestcalls` - Fewest Calls
+        * `random` - Random
+        * `rrmemory` - Round Robin Memory
+        * `rrordered` - Round Robin Ordered
+        * `linear` - Linear as configured
+        * `wrandom` - Weighted Random
+    TelephoneTypeEnum:
+      enum:
+      - spa502g
+      - spa504g
+      - gxp1200
+      - softphone
+      - webrtc
+      - other
+      type: string
+      description: |-
+        * `spa502g` - Cisco SPA502G
+        * `spa504g` - Cisco SPA504G
+        * `gxp1200` - Grandstream GXP1200
+        * `softphone` - Softphone
+        * `webrtc` - WebRTC
+        * `other` - Other
+    TimeoutpriorityEnum:
+      enum:
+      - app
+      - conf
+      type: string
+      description: |-
+        * `app` - Application
+        * `conf` - Configuration
+    TrunkGroup:
+      type: object
+      description: |-
+        A trunk group (failover set of SIPPeers). `name` is looked up by
+        services/fastagi/fastagi.py via raw SQL from a literal
+        `dial-trunk-group,<name>,` AGI call embedded in dialplan text, so renaming
+        or deleting a group still referenced there is rejected.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Trunk Group Name
+          description: Name of the trunk group
+          maxLength: 64
+        sip_peers:
+          type: array
+          items:
+            type: integer
+        sip_peer_names:
+          type: array
+          items:
+            type: string
+            title: Channel name
+            description: Name of the channel
+          readOnly: true
+        sip_peers_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - modified_at
+      - modified_by
+      - name
+      - sip_peer_names
+      - sip_peers_count
     Whitelist:
       type: object
       description: Shared base for Blacklist/Whitelist (identical fields).
@@ -1464,29 +6431,26 @@ components:
           readOnly: true
         callerid:
           type: string
-          title: Ідентифікатор абонента
-          description: Ідентифікатор абонента для дозволу
+          title: Caller ID
+          description: Caller ID to allow
           maxLength: 64
         destination:
           type: string
           default: ''
-          title: Призначення
-          description: Номер призначення, де дзвінки повинні дозволятися. Порожнє
-            = дозвіл для всієї системи.
+          description: Destination number where calls must be allowed. Default= for
+            whole system allowing.
           maxLength: 64
         reason:
           type: string
           default: ''
-          title: Причина
-          description: Причина дозволу ідентифікатора абонента
+          description: Reason for allowing the caller ID
           maxLength: 64
         expiration_date:
           type: string
           format: date-time
           nullable: true
-          title: Дата закінчення
-          description: Дата закінчення терміну дії запису білого списку. Якщо не вказано
-            — запис постійний.
+          description: Expiration date for the whitelist entry. If not set, the entry
+            is permanent.
       required:
       - callerid
       - id

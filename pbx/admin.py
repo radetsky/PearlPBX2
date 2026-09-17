@@ -135,18 +135,26 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
 
     @transaction.atomic
     def apply_changes(self, cfgfiles):
+        """Write cfgfiles as versioned ConfigurationFile rows and to disk.
+
+        Returns the basenames of files whose content actually changed (i.e.
+        got a new version) on this apply.
+        """
         created_configuration_files = []
+        changed_names = []
         for path, content in cfgfiles.items():
-            cfg_object = self.create_configuration_file(
-                path.split("/")[-1], path, content
-            )
+            name = path.split("/")[-1]
+            cfg_object, changed = self.create_configuration_file(name, path, content)
             created_configuration_files.append(cfg_object)
+            if changed:
+                changed_names.append(name)
 
         system_configuration = SystemConfiguration.objects.create()
         system_configuration.configuration_files.set(created_configuration_files)
         self.backup_dir()
         write_tls_cert_files()
         self.apply_to_fs(system_configuration)
+        return changed_names
 
     def apply_to_fs(self, system_configuration):
         # try to mkdir ASTERISK_ROOT_DIR
@@ -192,6 +200,8 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
             tar.add(source_dir)
 
     def create_configuration_file(self, name, path, content):
+        """Returns (ConfigurationFile, changed: bool) — changed is False when
+        the content is byte-identical to the latest existing version."""
         # fetch previous versions of the file
         prev_cfg = (
             ConfigurationFile.objects.filter(path=path).order_by("-version").first()
@@ -200,12 +210,13 @@ class ApplyChangesView(UserPassesTestMixin, TemplateView):
             # Compare the content of the previous version with the new content
             if prev_cfg.content == content:
                 # If the content is the same, return the previous version
-                return prev_cfg
+                return prev_cfg, False
 
             version = prev_cfg.version + 1
         else:
             version = 1
 
-        return ConfigurationFile.objects.create(
+        cfg_object = ConfigurationFile.objects.create(
             name=name, content=content, path=path, version=version
         )
+        return cfg_object, True

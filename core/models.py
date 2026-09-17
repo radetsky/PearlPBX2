@@ -4,6 +4,7 @@
 from django.db.models import Q, F
 from django.db import models
 import os
+import re
 from uuid import uuid4
 
 import django.db.models.deletion as deletion
@@ -63,7 +64,7 @@ class AuditFields(models.Model):
         abstract = True
 
 
-class SIPTransport(models.Model):
+class SIPTransport(AuditFields):
     PROTOCOL_CHOICES = [
         ("udp", _("UDP")),
         ("tcp", _("TCP")),
@@ -159,8 +160,11 @@ class SIPTransport(models.Model):
     # various TLS specific options below:
     # cipher - do not use in UI "until it sleeps". Too many values. Users usually do not know it.
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("01. SIP Transports")
+
+    def __str__(self):
+        return self.name
 
 
 class DialplanGlobalVariable(models.Model):
@@ -197,7 +201,14 @@ class DialplanGlobalVariable(models.Model):
         return self.name
 
 
-class DialplanContext(models.Model):
+class DialplanContext(AuditFields):
+    # PEARLPBX-Users is generated live from SIPUser rows by
+    # core.conf.make_local_users_context() and excluded from
+    # make_dialplan_contexts() — renaming or deleting the stored row would
+    # either orphan RoutingRecord.getUsersOrCreateUsers()'s PROTECT-ed
+    # reference or make it render twice under two names.
+    RESERVED_NAMES = {settings.PEARLPBX_DEFAULT_ROUTING_RECORD}
+
     name = models.CharField(
         max_length=80,
         unique=True,
@@ -218,7 +229,7 @@ class DialplanContext(models.Model):
         help_text=_("Use latin symbols, digits and undercore to describe"),
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "dialplan_contexts"
         verbose_name_plural = _("04. Dialplan contexts")
 
@@ -235,6 +246,19 @@ class DialplanContext(models.Model):
             raise ValidationError(
                 {"name": _('Context name "%(name)s" already exists in RoutingTable.') % {"name": self.name}}
             )
+        if self.pk:
+            old_name = (
+                DialplanContext.objects.filter(pk=self.pk)
+                .values_list("name", flat=True)
+                .first()
+            )
+            if old_name in self.RESERVED_NAMES and old_name != self.name:
+                raise ValidationError(
+                    {
+                        "name": _('Cannot rename the auto-generated "%(name)s" context.')
+                        % {"name": old_name}
+                    }
+                )
 
     def save(self, *args, **kwargs):
         if (
@@ -246,6 +270,23 @@ class DialplanContext(models.Model):
                 f'Context name "{self.name}" already exists in RoutingTable'
             )
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.name in self.RESERVED_NAMES:
+            raise ValidationError(
+                _('Cannot delete the auto-generated "%(name)s" context.')
+                % {"name": self.name}
+            )
+        # Webhook.contexts is a plain M2M (no PROTECT), unlike
+        # DialplanExtension.context and RoutingRecord.context — without this
+        # check, deleting a context still used by a webhook's context filter
+        # would silently detach it, same guard as RoutingTable.delete().
+        if self.webhooks.exists():
+            names = ", ".join(self.webhooks.values_list("name", flat=True))
+            raise ValidationError(
+                _('Cannot delete: still used by webhook(s): %(names)s') % {"names": names}
+            )
+        super().delete(*args, **kwargs)
 
     @staticmethod
     def getUsersOrCreateUsers():
@@ -263,7 +304,7 @@ class DialplanContext(models.Model):
         return default_context
 
 
-class RoutingTable(models.Model):
+class RoutingTable(AuditFields):
     name = models.CharField(
         max_length=80,
         unique=True,
@@ -274,7 +315,7 @@ class RoutingTable(models.Model):
         validators=[validate_asterisk_context],
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("15. Routing Tables")
 
     def __str__(self):
@@ -302,6 +343,19 @@ class RoutingTable(models.Model):
             )
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        # Webhook.routing_tables is a plain M2M (no PROTECT), unlike the four
+        # FKs onto this model — without this check, deleting a table still
+        # used by a webhook's routing-table filter would silently detach it
+        # via the admin or shell instead of raising, same as the API's
+        # RoutingTableViewSet.perform_destroy() already prevents.
+        if self.webhooks.exists():
+            names = ", ".join(self.webhooks.values_list("name", flat=True))
+            raise ValidationError(
+                _('Cannot delete: still used by webhook(s): %(names)s') % {"names": names}
+            )
+        super().delete(*args, **kwargs)
+
     @staticmethod
     def getDefaultOrCreateDefault():
         # Find default PEARLPBX routing table
@@ -317,7 +371,7 @@ class RoutingTable(models.Model):
         return default_routing_table
 
 
-class SIPUser(models.Model):
+class SIPUser(AuditFields):
     AUTHTYPE_CHOICES = [
         ("userpass", _("Plaintext")),
         ("md5", _("MD5")),
@@ -446,11 +500,11 @@ class SIPUser(models.Model):
     def __str__(self):
         return f"{self.username} ({self.name})"
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("02. SIP Users")
 
 
-class SIPPeer(models.Model):
+class SIPPeer(AuditFields):
     AUTHTYPE_CHOICES = [
         ("userpass", _("Plaintext")),
         ("md5", _("MD5")),
@@ -598,14 +652,14 @@ class SIPPeer(models.Model):
             f"{self.username}:{self.auth_realm}:{self.secret}".encode("utf-8")
         ).hexdigest()
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("03. SIP Uplinks and Peers")
 
     def __str__(self) -> str:
         return self.name
 
 
-class DialplanMacro(models.Model):
+class DialplanMacro(AuditFields):
     name = models.CharField(
         max_length=32,
         unique=True,
@@ -613,6 +667,7 @@ class DialplanMacro(models.Model):
         blank=False,
         verbose_name=_("Macro name"),
         help_text=_("Use latin symbols, digits and undercore"),
+        validators=[validate_ael_variable_name],
     )
     description = models.CharField(
         max_length=64,
@@ -624,12 +679,74 @@ class DialplanMacro(models.Model):
     )
     macro = models.TextField(verbose_name=_("Macro scenario"))
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "dialplan_macros"
         verbose_name_plural = _("06. Dialplan macros")
 
+    def __str__(self):
+        return self.name
 
-class DialplanExtension(models.Model):
+    def clean(self):
+        super().clean()
+        if self.pk:
+            old_name = (
+                DialplanMacro.objects.filter(pk=self.pk)
+                .values_list("name", flat=True)
+                .first()
+            )
+            if old_name and old_name != self.name:
+                refs = self.find_dialplan_references(old_name)
+                if refs:
+                    raise ValidationError(
+                        {
+                            "name": _(
+                                'Cannot rename: still referenced by dialplan: %(refs)s'
+                            )
+                            % {"refs": ", ".join(refs)}
+                        }
+                    )
+
+    def delete(self, *args, **kwargs):
+        refs = self.find_dialplan_references(self.name)
+        if refs:
+            raise ValidationError(
+                _('Cannot delete: still referenced by dialplan: %(refs)s')
+                % {"refs": ", ".join(refs)}
+            )
+        super().delete(*args, **kwargs)
+
+    @staticmethod
+    def find_dialplan_references(name):
+        """Best-effort text search for an `&<name>()` AEL macro call in
+        dialplan extension/macro bodies and in the local-users dial template.
+
+        Cannot see a name reached only through an Asterisk variable — a known
+        limitation of a static text scan. Also cannot see
+        DEFAULT_LOCAL_USERS_DIAL_TEMPLATE, the Python-level fallback used
+        when no Settings row exists or its field is blank.
+
+        Unlike Queue.find_dialplan_references(), this match is
+        case-sensitive: AEL resolves macro calls by exact name.
+        """
+        pattern = re.compile(r"&\s*" + re.escape(name) + r"\s*\(")
+        refs = []
+        for ext in DialplanExtension.objects.filter(dialplan__contains=name):
+            if pattern.search(ext.dialplan):
+                refs.append(f"extension #{ext.pk} ({ext.ext})")
+        for macro in DialplanMacro.objects.filter(macro__contains=name).exclude(
+            name=name
+        ):
+            if pattern.search(macro.macro):
+                refs.append(f'macro "{macro.name}"')
+        for setting in Settings.objects.filter(
+            local_users_dial_template__contains=name
+        ):
+            if pattern.search(setting.local_users_dial_template):
+                refs.append("Settings.local_users_dial_template")
+        return refs
+
+
+class DialplanExtension(AuditFields):
     context = models.ForeignKey(
         DialplanContext,
         related_name="extensions",
@@ -665,7 +782,7 @@ class DialplanExtension(models.Model):
     def context_name(self):
         return self.context.name
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "dialplan_extensions"
         verbose_name_plural = _("05. Dialplan extensions")
 
@@ -674,6 +791,22 @@ class DialplanExtension(models.Model):
                 fields=["context", "ext"], name="unique extension inside context"
             )
         ]
+
+    def clean(self):
+        super().clean()
+        # DialplanExtensionSerializer.validate_context() rejects this at the
+        # API layer, but the admin's DialplanExtensionForm has no matching
+        # check — without this, the admin can silently save an extension
+        # into a context that make_dialplan_contexts() never renders.
+        if self.context_id and self.context.name in DialplanContext.RESERVED_NAMES:
+            raise ValidationError(
+                {
+                    "context": _(
+                        'This context is generated live from SIP users; extensions '
+                        'stored here are never emitted into extensions.ael.'
+                    )
+                }
+            )
 
 
 class ManagerUsers(models.Model):
@@ -995,7 +1128,7 @@ class MusicOnHoldPlaylistEntry(models.Model):
         verbose_name_plural = _("07. Music on hold playlist entries")
 
 
-class Queue(models.Model):
+class Queue(AuditFields):
     STRATEGY_CHOICES = [
         ("ringall", _("Ring All")),
         ("leastrecent", _("Least Recent")),
@@ -1203,7 +1336,7 @@ the queue and sent to that extension."""),
         help_text=_("Escalation rule from queuerules.conf"),
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "queues"
         verbose_name_plural = _("09. Queues")
 
@@ -1216,8 +1349,61 @@ the queue and sent to that extension."""),
     def __timeoutrestart__(self):
         return "yes" if self.timeoutrestart else "no"
 
+    def clean(self):
+        super().clean()
+        if self.pk:
+            old_name = (
+                Queue.objects.filter(pk=self.pk).values_list("name", flat=True).first()
+            )
+            if old_name and old_name != self.name:
+                refs = self.find_dialplan_references(old_name)
+                if refs:
+                    raise ValidationError(
+                        {
+                            "name": _(
+                                'Cannot rename: still referenced by dialplan: %(refs)s'
+                            )
+                            % {"refs": ", ".join(refs)}
+                        }
+                    )
 
-class QueueMember(models.Model):
+    def delete(self, *args, **kwargs):
+        refs = self.find_dialplan_references(self.name)
+        if refs:
+            raise ValidationError(
+                _('Cannot delete: still referenced by dialplan: %(refs)s')
+                % {"refs": ", ".join(refs)}
+            )
+        super().delete(*args, **kwargs)
+
+    @staticmethod
+    def find_dialplan_references(name):
+        """Best-effort text search for a `Queue(<name>,...)` AEL app-call in
+        dialplan extension/macro bodies.
+
+        Cannot see a name reached only through an Asterisk variable (e.g.
+        `Queue(${QUEUENAME},...)`) — a known limitation of a static text scan.
+
+        Unlike TrunkGroup.find_dialplan_references(), this match is
+        case-insensitive: Asterisk's app_queue looks up the queue name with
+        strcasecmp(), so `Queue(sales,...)` really does reach a queue named
+        "Sales" — matching case-sensitively here would silently let a rename
+        or delete break a still-working dialplan call.
+        """
+        pattern = re.compile(
+            r"Queue\s*\(\s*" + re.escape(name) + r"\s*[,)]", re.IGNORECASE
+        )
+        refs = []
+        for ext in DialplanExtension.objects.filter(dialplan__icontains=name):
+            if pattern.search(ext.dialplan):
+                refs.append(f"extension #{ext.pk} ({ext.ext})")
+        for macro in DialplanMacro.objects.filter(macro__icontains=name):
+            if pattern.search(macro.macro):
+                refs.append(f'macro "{macro.name}"')
+        return refs
+
+
+class QueueMember(AuditFields):
     queue = models.ForeignKey(
         Queue, on_delete=models.CASCADE, related_name="members", verbose_name=_("Queue")
     )
@@ -1232,7 +1418,7 @@ class QueueMember(models.Model):
     ringinuse = models.BooleanField(default=False, verbose_name=_("Ring In Use"))
     wrapuptime = models.PositiveIntegerField(default=0, verbose_name=_("Wrap-Up Time"))
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         db_table = "queue_members"
         verbose_name_plural = _("10. Queue Members")
 
@@ -1553,7 +1739,7 @@ class CallQueueGlobalSettings(models.Model):
         verbose_name_plural = _("12. Queue Global Settings")
 
 
-class TrunkGroup(models.Model):
+class TrunkGroup(AuditFields):
     name = models.CharField(
         max_length=64,
         unique=True,
@@ -1568,14 +1754,67 @@ class TrunkGroup(models.Model):
         verbose_name=_("SIP Peers"),
     )
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("14. Trunk Groups")
 
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        if self.pk:
+            old_name = (
+                TrunkGroup.objects.filter(pk=self.pk).values_list("name", flat=True).first()
+            )
+            if old_name and old_name != self.name:
+                refs = self.find_dialplan_references(old_name)
+                if refs:
+                    raise ValidationError(
+                        {
+                            "name": _(
+                                'Cannot rename: still referenced by dialplan: %(refs)s'
+                            )
+                            % {"refs": ", ".join(refs)}
+                        }
+                    )
 
-class RoutingRecord(models.Model):
+    def delete(self, *args, **kwargs):
+        refs = self.find_dialplan_references(self.name)
+        if refs:
+            raise ValidationError(
+                _('Cannot delete: still referenced by dialplan: %(refs)s')
+                % {"refs": ", ".join(refs)}
+            )
+        super().delete(*args, **kwargs)
+
+    @staticmethod
+    def find_dialplan_references(name):
+        """Best-effort text search for a `dial-trunk-group,<name>,` AGI call
+        (services/fastagi/fastagi.py resolves the group by this literal name
+        via raw SQL) in AEL extension/macro bodies.
+
+        Cannot see a name reached only through an Asterisk variable (e.g.
+        `${GROUPNAME}`) — that is a known limitation of a static text scan.
+
+        The match is intentionally case-sensitive: fastagi.py's raw SQL
+        compares the AGI arg with plain `=`, which Postgres evaluates
+        case-sensitively, so a differently-cased literal in dialplan was
+        never actually routing to this group in the first place. The
+        `icontains` lookups below are only a cheap case-insensitive
+        prefilter — the regex is what decides a real match.
+        """
+        pattern = re.compile(r"dial-trunk-group\s*,\s*" + re.escape(name) + r"\s*,")
+        refs = []
+        for ext in DialplanExtension.objects.filter(dialplan__icontains=name):
+            if pattern.search(ext.dialplan):
+                refs.append(f"extension #{ext.pk} ({ext.ext})")
+        for macro in DialplanMacro.objects.filter(macro__icontains=name):
+            if pattern.search(macro.macro):
+                refs.append(f'macro "{macro.name}"')
+        return refs
+
+
+class RoutingRecord(AuditFields):
     name = models.CharField(
         max_length=64,
         unique=False,
@@ -1632,7 +1871,7 @@ class RoutingRecord(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
+    class Meta(AuditFields.Meta):
         verbose_name_plural = _("16. Routing Records")
 
 

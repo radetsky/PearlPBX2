@@ -39,8 +39,11 @@ docker-clean:
 #   docs/en/openapi.yaml  — machine-readable OpenAPI 3.0 schema (Postman/Insomnia, SDK codegen)
 #   docs/en/api.html      — self-contained, offline browsable reference (no token, no network)
 # The HTML step needs Node.js/npx; the first run downloads @redocly/cli.
+# LANGUAGE_CODE is "uk" (pbx/settings.py), so `manage.py spectacular` run plain
+# would translate model verbose_name/help_text into Ukrainian in these
+# "English" docs — force English explicitly for this generation.
 api-docs:
-	.python-venv/bin/python manage.py spectacular --file docs/en/openapi.yaml
+	.python-venv/bin/python -c "import django, os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pbx.settings'); django.setup(); from django.utils import translation; from django.core.management import call_command; translation.activate('en'); call_command('spectacular', file='docs/en/openapi.yaml')"
 	npx --yes @redocly/cli build-docs docs/en/openapi.yaml -o docs/en/api.html
 
 test-build:

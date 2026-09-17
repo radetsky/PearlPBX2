@@ -19,6 +19,27 @@ python manage.py drf_create_token <username>
 
 Немає обмежень за сесією чи IP-адресою. CSRF-захист не застосовується (лише токен-автентифікація).
 
+**Виняток:** кожен метод на `/api/v1/sip-users/`, `/api/v1/sip-transports/`,
+`/api/v1/sip-peers/`, `/api/v1/routing-tables/`, `/api/v1/routing-records/`,
+`/api/v1/dialplan-contexts/`, `/api/v1/dialplan-extensions/`,
+`/api/v1/dialplan-macros/`, `/api/v1/trunk-groups/`, `/api/v1/phone-devices/`,
+`/api/v1/queues/` та `/api/v1/queue-members/`, включно з `GET`, вимагає
+обліковий запис staff або superuser — див. [SIP Users](#sip-users),
+[SIP Transports](#sip-transports), [SIP Peers](#sip-peers),
+[Routing Tables](#routing-tables), [Routing Records](#routing-records),
+[Dialplan Contexts](#dialplan-contexts),
+[Dialplan Extensions](#dialplan-extensions),
+[Dialplan Macros](#dialplan-macros), [Trunk Groups](#trunk-groups),
+[Phone Devices](#phone-devices), [Queues](#queues) та
+[Queue Members (статична конфігурація)](#queue-members-статична-конфігурація)
+нижче. Дійсний токен звичайного користувача отримає `403 Forbidden` на цих
+ресурсах.
+
+**Лише superuser:** `/api/v1/config/preview/` та `/api/v1/config/apply/`
+вимагають саме **superuser** — токена staff недостатньо, оскільки `apply`
+може перезапустити Asterisk і скинути всі активні дзвінки. Див.
+[Config (Apply Changes)](#config-apply-changes).
+
 ## Загальний формат відповіді
 
 **Успіх**: JSON-об'єкт або масив із полями ресурсу. GET-ендпоінти списків повертають пагіновані відповіді:
@@ -256,6 +277,905 @@ POST використовує upsert-логіку за ключем `callerid`.
 
 ---
 
+## SIP Users
+
+Керує SIP-обліковими записами (extensions). На відміну від решти цього API,
+**кожен метод цього ресурсу — включно з `GET` — вимагає обліковий запис
+staff або superuser**; дійсний токен звичайного користувача отримає
+`403 Forbidden`. Цей ресурс надає доступ до облікових даних для дзвінків,
+тож звичайного автентифікованого токена недостатньо.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі — див.
+[посібник адміністратора](admin-guide.md). Користувач, збережений без
+`transport` або без `routing_table`, буде мовчки пропущений при генерації
+конфігурації, тому обидва поля тут обов'язкові.
+
+Видалення SIP-користувача каскадно видаляє будь-який пов'язаний `PhoneDevice`.
+
+### GET `/api/v1/sip-users/`
+
+Повертає SIP-користувачів зі пагінацією. Підтримує:
+- `?username=<точне значення>` — фільтр за точним username
+- `?extension=<точне значення>` — фільтр за точним extension
+- `?search=<текст>` — пошук без урахування регістру за `name`, `username`, `extension`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 12,
+      "name": "John Doe",
+      "username": "101",
+      "secret": null,
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "nat": false,
+      "extension": "101",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "auth_type": "userpass",
+      "custom_extension": "",
+      "custom_settings": "",
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "pjsip_endpoint": "PJSIP/101",
+      "is_webrtc": false,
+      "realm": "udp-101",
+      "md5_cred": null,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`realm` та `md5_cred` — це облікові дані RFC 2617 HA1, обчислені з
+`username`/`transport`/`secret`. WebRTC (`wss`) endpoint-и завжди
+автентифікуються як MD5 у згенерованій конфігурації незалежно від
+`auth_type`, тож WebRTC-клієнту слід використовувати `md5_cred`/`realm`,
+а не відкритий `secret`. `md5_cred` — також `null` для користувача без
+`transport`. `is_webrtc` дорівнює `true`, коли протокол транспорту
+користувача — `wss`.
+
+**`secret` і `md5_cred` у цій GET-відповіді завжди `null`** — облікові дані
+не включаються в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-users/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`).
+
+### POST `/api/v1/sip-users/`
+
+Створити SIP-користувача.
+
+**Тіло запиту:**
+```json
+{
+  "name": "John Doe",
+  "username": "101",
+  "secret": "s3cret123",
+  "extension": "101",
+  "transport": 1,
+  "routing_table": 1,
+  "auth_type": "userpass"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | мінімум 3 символи |
+| `username` | так | 3+ символи, лише літери/цифри, унікальний |
+| `secret` | так | пароль SIP у відкритому вигляді |
+| `transport` | так | ID існуючого `SIPTransport` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+| `extension` | так | лише літери/цифри, унікальний |
+| `nat` | ні | за замовчуванням `false` |
+| `auth_type` | ні | `userpass` (за замовчуванням) або `md5` |
+| `custom_extension`, `custom_settings`, `custom_auth_settings`, `custom_aor_settings` | ні | сирі фрагменти `pjsip.conf`/dialplan, записуються дослівно |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом користувача, або `400`, якщо
+`username`/`extension` вже зайняті чи не пройшли валідацію.
+
+### PATCH `/api/v1/sip-users/<id>/`
+
+Часткове оновлення SIP-користувача. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-users/<id>/`
+
+Видалити SIP-користувача. Повертає `204 No Content`. Каскадно видаляє будь-який
+пов'язаний `PhoneDevice`.
+
+---
+
+## SIP Transports
+
+Керує PJSIP-транспортами. Як і [SIP Users](#sip-users), **кожен метод цього
+ресурсу — включно з `GET` — вимагає обліковий запис staff або superuser**;
+`cert_file` та `priv_key_file` містять матеріал TLS-сертифіката/приватного
+ключа у відкритому вигляді.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `cert_file`,
+`priv_key_file` та `ca_list_file` містять **вміст** PEM, а не шляхи до
+файлів — вони записуються на диск у каталог сертифікатів Asterisk лише під
+час "Apply Changes", і лише для транспорту з `protocol` `"tls"`.
+
+Зміна `protocol` у транспорту, який вже використовується, перегенеровує
+конфігурацію кожного приєднаного `SIPUser` і робить недійсним його
+`md5_cred` (він обчислюється з `protocol-username`). Видалення останнього
+`wss`-транспорту вимикає шаблони WebRTC-конфігурації для кожного
+WebRTC-користувача. Видалення транспорту, на який ще посилається `SIPUser`
+або `SIPPeer`, повертає `409 Conflict` замість помилки на рівні бази даних.
+
+### GET `/api/v1/sip-transports/`
+
+Повертає транспорти зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?protocol=<udp|tcp|tls|wss>` — фільтр за протоколом
+- `?search=<текст>` — пошук без урахування регістру за `name`, `description`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "transport-udp",
+      "description": "UDP transport",
+      "protocol": "udp",
+      "bind": "0.0.0.0:5060",
+      "local_nets": "10.0.0.0/16, 192.168.0.0/24",
+      "external_media_address": null,
+      "external_signaling_address": null,
+      "method": "default",
+      "verify_server": false,
+      "allow_reload": true,
+      "cert_file": "",
+      "priv_key_file": null,
+      "ca_list_file": "",
+      "has_tls_material": false,
+      "sip_users_count": 3,
+      "sip_peers_count": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+**`priv_key_file` у цій GET-відповіді завжди `null`** — приватний ключ не
+включається в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-transports/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`). `cert_file`/`ca_list_file` — публічний сертифікатний
+матеріал, він не приховується.
+
+`sip_users_count`/`sip_peers_count` — це кількість рядків `SIPUser`/`SIPPeer`
+на цьому транспорті (ті самі рядки, що блокують `DELETE`). `has_tls_material`
+дорівнює `true`, якщо заповнено хоча б одне з трьох полів сертифіката.
+
+### POST `/api/v1/sip-transports/`
+
+Створити транспорт.
+
+**Тіло запиту:**
+```json
+{
+  "name": "transport-udp-nat",
+  "protocol": "udp",
+  "bind": "0.0.0.0:5060",
+  "description": "UDP + NAT for remote users"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | літери/цифри/підкреслення/дефіси, унікальне, використовується як назва секції в `pjsip.conf` |
+| `protocol` | ні | `udp` (за замовчуванням), `tcp`, `tls`, `wss` |
+| `bind` | ні | `<ipv4>` або `<ipv4>:<port>`, за замовчуванням `0.0.0.0`; порт має бути 1024-65535 |
+| `description` | ні | один рядок, без `\n`/`\r` — записується як коментар у `pjsip.conf` |
+| `local_nets` | ні | мережі CIDR через кому, напр. `10.0.0.0/16, 192.168.0.0/24`; порожнє значення зберігається як `null` |
+| `external_media_address`, `external_signaling_address` | ні | IP-адреси |
+| `method`, `verify_server`, `allow_reload`, `cert_file`, `priv_key_file`, `ca_list_file` | ні | діють лише коли `protocol` дорівнює `tls` |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом транспорту, або `400`, якщо
+`name` вже зайняте чи не пройшло валідацію.
+
+### PATCH `/api/v1/sip-transports/<id>/`
+
+Часткове оновлення транспорту. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-transports/<id>/`
+
+Видалити транспорт. Повертає `204 No Content`, або `409 Conflict` із
+переліком рядків `SIPUser`/`SIPPeer`, що досі використовують цей транспорт.
+
+---
+
+## SIP Peers
+
+Керує SIP-транками/аплінками. Як і [SIP Users](#sip-users), **кожен метод
+цього ресурсу — включно з `GET` — вимагає обліковий запис staff або
+superuser**; цей ресурс надає доступ до облікових даних для дзвінків
+(відкритий `secret` та обчислений `md5_cred`).
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. Пір, збережений
+без `transport` або без `routing_table`, згенерує неповний запис у
+`pjsip.conf` (секція `[auth]` без `[endpoint]`/`[aor]`), тому обидва поля тут
+обов'язкові. Якщо встановлено `registration_there`, `registration_uri` та
+`username` також обов'язкові.
+
+Видалення піра, що досі належить до `TrunkGroup`, повертає `409 Conflict`
+замість мовчазного зменшення групи.
+
+### GET `/api/v1/sip-peers/`
+
+Повертає піри зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?routing_table=<id>` — фільтр за таблицею маршрутизації
+- `?search=<текст>` — пошук без урахування регістру за `name`, `description`, `username`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 5,
+      "name": "myprovider",
+      "description": "SIP trunk provider",
+      "username": "trunkuser",
+      "contact_user": "",
+      "auth_type": "userpass",
+      "secret": null,
+      "transport": 1,
+      "transport_name": "transport-udp",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "registration_uri": "reg.provider.com:5060",
+      "contact_uri": "",
+      "match_hosts": "",
+      "registration_here": false,
+      "registration_there": true,
+      "nat": false,
+      "custom_auth_settings": "",
+      "custom_aor_settings": "",
+      "custom_identify_settings": "",
+      "auth_realm": "reg.provider.com",
+      "md5_cred": null,
+      "trunk_groups": ["main-trunks"],
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+`registration_here`/`registration_there` відповідають полям моделі
+`registrationHere`/`registrationThere`. `auth_realm` та `md5_cred` — це
+облікові дані RFC 2617 HA1, обчислені з `username`/`auth_realm`/`secret` —
+`auth_realm` це хост-частина `registration_uri`, або `"asterisk"`, якщо його
+не вказано. `trunk_groups` містить назви `TrunkGroup`, до яких належить цей
+пір; видалення піра, що належить хоча б до однієї групи, буде відхилено
+(див. вище).
+
+**`secret` і `md5_cred` у цій GET-відповіді завжди `null`** — облікові дані
+не включаються в пагіновану масову вибірку. Отримати справжнє значення можна
+через `GET /api/v1/sip-peers/<id>/` (або з обʼєкта, який повертають
+`POST`/`PATCH`).
+
+### POST `/api/v1/sip-peers/`
+
+Створити пір.
+
+**Тіло запиту:**
+```json
+{
+  "name": "myprovider",
+  "description": "SIP trunk provider",
+  "username": "trunkuser",
+  "secret": "s3cret123",
+  "auth_type": "userpass",
+  "transport": 1,
+  "routing_table": 1,
+  "registration_there": true,
+  "registration_uri": "reg.provider.com:5060"
+}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | 3+ символи, лише літери/цифри, унікальне, використовується як назва секції в `pjsip.conf` |
+| `description` | так | один рядок, без `\n`/`\r` |
+| `transport` | так | ID існуючого `SIPTransport` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+| `username`, `contact_user` | ні | літери/цифри/дефіси/крапки/підкреслення |
+| `auth_type` | ні | `userpass` (за замовчуванням) або `md5` |
+| `secret` | ні | пароль SIP у відкритому вигляді |
+| `registration_uri`, `contact_uri` | ні | `host[:port]`; обов'язкові, якщо `registration_there` дорівнює `true` |
+| `match_hosts` | ні | хости/IP через кому, без портів |
+| `registration_here` | ні | за замовчуванням `false` — пір реєструється у нас (шлюзи GSM/E1/T1/FXS/FXO) |
+| `registration_there` | ні | за замовчуванням `false` — ми реєструємось у піра (провайдери); вимагає `registration_uri` та `username` |
+| `nat` | ні | за замовчуванням `false` |
+| `custom_auth_settings`, `custom_aor_settings`, `custom_identify_settings` | ні | сирі фрагменти `pjsip.conf`, записуються дослівно |
+
+**Відповідь:** `HTTP 201` зі створеним об'єктом піра, або `400`, якщо `name`
+вже зайняте чи не пройшло валідацію.
+
+### PATCH `/api/v1/sip-peers/<id>/`
+
+Часткове оновлення піра. Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/sip-peers/<id>/`
+
+Видалити пір. Повертає `204 No Content`, або `409 Conflict` із переліком
+`TrunkGroup`, до яких він досі належить.
+
+---
+
+## Routing Tables
+
+Керує таблицями маршрутизації. Кожен метод — включно з `GET` — вимагає
+обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` водночас
+є назвою AEL dialplan-контексту (`core.conf.make_routing_tables()`), тому не
+може збігатися з назвою `DialplanContext` — колізія повертає `400`, а не
+`500`, як при прямому збереженні моделі.
+
+### GET `/api/v1/routing-tables/`
+
+Повертає таблиці маршрутизації зі пагінацією. Підтримує `?name=<точне значення>`
+та `?search=<текст>` (за `name`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "PEARLPBX",
+      "routing_records_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+`routing_records_count` — кількість рядків `RoutingRecord`, що вказують на
+цю таблицю.
+
+### POST `/api/v1/routing-tables/`
+
+**Тіло запиту:** `{"name": "Sales"}`
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | літери/цифри/підкреслення/дефіси, унікальне, не повинне вже існувати як назва `DialplanContext` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте чи колізує з
+`DialplanContext`.
+
+### PATCH `/api/v1/routing-tables/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/routing-tables/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict`, якщо таблиця досі
+використовується `SIPUser`, `SIPPeer`, `RoutingRecord`, callback-сервісом
+або фільтром routing table у `Webhook`.
+
+---
+
+## Routing Records
+
+Керує правилами маршрутизації за префіксом усередині `RoutingTable`. Кожен
+метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі.
+`core.conf.make_routing_tables()` генерує по одному рядку `goto` для кожного
+запису всередині dialplan-контексту його таблиці, відсортовані за
+специфічністю Asterisk-патерну. `context` і `routing_table` обов'язкові,
+хоча в БД вони nullable — запис без `context` буквально згенерує
+`goto None,${EXTEN},1;`, а запис без `routing_table` взагалі не з'явиться в
+жодному блоці таблиці.
+
+### GET `/api/v1/routing-records/`
+
+Повертає записи маршрутизації зі пагінацією. Підтримує:
+- `?name=<точне значення>` — фільтр за точним іменем
+- `?prefix=<точне значення>` — фільтр за точним префіксом
+- `?routing_table=<id>` — фільтр за таблицею маршрутизації
+- `?context=<id>` — фільтр за dialplan-контекстом
+- `?search=<текст>` — пошук без урахування регістру за `name`, `prefix`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Kyiv landline",
+      "prefix": "044",
+      "context": 1,
+      "context_name": "internal",
+      "routing_table": 1,
+      "routing_table_name": "PEARLPBX",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/routing-records/`
+
+**Тіло запиту:**
+```json
+{"name": "Kyiv landline", "prefix": "044", "context": 1, "routing_table": 1}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | довільний текст |
+| `prefix` | так | Asterisk dialplan-патерн (напр. `044`, `_0XX`, `_1XX.`) |
+| `context` | так | ID існуючого `DialplanContext` |
+| `routing_table` | так | ID існуючого `RoutingTable` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `prefix` не пройшов валідацію
+патерну чи не вказано обов'язкове поле.
+
+### PATCH `/api/v1/routing-records/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/routing-records/<id>/`
+
+Видалити запис маршрутизації. Повертає `204 No Content` — на `RoutingRecord`
+ніщо не посилається, тож видалення ніколи не блокується.
+
+---
+
+## Dialplan Contexts
+
+Керує dialplan-контекстами (`core.conf.make_dialplan_contexts()`). Кожен
+метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` ділить
+простір імен з `RoutingTable` — вони не повинні збігатися.
+
+Автоматично згенерований контекст `"PEARLPBX-Users"` рендериться наживо з
+даних `SIPUser` через `core.conf.make_local_users_context()` — його не
+можна перейменувати чи видалити через цей ендпоінт. Причину, чому в ньому
+не можна створювати extension'и, дивіться в
+[Dialplan Extensions](#dialplan-extensions).
+
+### GET `/api/v1/dialplan-contexts/`
+
+Повертає контексти зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>` (пошук за `name`, `description`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "internal",
+      "description": "Internal extensions",
+      "extensions_count": 3,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-contexts/`
+
+**Тіло запиту:**
+```json
+{"name": "internal", "description": "Internal extensions"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне; не повинно збігатися з іменем `RoutingTable` |
+| `description` | ні | довільний текст, без переносів рядків |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` вже зайнято чи збігається
+з `RoutingTable`.
+
+### PATCH `/api/v1/dialplan-contexts/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування автоматично
+згенерованого контексту `"PEARLPBX-Users"` повертає `400`.
+
+### DELETE `/api/v1/dialplan-contexts/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict`, якщо контекст —
+автоматично згенерований `"PEARLPBX-Users"`, ще використовується фільтром
+контекстів вебхука, або на нього досі посилається `DialplanExtension` чи
+`RoutingRecord`.
+
+---
+
+## Dialplan Extensions
+
+Керує dialplan-extension'ами всередині контексту
+(`core.conf.make_dialplan_contexts()`). Кожен метод — включно з `GET` —
+вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `dialplan`
+повинен використовувати коректний синтаксис Asterisk AEL і посилатись лише
+на вже наявні макроси — `core.validators.validate_dialplan_field` резолвить
+дозволений набір макросів з бази даних у момент запиту, тож **спочатку
+створіть макрос, а тоді extension**, який викликає його через `&name();`
+(див. [Dialplan Macros](#dialplan-macros)). Extension'и не можна створювати
+всередині автоматично згенерованого контексту `"PEARLPBX-Users"` — він
+рендериться наживо з даних `SIPUser`, тож усе, що зберігається там у БД,
+ніколи не потрапить в `extensions.ael`.
+
+### GET `/api/v1/dialplan-extensions/`
+
+Повертає extension'и зі пагінацією. Підтримує:
+- `?context=<id>` — фільтр за dialplan-контекстом
+- `?ext=<точне значення>` — фільтр за точним патерном extension'а
+- `?search=<текст>` — пошук без урахування регістру за `ext`, `description`,
+  `dialplan`, `context__name`
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "context": 1,
+      "context_name": "internal",
+      "ext": "_1XX",
+      "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();",
+      "description": "Internal 1xx range",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-extensions/`
+
+**Тіло запиту:**
+```json
+{"context": 1, "ext": "_1XX", "dialplan": "Dial(PJSIP/${EXTEN},30);\nHangup();"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `context` | так | ID існуючого `DialplanContext`; не може бути автоматично згенерованим контекстом `"PEARLPBX-Users"` |
+| `ext` | так | Asterisk-патерн extension'а (напр. `100`, `_1XX`, `_X.`) |
+| `dialplan` | так | синтаксис Asterisk AEL; виклики макросів (`&name();`) повинні посилатись на наявний `DialplanMacro` |
+| `description` | ні | довільний текст, без переносів рядків |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `dialplan` не пройшов валідацію
+AEL-синтаксису, посилається на невідомий макрос, `ext` не пройшов валідацію
+патерну, `context` — заборонений контекст, або пара `(context, ext)` вже
+зайнята.
+
+### PATCH `/api/v1/dialplan-extensions/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/dialplan-extensions/<id>/`
+
+Видалити extension. Повертає `204 No Content` — на `DialplanExtension`
+ніщо не посилається, тож видалення ніколи не блокується.
+
+---
+
+## Dialplan Macros
+
+Керує dialplan-макросами (`core.conf.make_dialplan_macros()`), які
+викликаються з тіла extension'ів як `&name();`. Кожен метод — включно з
+`GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name`
+шукається як буквальний текст виклику AEL-макроса в тілах
+`DialplanExtension.dialplan`, інших макросах та
+`Settings.local_users_dial_template` — **перейменування чи видалення
+макроса, поки на нього досі посилаються, відхиляється** (`400`/`409`)
+замість тихого псування згенерованого dialplan. Це евристичний текстовий
+пошук (з урахуванням регістру, на відміну від захисту імен у
+[Queues](#queues)): він не бачить ім'я, до якого звертаються лише через
+змінну Asterisk, і не бачить Python-фолбек
+`DEFAULT_LOCAL_USERS_DIAL_TEMPLATE`, який використовується, коли немає
+рядка `Settings` або його поле порожнє.
+
+### GET `/api/v1/dialplan-macros/`
+
+Повертає макроси зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>` (пошук за `name`, `description`, `macro`).
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "stdexten",
+      "description": "Standard extension",
+      "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/dialplan-macros/`
+
+**Тіло запиту:**
+```json
+{"name": "stdexten", "description": "Standard extension", "macro": "Dial(PJSIP/${ARG1},30);\nVoicemail(${ARG1});"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне; лише латинські літери, цифри та підкреслення, не може починатись з цифри |
+| `description` | ні | довільний текст, без переносів рядків |
+| `macro` | так | синтаксис Asterisk AEL (не перевіряється `AsteriskDialplanValidator`) |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` вже зайнято чи має
+некоректний формат.
+
+### PATCH `/api/v1/dialplan-macros/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки на макрос ще
+посилаються, повертає `400` з переліком extension'ів/макросів/поля
+`Settings`, що на нього посилаються.
+
+### DELETE `/api/v1/dialplan-macros/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+extension'ів/макросів/поля `Settings`, якщо на макрос ще посилаються.
+
+---
+
+## Trunk Groups
+
+Керує групами транків (набори SIP-пірів для failover). Кожен метод —
+включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` шукається
+FastAGI-обробником `dial-trunk-group` через літеральний виклик
+`AGI(agi://.../dial-trunk-group,<name>,...)`, вбудований у текст dialplan —
+**перейменування або видалення групи, на яку досі є таке посилання,
+відхиляється** (`400`/`409`) замість мовчазного зламання маршрутизації
+дзвінків. Це — пошук тексту best-effort: він не бачить назву, до якої
+звертаються лише через змінну Asterisk (напр. `${GROUPNAME}`).
+
+### GET `/api/v1/trunk-groups/`
+
+Повертає групи транків зі пагінацією. Підтримує `?name=<точне значення>` та
+`?search=<текст>`.
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "main-trunks",
+      "sip_peers": [5, 6],
+      "sip_peer_names": ["provider-a", "provider-b"],
+      "sip_peers_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/trunk-groups/`
+
+**Тіло запиту:**
+```json
+{"name": "main-trunks", "sip_peers": [5, 6]}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне |
+| `sip_peers` | ні | список ID `SIPPeer`; на відміну від `SIPPeer.trunk_groups` (лише читання), це записувана сторона зв'язку |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте.
+
+### PATCH `/api/v1/trunk-groups/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки dialplan досі
+посилається на поточну назву, повертає `400` з переліком розширень/макросів.
+
+### DELETE `/api/v1/trunk-groups/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+розширень/макросів, якщо dialplan досі викликає цю групу за назвою.
+
+---
+
+## Phone Devices
+
+Керує пристроями телефонів (фізичні апарати, софтфони, WebRTC-клієнти).
+Кожен метод — включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних. Файл конфігурації для TFTP пристрою
+(пере)генерується лише дією `provision` нижче, або дією адмін-панелі "Apply
+configurations" — жодна з них не запускається неявно при збереженні.
+
+### GET `/api/v1/phone-devices/`
+
+Повертає пристрої зі пагінацією. Підтримує:
+- `?mac_address=<точне значення>` — фільтр за точною MAC-адресою
+- `?sip_user=<id>` — фільтр за призначеним SIP-користувачем
+- `?telephone_type=<тип>` — фільтр за типом пристрою (`spa502g`, `spa504g`, `gxp1200`, `softphone`, `webrtc`, `other`)
+- `?search=<текст>` — регістронезалежний пошук за MAC-адресою, SIP-логіном, іменем SIP-користувача
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "telephone_type": "softphone",
+      "mac_address": "00:1A:2B:3C:4D:5E",
+      "sip_user": 3,
+      "sip_user_username": "101",
+      "sip_server": "pbx.example.com",
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/phone-devices/`
+
+**Тіло запиту:**
+```json
+{"telephone_type": "softphone", "mac_address": "00:1a:2b:3c:4d:5e", "sip_user": 3, "sip_server": "pbx.example.com"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `telephone_type` | ні | за замовчуванням `"other"` |
+| `mac_address` | так | унікальна; нормалізується до `XX:XX:XX:XX:XX:XX` (приймає різні роздільники, будь-який регістр) |
+| `sip_user` | ні | ID наявного `SIPUser`; пристрій без призначеного користувача — це нормальний, ще не налаштований стан |
+| `sip_server` | ні | за замовчуванням `""` — порожнє значення при генерації підставляє глобальну адресу провіжнингу |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `mac_address` некоректна або вже використовується.
+
+### PATCH `/api/v1/phone-devices/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/phone-devices/<id>/`
+
+Видаляє пристрій. Повертає `204 No Content` — на `PhoneDevice` ніщо не
+посилається, тож видалення ніколи не блокується. Видалення призначеного
+`SIPUser` натомість каскадно видаляє й цей пристрій (див. [SIP Users](#sip-users)).
+
+### POST `/api/v1/phone-devices/<id>/provision/`
+
+Згенерувати файл конфігурації для TFTP цього пристрою — та сама дія, що й
+кнопка "Apply configurations" в адмінці, лише для одного пристрою й через
+API. Підтримуються лише `spa502g`, `spa504g` і `gxp1200`; для
+`softphone`/`webrtc`/`other` файл конфігурації генерувати нічого.
+
+**Відповіді:**
+
+| Статус | Значення |
+|--------|---------|
+| `200` | `{"success": true, "device_mac": "...", "filename": "...", "filepath": "...", "size": 512}` |
+| `400` | `{"success": false, "device_mac": "...", "error": "..."}` — напр. не призначено SIP-користувача, або непідтримуваний `telephone_type` |
+
+---
+
+## Config (Apply Changes)
+
+Обгортка над адмінською сторінкою "Apply Changes". **Обидва endpoint-и
+вимагають обліковий запис superuser — токена staff недостатньо**, оскільки
+`apply` може перезапустити Asterisk і скинути всі активні дзвінки.
+
+### GET `/api/v1/config/preview/`
+
+Dry-run: повертає той самий згенерований вміст файлів, що й прев'ю в
+адмінці. Без запису на диск, без reload Asterisk.
+
+**Відповідь:**
+```json
+{
+  "files": {
+    "pjsip.conf": "...",
+    "extensions.ael": "...",
+    "queues.conf": "...",
+    "queuerules.conf": "...",
+    "manager.conf": "...",
+    "musiconhold.conf": "...",
+    "confbridge.conf": "..."
+  },
+  "skipped_sip_users": ["userA"]
+}
+```
+
+### POST `/api/v1/config/apply/`
+
+Записує згенеровані конфіги (з версіонуванням і попереднім бекапом-tar.gz у
+`ASTERISK_BACKUP_DIR`) і перезавантажує Asterisk.
+
+**Тіло запиту:** `{"mode": "soft"}` або `{"mode": "hard"}`
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `mode` | **так** | `soft` — reload модулів/AEL, зберігає активні дзвінки; `hard` — `core restart now`, скидає всі активні дзвінки |
+
+На відміну від адмінської форми (де будь-що, крім літерального рядка
+`"soft"`, мовчки означає hard-рестарт), `mode` — обов'язкове, валідоване
+поле вибору; відсутнє чи невалідне значення повертає `400`.
+
+**Відповідь:**
+```json
+{
+  "mode": "soft",
+  "changed_files": ["pjsip.conf", "queues.conf"],
+  "reloaded": true,
+  "skipped_sip_users": []
+}
+```
+`changed_files` містить лише файли, вміст яких справді змінився (отримав
+нову версію) при цьому apply. `reloaded` дорівнює `false`, коли
+`DEVMODE=without_asterisk_on_localhost` — файли все одно пишуться, але AMI
+не викликається (як і в адмінці).
+
+**`409 Conflict`**, якщо інший apply вже виконується (короткочасний
+Redis-лок); якщо сам Redis недоступний, apply виконується без локу замість
+того, щоб стати недоступним.
+
+---
+
 ## Ініціювання дзвінка (Originate)
 
 **`POST /api/v1/calls/originate/`**
@@ -320,12 +1240,169 @@ curl -k -X 'POST' \
 
 ---
 
-## Queue Members (члени черги)
+## Queues
+
+Керує статичною конфігурацією черги дзвінків (`app_queue`). Кожен метод —
+включно з `GET` — вимагає обліковий запис staff або superuser.
+
+Запис тут лише оновлює базу даних; зміни доходять до Asterisk лише після
+того, як superuser натисне "Apply Changes" в адмін-панелі. `name` шукається
+`app_queue` Asterisk через літеральний AEL-виклик `Queue(<name>,...)`,
+вбудований у текст dialplan — **перейменування або видалення черги, на яку
+досі є таке посилання, відхиляється** (`400`/`409`) замість мовчазного
+зламання маршрутизації дзвінків. На відміну від захисту [Trunk
+Groups](#trunk-groups), цей пошук регістронезалежний, оскільки `app_queue`
+шукає назви черг через `strcasecmp()`. Це — пошук тексту best-effort: він не
+бачить назву, до якої звертаються лише через змінну Asterisk (напр.
+`${QUEUENAME}`).
+
+Відрізняється від [Queue Members (жива AMI-стан)](#queue-members-жива-ami-стан)
+нижче: цей ресурс — про те, що потрапляє в `queues.conf`, а не про
+runtime-паузу/статус.
+
+### GET `/api/v1/queues/`
+
+Повертає черги зі пагінацією. Підтримує `?name=<точне значення>`,
+`?strategy=<точне значення>` та `?search=<текст>`.
+
+**Відповідь (скорочено — повний перелік полів див. у POST нижче):**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "name": "Sales",
+      "music_class": 1,
+      "music_class_name": "default",
+      "strategy": "ringall",
+      "queue_announcement": 1,
+      "queue_announcement_name": "default",
+      "defaultrule": null,
+      "defaultrule_name": null,
+      "members_count": 2,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queues/`
+
+**Тіло запиту (мінімальне):**
+```json
+{"name": "Sales", "music_class": 1, "queue_announcement": 1, "strategy": "ringall"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `name` | так | унікальне |
+| `music_class` | так | ID наявного класу `MusicOnHold` |
+| `queue_announcement` | так | ID наявного рядка `QueueAnnouncements` |
+| `strategy` | так | одне з `ringall`, `leastrecent`, `fewestcalls`, `random`, `rrmemory`, `rrordered`, `linear`, `wrandom` — обов'язкове, хоч і nullable в БД, бо згенерована конфігурація не має захисту від null для цього поля |
+| `defaultrule` | ні | ID наявного `QueueRule` |
+| `context`, `timeout`, `retry`, `maxlen`, `weight`, `wrapuptime`, `autofill`, `autopause`, `autopausedelay`, `announce`, `queue_announce`, `service_level`, `joinempty`, `leavewhenempty`, `ringinuse`, `timeoutrestart`, `monitor_format`, `periodic_announce`, та поля `announce_*`/`*_announce_frequency` | ні | повний перелік див. у формі Queue в адмінці; усі відповідають 1:1 опціям `app_queue` |
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `name` зайняте, `strategy` не вказано, або черга з такою (старою) назвою досі має посилання з dialplan.
+
+### PATCH `/api/v1/queues/<id>/`
+
+Ті самі правила полів, що й у `POST`. Перейменування, поки dialplan досі
+посилається на поточну назву, повертає `400` з переліком розширень/макросів.
+
+### DELETE `/api/v1/queues/<id>/`
+
+Повертає `204 No Content`, або `409 Conflict` з переліком
+розширень/макросів, якщо dialplan досі викликає цю чергу за назвою.
+
+---
+
+## Queue Members (статична конфігурація)
+
+Керує статичним переліком членів черги (`core.conf` генерує по одному рядку
+`member => ...` на рядок у `queues.conf`). Кожен метод — включно з `GET` —
+вимагає обліковий запис staff або superuser, оскільки це запис
+БД-конфігурації, а не читання живого runtime-стану (на відміну від
+AMI-ендпоінтів нижче, яким достатньо лише автентифікації).
+
+Відрізняється від [Queue Members (жива AMI-стан)](#queue-members-жива-ami-стан)
+нижче: `GET /api/v1/queue-members/?queue=<id>` відповідає на питання «хто
+статично налаштований у цій черзі» з бази даних; `GET
+/api/v1/queues/members/?queue=<name>` (нижче) відповідає на питання «хто
+зараз на паузі/дзвонить/на розмові» з живого AMI-стану Asterisk. Обидва
+ендпоінти лишаються — вони відповідають на різні питання.
+
+### GET `/api/v1/queue-members/`
+
+Повертає членів черги зі пагінацією. Підтримує:
+- `?queue=<id>` — фільтр за чергою
+- `?interface=<точне значення>` — фільтр за точним інтерфейсом
+- `?search=<текст>` — регістронезалежний пошук за іменем члена, інтерфейсом, state interface, назвою черги
+
+**Відповідь:**
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "queue": 1,
+      "queue_name": "Sales",
+      "interface": "PJSIP/101",
+      "penalty": 0,
+      "member_name": "101",
+      "state_interface": "PJSIP/101",
+      "ringinuse": false,
+      "wrapuptime": 0,
+      "created_at": "2026-09-01T10:00:00Z",
+      "created_by": 1,
+      "modified_at": "2026-09-01T10:00:00Z",
+      "modified_by": 1
+    }
+  ]
+}
+```
+
+### POST `/api/v1/queue-members/`
+
+**Тіло запиту:**
+```json
+{"queue": 1, "interface": "PJSIP/101"}
+```
+
+| Поле | Обов'язкове | Примітки |
+|---|---|---|
+| `queue` | так | ID наявної `Queue` |
+| `interface` | так | напр. `"PJSIP/101"`; лише літери, цифри та `_.-/@` |
+| `penalty` | ні | за замовчуванням `0` |
+| `member_name` | ні | за замовчуванням `""` — значення null інакше рендериться в `queues.conf` як буквальне слово `None` |
+| `state_interface`, `ringinuse`, `wrapuptime` | ні | див. inline-форму в адмінці |
+
+Пара `(queue, interface)` має бути унікальною.
+
+**Відповідь:** `HTTP 201`, або `400`, якщо `interface` некоректний, не вказано обов'язкові поля, або пара `(queue, interface)` вже існує.
+
+### PATCH `/api/v1/queue-members/<id>/`
+
+Ті самі правила полів, що й у `POST`.
+
+### DELETE `/api/v1/queue-members/<id>/`
+
+Видаляє члена черги. Повертає `204 No Content` — на `QueueMember` ніщо не
+посилається, тож видалення ніколи не блокується.
+
+---
+
+## Queue Members (жива AMI-стан)
 
 Постановка на паузу/зняття з паузи члена черги та читання живого статусу члена черги через Asterisk AMI.
 Тут немає постійного ресурсу «член черги» — ці ендпоінти звертаються напряму до
 Asterisk, тож вони відображають (і змінюють) живий runtime-стан, а не
-записи `QueueMember`, якими керують у Django admin.
+записи `QueueMember`, якими керують через [Queue Members (статична
+конфігурація)](#queue-members-статична-конфігурація) вище.
 
 ### POST `/api/v1/queues/members/pause/`
 
@@ -433,7 +1510,35 @@ curl -H "Authorization: Token <ваш-токен>" \
 
 ## Відомі обмеження
 
-- Немає фільтрації чи пошуку на GET-ендпоінтах.
+- Немає фільтрації чи пошуку на GET-ендпоінтах, окрім `/api/v1/sip-users/`
+  (`?username=`, `?extension=`, `?search=`), `/api/v1/sip-transports/`
+  (`?name=`, `?protocol=`, `?search=`), `/api/v1/sip-peers/`
+  (`?name=`, `?routing_table=`, `?search=`), `/api/v1/routing-tables/`
+  (`?name=`, `?search=`), `/api/v1/routing-records/` (`?name=`, `?prefix=`,
+  `?routing_table=`, `?context=`, `?search=`), `/api/v1/dialplan-contexts/`
+  (`?name=`, `?search=`), `/api/v1/dialplan-extensions/` (`?context=`,
+  `?ext=`, `?search=`), `/api/v1/dialplan-macros/` (`?name=`, `?search=`),
+  `/api/v1/trunk-groups/` (`?name=`, `?search=`), `/api/v1/phone-devices/`
+  (`?mac_address=`, `?sip_user=`, `?telephone_type=`, `?search=`),
+  `/api/v1/queues/` (`?name=`, `?strategy=`, `?search=`) та
+  `/api/v1/queue-members/` (`?queue=`, `?interface=`, `?search=`).
+- Захист перейменування/видалення групи транків — це пошук тексту
+  best-effort по dialplan-тілах на предмет літерального виклику
+  `dial-trunk-group,<name>,`; він не бачить назву групи, до якої звертаються
+  лише через змінну Asterisk. Захист черги — той самий тип пошуку для
+  літерального виклику `Queue(<name>,...)`, але регістронезалежний (на
+  відміну від захисту групи транків), оскільки `app_queue` шукає назви
+  черг через `strcasecmp()`. Захист dialplan-макроса — той самий тип пошуку
+  для літерального виклику `&<name>();`, з урахуванням регістру (AEL
+  резолвить виклики макросів за точним іменем); додатково скановано
+  `Settings.local_users_dial_template`, але не видно Python-фолбек
+  `DEFAULT_LOCAL_USERS_DIAL_TEMPLATE`, який використовується, коли немає
+  рядка `Settings` або його поле порожнє.
+- Автоматично згенерований dialplan-контекст `"PEARLPBX-Users"` не можна
+  перейменувати чи видалити, і в ньому не можна створити жоден
+  `DialplanExtension` — він рендериться наживо з даних `SIPUser` через
+  `core.conf.make_local_users_context()`, тож усе, що зберігається в рядку
+  БД, ніколи не потрапить в `extensions.ael`.
 
 ---
 

@@ -11,3 +11,6 @@ class CoreConfig(AppConfig):
         # module level (top-level import per project convention) — importing
         # it here, before that, raises AppRegistryNotReady.
         from core import checks  # noqa: F401
+        from core import signals
+
+        signals.connect()

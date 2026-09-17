@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,6 +7,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
+from apps.api.exceptions import Conflict
 from apps.api.models import CustomListNames, CustomListEntries
 from apps.api.serializers import (
     CustomListNameSerializer,
@@ -14,6 +17,22 @@ from apps.api.serializers import (
     ContactSerializer,
 )
 from core.models import Blacklist, Whitelist, Contact
+
+
+class DialplanGuardedDestroyMixin:
+    """perform_destroy() for a model whose delete() raises Django's
+    ValidationError when it's still referenced by dialplan text (TrunkGroup,
+    Queue) — the model's own delete() already runs that scan (so admin/shell
+    deletes are covered too), so this catches its ValidationError instead of
+    re-checking first, to scan once and to report 409 instead of the generic
+    400 apps.api.exceptions falls back to.
+    """
+
+    def perform_destroy(self, instance):
+        try:
+            super().perform_destroy(instance)
+        except DjangoValidationError as e:
+            raise Conflict("; ".join(e.messages))
 
 
 class AuditMixin:
@@ -26,6 +45,33 @@ class AuditMixin:
     def perform_update(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(modified_by=user)
+
+
+class FilteredQuerySetMixin:
+    """get_queryset() applying exact-match filters plus an OR'd icontains search.
+
+    Subclass declares `filter_fields` (query params filtered by exact match on
+    the same-named model field/FK) and `search_fields` (model fields OR'd
+    together under `?search=`).
+    """
+
+    filter_fields: list[str] = []
+    search_fields: list[str] = []
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        for field in self.filter_fields:
+            value = params.get(field)
+            if value:
+                qs = qs.filter(**{field: value})
+        search = params.get("search")
+        if search and self.search_fields:
+            query = Q()
+            for field in self.search_fields:
+                query |= Q(**{f"{field}__icontains": search})
+            qs = qs.filter(query)
+        return qs
 
 
 class UpsertCreateMixin:

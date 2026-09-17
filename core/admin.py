@@ -45,13 +45,15 @@ from .forms import (
     QueueAdminForm,
     DEFAULT_QUEUE_MEMBER_PENALTY,
 )
+from core.mixins.audit_admin import AuditAdminMixin
+from core.mixins.dialplan_guard_admin import DialplanGuardedDeleteAdminMixin
 
 # TODO: Use some template, edit and use UIKIT accordion to make admin forms better readable
 # Right here we just can hide fieldsets
 # [ custom_extension, custom_settings, custom_auth_settings,custom_aor_settings ]
 
 
-class SIPUserAdmin(admin.ModelAdmin):
+class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = SIPUserForm
     list_display = ("name", "username", "extension")
     ordering = ["name", "username", "extension"]
@@ -86,8 +88,31 @@ class SIPUserAdmin(admin.ModelAdmin):
 
     md5_cred_display.short_description = _("MD5 credential (HA1, recalculated on every save)")
 
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "username",
+                    "secret",
+                    "transport",
+                    "nat",
+                    "extension",
+                    "routing_table",
+                    "auth_type",
+                    "custom_extension",
+                    "custom_settings",
+                    "custom_auth_settings",
+                    "custom_aor_settings",
+                )
+            },
+        ),
+        AuditAdminMixin.audit_fieldset,
+    )
 
-class SIPPeerAdmin(admin.ModelAdmin):
+
+class SIPPeerAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = SIPPeerForm
     list_display = ("name", "description")
     ordering = ["name", "description"]
@@ -129,10 +154,11 @@ class SIPPeerAdmin(admin.ModelAdmin):
                 "classes": ["collapse"],
             },
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
 
 
-class SIPTransportAdmin(admin.ModelAdmin):
+class SIPTransportAdmin(AuditAdminMixin, admin.ModelAdmin):
     fieldsets = [
         (_("Generic"), {"fields": ["description", "name"]}),
         (
@@ -151,6 +177,7 @@ class SIPTransportAdmin(admin.ModelAdmin):
             _("TLS Settings (only if TLS protocol is used)"),
             {"fields": ["method", "verify_server", "allow_reload", "cert_file", "priv_key_file", "ca_list_file"]},
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
     list_display = ("name", "description")
     ordering = ["name", "description"]
@@ -166,28 +193,48 @@ class DialplanExtensionInlineAdmin(admin.TabularInline):
     ordering = ["ext"]
 
 
-class DialplanContextAdmin(admin.ModelAdmin):
+class DialplanContextAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = DialplanContextAdminForm
-    fields = ["name", "description"]
     list_display = ("name", "description")
     ordering = ["name", "description"]
     search_fields = ["name", "description"]
     inlines = [DialplanExtensionInlineAdmin]
+    fieldsets = [
+        (None, {"fields": ["name", "description"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
+
+    def has_delete_permission(self, request, obj=None):
+        # obj.delete() itself already raises ValidationError for the
+        # reserved PEARLPBX-Users context and when a webhook still uses this
+        # context's filter — hide the button instead of letting the confirm
+        # page 500 after the click.
+        if obj is not None and (
+            obj.name in obj.RESERVED_NAMES or obj.webhooks.exists()
+        ):
+            return False
+        return super().has_delete_permission(request, obj)
 
 
-class DialplanExtensionAdmin(admin.ModelAdmin):
+class DialplanExtensionAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = DialplanExtensionForm
-    fields = ["context", "ext", "dialplan", "description"]
     list_display = ("context_name", "ext", "description")
     ordering = ["context", "ext"]
     search_fields = ["ext", "dialplan", "description"]
+    fieldsets = [
+        (None, {"fields": ["context", "ext", "dialplan", "description"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
 
 
-class DialplanMacroAdmin(admin.ModelAdmin):
-    fields = ["name", "description", "macro"]
+class DialplanMacroAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     list_display = ("name", "description")
     ordering = ["name", "description"]
     search_fields = ["name", "description", "macro"]
+    fieldsets = [
+        (None, {"fields": ["name", "description", "macro"]}),
+        AuditAdminMixin.audit_fieldset,
+    ]
 
 
 class DialplanGlobalVariableAdmin(admin.ModelAdmin):
@@ -222,8 +269,11 @@ class MusicOnHoldAdmin(admin.ModelAdmin):
     inlines = [MusicOnHoldPlaylistEntryInlineAdmin]
 
 
-class RoutingRecordAdmin(admin.ModelAdmin):
-    fields = ["prefix", "name", "context", "routing_table"]
+class RoutingRecordAdmin(AuditAdminMixin, admin.ModelAdmin):
+    fieldsets = (
+        (None, {"fields": ["prefix", "name", "context", "routing_table"]}),
+        AuditAdminMixin.audit_fieldset,
+    )
     list_display = ("prefix", "name", "context", "routing_table")
     list_filter = [
         "routing_table",
@@ -250,12 +300,23 @@ class RoutingRecordInlineAdmin(admin.TabularInline):
     verbose_name_plural = _("Routing Records")
 
 
-class RoutingTableAdmin(admin.ModelAdmin):
+class RoutingTableAdmin(AuditAdminMixin, admin.ModelAdmin):
     form = RoutingTableAdminForm
-    fields = ["name"]
+    fieldsets = (
+        (None, {"fields": ["name"]}),
+        AuditAdminMixin.audit_fieldset,
+    )
     ordering = ["name"]
     search_fields = ["name"]
     inlines = [RoutingRecordInlineAdmin]
+
+    def has_delete_permission(self, request, obj=None):
+        # obj.delete() itself already raises ValidationError when a webhook
+        # still uses this table's routing-table filter — hide the button
+        # instead of letting the confirm page 500 after the click.
+        if obj is not None and obj.webhooks.exists():
+            return False
+        return super().has_delete_permission(request, obj)
 
 
 class PenaltyChangeInlineAdmin(admin.TabularInline):
@@ -321,10 +382,27 @@ class SoundFileAdmin(admin.ModelAdmin):
     search_fields = ("language", "name")
 
 
-class QueueMemberAdmin(admin.ModelAdmin):
+class QueueMemberAdmin(AuditAdminMixin, admin.ModelAdmin):
     list_display = ("member_name", "interface", "state_interface", "queue", "penalty")
     search_fields = ("member_name", "interface", "state_interface", "queue__name")
     ordering = ("member_name", "queue__name", "penalty")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "queue",
+                    "interface",
+                    "member_name",
+                    "state_interface",
+                    "penalty",
+                    "ringinuse",
+                    "wrapuptime",
+                )
+            },
+        ),
+        AuditAdminMixin.audit_fieldset,
+    )
 
 
 class QueueMemberInlineAdmin(admin.TabularInline):
@@ -340,12 +418,12 @@ class QueueMemberInlineAdmin(admin.TabularInline):
     ordering = ("member_name",)
 
 
-class QueueAdmin(admin.ModelAdmin):
+class QueueAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     form = QueueAdminForm
     list_display = ["name", "defaultrule", "strategy"]
     search_fields = ["name"]
     ordering = ["name"]
-    readonly_fields = ["rule_link"]
+    readonly_fields = AuditAdminMixin.readonly_fields + ["rule_link"]
     inlines = [QueueMemberInlineAdmin]
     fieldsets = [
         (None, {"fields": ["name", "strategy", "music_class"]}),
@@ -427,6 +505,7 @@ class QueueAdmin(admin.ModelAdmin):
                 "classes": ["collapse"],
             },
         ),
+        AuditAdminMixin.audit_fieldset,
     ]
 
     def save_related(self, request, form, formsets, change):
@@ -480,11 +559,15 @@ admin.site.register(Queue, QueueAdmin)
 admin.site.register(QueueMember, QueueMemberAdmin)
 
 
-class TrunkGroupAdmin(admin.ModelAdmin):
+class TrunkGroupAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAdmin):
     list_display = ["name", "peer_count"]
     search_fields = ["name"]
     ordering = ["name"]
     filter_horizontal = ["sip_peers"]
+    fieldsets = (
+        (None, {"fields": ["name", "sip_peers"]}),
+        AuditAdminMixin.audit_fieldset,
+    )
 
     @admin.display(description="SIP Peers")
     def peer_count(self, obj):
