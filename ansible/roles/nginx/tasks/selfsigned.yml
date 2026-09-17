@@ -1,0 +1,93 @@
+---
+# Bootstrap self-signed certificate: ensures nginx can start with TLS on the
+# very first run, before any ACME certificate exists, and remains the
+# fallback whenever ACME is disabled or fails. Kept under distinct
+# `selfsigned-*` filenames so the stable `fullchain.pem`/`privkey.pem` names
+# used by the vhost can always be a symlink (to this pair, or to an
+# /etc/letsencrypt/live/ certificate) without ever being overwritten in
+# place.
+
+- name: Check for a pre-existing plain (non-symlink) certificate to migrate
+  stat:
+    path: "{{ ssl_dir }}/{{ item }}"
+  register: legacy_cert_stat
+  loop:
+    - fullchain.pem
+    - privkey.pem
+
+- name: Migrate a pre-existing plain certificate to the self-signed name
+  # Installs from before this role supported ACME wrote the certificate
+  # directly as fullchain.pem/privkey.pem (regular files, not symlinks).
+  # Move them aside first so the "point stable name at self-signed" task
+  # below can create a symlink in their place.
+  command: >
+    mv {{ ssl_dir }}/{{ item.item }} {{ ssl_dir }}/{{ 'selfsigned-' + item.item }}
+  loop: "{{ legacy_cert_stat.results }}"
+  when:
+    - item.stat.exists
+    - not item.stat.islnk
+
+- name: Check whether a valid self-signed certificate already exists
+  command: >
+    openssl x509 -in {{ ssl_dir }}/selfsigned-fullchain.pem -noout -checkend 2592000
+  register: selfsigned_checkend
+  failed_when: false
+  changed_when: false
+
+- name: Generate self-signed SSL certificate with subjectAltName
+  # RSA 2048 (not 4096) deliberately — this cert is never trusted by a
+  # browser, so the extra handshake cost of 4096 buys nothing.
+  command: >
+    openssl req -x509 -newkey rsa:2048 -sha256 -days {{ ssl_selfsigned_days }} -nodes
+    -keyout {{ ssl_dir }}/selfsigned-privkey.pem
+    -out {{ ssl_dir }}/selfsigned-fullchain.pem
+    -subj "/CN={{ pearlpbx2_domain if pearlpbx2_domain else ansible_fqdn }}/O=PearlPBX2/C=UA"
+    -addext "subjectAltName={{ selfsigned_san }}"
+    -addext "basicConstraints=critical,CA:FALSE"
+    -addext "keyUsage=critical,digitalSignature,keyEncipherment"
+    -addext "extendedKeyUsage=serverAuth"
+  vars:
+    selfsigned_san: >-
+      {{
+        (
+          (([pearlpbx2_domain] if pearlpbx2_domain else [])
+           + [ansible_fqdn, ansible_hostname, 'localhost'])
+          | unique | map('regex_replace', '^(.*)$', 'DNS:\1') | list
+          +
+          (ansible_all_ipv4_addresses + ['127.0.0.1'])
+          | unique | map('regex_replace', '^(.*)$', 'IP:\1') | list
+        ) | join(',')
+      }}
+  when: selfsigned_checkend.rc != 0
+
+- name: Set self-signed certificate permissions
+  # follow: no — these paths are never symlinks (that's the stable
+  # fullchain.pem/privkey.pem names below), but be explicit so a future
+  # rename can't accidentally chmod through a link into /etc/letsencrypt.
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    follow: false
+  loop:
+    - { path: "{{ ssl_dir }}/selfsigned-privkey.pem", mode: "0600" }
+    - { path: "{{ ssl_dir }}/selfsigned-fullchain.pem", mode: "0644" }
+
+- name: Point stable certificate names at the self-signed pair (bootstrap only)
+  # Only when fullchain.pem doesn't currently exist as a symlink into a real
+  # Let's Encrypt certificate — a re-run must never downgrade a working ACME
+  # certificate back to self-signed. The condition is derived from
+  # legacy_cert_stat (fullchain.pem, taken above) rather than a fresh stat:
+  # the migrate task only moves that path away when it existed and was NOT
+  # a symlink, so whatever is left at the path today is fully determined by
+  # what was already known about it before that move.
+  file:
+    src: "{{ ssl_dir }}/{{ item.src }}"
+    dest: "{{ ssl_dir }}/{{ item.dst }}"
+    state: link
+    force: yes
+  loop:
+    - { src: selfsigned-fullchain.pem, dst: fullchain.pem }
+    - { src: selfsigned-privkey.pem, dst: privkey.pem }
+  when: >
+    not (legacy_cert_stat.results[0].stat.exists and legacy_cert_stat.results[0].stat.islnk) or
+    '/etc/letsencrypt/' not in (legacy_cert_stat.results[0].stat.lnk_source | default(''))

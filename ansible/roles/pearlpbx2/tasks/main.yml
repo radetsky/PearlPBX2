@@ -118,6 +118,14 @@
   no_log: true
   when: not pearlpbx2_env_stat.stat.exists
 
+- name: Compute Django host/origin allowlists
+  # Single source of truth for both the first-install template
+  # (pearlpbx2.env.j2) and the existing-install patch below — previously
+  # this list-building expression was duplicated in both places.
+  set_fact:
+    pearlpbx2_allowed_hosts: "{{ (([pearlpbx2_domain] if pearlpbx2_domain else []) + [ansible_hostname, ansible_fqdn, 'localhost', '127.0.0.1'] + ansible_all_ipv4_addresses) | unique | join(',') }}"
+    pearlpbx2_csrf_trusted_origins: "{{ (([pearlpbx2_domain] if pearlpbx2_domain else []) + [ansible_hostname, ansible_fqdn] + ansible_all_ipv4_addresses) | unique | map('regex_replace', '^(.*)$', 'https://\\1') | join(',') }}"
+
 - name: Write PearlPBX2 env file (skip if already exists)
   template:
     src: pearlpbx2.env.j2
@@ -143,9 +151,29 @@
       ASTERISK_BACKUP_DIR: /var/backups/asterisk
       DEVMODE: Production
       DEBUG: "False"
-      ALLOWED_HOSTS: "{{ ([ansible_hostname, ansible_fqdn, 'localhost', '127.0.0.1'] + ansible_all_ipv4_addresses) | unique | join(',') }}"
+      ALLOWED_HOSTS: "{{ pearlpbx2_allowed_hosts }}"
+      CSRF_TRUSTED_ORIGINS: "{{ pearlpbx2_csrf_trusted_origins }}"
       TFTP_DIR: "{{ tftp_dir }}"
   no_log: true
+
+# The env file above is only ever written once — DJANGO_SECRET_KEY is
+# generated on first install and must never change on a re-run — so a
+# domain added later (`install.sh --domain ...` on a system that was first
+# installed without one) has to be folded into the existing file in place.
+- name: Update ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS in an existing env file with the domain
+  lineinfile:
+    path: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: '^ALLOWED_HOSTS='
+      line: "ALLOWED_HOSTS={{ pearlpbx2_allowed_hosts }}"
+    - regexp: '^CSRF_TRUSTED_ORIGINS='
+      line: "CSRF_TRUSTED_ORIGINS={{ pearlpbx2_csrf_trusted_origins }}"
+  when:
+    - pearlpbx2_env_stat.stat.exists
+    - pearlpbx2_domain | length > 0
+  notify: Restart pearlpbx2
 
 - name: Run database migrations
   command: >
@@ -156,8 +184,7 @@
     'ASTERISK_MANAGER_HOST': '127.0.0.1',
     'ASTERISK_MANAGER_PORT': '5038',
     'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
-    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
-    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret
   }) }}"
   become_user: "{{ pearlpbx2_user }}"
   no_log: true
@@ -174,8 +201,7 @@
     'ASTERISK_MANAGER_HOST': '127.0.0.1',
     'ASTERISK_MANAGER_PORT': '5038',
     'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
-    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
-    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret
   }) }}"
   become_user: "{{ pearlpbx2_user }}"
   no_log: true
@@ -189,8 +215,7 @@
     'ASTERISK_MANAGER_HOST': '127.0.0.1',
     'ASTERISK_MANAGER_PORT': '5038',
     'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
-    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
-    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret
   }) }}"
   become_user: "{{ pearlpbx2_user }}"
   when: not pearlpbx2_env_stat.stat.exists
@@ -212,8 +237,7 @@
     'ASTERISK_MANAGER_HOST': '127.0.0.1',
     'ASTERISK_MANAGER_PORT': '5038',
     'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
-    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
-    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret
   }) }}"
   become_user: "{{ pearlpbx2_user }}"
   when: not pearlpbx2_env_stat.stat.exists
@@ -227,8 +251,7 @@
     'ASTERISK_MANAGER_HOST': '127.0.0.1',
     'ASTERISK_MANAGER_PORT': '5038',
     'ASTERISK_MANAGER_USERNAME': 'PearlPBX2',
-    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret,
-    'CSRF_TRUSTED_ORIGINS': 'https://' + ansible_hostname
+    'ASTERISK_MANAGER_SECRET': pearlpbx2_ami_secret
   }) }}"
   become_user: "{{ pearlpbx2_user }}"
   no_log: true

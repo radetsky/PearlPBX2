@@ -165,6 +165,29 @@ proxy, `sudo ./update.sh` no lo añadirá (no toca nginx ni `http.conf`) —
 vuelve a ejecutar `sudo ./install.sh` para aplicar la nueva config de nginx, y
 cambia `bindaddr` a mano en `/etc/asterisk/http.conf` a `127.0.0.1`.
 
+Una conexión WebSocket a un certificado no confiable no se puede aceptar "al
+vuelo" como una página normal, así que `wss://` necesita un certificado en el
+que el navegador confíe de verdad. El instalador obtiene uno automáticamente,
+en este orden de preferencia:
+
+1. **Tienes un dominio** — pásalo y el instalador solicita un certificado
+   Let's Encrypt normal de 90 días vía HTTP-01:
+   ```
+   sudo ./install.sh --domain pbx.example.com --email you@example.com
+   ```
+2. **Sin dominio, pero con IP pública** — el instalador solicita
+   automáticamente un [certificado Let's Encrypt para direcciones IP](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)
+   (vigencia de 6 días, renovado cada pocas horas por un timer de systemd).
+   No hay nada que pasar; esto es lo que obtienes con un `sudo ./install.sh`
+   normal en la mayoría de VPS.
+3. **Ninguna de las dos** (sin IP pública, o puerto 80 bloqueado) — usa un
+   certificado autofirmado como respaldo; el navegador avisará una vez y hay
+   que aceptar la excepción.
+
+Comprueba cuál obtuviste: `cat /etc/PearlPBX/tls-mode`. Detalles de renovación
+y cómo añadir un dominio más adelante en
+[Guía del administrador → Certificados TLS](admin-guide.md#certificados-tls).
+
 ## Apply Changes
 
 Nada de lo anterior llega a Asterisk hasta que lo apliques. En la interfaz de admin, ve a

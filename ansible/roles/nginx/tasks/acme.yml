@@ -1,0 +1,285 @@
+---
+# Automatic trusted-certificate provisioning. Never fails the install: every
+# certbot invocation is failed_when: false, and any problem leaves the
+# self-signed bootstrap certificate from selfsigned.yml in place.
+# (ufw, if present, is already stopped/disabled by main.yml before this
+# runs — that's a general "keep 80/443 reachable" concern, not specific to
+# ACME.)
+
+- name: Install build dependencies for the certbot virtualenv
+  apt:
+    name:
+      - python3-dev
+      - libffi-dev
+    state: present
+
+- name: Create certbot virtualenv
+  command: python3 -m venv {{ certbot_venv }}
+  args:
+    creates: "{{ certbot_venv }}/bin/python"
+
+- name: Upgrade packaging tools in the certbot virtualenv
+  pip:
+    name:
+      - pip
+      - setuptools
+      - wheel
+    state: latest
+    virtualenv: "{{ certbot_venv }}"
+
+- name: Install/upgrade certbot in its virtualenv
+  pip:
+    name: certbot
+    state: latest
+    virtualenv: "{{ certbot_venv }}"
+
+- name: Symlink certbot onto PATH
+  file:
+    src: "{{ certbot_venv }}/bin/certbot"
+    dest: /usr/local/bin/certbot
+    state: link
+
+- name: Check installed certbot version
+  command: "{{ certbot_venv }}/bin/certbot --version"
+  register: certbot_version_out
+  changed_when: false
+
+- name: Parse certbot version
+  set_fact:
+    certbot_version: "{{ certbot_version_out.stdout | regex_search('[0-9]+\\.[0-9]+\\.[0-9]+') }}"
+    certbot_supports_ip: "{{ (certbot_version_out.stdout | regex_search('[0-9]+\\.[0-9]+\\.[0-9]+')) is version(certbot_min_ip_version, '>=') }}"
+
+- name: Determine a locally-visible public IPv4 address
+  set_fact:
+    pearlpbx2_local_public_ipv4: >-
+      {{ (ansible_all_ipv4_addresses
+          | reject('match', pearlpbx2_private_ipv4_regex)
+          | list | first) | default('', true) }}
+
+- name: Look up our public IPv4 externally (NAT'd cloud hosts have no local public address)
+  uri:
+    url: https://checkip.amazonaws.com
+    return_content: yes
+    timeout: 5
+  register: external_ip_lookup
+  failed_when: false
+  changed_when: false
+  when:
+    - not pearlpbx2_public_ip
+    - not pearlpbx2_local_public_ipv4
+    - acme_ip_discovery
+
+- name: Resolve the public IPv4 to use for an IP-address certificate
+  set_fact:
+    pearlpbx2_resolved_public_ip: >-
+      {{
+        pearlpbx2_public_ip
+        if pearlpbx2_public_ip
+        else (
+          pearlpbx2_local_public_ipv4
+          if pearlpbx2_local_public_ipv4
+          else (
+            external_ip_content
+            if (external_ip_lookup is defined
+                and external_ip_lookup.status | default(0) == 200
+                and external_ip_content is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$')
+                and external_ip_content is not match(pearlpbx2_private_ipv4_regex))
+            else ''
+          )
+        )
+      }}
+  vars:
+    external_ip_content: "{{ external_ip_lookup.content | default('') | trim }}"
+
+- name: Decide which TLS tier to use
+  set_fact:
+    pearlpbx2_tls_tier: >-
+      {{
+        'domain' if pearlpbx2_domain else
+        ('ip' if (pearlpbx2_resolved_public_ip and certbot_supports_ip) else 'selfsigned')
+      }}
+    pearlpbx2_tls_identifier: "{{ pearlpbx2_domain if pearlpbx2_domain else pearlpbx2_resolved_public_ip }}"
+
+- name: Report chosen TLS tier
+  debug:
+    msg: >-
+      TLS tier: {{ pearlpbx2_tls_tier }}
+      {{ '(identifier: ' + pearlpbx2_tls_identifier + ')' if pearlpbx2_tls_identifier else '' }}
+      {{ '- certbot ' + certbot_version + ' is too old for IP certificates (need >= ' + certbot_min_ip_version + ')'
+         if (pearlpbx2_tls_tier == 'selfsigned' and pearlpbx2_resolved_public_ip and not certbot_supports_ip)
+         else '' }}
+
+- name: Check the previously-issued certificate's identifier
+  slurp:
+    src: "{{ pearlpbx2_etc_dir }}/tls-identifier"
+  register: previous_identifier_raw
+  failed_when: false
+
+- name: Check whether the current Let's Encrypt certificate is still valid for this identifier
+  command: >
+    openssl x509 -in /etc/letsencrypt/live/pearlpbx2/fullchain.pem -noout -checkend 2592000
+  register: acme_cert_checkend
+  failed_when: false
+  changed_when: false
+  when: pearlpbx2_tls_tier in ['domain', 'ip']
+
+- name: Decide whether a certificate request is actually needed
+  set_fact:
+    pearlpbx2_acme_needed: >-
+      {{
+        pearlpbx2_tls_tier in ['domain', 'ip'] and (
+          acme_cert_checkend.rc | default(1) != 0 or
+          (previous_identifier_raw.content | default('') | b64decode | trim) != pearlpbx2_tls_identifier
+        )
+      }}
+
+- name: Build the certbot command for the chosen tier
+  set_fact:
+    pearlpbx2_certbot_cmd: >-
+      {{ certbot_venv }}/bin/certbot certonly --cert-name pearlpbx2
+      --webroot --webroot-path {{ acme_webroot }}
+      --non-interactive --agree-tos --keep-until-expiring --no-eff-email
+      {{ ('-m ' + pearlpbx2_acme_email) if pearlpbx2_acme_email else '--register-unsafely-without-email' }}
+      {{ ('-d ' + pearlpbx2_domain) if pearlpbx2_tls_tier == 'domain'
+         else ('--ip-address ' + pearlpbx2_resolved_public_ip + ' --preferred-profile shortlived') }}
+  when: pearlpbx2_acme_needed | default(false)
+
+- name: Try Let's Encrypt against the staging directory first (validates reachability without touching production rate limits)
+  command: "{{ pearlpbx2_certbot_cmd }} --dry-run --staging"
+  register: acme_dryrun
+  failed_when: false
+  changed_when: false
+  when: pearlpbx2_acme_needed | default(false)
+
+- name: Request the real certificate
+  command: >-
+    {{ pearlpbx2_certbot_cmd }}
+    {{ '--staging' if acme_staging else '' }}
+  register: acme_issue
+  failed_when: false
+  changed_when: "'Successfully received certificate' in acme_issue.stdout"
+  when:
+    - pearlpbx2_acme_needed | default(false)
+    - acme_dryrun.rc == 0
+
+- name: Determine final TLS mode
+  set_fact:
+    pearlpbx2_tls_mode: >-
+      {{
+        'letsencrypt' if (
+          (not (pearlpbx2_acme_needed | default(false)) and pearlpbx2_tls_tier in ['domain', 'ip'])
+          or (acme_issue.rc | default(1) == 0)
+        )
+        else 'selfsigned'
+      }}
+
+- name: Explain a fallback to self-signed, when one happened
+  debug:
+    msg: |
+      ============================================================
+      TLS: could not obtain a Let's Encrypt certificate — the site is
+      running on the self-signed fallback certificate.
+      Reason: {{ 'staging validation failed (see below)' if (acme_dryrun.rc | default(1)) != 0 else 'issuance failed (see below)' }}
+      certbot output:
+      {{ ((acme_dryrun.stderr if (acme_dryrun.rc | default(1)) != 0 else acme_issue.stderr) | default('(no output captured)')) }}
+      Fix the underlying cause (DNS, port 80 reachability, rate limits) and
+      re-run: sudo ./install.sh --domain <your-domain> --email <you>
+      ============================================================
+  when:
+    - pearlpbx2_acme_needed | default(false)
+    - pearlpbx2_tls_mode == 'selfsigned'
+
+- name: Install the certbot deploy hook (reloads nginx after every renewal)
+  copy:
+    dest: /etc/letsencrypt/renewal-hooks/deploy/10-reload-nginx.sh
+    content: |
+      #!/bin/sh
+      set -e
+      nginx -t && systemctl reload nginx
+    mode: '0755'
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Point stable certificate names at the Let's Encrypt certificate
+  file:
+    src: "/etc/letsencrypt/live/pearlpbx2/{{ item }}"
+    dest: "{{ ssl_dir }}/{{ item }}"
+    state: link
+    force: yes
+  loop:
+    - fullchain.pem
+    - privkey.pem
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+  notify:
+    - Validate nginx config
+    - Reload nginx
+
+- name: Record the identifier the current certificate was issued for
+  copy:
+    content: "{{ pearlpbx2_tls_identifier }}"
+    dest: "{{ pearlpbx2_etc_dir }}/tls-identifier"
+    mode: '0644'
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Record the active TLS mode (read by install.sh / quickstart-install.sh)
+  copy:
+    content: "{{ pearlpbx2_tls_mode }}"
+    dest: "{{ pearlpbx2_etc_dir }}/tls-mode"
+    mode: '0644'
+
+- name: Deploy renewal systemd service
+  template:
+    src: pearlpbx2-certbot-renew.service.j2
+    dest: /etc/systemd/system/pearlpbx2-certbot-renew.service
+    mode: '0644'
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Deploy renewal systemd timer
+  template:
+    src: pearlpbx2-certbot-renew.timer.j2
+    dest: /etc/systemd/system/pearlpbx2-certbot-renew.timer
+    mode: '0644'
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Enable and start the renewal timer
+  systemd:
+    name: pearlpbx2-certbot-renew.timer
+    daemon_reload: yes
+    state: started
+    enabled: yes
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Disable the renewal timer when not using Let's Encrypt
+  systemd:
+    name: pearlpbx2-certbot-renew.timer
+    state: stopped
+    enabled: no
+  failed_when: false
+  when: pearlpbx2_tls_mode != 'letsencrypt'
+
+- name: Re-template PearlPBX2 nginx site config with the final TLS state
+  # The template reads pearlpbx2_tls_mode directly (set just above) to decide
+  # HSTS and the canonical redirect — no separate "active" flag needed.
+  template:
+    src: pearlpbx2.nginx.j2
+    dest: /etc/nginx/sites-available/pearlpbx2
+    mode: '0644'
+  notify:
+    - Validate nginx config
+    - Reload nginx
+
+- name: Flush handlers so the final vhost is validated and live
+  meta: flush_handlers
+
+- name: Smoke-test the renewal path
+  command: "{{ certbot_venv }}/bin/certbot renew --dry-run --cert-name pearlpbx2"
+  register: renew_dryrun
+  failed_when: false
+  changed_when: false
+  when: pearlpbx2_tls_mode == 'letsencrypt'
+
+- name: Report renewal smoke test result
+  debug:
+    msg: >-
+      {{ 'Renewal smoke test: OK' if (renew_dryrun.rc | default(1)) == 0
+         else 'Renewal smoke test FAILED — check ' + (renew_dryrun.stderr | default('')) }}
+  when: pearlpbx2_tls_mode == 'letsencrypt'

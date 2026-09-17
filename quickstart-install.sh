@@ -4,6 +4,10 @@
 #
 #   curl -fsSL https://pearlpbx2.com/quickstart-install.sh | sudo bash
 #
+#   # With a trusted TLS certificate (Let's Encrypt) instead of self-signed:
+#   curl -fsSL https://pearlpbx2.com/quickstart-install.sh \
+#     | sudo PEARLPBX2_DOMAIN=pbx.example.com PEARLPBX2_EMAIL=you@example.com bash
+#
 # Clones PearlPBX2 over HTTPS and runs the production Ansible installer
 # (install.sh) non-interactively, then creates an admin user with a
 # generated password. Debian/Ubuntu only. Must run as root.
@@ -14,6 +18,8 @@ set -euo pipefail
 REPO_URL="https://github.com/radetsky/PearlPBX2.git"
 REF="${PEARLPBX2_REF:-main}"
 DIR="${PEARLPBX2_DIR:-/opt/PearlPBX2}"
+DOMAIN="${PEARLPBX2_DOMAIN:-}"
+EMAIL="${PEARLPBX2_EMAIL:-}"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "This script must run as root. Try:" >&2
@@ -62,10 +68,13 @@ fi
 
 echo "==> Running the production installer (install.sh)..."
 echo "    This compiles Asterisk from source and takes 15-30 minutes."
+INSTALL_ARGS=()
+[ -n "$DOMAIN" ] && INSTALL_ARGS+=(--domain "$DOMAIN")
+[ -n "$EMAIL" ] && INSTALL_ARGS+=(--email "$EMAIL")
 if [ -r /dev/tty ]; then
-    bash "${DIR}/install.sh" < /dev/tty
+    bash "${DIR}/install.sh" "${INSTALL_ARGS[@]}" < /dev/tty
 else
-    bash "${DIR}/install.sh" < /dev/null
+    bash "${DIR}/install.sh" "${INSTALL_ARGS[@]}" < /dev/null
 fi
 
 ADMIN_PASS="$(gen_secret)"
@@ -97,8 +106,15 @@ else
     echo " Admin user 'admin' already exists — password unchanged."
 fi
 echo ""
-echo " The TLS certificate is self-signed; your browser will warn on"
-echo " first visit."
+if [ -r /etc/PearlPBX/tls-mode ] && [ "$(cat /etc/PearlPBX/tls-mode)" = "letsencrypt" ]; then
+    echo " TLS: a trusted Let's Encrypt certificate is active and renews"
+    echo " automatically."
+else
+    echo " The TLS certificate is self-signed; your browser will warn on"
+    echo " first visit. For a trusted certificate, set PEARLPBX2_DOMAIN"
+    echo " (and optionally PEARLPBX2_EMAIL) and re-run this installer, or"
+    echo " run: sudo ${DIR}/install.sh --domain <your-domain>"
+fi
 echo ""
 echo " First test calls (echo test, internal call, IVR, ...):"
 echo "   ${DIR}/docs/en/quickstart.md"
