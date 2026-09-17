@@ -18,11 +18,18 @@ server {
         access_log off;
     }
 
+    # A bare "return" directly in this server block runs during nginx's
+    # server-rewrite phase, before location matching — so it would fire
+    # for the acme-challenge location above too, breaking HTTP-01
+    # validation. Wrapping it in "location /" makes it lose to the more
+    # specific "^~ /.well-known/acme-challenge/" location.
+    location / {
 {% if tls_trusted and pearlpbx2_domain %}
-    return 301 https://{{ pearlpbx2_domain }}$request_uri;
+        return 301 https://{{ pearlpbx2_domain }}$request_uri;
 {% else %}
-    return 301 https://$host$request_uri;
+        return 301 https://$host$request_uri;
 {% endif %}
+    }
 }
 
 server {
