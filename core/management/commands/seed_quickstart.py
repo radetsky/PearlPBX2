@@ -68,7 +68,7 @@ IVR_MAIN_EXTENSIONS = {
 
 QUICKSTART_SERVICES_EXTENSIONS = {
     "140": (
-        "Answer();\nWait(1);\ngoto ivr-main,s,1;",
+        "Answer();\nWait(1);\nSet(IVR_RETRY=0);\ngoto ivr-main,s,1;",
         "Test the IVR from an internal phone",
     ),
     "141": (

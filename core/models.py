@@ -896,7 +896,7 @@ class Settings(models.Model):
         help_text=_("WSS port of the server"),
     )
     allow_monitor = models.BooleanField(
-        default=False,
+        default=True,
         verbose_name=_("Allow global monitor"),
         help_text=_("Allow to monitor calls of whole system"),
     )
