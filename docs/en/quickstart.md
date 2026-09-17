@@ -83,6 +83,40 @@ To pull in updates later, run `sudo ./update.sh` from the same directory — it 
 
 See `ansible/group_vars/all.yml` for the variables it uses (install dir, DB name, Asterisk version, etc.) and `ansible/roles/` for what each role does.
 
+### TLS certificate
+
+By default `install.sh` issues a self-signed certificate, so browsers warn on first visit. For a trusted Let's Encrypt certificate, re-run:
+
+```bash
+sudo ./install.sh --domain <your-domain> --email <you@example.com>
+```
+
+### Optional: MP3 backup sync
+
+Edit `/etc/PearlPBX/syncmp3/env` and set `BACKUP_DIR` (e.g. a mounted NAS or iSCSI volume). Sync runs daily at 03:00 via cron.
+
+### Optional: Slack server alerts
+
+1. Create a Slack Incoming Webhook: https://api.slack.com/apps → New App → Incoming Webhooks
+2. Paste the webhook URL into `/etc/PearlPBX/system_monitor/env`.
+
+Alerts fire every 15 minutes (disk, CPU, memory, services).
+
+### Optional: Slack notification for unmatched inbound calls
+
+1. Create a Slack Incoming Webhook: https://api.slack.com/apps → New App → Incoming Webhooks
+2. Paste the webhook URL into `/etc/PearlPBX/AGI/env`.
+3. Add to your catch-all dialplan extension:
+   ```
+   AGI(unmatched_call.py,${CALLERID(num)},${EXTEN},${CHANNEL});
+   ```
+   See `services/agi/README.md` — it also covers `missed_call.py`.
+
+### If the install was interrupted
+
+- If `apt` was interrupted: `sudo dpkg --configure -a`
+- If the env file is corrupt: `sudo rm /etc/PearlPBX/PearlPBX2/env`, then re-run `install.sh`
+
 ## Option 2: Docker Compose (recommended — evaluation, development)
 
 ```bash

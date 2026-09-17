@@ -83,6 +83,40 @@ sudo ./install.sh
 
 Дивіться `ansible/group_vars/all.yml` для змінних, які він використовує (директорія інсталяції, назва БД, версія Asterisk тощо), і `ansible/roles/` — що робить кожна роль.
 
+### TLS-сертифікат
+
+За замовчуванням `install.sh` видає самопідписаний сертифікат, тож браузер попереджатиме при першому відвідуванні. Для довіреного сертифіката Let's Encrypt перезапустіть:
+
+```bash
+sudo ./install.sh --domain <ваш-домен> --email <you@example.com>
+```
+
+### Опційно: синхронізація MP3-бекапів
+
+Відредагуйте `/etc/PearlPBX/syncmp3/env` і встановіть `BACKUP_DIR` (наприклад, змонтований NAS або iSCSI-том). Синхронізація запускається щодня о 03:00 через cron.
+
+### Опційно: Slack-сповіщення про стан сервера
+
+1. Створіть Slack Incoming Webhook: https://api.slack.com/apps → New App → Incoming Webhooks
+2. Вставте URL вебхука в `/etc/PearlPBX/system_monitor/env`.
+
+Сповіщення надходять кожні 15 хвилин (диск, CPU, пам'ять, сервіси).
+
+### Опційно: Slack-сповіщення про неопрацьовані вхідні дзвінки
+
+1. Створіть Slack Incoming Webhook: https://api.slack.com/apps → New App → Incoming Webhooks
+2. Вставте URL вебхука в `/etc/PearlPBX/AGI/env`.
+3. Додайте до catch-all extension у дialplan:
+   ```
+   AGI(unmatched_call.py,${CALLERID(num)},${EXTEN},${CHANNEL});
+   ```
+   Дивіться `services/agi/README.md` — там також описано `missed_call.py`.
+
+### Якщо інсталяція перервалась
+
+- Якщо перервався `apt`: `sudo dpkg --configure -a`
+- Якщо пошкоджено env-файл: `sudo rm /etc/PearlPBX/PearlPBX2/env`, потім перезапустіть `install.sh`
+
 ## Варіант 2: Docker Compose (рекомендовано — для оцінки, розробки)
 
 ```bash
