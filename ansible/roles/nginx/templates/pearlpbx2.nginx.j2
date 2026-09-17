@@ -1,17 +1,53 @@
+{% set has_public_ipv6 = ansible_all_ipv6_addresses | default([]) | reject('match', '^(fe80|::1$)') | list | length > 0 %}
+{% set tls_trusted = (pearlpbx2_tls_mode | default('selfsigned')) == 'letsencrypt' %}
 server {
     listen 80;
-    server_name _;
+{% if has_public_ipv6 %}
+    listen [::]:80;
+{% endif %}
+    server_name {{ pearlpbx2_domain if pearlpbx2_domain else '_' }};
+
+    # Let's Encrypt HTTP-01 challenge — must stay reachable over plain HTTP
+    # for certificate issuance and renewal, so it is placed above the
+    # redirect below. Let's Encrypt prefers AAAA when one is published, so
+    # the listen [::]:80 above matters whenever the host has a global IPv6
+    # address.
+    location ^~ /.well-known/acme-challenge/ {
+        root {{ acme_webroot }};
+        default_type "text/plain";
+        access_log off;
+    }
+
+{% if tls_trusted and pearlpbx2_domain %}
+    return 301 https://{{ pearlpbx2_domain }}$request_uri;
+{% else %}
     return 301 https://$host$request_uri;
+{% endif %}
 }
 
 server {
-    listen 443 ssl;
-    server_name _;
+    # "listen ... http2" (not the newer "http2 on;" directive) is the form
+    # that works on both nginx 1.22 (Debian 12) and 1.24 (Ubuntu 24.04) —
+    # neither ships the 1.25.1+ directive syntax.
+    listen 443 ssl http2;
+{% if has_public_ipv6 %}
+    listen [::]:443 ssl http2;
+{% endif %}
+    server_name {{ pearlpbx2_domain if pearlpbx2_domain else '_' }};
 
     ssl_certificate {{ ssl_dir }}/fullchain.pem;
     ssl_certificate_key {{ ssl_dir }}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+{% if tls_trusted %}
+    # Only sent once a browser-trusted certificate is active — HSTS on a
+    # self-signed host would permanently block the click-through exception.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+{% endif %}
 
     client_max_body_size 20M;
 

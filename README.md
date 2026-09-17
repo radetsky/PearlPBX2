@@ -68,11 +68,18 @@ Fastest way to try PearlPBX2 — one command, no manual steps:
 # Production install (Debian/Ubuntu, sets up Asterisk + systemd services)
 curl -fsSL https://pearlpbx2.com/quickstart-install.sh | sudo bash
 
+# With a trusted TLS certificate (Let's Encrypt) instead of self-signed:
+curl -fsSL https://pearlpbx2.com/quickstart-install.sh \
+  | sudo PEARLPBX2_DOMAIN=pbx.example.com PEARLPBX2_EMAIL=you@example.com bash
+
 # Docker playground (any OS with Docker installed)
 curl -fsSL https://pearlpbx2.com/quickstart-docker.sh | bash
 ```
 
-Both print a generated admin login/password at the end. See [docs/en/quickstart.md](docs/en/quickstart.md) for the manual step-by-step (Ansible or Docker Compose) and first test calls. Also available in [Українська](docs/ua/quickstart.md) and [Español](docs/es/quickstart.md).
+Both print a generated admin login/password at the end. Without a domain, the
+production installer still gets a trusted certificate automatically when the
+host has a public IP (a short-lived Let's Encrypt IP certificate), falling
+back to self-signed only when neither is reachable. See [docs/en/quickstart.md](docs/en/quickstart.md) for the manual step-by-step (Ansible or Docker Compose) and first test calls. Also available in [Українська](docs/ua/quickstart.md) and [Español](docs/es/quickstart.md).
 
 ## Documentation
 

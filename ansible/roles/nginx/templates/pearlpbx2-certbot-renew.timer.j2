@@ -1,0 +1,14 @@
+[Unit]
+Description=Renew PearlPBX2 TLS certificate
+
+[Timer]
+# Every 4 hours, not certbot's stock twice-daily default: a Let's Encrypt
+# IP-address certificate is valid for only 160 hours (~6.7 days) and its
+# renewal window opens around the halfway point, so infrequent checks leave
+# too little margin against a missed run or a temporary outage.
+OnCalendar=*-*-* 0/4:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -163,6 +163,28 @@ won't add it (it doesn't touch nginx or `http.conf`); re-run `sudo ./install.sh`
 to pick up the new nginx config, and edit `bindaddr` in `/etc/asterisk/http.conf`
 to `127.0.0.1` by hand.
 
+A WebSocket connection to an untrusted certificate cannot be "click-through"
+accepted the way a page load can, so `wss://` needs a certificate the browser
+actually trusts. The installer gets one automatically, in order of preference:
+
+1. **A domain, if you have one** — pass it and the installer requests a normal
+   90-day Let's Encrypt certificate via HTTP-01:
+   ```
+   sudo ./install.sh --domain pbx.example.com --email you@example.com
+   ```
+2. **No domain, but a public IP** — the installer requests a Let's Encrypt
+   [IP-address certificate](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)
+   automatically (6-day lifetime, renewed every few hours by a systemd timer).
+   Nothing to pass; this is what a bare `sudo ./install.sh` gets you on most
+   VPS hosts.
+3. **Neither reachable** (no public IP, or port 80 blocked upstream) — falls
+   back to a self-signed certificate; your browser will warn once and you
+   click through.
+
+Check which one you ended up with: `cat /etc/PearlPBX/tls-mode`. See
+[Admin Guide → TLS certificates](admin-guide.md#tls-certificates) for renewal
+details and how to add a domain later.
+
 ## Apply Changes
 
 Nothing above reaches Asterisk until you push it. In the admin UI go to

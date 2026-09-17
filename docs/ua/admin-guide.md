@@ -154,6 +154,32 @@ uvicorn pbx.asgi:application --host 0.0.0.0 --port 8000 --workers 3
 - Docker-розгортання: `docker-compose.yml` (pearlpbx2, asterisk, postgres, redis, fastagi, dashboard-listener, callback)
 - Ansible-розгортання (рекомендовано для bare-metal production): `ansible/install.yml` (9 ролей: system, postgres, redis, asterisk, pearlpbx2, services, nginx, tftp, firewall)
 
+### TLS-сертифікати
+
+Роль `nginx` автоматично отримує сертифікат, у такому порядку пріоритету:
+Let's Encrypt для `pearlpbx2_domain`, якщо задано (`--domain` у `install.sh`),
+інакше — сертифікат Let's Encrypt на публічну IPv4 хоста (термін дії 6 днів),
+інакше — самопідписаний сертифікат. Результат записується у
+`/etc/PearlPBX/tls-mode` (`letsencrypt` або `selfsigned`).
+
+- **Файли сертифіката**: `/etc/ssl/pearlpbx2/fullchain.pem` та `privkey.pem` —
+  завжди симлінки, або на `/etc/letsencrypt/live/pearlpbx2/`, або на пару
+  `selfsigned-*.pem` у тій самій директорії. Директиви `ssl_certificate` в
+  nginx ніколи не змінюються, тож перемикання джерела сертифіката не потребує
+  повторного шаблонування vhost.
+- **Додавання домену пізніше**: повторно запустіть
+  `sudo ./install.sh --domain <fqdn> --email <you>`. `update.sh` не чіпає
+  nginx чи TLS — для цього використовуйте `install.sh`.
+- **Продовження терміну дії**: systemd-таймер (`pearlpbx2-certbot-renew.timer`,
+  кожні 4 години) запускає `certbot renew`. Перевірити:
+  `systemctl list-timers pearlpbx2-certbot-renew` або
+  `sudo /opt/certbot/bin/certbot certificates`.
+- **Примусовий self-signed**: встановіть `acme_enabled: false` у
+  `ansible/group_vars/all.yml` і повторно запустіть `install.sh`.
+- **Немає публічного порту 80 / хост без мережі**: ACME завершується без
+  помилки, а роль переходить на self-signed; причина друкується в лозі
+  інсталяції (`/var/log/pearlpbx2-install.log`).
+
 ### Режими роботи (DEVMODE)
 
 | Режим | Значення | Опис |

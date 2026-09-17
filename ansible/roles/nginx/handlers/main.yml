@@ -1,4 +1,10 @@
 ---
+# Handlers run in the order defined here for whichever ones were notified,
+# so "Validate" always fires before "Reload" when both are notified.
+- name: Validate nginx config
+  command: nginx -t
+  changed_when: false
+
 - name: Reload nginx
   service:
     name: nginx

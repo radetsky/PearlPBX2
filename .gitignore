@@ -11,5 +11,8 @@ staticfiles/
 .idea/
 local_settings.py
 
-# Internal planning/task notes — not part of the public release
-tasks/
+# Internal planning/task notes — not part of the public release.
+# Anchored to the repo root (leading slash): an unanchored "tasks/" also
+# matches every ansible/roles/*/tasks/ directory, silently dropping new
+# Ansible task files from `git add`.
+/tasks/

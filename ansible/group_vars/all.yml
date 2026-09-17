@@ -11,7 +11,48 @@ db_name: pearlpbx2
 db_user: pearlpbx2
 
 ssl_dir: /etc/ssl/pearlpbx2
-ssl_days: 3650
+
+# Self-signed fallback validity. Capped under Apple's 398-day hard limit
+# for server certificates (Safari on macOS/iOS refuses longer-lived certs
+# outright, even when manually trusted) — the self-signed regeneration
+# guard (see roles/nginx/tasks/selfsigned.yml) renews it well before this.
+ssl_selfsigned_days: 397
+
+# Public FQDN for the nginx vhost and the Let's Encrypt certificate. Empty
+# means "no domain yet" — the installer then tries a Let's Encrypt
+# IP-address certificate, falling back to self-signed. Pass with
+# `-e pearlpbx2_domain=pbx.example.com` or `install.sh --domain`.
+pearlpbx2_domain: ""
+
+# Let's Encrypt account email. Empty uses --register-unsafely-without-email.
+pearlpbx2_acme_email: ""
+
+# Override the public IPv4 used for an IP-address certificate when it is not
+# present on any local interface (NAT/EIP hosts on AWS, GCP, Hetzner, etc.).
+pearlpbx2_public_ip: ""
+
+# Master switch for automatic certificate provisioning. False skips ACME
+# entirely and keeps the self-signed certificate.
+acme_enabled: true
+
+# Use the Let's Encrypt staging directory (untrusted, high rate limits) —
+# for testing this role without touching production issuance limits.
+acme_staging: false
+
+# When no local interface carries a public IPv4 (common on AWS/GCP/Azure,
+# where the instance only sees its private address), ask an external
+# service what our public IP is before giving up on the IP-address tier.
+# Set to false to keep the installer fully offline-capable.
+acme_ip_discovery: true
+
+acme_webroot: /var/www/letsencrypt
+certbot_venv: /opt/certbot
+certbot_min_ip_version: "5.4.0"
+
+# RFC1918 + loopback + link-local + CGNAT (100.64/10) + IETF special-use
+# ranges. Used to tell a genuinely public IPv4 apart from a private one
+# when deciding whether an IP-address certificate is possible.
+pearlpbx2_private_ipv4_regex: "^(10\\.|127\\.|0\\.|169\\.254\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|192\\.0\\.0\\.|192\\.0\\.2\\.|198\\.1[89]\\.|198\\.51\\.100\\.|203\\.0\\.113\\.|100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.|2(2[4-9]|[3-4][0-9]|5[0-5])\\.)"
 
 tftp_dir: /var/lib/tftpboot
 

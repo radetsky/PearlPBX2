@@ -1,0 +1,8 @@
+[Unit]
+Description=PearlPBX2 TLS certificate renewal
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart={{ certbot_venv }}/bin/certbot renew --quiet --cert-name pearlpbx2

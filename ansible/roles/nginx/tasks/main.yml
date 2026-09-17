@@ -7,6 +7,20 @@
     state: present
     update_cache: yes
 
+- name: Stop and disable ufw if present (it can block ports 80/443 despite nftables)
+  # ufw uses the same netfilter hooks as the firewall role's nftables
+  # ruleset (both via iptables-nft), so an active ufw with only SSH allowed
+  # silently blocks nginx — and the HTTP-01 ACME challenge — even though
+  # nftables permits it. This protects plain HTTP/HTTPS access too, not
+  # just ACME, so it runs unconditionally here rather than inside acme.yml.
+  service:
+    name: ufw
+    state: stopped
+    enabled: no
+  failed_when: false
+  register: ufw_disable_result
+  changed_when: ufw_disable_result is succeeded and ufw_disable_result.changed | default(false)
+
 - name: Create SSL directory
   file:
     path: "{{ ssl_dir }}"
@@ -15,49 +29,74 @@
     group: root
     mode: '0755'
 
-- name: Check if SSL certificate exists
-  stat:
-    path: "{{ ssl_dir }}/fullchain.pem"
-  register: ssl_cert_stat
-
-- name: Generate self-signed SSL certificate
-  command: >
-    openssl req -x509 -newkey rsa:4096 -days {{ ssl_days }} -nodes
-    -keyout {{ ssl_dir }}/privkey.pem
-    -out {{ ssl_dir }}/fullchain.pem
-    -subj "/CN={{ ansible_hostname }}/O=PearlPBX2/C=UA"
-  when: not ssl_cert_stat.stat.exists
-
-- name: Set SSL certificate permissions
+- name: Create ACME webroot directory
   file:
-    path: "{{ item.path }}"
-    mode: "{{ item.mode }}"
-  loop:
-    - { path: "{{ ssl_dir }}/privkey.pem", mode: "0600" }
-    - { path: "{{ ssl_dir }}/fullchain.pem", mode: "0644" }
+    path: "{{ acme_webroot }}/.well-known/acme-challenge"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure self-signed bootstrap certificate exists
+  include_tasks: selfsigned.yml
+
+# Seed pearlpbx2_tls_mode from the outcome recorded on the previous run so
+# an idempotent re-run's first render already matches the final one (no
+# HSTS/redirect flicker, no spurious reload) — acme.yml still recomputes
+# the real value below and re-templates only if it actually changed.
+- name: Read the previously-recorded TLS mode, if any
+  slurp:
+    src: "{{ pearlpbx2_etc_dir }}/tls-mode"
+  register: previous_tls_mode_raw
+  failed_when: false
+
+- name: Seed TLS mode fact for the first vhost render
+  set_fact:
+    pearlpbx2_tls_mode: "{{ (previous_tls_mode_raw.content | default('') | b64decode | trim) or 'selfsigned' }}"
 
 - name: Deploy PearlPBX2 nginx site config
   template:
     src: pearlpbx2.nginx.j2
     dest: /etc/nginx/sites-available/pearlpbx2
     mode: '0644'
-  notify: Reload nginx
+  notify:
+    - Validate nginx config
+    - Reload nginx
 
 - name: Enable PearlPBX2 nginx site
   file:
     src: /etc/nginx/sites-available/pearlpbx2
     dest: /etc/nginx/sites-enabled/pearlpbx2
     state: link
-  notify: Reload nginx
+  notify:
+    - Validate nginx config
+    - Reload nginx
 
 - name: Remove default nginx site
   file:
     path: /etc/nginx/sites-enabled/default
     state: absent
-  notify: Reload nginx
+  notify:
+    - Validate nginx config
+    - Reload nginx
+
+# Explicit, not just via the handler: a broken vhost must be caught here,
+# before the very first "service: state=started" below — the handler chain
+# only flushes afterwards and exists for reloading an already-running nginx
+# on later re-runs.
+- name: Validate nginx config before first start
+  command: nginx -t
+  changed_when: false
 
 - name: Start and enable nginx
   service:
     name: nginx
     state: started
     enabled: yes
+
+- name: Flush handlers so nginx is serving :80 before ACME runs
+  meta: flush_handlers
+
+- name: Obtain a trusted certificate (Let's Encrypt) when enabled
+  include_tasks: acme.yml
+  when: acme_enabled
