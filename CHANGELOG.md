@@ -47,6 +47,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Debian installs missing `cron`** — `cron` wasn't in the `system` Ansible role's package list, so the daily backup/report cron jobs installed by other roles silently had nothing to run them on a fresh Debian host (only Ubuntu, where `cron` is typically preinstalled, worked by accident).
 - **Firewall installer's SSH-port confirmation could hang an unattended install** — the Ansible `firewall` role's SSH-port detection previously stopped with an interactive `pause: prompt: "Press Enter to continue"`, blocking any install run without a TTY (e.g. `ansible-pull`, CI). It now only logs the detected port via `debug` and proceeds.
 - **`AudioFileByUniqueidView` returned HTTP 500 for every request** — it was missing from `ReportViewPermissionMixin.VIEW_PERMISSION_MAPPING` (`apps/reports/mixins.py`), so `get_permission_required()` always raised `ImproperlyConfigured` regardless of the caller's permissions. Found while wiring recording links into the new `mail_report` command.
+- **nginx HTTP→HTTPS redirect broke Let's Encrypt HTTP-01 validation** — the generated vhost's `return 301 https://...` sat directly in the `server` block, which nginx evaluates during the server-rewrite phase, before location matching — so it fired for the `^~ /.well-known/acme-challenge/` location too, and the ACME client's HTTP-01 request never reached the challenge file. `ansible/roles/nginx/templates/pearlpbx2.nginx.j2` now wraps the redirect in a `location /` block, so the more specific acme-challenge location takes precedence.
+
+### Changed
+
+- **`asterisk_version` pinned to `22.11.0`** (`ansible/group_vars/all.yml`) instead of the floating `22-current`, so a fresh install always builds a known-good version rather than whatever is newest on install day.
+- **`install.sh`'s post-install output trimmed** — the optional-integration instructions (MP3 backup sync, Slack server alerts, Slack unmatched-call notifications) and interrupted-install recovery notes moved out of the script's echoed output and into `docs/{en,es,ua}/quickstart.md`, which the script now points to instead of printing everything inline.
 
 ## [2.7.2] - 2026-08-23
 
