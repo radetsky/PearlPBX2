@@ -59,22 +59,6 @@ class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
     ordering = ["name", "username", "extension"]
     search_fields = ["name", "username", "extension"]
     readonly_fields = ("realm_display", "md5_cred_display")
-    fields = [
-        "name",
-        "username",
-        "secret",
-        "realm_display",
-        "md5_cred_display",
-        "transport",
-        "nat",
-        "extension",
-        "routing_table",
-        "auth_type",
-        "custom_extension",
-        "custom_settings",
-        "custom_auth_settings",
-        "custom_aor_settings",
-    ]
 
     def realm_display(self, obj):
         return obj.realm if obj and obj.pk else "—"
@@ -96,6 +80,8 @@ class SIPUserAdmin(AuditAdminMixin, admin.ModelAdmin):
                     "name",
                     "username",
                     "secret",
+                    "realm_display",
+                    "md5_cred_display",
                     "transport",
                     "nat",
                     "extension",
