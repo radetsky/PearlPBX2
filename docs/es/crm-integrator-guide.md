@@ -2,7 +2,7 @@
 
 # Integración de un sistema CRM con PearlPBX2: guía técnica
 
-**Versión:** 2.7.2
+**Versión:** 2.7.3
 
 ---
 

@@ -1,4 +1,4 @@
-# PearlPBX2 `v2.7.2`
+# PearlPBX2 `v2.7.3`
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Quick Start](https://img.shields.io/badge/docs-Quick%20Start-brightgreen.svg)](docs/en/quickstart.md)

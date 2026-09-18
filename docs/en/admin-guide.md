@@ -2,7 +2,7 @@
 
 # PearlPBX2 Administrator Guide
 
-**Version:** 2.7.2
+**Version:** 2.7.3
 
 ---
 
@@ -1097,4 +1097,4 @@ journalctl -u pearlpbx2-fastagi.service -f
 
 ---
 
-*Document created for PearlPBX2 v2.7.2. The system's interface and paths may vary depending on configuration.*
+*Document created for PearlPBX2 v2.7.3. The system's interface and paths may vary depending on configuration.*

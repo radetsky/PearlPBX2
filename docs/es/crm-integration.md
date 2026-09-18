@@ -2,7 +2,7 @@
 
 # Integración con CRM
 
-**Versión:** 2.7.2
+**Versión:** 2.7.3
 
 ---
 

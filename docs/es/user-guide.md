@@ -2,7 +2,7 @@
 
 # Guía del usuario de PearlPBX2
 
-**Versión:** 2.7.2
+**Versión:** 2.7.3
 
 ---
 
@@ -399,4 +399,4 @@ Sí — para los reportes **CDR**, **Queue Log** y **Callback** (sección 6), ha
 
 ---
 
-*Documento creado para PearlPBX2 v2.7.2. La interfaz del sistema puede variar según la versión.*
+*Documento creado para PearlPBX2 v2.7.3. La interfaz del sistema puede variar según la versión.*
