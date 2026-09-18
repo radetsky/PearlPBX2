@@ -1,6 +1,6 @@
 # PearlPBX2 `v2.7.2`
 
-[![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/License-PolyForm%20Shield%201.0.0-blue.svg)](https://polyformproject.org/licenses/shield/1.0.0)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Quick Start](https://img.shields.io/badge/docs-Quick%20Start-brightgreen.svg)](docs/en/quickstart.md)
 
 Web-based management interface for [Asterisk PBX](https://www.asterisk.org/), built with Django. Manages SIP endpoints, call routing, queues, and dialplan through a web UI — and generates Asterisk configuration files directly from the database.
@@ -148,13 +148,13 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workfl
 
 ## License
 
-This project is licensed under the [PolyForm Shield License 1.0.0](LICENSE).
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
-You may use, modify, and distribute PearlPBX2 for any purpose — including running your own commercial telephony deployment — except to provide a product or service that competes with PearlPBX2 or with any product the copyright holder provides using this software. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for the full terms. Commercial partnership or a license for a competing use requires a separate written agreement with the copyright holder.
+You may use, modify, and distribute PearlPBX2 for any purpose. If you run a modified version to provide a service over a network, you must make the complete corresponding source code available to users of that service, under the same license. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for the full terms.
 
 ### Third-party dependency licenses
 
-All direct dependencies (Django app and the three standalone `services/`) were scanned with [`pip-licenses`](https://pypi.org/project/pip-licenses/) on 2026-08-11. Everything resolves to permissive licenses — MIT, BSD, Apache-2.0, PSF-2.0, or MPL-2.0 — except `psycopg2-binary`, which is LGPL. LGPL governs the driver package itself; importing/using it as a library does not place PearlPBX2's own code under LGPL terms, so this does not conflict with the PolyForm Shield license above. No GPL/AGPL dependency is present in any component actually shipped in the Docker images or a production install.
+All direct dependencies (Django app and the three standalone `services/`) were scanned with [`pip-licenses`](https://pypi.org/project/pip-licenses/) on 2026-08-11. Everything resolves to permissive licenses — MIT, BSD, Apache-2.0, PSF-2.0, or MPL-2.0 — except `psycopg2-binary`, which is LGPL. LGPL governs the driver package itself; importing/using it as a library does not place PearlPBX2's own code under different terms, and it is compatible with the AGPL-3.0 license above.
 
 To reproduce:
 

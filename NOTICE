@@ -1,13 +1,11 @@
 PearlPBX2 — Django-based Asterisk PBX management interface
 Copyright (C) 2024-2026 Alex Radetsky
 
-This software is licensed under the PolyForm Shield License 1.0.0.
-You may use, modify, and distribute it for any purpose, except to
-provide a product or service that competes with PearlPBX2 or with
-any product the Licensor provides using this software.
+This software is licensed under the GNU Affero General Public License
+version 3 (AGPL-3.0). If you run a modified version of this software
+to provide a service over a network, you must make the complete
+corresponding source code of your modified version available to users
+of that service, under the same license.
 
-License: PolyForm Shield 1.0.0 — see LICENSE file
-https://polyformproject.org/licenses/shield/1.0.0
-
-Commercial partnership / competing-use licensing: contact the
-copyright holder directly (separate written agreement).
+License: GNU Affero General Public License v3.0 — see LICENSE file
+https://www.gnu.org/licenses/agpl-3.0.html

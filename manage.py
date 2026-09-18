@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2024-2026 Alex Radetsky
 """Django's command-line utility for administrative tasks."""
 

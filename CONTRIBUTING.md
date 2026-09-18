@@ -40,9 +40,13 @@ Verbose output: `python manage.py test --verbosity=2`
 
 Pull requests are reviewed before merge. Opening a PR does not guarantee it will be accepted — acceptance is at the maintainer's discretion.
 
+## Contributor License Agreement
+
+Before your first pull request can be merged, you'll be asked to sign the project's CLA (a bot will comment on your PR with instructions). This confirms you have the right to contribute the code and grants the project the rights needed to distribute it.
+
 ## License
 
-PearlPBX2 is distributed under the [PolyForm Shield License 1.0.0](LICENSE) (see also [NOTICE](NOTICE)). By submitting a contribution, you agree it is distributed under the same license. Using this project — including your contribution — to build or operate a competing product or service remains prohibited under [LICENSE](LICENSE). You retain copyright to your own contribution; do not remove existing copyright or `Required Notice:` lines when modifying files.
+PearlPBX2 is distributed under the [GNU Affero General Public License v3.0](LICENSE) (see also [NOTICE](NOTICE)). By submitting a contribution, you agree it is distributed under the same license. You retain copyright to your own contribution; do not remove existing copyright notices when modifying files.
 
 ## Reporting issues
 
