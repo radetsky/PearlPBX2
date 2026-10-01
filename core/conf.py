@@ -773,6 +773,11 @@ def _asterisk_pattern_specificity(ext_pattern: str) -> tuple:
     return (literal_count, -wildcard_count, length, -is_xbang)
 
 
+PUSH_WAKEUP_AGI = (
+    "AGI(agi://127.0.0.1:4573/push-wakeup,{username},${{CALLERID(num)}},${{UNIQUEID}});\n"
+)
+
+
 def make_local_users_context():
     """
     Generate the PEARLPBX-Users context live from active SIPUsers — one
@@ -802,6 +807,8 @@ def make_local_users_context():
     plaintext += f"context {context_name} " + "{\n"
     for user in users:
         body = template.replace("${SIPUser.username}", user.username).replace("\r", "")
+        if user.transport.protocol == "wss":
+            body = PUSH_WAKEUP_AGI.format(username=user.username) + body
         plaintext += f"    // Extension for {user.username}\n"
         plaintext += f"    {user.extension} => " + "{\n"
         plaintext += textwrap.indent(body, " " * 8)

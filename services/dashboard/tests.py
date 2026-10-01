@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from webhook_sender import (
@@ -1221,3 +1222,45 @@ class TestExtractEndpoint:
 
     def test_none_returns_none(self):
         assert extract_endpoint(None) is None
+
+
+class TestWakeQueueMembers:
+    def make_listener(self, members):
+        from dashboard_listener import DashboardAMIListener
+
+        listener = DashboardAMIListener.__new__(DashboardAMIListener)
+        listener.logger = logger
+        listener.push_server_url = "https://push.example"
+        listener.pbx_id = "pbx-1"
+        listener.pbx_secret = "s3cret"
+        listener.queue_state = {"sales": {"members": members}}
+        listener.webhooks = SimpleNamespace(webrtc_users=frozenset({"webrtc1", "webrtc2", "webrtc3"}))
+        return listener
+
+    def test_pushes_only_unpaused_webrtc_members(self):
+        members = {
+            "a": {"location": "PJSIP/webrtc1", "status": "4", "paused": False},
+            "b": {"location": "PJSIP/webrtc2", "status": "1", "paused": False},  # registered: still pushed
+            "c": {"location": "PJSIP/webrtc3", "status": "4", "paused": True},
+            "d": {"location": "Local/303@queue", "status": "4", "paused": False},
+            "e": {"location": "PJSIP/deskphone", "status": "4", "paused": False},
+        }
+        listener = self.make_listener(members)
+        with patch("dashboard_listener.post_json") as post:
+            run(listener._wake_queue_members("sales", "380671234567", "uid-1"))
+
+        assert post.call_count == 2
+        url, body, headers, _ = post.call_args_list[0].args
+        assert url == "https://push.example/client/message"
+        assert headers == {"Authorization": "Bearer s3cret"}
+        payloads = [json.loads(c.args[1]) for c in post.call_args_list]
+        assert sorted(p["username"] for p in payloads) == ["webrtc1", "webrtc2"]
+        payload = payloads[0]
+        assert payload["data"] == {"caller": "380671234567", "call_id": "uid-1", "queue": "sales"}
+
+    def test_disabled_without_credentials(self):
+        listener = self.make_listener({"a": {"location": "PJSIP/w", "status": "4"}})
+        listener.pbx_secret = ""
+        with patch("dashboard_listener.post_json") as post:
+            run(listener._wake_queue_members("sales", "1", "u"))
+        post.assert_not_called()

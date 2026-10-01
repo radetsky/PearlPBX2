@@ -3,6 +3,7 @@ pearlpbx2_etc_dir: /etc/PearlPBX
 pearlpbx2_secrets_dir: /etc/PearlPBX/.secrets
 pearlpbx2_user: asterisk
 pearlpbx2_group: asterisk
+push_server_url: https://push.pearlpbx2.com
 
 asterisk_version: "22.11.0"
 asterisk_src_dir: /usr/src

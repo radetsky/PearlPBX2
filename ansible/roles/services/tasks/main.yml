@@ -53,6 +53,9 @@
   loop: "{{ service_env_stats.results }}"
   no_log: true
 
+- name: Register on the push server
+  include_tasks: push.yml
+
 - name: Install service systemd units
   template:
     src: "{{ item.service_template }}"

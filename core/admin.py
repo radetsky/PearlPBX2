@@ -1,5 +1,6 @@
 from typing import Optional
 
+from django.conf import settings as django_settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils import timezone
@@ -527,13 +528,21 @@ class QueueAdmin(AuditAdminMixin, DialplanGuardedDeleteAdminMixin, admin.ModelAd
 
 
 admin.site.register(SIPUser, SIPUserAdmin)
+class SettingsAdmin(admin.ModelAdmin):
+    readonly_fields = ["push_pbx_id"]
+
+    @admin.display(description=_("Push server PBX ID"))
+    def push_pbx_id(self, obj):
+        return django_settings.PUSH_PBX_ID or _("not registered")
+
+
 admin.site.register(SIPPeer, SIPPeerAdmin)
 admin.site.register(SIPTransport, SIPTransportAdmin)
 admin.site.register(DialplanContext, DialplanContextAdmin)
 admin.site.register(DialplanExtension, DialplanExtensionAdmin)
 admin.site.register(DialplanMacro, DialplanMacroAdmin)
 admin.site.register(DialplanGlobalVariable, DialplanGlobalVariableAdmin)
-admin.site.register(Settings)
+admin.site.register(Settings, SettingsAdmin)
 admin.site.register(MusicOnHoldPlaylistEntry, MusicOnHoldPlaylistEntryAdmin)
 admin.site.register(MusicOnHold, MusicOnHoldAdmin)
 admin.site.register(RoutingTable, RoutingTableAdmin)

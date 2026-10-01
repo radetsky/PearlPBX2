@@ -1,0 +1,53 @@
+---
+- name: Read fastagi env file
+  slurp:
+    src: "{{ pearlpbx2_etc_dir }}/fastagi/env"
+  register: fastagi_env_raw
+  no_log: true
+
+- name: Register this PBX on the push server (skipped when already registered)
+  uri:
+    url: "{{ push_server_url }}/pbx/register"
+    method: POST
+    body_format: json
+    body:
+      id: "{{ (ansible_machine_id ~ inventory_hostname) | to_uuid }}"
+    status_code: [200, 201]
+  register: push_register
+  failed_when: false
+  no_log: true
+  when: "'PBX_SECRET=' not in (fastagi_env_raw.content | b64decode)"
+
+- name: Warn when push registration did not succeed
+  debug:
+    msg: "Push server registration failed or returned no secret; WebRTC push is disabled. Re-run the installer to retry."
+  when:
+    - push_register is not skipped
+    - push_register.json is not defined or push_register.json.secret is not defined
+
+- name: Store push credentials for fastagi and dashboard
+  lineinfile:
+    path: "{{ pearlpbx2_etc_dir }}/{{ item.0 }}/env"
+    regexp: "^{{ item.1.key }}="
+    line: "{{ item.1.key }}={{ item.1.value }}"
+  loop: "{{ ['fastagi', 'dashboard'] | product([
+    { 'key': 'PUSH_SERVER_URL', 'value': push_server_url },
+    { 'key': 'PBX_ID', 'value': push_register.json.id | default('') },
+    { 'key': 'PBX_SECRET', 'value': push_register.json.secret | default('') }
+  ]) | list }}"
+  loop_control:
+    label: "{{ item.0 }}:{{ item.1.key }}"
+  no_log: true
+  when:
+    - push_register is not skipped
+    - push_register.json is defined and push_register.json.secret is defined
+
+- name: Store PBX ID for the Django admin
+  lineinfile:
+    path: "{{ pearlpbx2_etc_dir }}/PearlPBX2/env"
+    regexp: '^PBX_ID='
+    line: "PBX_ID={{ push_register.json.id }}"
+  when:
+    - push_register is not skipped
+    - push_register.json is defined and push_register.json.secret is defined
+  notify: Restart pearlpbx2

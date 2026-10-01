@@ -34,6 +34,7 @@ from core.conf import (
     make_pjsip_conf,
     make_extensions_ael,
     make_dialplan_contexts,
+    make_local_users_context,
     make_dialplan_macros,
     make_dialplan_globals,
     make_dialplan_extension,
@@ -596,6 +597,37 @@ class TestMakePjsipWebrtcTemplates(TestCase):
                 s.webrtc_auth_template = original_webrtc_auth_template
                 s.save()
             transport.delete()
+
+
+class TestLocalUsersPushWakeup(TestCase):
+    def setUp(self):
+        self.routing_table = RoutingTable.objects.get(
+            name=settings.PEARLPBX_DEFAULT_ROUTING_TABLE
+        )
+
+    def _make_user(self, protocol, name):
+        transport = SIPTransport.objects.create(
+            name=f"t-{name}", protocol=protocol, bind="0.0.0.0:5099"
+        )
+        return SIPUser.objects.create(
+            name=name,
+            username=name,
+            extension=name[-3:],
+            secret="pw",
+            transport=transport,
+            routing_table=self.routing_table,
+        )
+
+    def test_wss_user_gets_push_wakeup_before_dial(self):
+        self._make_user("wss", "push901")
+        result = make_local_users_context()
+        wakeup = "AGI(agi://127.0.0.1:4573/push-wakeup,push901,${CALLERID(num)},${UNIQUEID});"
+        self.assertIn(wakeup, result)
+        self.assertLess(result.index(wakeup), result.index("Dial(PJSIP/push901"))
+
+    def test_udp_user_has_no_push_wakeup(self):
+        self._make_user("udp", "push902")
+        self.assertNotIn("push-wakeup", make_local_users_context())
 
 
 class TestMakePjsipConf(TestCase):

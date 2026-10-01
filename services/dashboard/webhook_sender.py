@@ -129,6 +129,7 @@ class WebhookManager:
         self.webhooks = []
         self.base_url = ""
         self.sip_users = {}
+        self.webrtc_users = frozenset()
         self._raw_config = None
         self._tasks = set()
         self.send_system_channels = send_system_channels
@@ -153,18 +154,21 @@ class WebhookManager:
             self.webhooks = []
             self.base_url = ""
             self.sip_users = {}
+            self.webrtc_users = frozenset()
             return
         try:
             config = json.loads(raw)
             webhooks = [wh for wh in config.get("webhooks", []) if wh.get("url")]
             base_url = (config.get("base_url") or "").rstrip("/")
             sip_users = config.get("sip_users") or {}
+            webrtc_users = frozenset(config.get("webrtc_users") or [])
         except (ValueError, TypeError, AttributeError) as e:
             self.logger.error(f"Webhooks: invalid config in Redis, ignoring: {e}")
             return
         self.webhooks = webhooks
         self.base_url = base_url
         self.sip_users = sip_users
+        self.webrtc_users = webrtc_users
         self.logger.info(
             f"Webhooks: config loaded, {len(webhooks)} active webhook(s)"
         )

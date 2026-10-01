@@ -8,6 +8,8 @@ import logging
 import random
 import re
 import time
+import urllib.error
+import urllib.request
 import uuid
 
 from datetime import datetime
@@ -17,7 +19,7 @@ from asterisk.ami import AMIClient, SimpleAction
 from uline_redis import ULineRedisManager
 
 from typing import Callable, Generator
-from twisted.internet import reactor
+from twisted.internet import reactor, task, threads
 from twisted.internet.defer import Deferred, inlineCallbacks
 from starpy import fastagi
 from starpy.error import AGICommandFailure
@@ -37,6 +39,36 @@ Base = declarative_base()
 # ---------------- Dial Trunk Group Settings ----------------
 DIAL_TRUNK_GROUP_TIMEOUT = os.environ.get("DIAL_TRUNK_GROUP_TIMEOUT", "120")
 DIAL_TRUNK_GROUP_OPTIONS = os.environ.get("DIAL_TRUNK_GROUP_OPTIONS", "tT")
+
+# ---------------- Push Server Settings ----------------
+PUSH_SERVER_URL = os.environ.get("PUSH_SERVER_URL", "https://push.pearlpbx2.com")
+PBX_ID = os.environ.get("PBX_ID", "")
+PBX_SECRET = os.environ.get("PBX_SECRET", "")
+PUSH_WAIT_TIMEOUT = float(os.environ.get("PUSH_WAIT_TIMEOUT", "10"))
+PUSH_POLL_INTERVAL = 0.5
+
+
+def send_push(username: str, caller: str, call_id: str) -> None:
+    """POST a VoIP wake-up for (PBX_ID, username) to the push server. Raises on failure."""
+    payload = {
+        "pbx_id": PBX_ID,
+        "username": username,
+        "message": f"Incoming call from {caller}",
+        "push_type": "voip",
+        "data": {"caller": caller, "call_id": call_id},
+    }
+    req = urllib.request.Request(
+        PUSH_SERVER_URL.rstrip("/") + "/client/message",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {PBX_SECRET}",
+            "User-Agent": "pearlpbx2-fastagi/1.0",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5):
+        pass
 
 
 def mkdir_p(filename: str, base_dir: str = "/var/spool/asterisk/monitor/"):
@@ -391,6 +423,8 @@ class FastAGIHandler:
             return self.queue_status()
         elif network_script == "parking-uline":
             return self.parking_uline()
+        elif network_script == "push-wakeup":
+            return self.push_wakeup()
 
         current_time = time.time()
         self.sequence.append(self.agi.sayDateTime, current_time)
@@ -640,6 +674,45 @@ class FastAGIHandler:
         yield self.agi.setVariable("TRUNK_GROUP_DIALLED", "0")
         yield self.agi.finish()
         return None
+
+    @inlineCallbacks
+    def push_wakeup(self) -> Generator[Deferred, None, None]:
+        """
+        Send a VoIP push to a WebRTC user and wait until it registers.
+
+        Parameters expected from AGI variables:
+        - agi_arg_1: username (PJSIP endpoint/AOR name)
+        - agi_arg_2: caller_id
+        - agi_arg_3: call unique id
+
+        Never fails the call: on any error the dialplan proceeds to Dial.
+        """
+        username = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")
+        caller_id = self.agi.variables.get(b"agi_arg_2", b"").decode("utf-8")
+        call_id = self.agi.variables.get(b"agi_arg_3", b"").decode("utf-8")
+        try:
+            if not (username and PBX_ID and PBX_SECRET):
+                logger.warning("push-wakeup skipped: username or PBX_ID/PBX_SECRET missing")
+                return
+            try:
+                yield threads.deferToThread(send_push, username, caller_id, call_id)
+            except urllib.error.HTTPError as err:
+                logger.warning(f"Push for {username} rejected: HTTP {err.code}")
+                return
+            except (urllib.error.URLError, OSError) as err:
+                logger.warning(f"Push for {username} failed: {err}")
+                return
+            waited = 0.0
+            while waited < PUSH_WAIT_TIMEOUT:
+                contact = yield self.agi.getVariable(f"PJSIP_AOR({username},contact)")
+                if contact:
+                    logger.info(f"{username} registered {waited:.1f}s after push")
+                    return
+                yield task.deferLater(reactor, PUSH_POLL_INTERVAL, lambda: None)
+                waited += PUSH_POLL_INTERVAL
+            logger.warning(f"{username} did not register within {PUSH_WAIT_TIMEOUT}s")
+        finally:
+            yield self.agi.finish()
 
     def dial_trunk_group(self) -> Deferred:
         trunk_group_name = self.agi.variables.get(b"agi_arg_1", b"").decode("utf-8")

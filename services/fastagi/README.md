@@ -12,6 +12,7 @@ FastAGI server for PearlPBX2 using Twisted and StarPy. Provides various AGI hand
 - **add-callback** - Add callback request to the database
 - **queue-status** - Check queue availability (ready operators and waiting callers)
 - **parking-uline** - Allocate a unique parking slot (ULINE) for a call via Redis
+- **push-wakeup** - Send a VoIP push to a WebRTC user and wait for it to register
 
 ## Installation
 
@@ -54,6 +55,15 @@ Configuration is done via environment variables:
 | `PARKING_ULINE_MIN` | 1 | First parking slot number |
 | `PARKING_ULINE_MAX` | 199 | Last parking slot number |
 | `ULINE_SWEEP_INTERVAL` | 300 | Seconds between stale-slot sweep runs |
+
+### Push server (for push-wakeup)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUSH_SERVER_URL` | https://push.pearlpbx2.com | Push server base URL |
+| `PBX_ID` | | PBX UUID issued by the push server (written by the installer) |
+| `PBX_SECRET` | | PBX secret issued by the push server (written by the installer) |
+| `PUSH_WAIT_TIMEOUT` | 10 | Seconds to wait for the client to register after the push |
 
 ### Server
 
@@ -320,6 +330,33 @@ if (${READYTORECEIVE} > 0) {
 1. **Primary:** Redis cache at `asterisk:queue:{name}` (populated by dashboard service)
 2. **Fallback:** Direct AMI query if Redis is unavailable
 
+### push-wakeup
+
+Wake a sleeping WebRTC (mobile) client before dialing it. Sends a VoIP push through
+the push server (`POST {PUSH_SERVER_URL}/client/message`, Bearer `PBX_SECRET`), then
+polls `PJSIP_AOR(<user>,contact)` every 0.5 s until the client registers or
+`PUSH_WAIT_TIMEOUT` elapses.
+
+The handler is inserted automatically before `Dial` for every user on a `wss`
+transport by `core.conf.make_local_users_context()`; it does not need to be added
+to the dialplan by hand:
+
+```
+AGI(agi://127.0.0.1:4573/push-wakeup,${SIPUser.username},${CALLERID(num)},${UNIQUEID});
+Dial(PJSIP/${SIPUser.username},120,rtT);
+```
+
+**Arguments:**
+1. Username (PJSIP endpoint/AOR name)
+2. Caller ID
+3. Call unique ID (sent to the client as `call_id`)
+
+**Behavior:**
+- Never fails the call: with no `PBX_ID`/`PBX_SECRET`, an HTTP error (404 = no push token registered for the user), a network error or a registration timeout, it logs a warning and returns so that `Dial` runs as usual
+- The push is always sent, even if a contact exists: a suspended mobile app can keep a stale contact
+- The HTTP request runs in a thread (`deferToThread`, 5 s timeout), so it does not block the Twisted reactor
+- Queue calls are handled by the dashboard service, not by this handler (see `services/dashboard/README.md`)
+
 ## Testing
 
 Unit tests cover `ULineRedisManager` and `sweep_parking_ulines`. They use `fakeredis` with Lua support — no real Redis or Asterisk needed.
@@ -357,6 +394,7 @@ pytest tests/test_sweep.py -v
 | Test file | What is tested |
 |-----------|---------------|
 | `tests/test_uline_redis.py` | `ULineRedisManager`: slot allocation (Lua atomicity, idempotency, TTL, full-range), release, flush, stats |
+| `tests/test_push.py` | `send_push`: request URL, Bearer header and JSON body, 5 s timeout |
 | `tests/test_sweep.py` | `sweep_parking_ulines`: skips when dashboard offline, releases stale slots, keeps active slots, reschedules via reactor |
 
 ---

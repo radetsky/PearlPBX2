@@ -33,6 +33,15 @@ def _serialize_sip_users():
     return {user.username: user.routing_table.name for user in users}
 
 
+def _serialize_webrtc_users():
+    """Usernames of SIP users on a wss transport; the listener sends them queue push wake-ups."""
+    from core.models import SIPUser
+
+    return list(
+        SIPUser.objects.filter(transport__protocol="wss").values_list("username", flat=True)
+    )
+
+
 def serialize_webhooks():
     from apps.webhooks.models import Webhook
 
@@ -73,6 +82,7 @@ def serialize_webhooks():
         "webhooks": webhooks,
         "base_url": settings.PEARLPBX_PUBLIC_URL.rstrip("/"),
         "sip_users": _serialize_sip_users(),
+        "webrtc_users": _serialize_webrtc_users(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 

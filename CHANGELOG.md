@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Push wake-up for WebRTC (wss) users** — the installer registers the PBX on `https://push.pearlpbx2.com` (new `ansible/roles/services/tasks/push.yml`, credentials stored in the fastagi env, `PBX_ID` also in the Django env). `make_local_users_context()` now prepends a `push-wakeup` AGI call before `Dial` for wss users; the new FastAGI handler sends a VoIP push and waits up to `PUSH_WAIT_TIMEOUT` seconds (default 10) for the contact to register, never failing the call. The PBX ID is shown read-only in the admin Settings page. Queue calls are covered too: on `QueueCallerJoin` the dashboard listener sends a VoIP push (`data.queue` set) to every unpaused WebRTC queue member regardless of registration state (Asterisk skips unregistered members, and a suspended app can hold a stale contact).
+
 ## [2.7.3] - 2026-09-18
 
 ### Changed

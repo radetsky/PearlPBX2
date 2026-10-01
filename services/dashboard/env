@@ -26,3 +26,8 @@ WEBHOOK_SEND_SYSTEM_CHANNELS=false
 # VarSet is ignored for webhook purposes.
 WEBHOOK_CHANNEL_VARS=ULINE
 
+
+# Push server (set by the installer); wakes unregistered WebRTC queue members.
+PUSH_SERVER_URL=https://push.pearlpbx2.com
+PBX_ID=
+PBX_SECRET=

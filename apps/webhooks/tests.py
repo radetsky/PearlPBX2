@@ -170,6 +170,12 @@ class SerializeWebhooksTests(TestCase):
         self.assertNotIn("trunk1", config["sip_users"])
         self.assertEqual(user.username, "1001")
 
+    def test_webrtc_users_lists_only_wss_transport_users(self):
+        make_sip_user(username="w1", transport=make_transport("t-wss", protocol="wss"))
+        make_sip_user(username="u1", transport=make_transport("t-udp", protocol="udp"))
+
+        self.assertEqual(serialize_webhooks()["webrtc_users"], ["w1"])
+
     def test_sip_users_map_excludes_users_without_routing_table(self):
         SIPUser.objects.create(
             name="No Routing",

@@ -18,6 +18,40 @@ Python code
 pip install redis channels-redis
 ```
 
+## Queue push wake-ups (WebRTC)
+
+When a caller joins a queue (AMI `QueueCallerJoin`), the listener sends a VoIP
+push to the PBX's push server (`POST {PUSH_SERVER_URL}/client/message`, Bearer
+`PBX_SECRET`) for every queue member that is:
+
+- a WebRTC user (SIP user on a `wss` transport), and
+- not paused.
+
+Registration state is deliberately not checked: Asterisk never dials an
+Unavailable member, and a suspended app can keep a stale contact that looks
+registered, so a sleeping mobile client would miss the queue call either way.
+The client should ignore a duplicate push by `call_id`. The push is fire-and-forget
+(`asyncio.to_thread` + `post_json`, 5 s timeout); a failure, including 404 for a
+user with no registered push token, is only logged. The payload `data` carries
+`caller`, `call_id` (the channel `uniqueid`) and `queue`, so the client can tell a
+queue wake-up from a direct call.
+
+The push does not wait for the client to register, so an agent who needs a few
+seconds to wake may miss the first ring cycle. Direct calls to a WebRTC user are
+handled separately by the `push-wakeup` AGI in `services/fastagi`.
+
+Configuration (env vars, `services/dashboard/env`; written by the installer's
+`ansible/roles/services/tasks/push.yml` after it registers the PBX):
+
+- **`PUSH_SERVER_URL`** (default `https://push.pearlpbx2.com`)
+- **`PBX_ID`**, **`PBX_SECRET`** — the feature is disabled while either is empty.
+
+The list of WebRTC usernames comes from Redis: `apps/webhooks/sync.py` adds a
+`webrtc_users` list to `webhooks:config` (re-synced on every `SIPUser`
+save/delete and read by the listener every health-check tick). The listener has
+no database access. A change of `protocol` on a `SIPTransport` itself is picked up
+only on the next `SIPUser` save or `python manage.py sync_webhooks`.
+
 ## CRM Webhooks
 
 The dashboard listener can push HTTP notifications about calls to one or more

@@ -244,6 +244,7 @@ REDIS_URL = env("REDIS_URL", default="redis://localhost:6379")
 # Public base URL of this web interface; used to build absolute links
 # (e.g. call recording URLs in CRM webhook payloads).
 PEARLPBX_PUBLIC_URL = env.str("PEARLPBX_PUBLIC_URL", default="http://localhost:8000")
+PUSH_PBX_ID = env.str("PBX_ID", default="")
 
 # Outgoing email. SMTP is used as soon as EMAIL_HOST is set; otherwise mail is
 # printed to stdout so a dev machine can never accidentally send a real report.

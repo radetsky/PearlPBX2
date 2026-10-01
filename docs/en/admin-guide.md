@@ -1071,6 +1071,12 @@ This restores the previous binaries/modules from the backup and restarts Asteris
 configs are generated from the database, so a blind restore could discard admin changes made after the
 upgrade. `--rollback -n STEPS` rolls back further than one upgrade.
 
+### Mobile push for WebRTC users
+
+The installer registers the PBX once on the push server (`https://push.pearlpbx2.com`) and stores `PUSH_SERVER_URL`, `PBX_ID` and `PBX_SECRET` in the fastagi env file. Before dialing a user on a `wss` transport, the dialplan calls the `push-wakeup` AGI, which sends a VoIP push and waits up to `PUSH_WAIT_TIMEOUT` seconds (default 10) for the client to register. If the push fails, the call proceeds as usual. For queues, the dashboard service sends the push when a caller joins, to every unpaused WebRTC member.
+
+The PBX ID, which the mobile client needs, is shown read-only in **Settings** in the admin. If registration failed during install (for example, no internet), re-run the installer to retry.
+
 ### Logging
 
 The system logs events through Django's standard logging mechanism:

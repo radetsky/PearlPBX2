@@ -21,6 +21,7 @@ import re
 from webhook_sender import WebhookManager, post_json
 
 _MEMBER_INTERFACE_RE = re.compile(r"^(?:SIP|PJSIP)/(.+)$", re.IGNORECASE)
+PUSH_TIMEOUT = 5
 
 
 def extract_member_number(member_interface):
@@ -90,6 +91,11 @@ class DashboardAMIListener:
         self.missed_debounce = int(self.params.get("missed_call_debounce_seconds", 60))
         self._missed_buffer = []
         self._missed_flush_task = None
+
+        self.push_server_url = self.params.get("push_server_url", "").rstrip("/")
+        self.pbx_id = self.params.get("pbx_id", "")
+        self.pbx_secret = self.params.get("pbx_secret", "")
+        self._push_tasks = set()
 
     def set_event_handlers(self):
         event_handlers = {
@@ -918,9 +924,55 @@ class DashboardAMIListener:
                     },
                 )
 
+        self._spawn_push_task(self._wake_queue_members(queue_name, caller_id, uniqueid))
+
         self.logger.info(
             f"Queue {queue_name}: Caller {caller_id} joined (position {position})"
         )
+
+    def _spawn_push_task(self, coro):
+        task = asyncio.create_task(coro)
+        self._push_tasks.add(task)
+        task.add_done_callback(self._push_tasks.discard)
+
+    async def _wake_queue_members(self, queue_name, caller_id, uniqueid):
+        """Send a VoIP push to every unpaused WebRTC member of the queue.
+
+        Registered members are included: a suspended mobile app keeps a stale
+        contact, so registration state does not prove the app is awake.
+        """
+        if not (self.push_server_url and self.pbx_id and self.pbx_secret):
+            return
+        usernames = []
+        for member in self.queue_state[queue_name]["members"].values():
+            match = _MEMBER_INTERFACE_RE.match(member.get("location") or "")
+            if (
+                match
+                and match.group(1) in self.webhooks.webrtc_users
+                and not member.get("paused")
+            ):
+                usernames.append(match.group(1))
+
+        async def push(username):
+            body = json.dumps(
+                {
+                    "pbx_id": self.pbx_id,
+                    "username": username,
+                    "message": f"Incoming call from {caller_id}",
+                    "push_type": "voip",
+                    "data": {"caller": caller_id, "call_id": uniqueid, "queue": queue_name},
+                }
+            ).encode()
+            headers = {"Authorization": f"Bearer {self.pbx_secret}"}
+            try:
+                await asyncio.to_thread(
+                    post_json, f"{self.push_server_url}/client/message", body, headers, PUSH_TIMEOUT
+                )
+                self.logger.info(f"Queue {queue_name}: push sent to {username}")
+            except Exception as exc:
+                self.logger.warning(f"Queue {queue_name}: push to {username} failed: {exc}")
+
+        await asyncio.gather(*(push(u) for u in usernames))
 
     @staticmethod
     def _queue_wait_time(call):
@@ -1245,6 +1297,9 @@ def read_env_vars(args):
     ]
 
     return {
+        "push_server_url": os.getenv("PUSH_SERVER_URL", "https://push.pearlpbx2.com"),
+        "pbx_id": os.getenv("PBX_ID", ""),
+        "pbx_secret": os.getenv("PBX_SECRET", ""),
         "ami_host": ami_host,
         "ami_port": ami_port,
         "ami_user": ami_user,

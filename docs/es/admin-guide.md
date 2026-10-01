@@ -1076,6 +1076,12 @@ las configuraciones se generan desde la base de datos, así que una restauració
 cambios del administrador hechos después de la actualización. `--rollback -n STEPS` retrocede más de
 una actualización.
 
+### Push móvil para usuarios WebRTC
+
+El instalador registra la PBX una vez en el servidor push (`https://push.pearlpbx2.com`) y guarda `PUSH_SERVER_URL`, `PBX_ID` y `PBX_SECRET` en el archivo env de fastagi. Antes de llamar a un usuario en un transporte `wss`, el dialplan invoca el AGI `push-wakeup`, que envía un push VoIP y espera hasta `PUSH_WAIT_TIMEOUT` segundos (10 por defecto) a que el cliente se registre. Si el push falla, la llamada continúa con normalidad. Para las colas, el servicio dashboard envía el push cuando un llamante entra en la cola, a todos los miembros WebRTC no pausados.
+
+El PBX ID que necesita el cliente móvil se muestra en solo lectura en **Settings** del admin. Si el registro falló durante la instalación (por ejemplo, sin internet), vuelva a ejecutar el instalador.
+
 ### Registro (logging)
 
 El sistema registra eventos a través del mecanismo estándar de logging de Django:
