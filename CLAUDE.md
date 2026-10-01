@@ -15,26 +15,29 @@ PearlPBX2 is a Django-based web management interface for Asterisk PBX. The syste
 - Configuration generator (`core/conf.py`) that translates Django models into Asterisk config files
 - Custom form validators for Asterisk-specific syntax (extensions, contexts, AEL dialplan)
 - Template context processors for consistent UI rendering
-- Admin interface with "Apply Changes" button to regenerate Asterisk configs
+- Custom admin site (`pbx/admin.py`, `MyAdminSite`); `ApplyChangesView._build_cfgfiles()` wires `core/conf.py` generators to the "Apply Changes" button (also `manage.py apply_changes`)
 
 **Django Apps (`apps/`)**
-- `api`: REST API endpoints for external integrations
+- `api`: REST API endpoints for external integrations (`/api/v1/`, DRF + drf-spectacular; custom lists models)
 - `callback`: Models and views for callback queue functionality
 - `dashboard`: WebSocket-based operator dashboard (real-time call monitoring)
 - `provision`: Phone provisioning (TFTP config generation)
-- `reports`: Call detail records (CDR) and reporting interface
+- `reports`: Call detail records (CDR), reporting interface, `mail_report` command
+- `lists`: Blocklist/allowlist management UI and import commands
+- `webhooks`: CRM webhook config model (`Webhook`), synced to Redis for delivery by the dashboard service
 
 **Standalone Services (`services/`)**
 - `callback/`: Python daemon that monitors PostgreSQL for callback requests and initiates calls via Asterisk AMI
-- `fastagi/`: General-purpose FastAGI server (blacklist/whitelist checks, call recording, ULINE parking slot allocation for call parking, queue status, callback scheduling)
-- `dashboard/`: AMI event listener that publishes to Redis for WebSocket consumers
+- `fastagi/`: Twisted/StarPy FastAGI server, default port 4573 (`FASTAGI_PORT`); blacklist/whitelist checks, call recording, ULINE parking slot allocation (`uline_redis.py`)
+- `agi/`: Classic AGI scripts (`missed_call.py`, `unmatched_call.py`) spawned per call by Asterisk
+- `dashboard/`: `dashboard_listener.py` (AMI events → Redis for WebSocket consumers) and `webhook_sender.py` (CRM webhooks)
 
 ### Data Flow
 
 1. **Configuration Management**: Admin UI → Django Models → `core/conf.py` → Asterisk config files → Asterisk reload
 2. **Real-time Dashboard**: Asterisk AMI Events → Dashboard Service → Redis → Django Channels → WebSocket → Browser
 3. **Callback System**: PostgreSQL callback queue → Callback Service → Asterisk AMI → Outbound calls
-4. **Express Integration**: Asterisk FastAGI → Express Service → ULINE allocation → External API notification
+4. **Parking**: Asterisk FastAGI (`parking-uline`) → Redis ULINE allocation
 
 ### Key Architectural Patterns
 
@@ -46,7 +49,7 @@ PearlPBX2 is a Django-based web management interface for Asterisk PBX. The syste
 
 **Django Channels Architecture**
 - ASGI application configured in `pbx/asgi.py` with WebSocket routing
-- Redis channel layer for inter-process communication (callback service → Django → WebSocket clients)
+- Redis channel layer (`REDIS_URL`) for inter-process communication (dashboard service → Redis → Django → WebSocket clients)
 - Dashboard app uses consumers to push real-time call events to connected browsers
 
 **Database Models Structure**
@@ -56,9 +59,9 @@ PearlPBX2 is a Django-based web management interface for Asterisk PBX. The syste
 - Dialplan: DialplanContext → DialplanExtension (Asterisk AEL syntax)
 
 **Services Architecture**
-- Each service in `services/` has its own virtual environment and systemd unit file
+- Each service in `services/` has its own virtual environment; systemd units are `pearlpbx2-{callback,dashboard,fastagi}` (installed by `ansible/roles/services`)
 - Services use environment variables for configuration (DB credentials, AMI credentials)
-- Express service manages ULINE allocation (1-199) for parking slot assignment
+- FastAGI manages ULINE allocation (`PARKING_ULINE_MIN`/`MAX`, default 1-199) for parking slots
 - Callback service uses multiprocessing with database row locking to prevent race conditions
 
 ## Development Commands
@@ -181,7 +184,7 @@ python listener.py
 
 ### Asterisk Integration Points
 - AMI (Manager Interface): Port 5038, configured via ASTERISK_MANAGER_* environment variables
-- FastAGI: Services listen on custom ports (e.g., 4574 for Express)
+- FastAGI: default port 4573 (`FASTAGI_PORT`)
 - Configuration files: Generated to ASTERISK_CONFIG_DIR, typically `/etc/asterisk`
 - Sound files: Managed via custom storage backends (`core/storages.py`)
 - TFTP provisioning: Files written to TFTP_DIR for phone autoconfiguration
@@ -197,7 +200,7 @@ All services can be configured via environment variables. Key variables are docu
 
 ## Project Settings
 
-**Django Settings Module**: `pbx.settings`
+**Django Settings Module**: `pbx.settings` (needs `DEVMODE` set; use `without_asterisk_on_localhost` locally)
 
 **Key Settings**:
 - ASGI_APPLICATION: `pbx.asgi.application` (for WebSocket support)
@@ -210,6 +213,7 @@ All services can be configured via environment variables. Key variables are docu
 - ASTERISK_MANAGER_HOST, ASTERISK_MANAGER_PORT, ASTERISK_MANAGER_USERNAME, ASTERISK_MANAGER_SECRET
 - ASTERISK_MONITOR_DIR (call recording storage)
 - TFTP_DIR (phone provisioning)
+- REDIS_URL, PEARLPBX_PUBLIC_URL
 - PEARLPBX_DEFAULT_ROUTING_TABLE, PEARLPBX_DEFAULT_ROUTING_RECORD, PEARLPBX_DEFAULT_ROUTING_PREFIX
 
 ## URL Structure
@@ -218,29 +222,25 @@ All services can be configured via environment variables. Key variables are docu
 - `/admin/apply` - Apply configuration changes to Asterisk
 - `/dashboard/` - Real-time operator dashboard
 - `/reports/` - CDR and call reports
+- `/lists/` - Blocklist/allowlist
 - `/api/v1/` - REST API endpoints
 - `/` - Core application views (login, etc.)
 
 ## Testing
 
 ```bash
-# Run all tests
-python manage.py test
+# Docker-based (preferred)
+make test              # full suite
+make test-quick        # stop on first failure
+make test-app APP=core # single app
 
-# Run tests for a specific app
-python manage.py test core
-python manage.py test apps.api
-python manage.py test apps.callback
-python manage.py test apps.dashboard
-python manage.py test apps.provision
-python manage.py test apps.reports
+# Local (needs PostgreSQL + Redis, DEVMODE=without_asterisk_on_localhost)
+source .python-venv/bin/activate
+pytest                 # core, apps, services/dashboard (see pytest.ini)
+pytest core/tests.py -k test_name
 
-# Run a specific test class
-python manage.py test core.tests.TestClassName
-
-# Run a single test method
-python manage.py test core.tests.TestClassName.test_method_name
-
-# Verbose output
-python manage.py test --verbosity=2
+# FastAGI tests run separately
+cd services/fastagi && pytest tests/
 ```
+
+Tests use `django.test.TestCase`; no linters or CI configured. See `AGENTS.md` for more.
