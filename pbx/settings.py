@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Copyright (C) 2024-2026 Alex Radetsky
+# Copyright (C) 2024-2026 Oleksii Radetskyi
 
 import environ
 

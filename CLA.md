@@ -1,6 +1,6 @@
 # PearlPBX2 Contributor License Agreement
 
-Thank you for your interest in contributing to PearlPBX2 ("the Project"), maintained by Alex Radetsky ("the Maintainer").
+Thank you for your interest in contributing to PearlPBX2 ("the Project"), maintained by Oleksii Radetskyi ("the Maintainer").
 
 By signing this Contributor License Agreement ("Agreement"), you accept and agree to the following terms for any past and future contributions submitted to the Project.
 
