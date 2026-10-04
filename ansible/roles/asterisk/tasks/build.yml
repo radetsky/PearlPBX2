@@ -81,6 +81,9 @@
 
 - name: Download MP3 source
   command: ./contrib/scripts/get_mp3_source.sh
+  register: mp3_source
+  changed_when: "'already present' not in mp3_source.stdout"
+  failed_when: mp3_source.rc != 0 and 'already present' not in mp3_source.stdout
   args:
     chdir: "{{ asterisk_build_dir }}"
 
