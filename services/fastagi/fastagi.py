@@ -99,7 +99,7 @@ class Database:
         host = os.environ.get("DB_HOST", "localhost")
         port = os.environ.get("DB_PORT", "5432")
         database = os.environ.get("DB_NAME", "postgres")
-        return f"postgresql://{user}:{password}@{host}:{port}/{database}"
+        return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
 
     def get_session(self):
         """Returns a new database session."""
@@ -704,7 +704,7 @@ class FastAGIHandler:
                 return
             waited = 0.0
             while waited < PUSH_WAIT_TIMEOUT:
-                contact = yield self.agi.getVariable(f"PJSIP_AOR({username},contact)")
+                contact = yield self.agi.getVariable(f"PJSIP_DIAL_CONTACTS({username})")
                 if contact:
                     logger.info(f"{username} registered {waited:.1f}s after push")
                     return

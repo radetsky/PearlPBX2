@@ -334,7 +334,7 @@ if (${READYTORECEIVE} > 0) {
 
 Wake a sleeping WebRTC (mobile) client before dialing it. Sends a VoIP push through
 the push server (`POST {PUSH_SERVER_URL}/client/message`, Bearer `PBX_SECRET`), then
-polls `PJSIP_AOR(<user>,contact)` every 0.5 s until the client registers or
+polls `PJSIP_DIAL_CONTACTS(<user>)` every 0.5 s until the client registers or
 `PUSH_WAIT_TIMEOUT` elapses.
 
 The handler is inserted automatically before `Dial` for every user on a `wss`
