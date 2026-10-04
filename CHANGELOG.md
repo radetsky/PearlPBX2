@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **Push wake-up for WebRTC (wss) users** — the installer registers the PBX on `https://push.pearlpbx2.com` (new `ansible/roles/services/tasks/push.yml`, credentials stored in the fastagi env, `PBX_ID` also in the Django env). `make_local_users_context()` now prepends a `push-wakeup` AGI call before `Dial` for wss users; the new FastAGI handler sends a VoIP push and waits up to `PUSH_WAIT_TIMEOUT` seconds (default 10) for the contact to register, never failing the call. The PBX ID is shown read-only in the admin Settings page. Queue calls are covered too: on `QueueCallerJoin` the dashboard listener sends a VoIP push (`data.queue` set) to every unpaused WebRTC queue member regardless of registration state (Asterisk skips unregistered members, and a suspended app can hold a stale contact).
 
+### Fixed
+
+- **FastAGI crash loop on fresh installs** — `create_engine()` used a bare `postgresql://` URL, which newer unpinned SQLAlchemy resolves to the `psycopg` (v3) driver while only `psycopg2-binary` is installed (`ModuleNotFoundError: No module named 'psycopg'`). The URL now names the driver explicitly (`postgresql+psycopg2://`).
+- **`push-wakeup` registration polling** — it called `PJSIP_AOR()`, which is not registered in the Asterisk build, so every poll errored and the call proceeded after the full timeout. It now polls `PJSIP_DIAL_CONTACTS(<user>)`.
+- **Push registration used a UUIDv5 PBX ID** — the push server accepts only UUIDv4. `push.yml` now generates a random v4 ID, and the failure warning includes the HTTP status and error message.
+- **Asterisk build on the installer** — `menuselect --enable` received `1` instead of the module name (a `\1` regex backreference eaten by `command` argument splitting), and re-runs failed because `get_mp3_source.sh` exits non-zero when the MP3 source already exists. Modules are now joined without a regex, and the previous `addons/mp3` is removed before downloading.
+
 ## [2.7.3] - 2026-09-18
 
 ### Changed
