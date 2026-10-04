@@ -11,7 +11,7 @@
     method: POST
     body_format: json
     body:
-      id: "{{ (ansible_machine_id ~ inventory_hostname) | to_uuid }}"
+      id: "{{ lookup('ansible.builtin.pipe', 'python3 -c \"import uuid; print(uuid.uuid4())\"') }}"
     status_code: [200, 201]
   register: push_register
   failed_when: false
@@ -20,7 +20,7 @@
 
 - name: Warn when push registration did not succeed
   debug:
-    msg: "Push server registration failed or returned no secret; WebRTC push is disabled. Re-run the installer to retry."
+    msg: "Push server registration failed (status {{ push_register.status | default('n/a') }}, {{ push_register.msg | default('no secret in response') }}); WebRTC push is disabled. Re-run the installer to retry."
   when:
     - push_register is not skipped
     - push_register.json is not defined or push_register.json.secret is not defined
