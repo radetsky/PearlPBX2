@@ -100,8 +100,9 @@
   # file read/write pass per entry instead of one pass total.
   command: >-
     ./menuselect/menuselect
-    {{ asterisk_menuselect_enable | map('regex_replace', '^(.*)$', '--enable \\1') | join(' ') }}
+    --enable {{ asterisk_menuselect_enable | join(' --enable ') }}
     menuselect.makeopts
+  when: asterisk_menuselect_enable | length > 0
   args:
     chdir: "{{ asterisk_build_dir }}"
 
