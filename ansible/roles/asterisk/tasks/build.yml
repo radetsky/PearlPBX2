@@ -79,11 +79,13 @@
   set_fact:
     asterisk_build_dir: "{{ asterisk_src_dir }}/asterisk-{{ asterisk_version }}"
 
+- name: Remove previous MP3 source
+  file:
+    path: "{{ asterisk_build_dir }}/addons/mp3"
+    state: absent
+
 - name: Download MP3 source
   command: ./contrib/scripts/get_mp3_source.sh
-  register: mp3_source
-  changed_when: "'already present' not in mp3_source.stdout"
-  failed_when: mp3_source.rc != 0 and 'already present' not in mp3_source.stdout
   args:
     chdir: "{{ asterisk_build_dir }}"
 
