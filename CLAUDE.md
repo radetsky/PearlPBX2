@@ -28,9 +28,13 @@ PearlPBX2 is a Django-based web management interface for Asterisk PBX. The syste
 
 **Standalone Services (`services/`)**
 - `callback/`: Python daemon that monitors PostgreSQL for callback requests and initiates calls via Asterisk AMI
-- `fastagi/`: Twisted/StarPy FastAGI server, default port 4573 (`FASTAGI_PORT`); blacklist/whitelist checks, call recording, ULINE parking slot allocation (`uline_redis.py`)
+- `fastagi/`: Twisted/StarPy FastAGI server, default port 4573 (`FASTAGI_PORT`); blacklist/whitelist checks, call recording, ULINE parking slot allocation (`uline_redis.py`), `push-wakeup` handler (VoIP push via `PUSH_SERVER_URL`, waits up to `PUSH_WAIT_TIMEOUT` s for the WebRTC contact to register, never fails the call)
 - `agi/`: Classic AGI scripts (`missed_call.py`, `unmatched_call.py`) spawned per call by Asterisk
-- `dashboard/`: `dashboard_listener.py` (AMI events → Redis for WebSocket consumers) and `webhook_sender.py` (CRM webhooks)
+- `dashboard/`: `dashboard_listener.py` (AMI events → Redis for WebSocket consumers; sends VoIP push to unpaused WebRTC queue members on `QueueCallerJoin`) and `webhook_sender.py` (CRM webhooks)
+
+**Push wake-up (WebRTC/wss users)**: the installer registers the PBX on `push.pearlpbx2.com` (`ansible/roles/services/tasks/push.yml`); `PBX_ID` is in the Django env (`PUSH_PBX_ID`) and fastagi env. `make_local_users_context()` prepends a `push-wakeup` AGI call before `Dial` for wss users.
+
+**Install / update tooling**: `install.sh`, `update.sh`, `rollback.sh`, `update-asterisk.sh` (root, wrap Ansible playbooks in `ansible/`; rollback state under `/var/backups/pearlpbx2`); helper scripts (backups, `system_monitor.sh`, mp3 sync) live in `bin/`, configured via env templates in `ansible/roles/system/templates/`. Ansible roles: `asterisk`, `asterisk_update`, `postgres`, `redis`, `pearlpbx2`, `services`, `nginx`, `tftp`, `firewall`, `system`.
 
 ### Data Flow
 
@@ -213,7 +217,7 @@ All services can be configured via environment variables. Key variables are docu
 - ASTERISK_MANAGER_HOST, ASTERISK_MANAGER_PORT, ASTERISK_MANAGER_USERNAME, ASTERISK_MANAGER_SECRET
 - ASTERISK_MONITOR_DIR (call recording storage)
 - TFTP_DIR (phone provisioning)
-- REDIS_URL, PEARLPBX_PUBLIC_URL
+- REDIS_URL, PEARLPBX_PUBLIC_URL, PBX_ID (push wake-up)
 - PEARLPBX_DEFAULT_ROUTING_TABLE, PEARLPBX_DEFAULT_ROUTING_RECORD, PEARLPBX_DEFAULT_ROUTING_PREFIX
 
 ## URL Structure
@@ -222,6 +226,7 @@ All services can be configured via environment variables. Key variables are docu
 - `/admin/apply` - Apply configuration changes to Asterisk
 - `/dashboard/` - Real-time operator dashboard
 - `/reports/` - CDR and call reports
+- `/dashboard/ulines/` - Parking (ULINE) view
 - `/lists/` - Blocklist/allowlist
 - `/api/v1/` - REST API endpoints
 - `/` - Core application views (login, etc.)
@@ -243,4 +248,4 @@ pytest core/tests.py -k test_name
 cd services/fastagi && pytest tests/
 ```
 
-Tests use `django.test.TestCase`; no linters or CI configured. See `AGENTS.md` for more.
+Docs live in `docs/{en,ua,es}`; keep `CHANGELOG.md` updated for user-visible changes. Tests use `django.test.TestCase`; no linters or CI configured. See `AGENTS.md` for more.
