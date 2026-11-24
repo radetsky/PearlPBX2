@@ -47,6 +47,12 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 | `call.outgoing_answered` | викликана сторона підняла слухавку (AMI-подія `DialEnd` з `DialStatus=ANSWER`) | **лише для дзвінків, про які раніше було надіслано `call.outgoing`** |
 | `call.outgoing_ended` | канал завершує роботу (hangup) | **лише для дзвінків, про які раніше було надіслано `call.outgoing`** |
 
+**Обидва ланцюги** — `call.changed`:
+
+| Подія | Коли спрацьовує | Умова |
+|-------|------------------|-------|
+| `call.changed` | анонсований дзвінок переходить на інший exten (AMI `Newexten`, напр. після `Goto(newexten,1)`) | **лише для дзвінків, про які раніше надіслано `call.incoming` або `call.outgoing`**, і увімкнено "Send changed" |
+
 Важливий нюанс: `call.ended` і `call.outgoing_ended` навмисно надсилаються **тільки** для дзвінків, про які CRM вже було проінформовано відповідно `call.incoming` чи `call.outgoing`. Система запам'ятовує в Redis (`webhook:notified:{uniqueid}`, TTL 2 години), яким веб-хукам було повідомлено про початок дзвінка (і в якому саме ланцюгу — вхідному чи вихідному), і при завершенні дзвінка перевіряє цей запис. Це гарантує:
 - CRM ніколи не отримає «дзвінок завершено» для дзвінка, про який їй не повідомляли;
 - CRM ніколи не отримає цю подію двічі;
@@ -70,6 +76,7 @@ PearlPBX2 повідомляє зовнішні CRM-системи про дзв
 | `url` | адреса, куди CRM приймає `POST`-запити |
 | `send_incoming` / `send_ended` / `send_missed` / `send_answered` | на які події **вхідного** ланцюга підписаний цей веб-хук. `send_ended` вимагає увімкненого `send_incoming`. `send_missed` і `send_answered` кожен вимагає вибрану хоча б одну чергу. Ці події матчаться лише за `contexts`/`queues`, ніколи за `routing_tables` |
 | `send_outgoing` / `send_outgoing_answered` / `send_outgoing_ended` | на які події **вихідного** ланцюга підписаний цей веб-хук. `send_outgoing_answered` і `send_outgoing_ended` кожен вимагає увімкненого `send_outgoing`. Ці події матчаться лише за `routing_tables` |
+| `send_changed` | надсилати `call.changed`, коли вже анонсований дзвінок (будь-якого ланцюга) переходить на інший exten, наприклад через `Goto()`. Вимагає `send_incoming` або `send_outgoing` |
 | `contexts` | список контекстів діалплану — вхідні дзвінки в ці контексти запускають `call.incoming` |
 | `routing_tables` | SIP-користувачі, приписані до цих routing tables, запускають вихідний ланцюг, коли самі ініціюють дзвінок. Транк — ніколи |
 | `queues` | список черг — дзвінки, що приєднались до цих черг, запускають події вхідного ланцюга, пов'язані з чергами |
@@ -204,6 +211,8 @@ python manage.py sync_webhooks
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -264,9 +273,34 @@ python manage.py sync_webhooks
 
 `answered` — `true`, лише якщо перед завершенням прийшла подія `call.outgoing_answered`; інакше `false`, а `dial_status` показує причину (`BUSY`, `NOANSWER`, `CANCEL`...). Так CRM відрізняє успішний дозвон від невдалого без додаткових запитів.
 
+### `call.changed` — дзвінок перейшов на інший exten
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Надсилається для обох ланцюгів (див. `direction`), коли діалплан переводить уже анонсований дзвінок на інший exten. Нові priority того самого exten і службові exten `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (зокрема виклики AEL-макросів) не повідомляються. `exten`/`context` — нове місце, `previous_*` — попереднє перед цією зміною, `original_*` — те, з яким дзвінок було анонсовано. Після зміни всі наступні події дзвінка (`call.answered`, `call.outgoing_answered`, `call.ended`, `call.outgoing_ended`, …) містять поточні `exten`/`context` і `original_exten`/`original_context`.
+
 ## 4. Записи розмов: посилання та завантаження через API
 
-`recording_url` у кожному payload — це **детерміноване** посилання, побудоване з `uniqueid` дзвінка. Його можна обчислити ще до завершення дзвінка, тому воно є вже в `call.incoming` — як прогноз:
+`recording_url` у кожному payload — це **детерміноване** посилання, побудоване з `uniqueid` дзвінка. Його можна обчислити ще до завершення дзвінка, тому воно є вже в `call.incoming` і `call.outgoing` — як прогноз:
 
 - `recording_expected` — очікування, чи буде дзвінок записаний, зняте зі значення змінної Asterisk `MIXMONITOR` у момент події. Для дзвінків, класифікованих за чергою, це значення зазвичай уже відоме (AGI, що приймає рішення про запис, виконується до `Queue()`). Для дзвінків, класифікованих лише за контекстом, подія `call.incoming` летить раніше за цей AGI, тому значення — `null` (невідомо).
 - У `call.ended` поле `recorded` — уже підтверджений факт (`true`/`false`, або `null`, якщо інформація була втрачена, наприклад через переперепідключення AMI посеред дзвінка). `recording_url` заповнюється лише коли `recorded: true`.
@@ -347,7 +381,7 @@ function verify(secret, rawBody, headerValue) {
 }
 ```
 
-Доступні плейсхолдери: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+Доступні плейсхолдери: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 Використання невідомого плейсхолдера викликає помилку валідації форми — адмінка не дасть зберегти такий шаблон. Якщо поле лишити порожнім, надсилається стандартний payload для кожної події.
 

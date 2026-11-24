@@ -47,6 +47,12 @@ The source of truth about call state is the `services/dashboard/dashboard_listen
 | `call.outgoing_answered` | the called party picks up (AMI event `DialEnd` with `DialStatus=ANSWER`) | **only for calls a `call.outgoing` was previously sent for** |
 | `call.outgoing_ended` | the channel finishes (hangup) | **only for calls a `call.outgoing` was previously sent for** |
 
+**Both chains** — `call.changed`:
+
+| Event | When it fires | Condition |
+|-------|------------------|-------|
+| `call.changed` | an announced call moves to another extension (AMI `Newexten`, e.g. after `Goto(newexten,1)`) | **only for calls a `call.incoming` or `call.outgoing` was previously sent for**, and "Send changed" is enabled |
+
 An important nuance: `call.ended` and `call.outgoing_ended` are deliberately sent **only** for calls the CRM was already informed about via `call.incoming` or `call.outgoing`, respectively. The system remembers in Redis (`webhook:notified:{uniqueid}`, 2-hour TTL) which webhooks were notified about a call's start (and in which chain — inbound or outbound), and checks this record when the call ends. This guarantees:
 - the CRM never receives a "call ended" event for a call it was never told about;
 - the CRM never receives this event twice;
@@ -70,6 +76,7 @@ Form fields:
 | `url` | the address the CRM receives `POST` requests at |
 | `send_incoming` / `send_ended` / `send_missed` / `send_answered` | which events of the **inbound** chain this webhook is subscribed to. `send_ended` requires `send_incoming` to be enabled. `send_missed` and `send_answered` each require at least one queue to be selected. These events are matched only by `contexts`/`queues`, never by `routing_tables` |
 | `send_outgoing` / `send_outgoing_answered` / `send_outgoing_ended` | which events of the **outbound** chain this webhook is subscribed to. `send_outgoing_answered` and `send_outgoing_ended` each require `send_outgoing` to be enabled. These events are matched only by `routing_tables` |
+| `send_changed` | send `call.changed` when an already announced call (either chain) moves to another extension, e.g. via `Goto()`. Requires `send_incoming` or `send_outgoing` |
 | `contexts` | a list of dialplan contexts — inbound calls into these contexts trigger `call.incoming` |
 | `routing_tables` | SIP users assigned to these routing tables trigger the outbound chain when they themselves initiate a call. A trunk — never |
 | `queues` | a list of queues — calls joining these queues trigger queue-related inbound-chain events |
@@ -204,6 +211,8 @@ Fields that don't apply to a particular event arrive as `null` (e.g. `queue` for
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -264,9 +273,34 @@ Fields that don't apply to a particular event arrive as `null` (e.g. `queue` for
 
 `answered` is `true` only if a `call.outgoing_answered` event arrived before the call ended; otherwise it's `false`, and `dial_status` shows the reason (`BUSY`, `NOANSWER`, `CANCEL`...). This lets the CRM distinguish a successful connect from a failed one without extra requests.
 
+### `call.changed` — the call moved to another extension
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Sent for both chains (see `direction`) whenever the dialplan moves an already announced call to a different extension. New priorities of the same extension and the service extensions `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (including AEL macro calls) are not reported. `exten`/`context` are the new location, `previous_*` the one before this change, `original_*` the one the call was announced with. After a change, every later event of the call (`call.answered`, `call.outgoing_answered`, `call.ended`, `call.outgoing_ended`, …) carries the current `exten`/`context` plus `original_exten`/`original_context`.
+
 ## 4. Call recordings: links and downloading via the API
 
-`recording_url` in every payload is a **deterministic** link built from the call's `uniqueid`. It can be computed before the call even ends, so it's already present in `call.incoming` — as a forecast:
+`recording_url` in every payload is a **deterministic** link built from the call's `uniqueid`. It can be computed before the call even ends, so it's already present in `call.incoming` and `call.outgoing` — as a forecast:
 
 - `recording_expected` — a prediction of whether the call will be recorded, taken from the Asterisk `MIXMONITOR` variable's value at the time of the event. For calls classified by queue, this value is usually already known (the AGI that decides on recording runs before `Queue()`). For calls classified only by context, the `call.incoming` event fires before that AGI runs, so the value is `null` (unknown).
 - In `call.ended`, the `recorded` field is the already-confirmed fact (`true`/`false`, or `null` if the information was lost, e.g. due to an AMI reconnect mid-call). `recording_url` is filled in only when `recorded: true`.
@@ -347,7 +381,7 @@ When creating a new webhook in the admin panel, the **Payload template** field c
 }
 ```
 
-Available placeholders: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+Available placeholders: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 Using an unknown placeholder triggers a form validation error — the admin panel won't let you save such a template. If the field is left empty, the standard payload is sent for every event.
 

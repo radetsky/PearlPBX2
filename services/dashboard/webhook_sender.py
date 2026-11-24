@@ -6,8 +6,9 @@ are marked in Redis (`webhook:notified:{uniqueid}`) so that ended events are
 sent only for announced calls, exactly once. The marker's `direction` field
 ("inbound"/"outbound") ties a call to one of the two independent event chains:
 call.incoming -> call.answered/call.missed -> call.ended, or call.outgoing ->
-call.outgoing_answered -> call.outgoing_ended. All failures are logged and
-never propagate into the AMI event handlers.
+call.outgoing_answered -> call.outgoing_ended. call.changed is shared by both
+chains and reports an announced call moving to another extension. All failures
+are logged and never propagate into the AMI event handlers.
 """
 
 import asyncio
@@ -37,6 +38,11 @@ def extract_endpoint(channel):
         return None
     match = _ENDPOINT_RE.match(channel)
     return match.group(1) if match else None
+
+
+# Dialplan extensions that never denote a call destination: "s" is also what
+# AEL macros (Gosub) run in, so a macro call and its return are not reported.
+SPECIAL_EXTENS = frozenset({"s", "h", "i", "t", "T", "e", "o", "a"})
 
 
 def is_dialed_number(exten):
@@ -86,6 +92,10 @@ ALL_TEMPLATE_VARIABLES = frozenset(
         "linkedid",
         "channel",
         "channel_vars",
+        "previous_exten",
+        "previous_context",
+        "original_exten",
+        "original_context",
     }
 )
 
@@ -253,6 +263,21 @@ class WebhookManager:
             self.logger.error(f"Webhooks: dial-end handling failed: {e}", exc_info=True)
             return []
 
+    async def on_exten_change(self, change_info):
+        """Report an announced call moving to another extension. Returns names.
+
+        change_info: uniqueid, exten, context, channel_vars. No-op for calls
+        never announced, for special extensions (SPECIAL_EXTENS) and when the
+        extension equals the last one recorded for the call.
+        """
+        try:
+            return await self._on_exten_change(change_info)
+        except Exception as e:
+            self.logger.error(
+                f"Webhooks: exten-change handling failed: {e}", exc_info=True
+            )
+            return []
+
     # ============ INTERNALS ============
 
     def _match(self, event, context=None, queue=None, routing_table=None):
@@ -313,6 +338,10 @@ class WebhookManager:
         call.update(
             {
                 "direction": "inbound",
+                "original_exten": call.get("original_exten", call_info.get("exten")),
+                "original_context": call.get(
+                    "original_context", call_info.get("context")
+                ),
                 "linkedid": call_info.get("linkedid") or call.get("linkedid"),
                 "channel": call_info.get("channel") or call.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
@@ -371,6 +400,8 @@ class WebhookManager:
             "context": call_info.get("context"),
             "direction": "outbound",
             "timestamp": datetime.now().isoformat(),
+            "recording_expected": call_info.get("recording_expected"),
+            "recording_url": self._recording_url(uniqueid),
             "channel_vars": call_info.get("channel_vars") or {},
         }
         for wh in targets:
@@ -380,6 +411,10 @@ class WebhookManager:
         call.update(
             {
                 "direction": "outbound",
+                "original_exten": call.get("original_exten", call_info.get("exten")),
+                "original_context": call.get(
+                    "original_context", call_info.get("context")
+                ),
                 "linkedid": call_info.get("linkedid"),
                 "channel": call_info.get("channel"),
                 "caller_id_num": call_info.get("caller_id_num"),
@@ -413,6 +448,8 @@ class WebhookManager:
                 "caller_id_num": call_info.get("caller_id_num"),
                 "exten": call.get("exten"),
                 "context": call.get("context"),
+                "original_exten": call.get("original_exten"),
+                "original_context": call.get("original_context"),
                 "queue": call_info.get("queue"),
                 "wait_time": call_info.get("wait_time"),
                 "timestamp": datetime.now().isoformat(),
@@ -442,6 +479,8 @@ class WebhookManager:
                 "caller_id_name": call_info.get("caller_id_name"),
                 "exten": call.get("exten"),
                 "context": call.get("context"),
+                "original_exten": call.get("original_exten"),
+                "original_context": call.get("original_context"),
                 "queue": call_info.get("queue"),
                 "member_name": call_info.get("member_name"),
                 "member_interface": call_info.get("member_interface"),
@@ -501,6 +540,8 @@ class WebhookManager:
             "caller_id_name": call.get("caller_id_name"),
             "exten": call.get("exten"),
             "context": call.get("context"),
+            "original_exten": call.get("original_exten"),
+            "original_context": call.get("original_context"),
             "dest_channel": dial_info.get("dest_channel"),
             "dial_status": dial_status,
             "direction": "outbound",
@@ -549,6 +590,8 @@ class WebhookManager:
             "caller_id_name": call.get("caller_id_name"),
             "exten": call.get("exten"),
             "context": call.get("context"),
+            "original_exten": call.get("original_exten"),
+            "original_context": call.get("original_context"),
             "queue": call.get("queue"),
             "direction": call.get("direction"),
             "dial_status": call.get("dial_status"),
@@ -570,6 +613,59 @@ class WebhookManager:
         for wh in targets:
             self._fire(wh, event_name, variables)
         return [wh["name"] for wh in targets], direction
+
+    async def _on_exten_change(self, change_info):
+        uniqueid = change_info.get("uniqueid")
+        exten = change_info.get("exten")
+        if not uniqueid or not exten or exten in SPECIAL_EXTENS:
+            return []
+        marker = await self._get_marker(uniqueid)
+        if not marker:
+            return []
+        call = marker.setdefault("call", {})
+        previous_exten = call.get("exten")
+        if exten == previous_exten:
+            return []
+
+        previous_context = call.get("context")
+        context = change_info.get("context")
+        call.setdefault("original_exten", previous_exten)
+        call.setdefault("original_context", previous_context)
+        call["exten"] = exten
+        call["context"] = context
+        await self._set_marker(uniqueid, marker)
+
+        if not self.enabled:
+            return []
+        by_name = {wh["name"]: wh for wh in self.webhooks}
+        targets = [
+            by_name[name]
+            for name in marker.get("webhooks", [])
+            if name in by_name and "changed" in by_name[name].get("events", [])
+        ]
+        if not targets:
+            return []
+
+        variables = {
+            "uniqueid": uniqueid,
+            "linkedid": call.get("linkedid"),
+            "channel": call.get("channel"),
+            "caller_id_num": call.get("caller_id_num"),
+            "caller_id_name": call.get("caller_id_name"),
+            "exten": exten,
+            "context": context,
+            "previous_exten": previous_exten,
+            "previous_context": previous_context,
+            "original_exten": call.get("original_exten"),
+            "original_context": call.get("original_context"),
+            "queue": call.get("queue"),
+            "direction": call.get("direction"),
+            "timestamp": datetime.now().isoformat(),
+            "channel_vars": change_info.get("channel_vars") or {},
+        }
+        for wh in targets:
+            self._fire(wh, "call.changed", variables)
+        return [wh["name"] for wh in targets]
 
     @staticmethod
     def _call_duration(started_at):
