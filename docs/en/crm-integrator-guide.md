@@ -225,6 +225,8 @@ Note: not every field is necessarily filled in for every call — for example, `
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -235,6 +237,7 @@ Field details:
 - `direction` — always `"outbound"` for this event; the field is present on every event in both chains and lets you determine which chain an event belongs to with a single check, without parsing the `event` name itself.
 - This event is only sent when the call is initiated by an internal SIP user (an employee), not by a trunk (a connection to a telephone provider). Calls arriving from outside via a trunk always go through `call.incoming`, never `call.outgoing`.
 - By default the PBX also doesn't send `call.outgoing` for an internal channel Asterisk has just created (via `Dial()`/`Originate()`) but hasn't yet connected to a specific number — at that point `exten` equals the system placeholder `"s"`, not a real number, and there's no point showing the CRM such an event. If this behavior needs to change, ask the PBX administrator (the `WEBHOOK_SEND_SYSTEM_CHANNELS` setting).
+- `recording_url` — as in `call.incoming`, a deterministic link built ahead of time from `uniqueid`; the file appears there only if the call ends up recorded (confirmed by `recorded: true` in `call.outgoing_ended`). `recording_expected` is `null` here: the event fires before the recording decision is made.
 
 ### 5.6. `call.outgoing_answered` — the called party picked up
 
@@ -299,6 +302,35 @@ This event structurally mirrors `call.ended` (section 5.4) — the same `duratio
 - `dial_status` — the last known `DialStatus` value: `"ANSWER"` on a successful connection, or `"BUSY"` / `"NOANSWER"` / `"CANCEL"`, etc. on a failed attempt.
 
 The `answered_by_member` / `answered_by_interface` fields here are always `null` — they apply exclusively to a queue operator in the inbound chain (section 5.4) and have no meaning for a call an employee initiates directly.
+
+### 5.8. `call.changed` — the call moved to another extension
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Field details:
+- Sent in both chains; `direction` tells which one. It only arrives for a call the CRM already got `call.incoming` or `call.outgoing` for.
+- `exten` / `context` — where the call is now; `previous_exten` / `previous_context` — where it was right before this change; `original_exten` / `original_context` — where it was when announced.
+- Only a change of the extension counts: new priorities of the same extension, and the service extensions `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (they also cover internal macro calls), are not reported.
+- Once a call has moved, all its later events carry the current `exten` / `context` and keep the starting point in `original_exten` / `original_context`.
 
 ## 6. Retrieving a call recording
 
@@ -665,7 +697,7 @@ If the CRM system expects a request body with a different structure (different f
 }
 ```
 
-A list of all available substitution variables: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+A list of all available substitution variables: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 `channel_vars` — an object with the Asterisk channel variables allowed by the PBX administrator (e.g. `{"ULINE": "42"}`); an empty object `{}` if none has been set yet. In the template, `${channel_vars}` as the entire content of a string field is substituted as a nested JSON object, not text.
 

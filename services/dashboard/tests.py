@@ -569,6 +569,11 @@ class TestOutgoing:
         assert notified == ["crm"]
         assert calls[0][:2] == ("crm", "call.outgoing")
         assert calls[0][2]["direction"] == "outbound"
+        assert (
+            calls[0][2]["recording_url"]
+            == "https://pbx.example.com/api/v1/recordings/111.222/"
+        )
+        assert calls[0][2]["recording_expected"] is None
         marker = json.loads(redis.store[f"{NOTIFIED_KEY_PREFIX}111.222"])
         assert marker["call"]["direction"] == "outbound"
         assert marker["webhooks"] == ["crm"]
@@ -1264,3 +1269,124 @@ class TestWakeQueueMembers:
         with patch("dashboard_listener.post_json") as post:
             run(listener._wake_queue_members("sales", "1", "u"))
         post.assert_not_called()
+
+
+class TestExtenChange:
+    def config(self, **overrides):
+        base = {"events": ["incoming", "ended", "changed"]}
+        base.update(overrides)
+        return make_config(**base)
+
+    def announce(self, manager, exten="100"):
+        return run(
+            manager.on_incoming(
+                {
+                    "uniqueid": "111.222",
+                    "channel": "PJSIP/trunk-0000000a",
+                    "caller_id_num": "380501234567",
+                    "caller_id_name": "Client",
+                    "exten": exten,
+                    "context": "incoming",
+                    "queue": None,
+                }
+            )
+        )
+
+    def change(self, manager, exten, context="incoming"):
+        return run(
+            manager.on_exten_change(
+                {"uniqueid": "111.222", "exten": exten, "context": context}
+            )
+        )
+
+    def test_goto_fires_changed_with_previous_and_original(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        assert self.change(manager, "200", "ivr") == ["crm"]
+        assert self.change(manager, "300", "ivr") == ["crm"]
+
+        name, event, variables = calls[-1]
+        assert (name, event) == ("crm", "call.changed")
+        assert variables["exten"] == "300"
+        assert variables["context"] == "ivr"
+        assert variables["previous_exten"] == "200"
+        assert variables["original_exten"] == "100"
+        assert variables["original_context"] == "incoming"
+        assert variables["direction"] == "inbound"
+
+    def test_same_exten_is_not_a_change(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        assert self.change(manager, "100", "other") == []
+        assert [c for c in calls if c[1] == "call.changed"] == []
+
+    def test_special_extens_ignored_and_macro_return_silent(self):
+        manager, _ = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        for exten in ("s", "h", "i", "t"):
+            assert self.change(manager, exten, "macro-dial") == []
+        assert self.change(manager, "100") == []
+        assert [c for c in calls if c[1] == "call.changed"] == []
+
+    def test_unannounced_call_ignored(self):
+        manager, redis = make_manager(self.config())
+        run(manager.load_config())
+        calls = fired_events(manager)
+
+        assert self.change(manager, "200") == []
+        assert calls == []
+        assert redis.store.keys() == {WEBHOOKS_CONFIG_KEY}
+
+    def test_webhook_without_changed_event_still_tracks_exten(self):
+        manager, _ = make_manager(self.config(events=["incoming", "ended"]))
+        run(manager.load_config())
+        calls = fired_events(manager)
+        self.announce(manager)
+
+        assert self.change(manager, "200", "ivr") == []
+        run(manager.on_hangup({"uniqueid": "111.222"}))
+
+        _, event, variables = calls[-1]
+        assert event == "call.ended"
+        assert variables["exten"] == "200"
+        assert variables["context"] == "ivr"
+        assert variables["original_exten"] == "100"
+        assert variables["original_context"] == "incoming"
+
+    def test_outgoing_call_reports_outbound_direction(self):
+        manager, _ = make_manager(
+            make_config(
+                sip_users={"1001": "outbound-users"},
+                events=["outgoing", "changed"],
+                contexts=[],
+                queues=[],
+                routing_tables=["outbound-users"],
+            )
+        )
+        run(manager.load_config())
+        calls = fired_events(manager)
+        run(
+            manager.on_outgoing(
+                {
+                    "uniqueid": "111.222",
+                    "channel": "PJSIP/1001-0000000a",
+                    "caller_id_num": "1001",
+                    "exten": "0501234567",
+                    "context": "outbound-users",
+                }
+            )
+        )
+
+        assert self.change(manager, "0671112233", "outbound-users") == ["crm"]
+        variables = calls[-1][2]
+        assert variables["direction"] == "outbound"
+        assert variables["previous_exten"] == "0501234567"

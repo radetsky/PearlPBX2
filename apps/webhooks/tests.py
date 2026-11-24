@@ -314,6 +314,7 @@ class WebhookAdminFormTests(TestCase):
             "send_outgoing": False,
             "send_outgoing_answered": False,
             "send_outgoing_ended": False,
+            "send_changed": False,
             "contexts": [],
             "routing_tables": [],
             "queues": [],
@@ -368,6 +369,23 @@ class WebhookAdminFormTests(TestCase):
             )
         )
         self.assertFalse(form.is_valid())
+
+    def test_changed_requires_incoming_or_outgoing(self):
+        form = WebhookAdminForm(
+            data=self.form_data(
+                contexts=[make_context().pk],
+                send_incoming=False,
+                send_ended=False,
+                send_changed=True,
+            )
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_changed_valid_with_incoming(self):
+        form = WebhookAdminForm(
+            data=self.form_data(contexts=[make_context().pk], send_changed=True)
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_outgoing_answered_requires_outgoing(self):
         routing_table = make_routing_table()

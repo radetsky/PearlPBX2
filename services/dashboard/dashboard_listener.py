@@ -650,6 +650,7 @@ class DashboardAMIListener:
         application = event.get("Application")
         app_data = event.get("AppData")
         uniqueid = event.get("Uniqueid")
+        previous_exten = self.channels_state.get(channel, {}).get("exten")
 
         if channel in self.channels_state:
             self.channels_state[channel]["context"] = context
@@ -669,6 +670,16 @@ class DashboardAMIListener:
                 "app_data": app_data,
             },
         )
+
+        if self.webhooks.enabled and exten != previous_exten:
+            await self.webhooks.on_exten_change(
+                {
+                    "uniqueid": uniqueid,
+                    "exten": exten,
+                    "context": context,
+                    "channel_vars": self._channel_vars(channel),
+                }
+            )
 
         self.logger.debug(
             f"Channel {channel}: {application}({app_data}) in {context},{exten}"

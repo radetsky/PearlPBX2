@@ -47,6 +47,12 @@ La fuente de verdad sobre el estado de las llamadas es el servicio `services/das
 | `call.outgoing_answered` | la parte llamada descuelga (evento AMI `DialEnd` con `DialStatus=ANSWER`) | **solo para llamadas para las que se envió previamente un `call.outgoing`** |
 | `call.outgoing_ended` | el canal finaliza (hangup) | **solo para llamadas para las que se envió previamente un `call.outgoing`** |
 
+**Ambas cadenas** — `call.changed`:
+
+| Evento | Cuándo se dispara | Condición |
+|-------|------------------|-------|
+| `call.changed` | una llamada anunciada pasa a otra extensión (AMI `Newexten`, p. ej. tras `Goto(newexten,1)`) | **solo para llamadas para las que antes se envió `call.incoming` o `call.outgoing`**, y "Send changed" está habilitado |
+
 Un matiz importante: `call.ended` y `call.outgoing_ended` se envían deliberadamente **solo** para llamadas sobre las que el CRM ya fue informado mediante `call.incoming` o `call.outgoing`, respectivamente. El sistema recuerda en Redis (`webhook:notified:{uniqueid}`, TTL de 2 horas) a qué webhooks se les notificó el inicio de una llamada (y en qué cadena — entrante o saliente), y comprueba este registro cuando la llamada finaliza. Esto garantiza que:
 - el CRM nunca reciba un evento de "llamada finalizada" para una llamada de la que nunca se le informó;
 - el CRM nunca reciba este evento dos veces;
@@ -70,6 +76,7 @@ Campos del formulario:
 | `url` | la dirección en la que el CRM recibe las solicitudes `POST` |
 | `send_incoming` / `send_ended` / `send_missed` / `send_answered` | a qué eventos de la cadena **entrante** está suscrito este webhook. `send_ended` requiere que `send_incoming` esté habilitado. `send_missed` y `send_answered` requieren cada uno al menos una cola seleccionada. Estos eventos se comparan solo por `contexts`/`queues`, nunca por `routing_tables` |
 | `send_outgoing` / `send_outgoing_answered` / `send_outgoing_ended` | a qué eventos de la cadena **saliente** está suscrito este webhook. `send_outgoing_answered` y `send_outgoing_ended` requieren cada uno que `send_outgoing` esté habilitado. Estos eventos se comparan solo por `routing_tables` |
+| `send_changed` | enviar `call.changed` cuando una llamada ya anunciada (de cualquier cadena) pasa a otra extensión, p. ej. vía `Goto()`. Requiere `send_incoming` o `send_outgoing` |
 | `contexts` | una lista de contextos del plan de marcado — las llamadas entrantes a estos contextos disparan `call.incoming` |
 | `routing_tables` | los usuarios SIP asignados a estas tablas de enrutamiento disparan la cadena saliente cuando ellos mismos inician una llamada. Un troncal — nunca |
 | `queues` | una lista de colas — las llamadas que se unen a estas colas disparan eventos de la cadena entrante relacionados con colas |
@@ -204,6 +211,8 @@ Los campos que no aplican a un evento concreto llegan como `null` (p. ej. `queue
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -264,9 +273,34 @@ Los campos que no aplican a un evento concreto llegan como `null` (p. ej. `queue
 
 `answered` es `true` solo si llegó un evento `call.outgoing_answered` antes de que la llamada finalizara; de lo contrario es `false`, y `dial_status` muestra la razón (`BUSY`, `NOANSWER`, `CANCEL`...). Esto permite que el CRM distinga una conexión exitosa de una fallida sin solicitudes adicionales.
 
+### `call.changed` — la llamada pasó a otra extensión
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Se envía en ambas cadenas (ver `direction`) cuando el dialplan lleva una llamada ya anunciada a otra extensión. No se notifican las nuevas prioridades de la misma extensión ni las extensiones de servicio `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (incluidas las llamadas a macros AEL). `exten`/`context` son la nueva ubicación, `previous_*` la anterior a este cambio, `original_*` aquella con la que se anunció la llamada. Tras un cambio, todos los eventos posteriores de la llamada (`call.answered`, `call.outgoing_answered`, `call.ended`, `call.outgoing_ended`, …) llevan el `exten`/`context` actual más `original_exten`/`original_context`.
+
 ## 4. Grabaciones de llamadas: enlaces y descarga vía la API
 
-`recording_url` en cada payload es un enlace **determinista**, construido a partir del `uniqueid` de la llamada. Se puede calcular incluso antes de que la llamada finalice, por lo que ya está presente en `call.incoming` — como una predicción:
+`recording_url` en cada payload es un enlace **determinista**, construido a partir del `uniqueid` de la llamada. Se puede calcular incluso antes de que la llamada finalice, por lo que ya está presente en `call.incoming` y `call.outgoing` — como una predicción:
 
 - `recording_expected` — una predicción de si la llamada será grabada, tomada del valor de la variable `MIXMONITOR` de Asterisk en el momento del evento. Para llamadas clasificadas por cola, este valor suele conocerse ya (el AGI que decide sobre la grabación se ejecuta antes de `Queue()`). Para llamadas clasificadas solo por contexto, el evento `call.incoming` se dispara antes que ese AGI, por lo que el valor es `null` (desconocido).
 - En `call.ended`, el campo `recorded` es el hecho ya confirmado (`true`/`false`, o `null` si la información se perdió, p. ej. por una reconexión de AMI a mitad de la llamada). `recording_url` se rellena solo cuando `recorded: true`.
@@ -347,7 +381,7 @@ Al crear un webhook nuevo en el panel de administración, el campo **Payload tem
 }
 ```
 
-Placeholders disponibles: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+Placeholders disponibles: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 Usar un placeholder desconocido provoca un error de validación del formulario — el panel de administración no te dejará guardar esa plantilla. Si el campo se deja vacío, se envía el payload estándar para cada evento.
 

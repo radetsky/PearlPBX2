@@ -225,6 +225,8 @@ PearlPBX2 — система управління телефонією підп�
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -235,6 +237,7 @@ PearlPBX2 — система управління телефонією підп�
 - `direction` — завжди `"outbound"` для цієї події; поле присутнє в усіх подіях обох ланцюгів і дозволяє однією перевіркою визначити, до якого з них належить подія, не аналізуючи саму назву `event`.
 - Ця подія надсилається лише тоді, коли дзвінок ініціює саме внутрішній SIP-користувач (співробітник), а не транк (з'єднання з телефонним провайдером). Дзвінки, що приходять ззовні через транк, завжди йдуть через `call.incoming`, ніколи через `call.outgoing`.
 - За замовчуванням АТС також не надсилає `call.outgoing` для внутрішнього каналу, який Asterisk щойно створив (через `Dial()`/`Originate()`), але ще не з'єднав з конкретним номером — у такий момент `exten` дорівнює службовому значенню `"s"`, а не реальному номеру, і показувати CRM таку подію немає сенсу. Якщо цей behavior потрібно змінити — уточніть у адміністратора АТС (налаштування `WEBHOOK_SEND_SYSTEM_CHANNELS`).
+- `recording_url` — як і в `call.incoming`, детерміноване посилання, сформоване заздалегідь з `uniqueid`; файл за ним з'явиться лише якщо дзвінок буде записано (підтверджується `recorded: true` у `call.outgoing_ended`). `recording_expected` тут дорівнює `null`: подія надсилається до того, як прийнято рішення про запис.
 
 ### 5.6. `call.outgoing_answered` — викликана сторона підняла слухавку
 
@@ -299,6 +302,35 @@ PearlPBX2 — система управління телефонією підп�
 - `dial_status` — останнє відоме значення `DialStatus`: `"ANSWER"` за успішного з'єднання, або `"BUSY"` / `"NOANSWER"` / `"CANCEL"` тощо за невдалої спроби.
 
 Поля `answered_by_member` / `answered_by_interface` тут завжди `null` — вони стосуються виключно оператора черги на вхідному ланцюгу (розділ 5.4) і не мають значення для дзвінка, ініційованого співробітником напряму.
+
+### 5.8. `call.changed` — дзвінок перейшов на інший exten
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Особливості полів:
+- Надсилається в обох ланцюгах; `direction` показує, в якому. Приходить лише для дзвінка, про який CRM уже отримала `call.incoming` або `call.outgoing`.
+- `exten` / `context` — де дзвінок зараз; `previous_exten` / `previous_context` — де він був безпосередньо перед цією зміною; `original_exten` / `original_context` — де він був у момент анонсу.
+- Враховується лише зміна exten: нові priority того самого exten і службові exten `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (вони ж покривають внутрішні виклики макросів) не повідомляються.
+- Після переходу всі наступні події дзвінка містять поточні `exten` / `context`, а початкову точку зберігають у `original_exten` / `original_context`.
 
 ## 6. Отримання запису розмови
 
@@ -665,7 +697,7 @@ function isSignatureValid(rawBody, headerValue) {
 }
 ```
 
-Перелік усіх доступних змінних для підстановки: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+Перелік усіх доступних змінних для підстановки: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 `channel_vars` — об'єкт із дозволеними адміністратором АТС змінними каналу Asterisk (наприклад, `{"ULINE": "42"}`); порожній об'єкт `{}`, якщо жодна ще не встановлена. У шаблоні `${channel_vars}` як єдиний вміст рядкового поля підставляється вкладеним JSON-об'єктом, а не текстом.
 

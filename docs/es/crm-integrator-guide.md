@@ -225,6 +225,8 @@ Nota: no todos los campos están necesariamente rellenados para cada llamada —
   "context": "outbound-users",
   "direction": "outbound",
   "timestamp": "2026-08-11T18:58:51.811673",
+  "recording_expected": null,
+  "recording_url": "https://pbx.example.com/api/v1/recordings/1753000000.55/",
   "channel_vars": {}
 }
 ```
@@ -235,6 +237,7 @@ Detalles de los campos:
 - `direction` — siempre `"outbound"` para este evento; el campo está presente en todos los eventos de ambas cadenas y permite determinar con una sola comprobación a cuál pertenece un evento, sin analizar el propio nombre de `event`.
 - Este evento solo se envía cuando la llamada la inicia un usuario SIP interno (un empleado), no un troncal (una conexión con un proveedor de telefonía). Las llamadas que llegan desde fuera a través de un troncal siempre pasan por `call.incoming`, nunca por `call.outgoing`.
 - Por defecto, la PBX tampoco envía `call.outgoing` para un canal interno que Asterisk acaba de crear (vía `Dial()`/`Originate()`) pero que aún no se ha conectado a un número concreto — en ese momento `exten` es igual al placeholder de sistema `"s"`, no un número real, y no tiene sentido mostrar ese evento al CRM. Si este comportamiento necesita cambiarse, consúltalo con el administrador de la PBX (la configuración `WEBHOOK_SEND_SYSTEM_CHANNELS`).
+- `recording_url` — como en `call.incoming`, un enlace determinista construido de antemano a partir del `uniqueid`; el archivo solo aparecerá si la llamada termina grabándose (lo confirma `recorded: true` en `call.outgoing_ended`). `recording_expected` es `null` aquí: el evento se envía antes de decidir sobre la grabación.
 
 ### 5.6. `call.outgoing_answered` — la parte llamada descolgó
 
@@ -299,6 +302,35 @@ Este evento repite estructuralmente a `call.ended` (sección 5.4) — los mismos
 - `dial_status` — el último valor conocido de `DialStatus`: `"ANSWER"` en caso de conexión exitosa, o `"BUSY"` / `"NOANSWER"` / `"CANCEL"`, etc. en caso de intento fallido.
 
 Los campos `answered_by_member` / `answered_by_interface` aquí siempre son `null` — corresponden exclusivamente al operador de una cola en la cadena entrante (sección 5.4) y no tienen significado para una llamada iniciada directamente por un empleado.
+
+### 5.8. `call.changed` — la llamada pasó a otra extensión
+
+```json
+{
+  "event": "call.changed",
+  "uniqueid": "1753000000.42",
+  "linkedid": "1753000000.42",
+  "channel": "PJSIP/trunk1-00000012",
+  "caller_id_num": "380501234567",
+  "caller_id_name": "Client",
+  "exten": "200",
+  "context": "ivr-sales",
+  "previous_exten": "100",
+  "previous_context": "incoming",
+  "original_exten": "100",
+  "original_context": "incoming",
+  "queue": null,
+  "direction": "inbound",
+  "timestamp": "2026-08-11T18:58:53.104211",
+  "channel_vars": {}
+}
+```
+
+Detalles de los campos:
+- Se envía en ambas cadenas; `direction` indica en cuál. Solo llega para una llamada de la que el CRM ya recibió `call.incoming` o `call.outgoing`.
+- `exten` / `context` — dónde está la llamada ahora; `previous_exten` / `previous_context` — dónde estaba justo antes de este cambio; `original_exten` / `original_context` — dónde estaba al anunciarse.
+- Solo cuenta un cambio de extensión: no se notifican las nuevas prioridades de la misma extensión ni las extensiones de servicio `s`, `h`, `i`, `t`, `T`, `e`, `o`, `a` (que también cubren las llamadas internas a macros).
+- Una vez que la llamada se ha movido, todos sus eventos posteriores llevan el `exten` / `context` actual y conservan el punto de partida en `original_exten` / `original_context`.
 
 ## 6. Obtención de la grabación de una llamada
 
@@ -665,7 +697,7 @@ En caso de que el sistema CRM espere un cuerpo de solicitud con una estructura d
 }
 ```
 
-Lista de todas las variables de sustitución disponibles: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`.
+Lista de todas las variables de sustitución disponibles: `event`, `uniqueid`, `linkedid`, `channel`, `caller_id_num`, `caller_id_name`, `exten`, `context`, `queue`, `timestamp`, `duration`, `cause`, `cause_txt`, `answered_time`, `billsec`, `recorded`, `recording_expected`, `recording_url`, `recording_file`, `missed`, `wait_time`, `member_name`, `member_interface`, `member_number`, `ringtime`, `holdtime`, `answered_by_member`, `answered_by_interface`, `direction`, `dest_channel`, `dial_status`, `answered`, `channel_vars`, `previous_exten`, `previous_context`, `original_exten`, `original_context`.
 
 `channel_vars` — un objeto con las variables de canal de Asterisk permitidas por el administrador de la PBX (p. ej. `{"ULINE": "42"}`); un objeto vacío `{}` si aún no se ha establecido ninguna. En la plantilla, `${channel_vars}` como único contenido de un campo de cadena se sustituye como un objeto JSON anidado, no como texto.
 

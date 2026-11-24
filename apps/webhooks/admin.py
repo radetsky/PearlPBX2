@@ -86,6 +86,18 @@ class WebhookAdminForm(forms.ModelForm):
                     "outgoing'."
                 )
             )
+        if (
+            cleaned.get("send_changed")
+            and not cleaned.get("send_incoming")
+            and not cleaned.get("send_outgoing")
+        ):
+            raise ValidationError(
+                _(
+                    "Changed events are sent only for calls announced by an "
+                    "incoming or outgoing event, so 'Send changed' requires 'Send "
+                    "incoming' or 'Send outgoing'."
+                )
+            )
         return cleaned
 
 
@@ -102,6 +114,7 @@ class WebhookAdmin(admin.ModelAdmin):
         "send_outgoing",
         "send_outgoing_answered",
         "send_outgoing_ended",
+        "send_changed",
     ]
     list_filter = ["is_active"]
     search_fields = ["name", "url"]

@@ -79,6 +79,7 @@ by a trunk, even if the trunk shares a routing table's name with a SIP user.
 | `call.outgoing`           | `handle_newchannel`                              | A SIP user's channel is created and its endpoint belongs to one of the webhook's routing tables |
 | `call.outgoing_answered`  | `handle_dial_end`                                | The dialed party answers (AMI `DialEnd` with `DialStatus=ANSWER`) — **only** for calls already announced with `call.outgoing` |
 | `call.outgoing_ended`     | `handle_hangup`                                  | The channel hangs up — **only** for calls already announced with `call.outgoing` |
+| `call.changed`            | `handle_newexten`                                | An announced call (either chain) moves to another extension; service extensions (`s`, `h`, `i`, `t`, `T`, `e`, `o`, `a`) are ignored |
 
 `call.ended` and `call.outgoing_ended` are each scoped to calls announced on
 their own chain: a Redis marker (`webhook:notified:{uniqueid}`, TTL 7200s) is

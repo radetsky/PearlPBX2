@@ -60,6 +60,7 @@ def serialize_webhooks():
                 ("outgoing", wh.send_outgoing),
                 ("outgoing_answered", wh.send_outgoing_answered),
                 ("outgoing_ended", wh.send_outgoing_ended),
+                ("changed", wh.send_changed),
             )
             if enabled
         ]

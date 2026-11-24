@@ -41,6 +41,10 @@ TEMPLATE_VARIABLES = frozenset(
         "linkedid",
         "channel",
         "channel_vars",
+        "previous_exten",
+        "previous_context",
+        "original_exten",
+        "original_context",
     }
 )
 
@@ -131,6 +135,13 @@ class Webhook(models.Model):
     send_outgoing_ended = models.BooleanField(
         default=False,
         help_text=_("Send an event when an outgoing call ends."),
+    )
+    send_changed = models.BooleanField(
+        default=False,
+        help_text=_(
+            "Send an event when an announced call (incoming or outgoing) moves "
+            "to another extension, e.g. via Goto()."
+        ),
     )
     contexts = models.ManyToManyField(
         DialplanContext,
